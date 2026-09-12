@@ -1,0 +1,6 @@
+{
+  "name": "Xora",
+  "description": "Video discovery and social platform with feeds, trending content, and creator profiles",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
