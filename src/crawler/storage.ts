@@ -10,6 +10,9 @@
  */
 
 import type { DiscoveredCandidate, CrawlerRunSummary, CrawlerCategory } from "./types.ts";
+import { ref, get, set } from "firebase/database";
+import { rtdb, isFirebaseConfigured } from "@/integrations/firebase/config";
+import { pathSafe, hashKey } from "@/integrations/firebase/rtdb";
 
 export interface CandidateQueryFilters {
   category?: CrawlerCategory | undefined;
@@ -71,6 +74,110 @@ export class InMemoryCrawlerStorage implements CrawlerStorage {
 
   public async saveRunSummary(summary: CrawlerRunSummary): Promise<void> {
     this.runs.set(summary.runId, summary);
+  }
+}
+
+/**
+ * Firebase Realtime Database storage implementation for persistent, isolated crawler data.
+ * Isolated paths:
+ * - /crawler/candidates/<id>
+ * - /crawler/sourceUrls/<urlHash>
+ * - /crawler/runs/<runId>
+ * Guaranteed never to auto-publish into public feeds or /posts.
+ */
+export class RtdbCrawlerStorage implements CrawlerStorage {
+  private memoryFallback = new InMemoryCrawlerStorage();
+
+  public async saveCandidate(candidate: DiscoveredCandidate): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      return this.memoryFallback.saveCandidate(candidate);
+    }
+    try {
+      const safeId = pathSafe(candidate.id);
+      const urlHash = hashKey(candidate.sourceUrl);
+      await set(ref(rtdb, `crawler/candidates/${safeId}`), candidate);
+      await set(ref(rtdb, `crawler/sourceUrls/${urlHash}`), true);
+    } catch (err) {
+      console.warn("[Crawler RTDB] Save candidate error, falling back to memory:", err);
+      await this.memoryFallback.saveCandidate(candidate);
+    }
+  }
+
+  public async getCandidate(id: string): Promise<DiscoveredCandidate | null> {
+    if (!isFirebaseConfigured()) {
+      return this.memoryFallback.getCandidate(id);
+    }
+    try {
+      const safeId = pathSafe(id);
+      const snap = await get(ref(rtdb, `crawler/candidates/${safeId}`));
+      if (snap.exists()) {
+        return snap.val() as DiscoveredCandidate;
+      }
+    } catch (err) {
+      console.warn("[Crawler RTDB] Get candidate error:", err);
+    }
+    return this.memoryFallback.getCandidate(id);
+  }
+
+  public async hasSourceUrl(sourceUrl: string): Promise<boolean> {
+    if (!isFirebaseConfigured()) {
+      return this.memoryFallback.hasSourceUrl(sourceUrl);
+    }
+    try {
+      const urlHash = hashKey(sourceUrl);
+      const snap = await get(ref(rtdb, `crawler/sourceUrls/${urlHash}`));
+      if (snap.exists()) {
+        return true;
+      }
+    } catch (err) {
+      console.warn("[Crawler RTDB] Check source URL error:", err);
+    }
+    return this.memoryFallback.hasSourceUrl(sourceUrl);
+  }
+
+  public async listCandidates(
+    filters?: CandidateQueryFilters | undefined,
+  ): Promise<DiscoveredCandidate[]> {
+    if (!isFirebaseConfigured()) {
+      return this.memoryFallback.listCandidates(filters);
+    }
+    try {
+      const snap = await get(ref(rtdb, "crawler/candidates"));
+      if (snap.exists()) {
+        const val = snap.val();
+        let list = Object.values(val) as DiscoveredCandidate[];
+
+        if (filters?.category) {
+          list = list.filter((c) => c.discoveryCategory === filters.category);
+        }
+        if (filters?.releaseYear) {
+          list = list.filter((c) => c.releaseYear === filters.releaseYear);
+        }
+        if (filters?.releaseStatus) {
+          list = list.filter((c) => c.releaseStatus === filters.releaseStatus);
+        }
+
+        const offset = filters?.offset ?? 0;
+        const limit = filters?.limit ?? 50;
+        return list.slice(offset, offset + limit);
+      }
+    } catch (err) {
+      console.warn("[Crawler RTDB] List candidates error:", err);
+    }
+    return this.memoryFallback.listCandidates(filters);
+  }
+
+  public async saveRunSummary(summary: CrawlerRunSummary): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      return this.memoryFallback.saveRunSummary(summary);
+    }
+    try {
+      const safeId = pathSafe(summary.runId);
+      await set(ref(rtdb, `crawler/runs/${safeId}`), summary);
+    } catch (err) {
+      console.warn("[Crawler RTDB] Save run error:", err);
+      await this.memoryFallback.saveRunSummary(summary);
+    }
   }
 }
 

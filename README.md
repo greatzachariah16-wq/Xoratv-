@@ -1,12 +1,167 @@
 # Xora TV
 
-Yes — that should definitely be added, but without telling Replit to spend all the budget on visual polish before functionality works.
+A modern social video streaming web application and PWA powered by Vite, TanStack Start, React 19, TypeScript, Firebase Realtime Database (RTDB), and a Render-hosted media/SSR backend.
 
-I’d replace the final section with this addition:
+## Architecture & Hosting (Render + Firebase Realtime Database)
 
-31. HIGH-GRADE UI / UX POLISH
+- **Frontend & SSR Server**: TanStack Start + Nitro built for Node (`preset: render-com`), running on a single unified Render Web Service.
+- **Metadata Database**: Firebase Realtime Database (RTDB) is the sole database for all metadata (profiles, posts, feeds, comments, likes, follows, notifications, media index, and crawler candidates). Cloudflare and Firestore are completely removed.
+- **Media & File Streaming Origin**: The Render Node server is the sole origin for file uploads and video/poster/avatar streaming with full HTTP `Range` request support (`Accept-Ranges: bytes` / 206 Partial Content).
 
-After the core functionality is working, polish the entire Xora interface to a high-grade, professional production standard.
+---
+
+## Deployment on Render
+
+Xora TV runs as a single Render Web Service that hosts both the TanStack Start SSR web application and the media streaming & upload API endpoints.
+
+### 1. Web Service Configuration (`render.yaml`)
+
+```yaml
+services:
+  - type: web
+    name: xoratv
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: node .output/server/index.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NITRO_PRESET
+        value: render-com
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: MEDIA_ROOT
+        value: ./media
+```
+
+### 2. Environment Variables
+
+Configure the following variables in the Render Dashboard under **Environment**:
+
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `NODE_VERSION` | Node.js runtime version | `22` |
+| `NITRO_PRESET` | Nitro build preset for Render | `render-com` |
+| `HOST` | Bind host | `0.0.0.0` |
+| `PORT` | Service port | `10000` |
+| `MEDIA_ROOT` | Filesystem directory where media is saved | `./media` |
+| `PUBLIC_MEDIA_BASE_URL` | Public streaming base URL | `https://xoratv.onrender.com` |
+| `VITE_RENDER_BACKEND_URL`| Render backend base URL for client uploads | `https://xoratv.onrender.com` |
+| `VITE_FIREBASE_API_KEY` | Firebase Client API Key | `AIzaSy...` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain | `xora-tv.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase Project ID | `xora-tv` |
+| `VITE_FIREBASE_DATABASE_URL` | Firebase RTDB URL | `https://xora-tv-default-rtdb.firebaseio.com` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket | `xora-tv.firebasestorage.app` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase Messaging Sender ID | `977340710920` |
+| `VITE_FIREBASE_APP_ID` | Firebase App ID | `1:977340710920:web:...` |
+| `FIREBASE_DATABASE_URL` | Server-side Firebase RTDB URL | `https://xora-tv-default-rtdb.firebaseio.com` |
+| `FIREBASE_SERVICE_ACCOUNT` | (Optional) Service account JSON for admin access | `{...}` |
+
+---
+
+## Firebase Realtime Database (RTDB) Setup
+
+### Database Rules (`database.rules.json`)
+
+Deploy the following security rules in the Firebase Console under **Realtime Database > Rules**:
+
+```json
+{
+  "rules": {
+    ".read": true,
+    "profiles": {
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "usernames": {
+      ".write": "auth != null"
+    },
+    "posts": {
+      "$postId": {
+        ".write": "auth != null"
+      }
+    },
+    "postsByFeed": {
+      ".write": "auth != null"
+    },
+    "comments": {
+      "$postId": {
+        ".write": "auth != null"
+      }
+    },
+    "likes": {
+      "$postId": {
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "follows": {
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".write": "auth != null"
+      }
+    },
+    "mediaIndex": {
+      ".write": "auth != null"
+    },
+    "crawler": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
+```
+
+---
+
+## API & Streaming Verification Steps
+
+Once deployed (or running locally with `npm run build && npm start`):
+
+### 1. Health Check
+```bash
+curl -i http://localhost:10000/health
+# Expected: HTTP 200 OK {"ok":true,"status":"healthy","service":"xoratv-render"}
+```
+
+### 2. Upload Test Media File via `POST /api/upload`
+```bash
+curl -i -X POST http://localhost:10000/api/upload \
+  -F "file=@test_sample.mp4;type=video/mp4" \
+  -F "bucket=videos" \
+  -F "userId=test_user"
+
+# Expected: HTTP 200 OK with JSON:
+# {"ok":true,"path":"videos/test_user/<uuid>.mp4","url":"/videos/test_user/<uuid>.mp4","size":123456,"bucket":"videos"}
+```
+
+### 3. Verify Video Playback with Range Streaming
+```bash
+curl -I -H "Range: bytes=0-1024" http://localhost:10000/videos/test_user/<uuid>.mp4
+
+# Expected Headers:
+# HTTP/1.1 206 Partial Content
+# Accept-Ranges: bytes
+# Content-Range: bytes 0-1024/<total_size>
+# Content-Type: video/mp4
+```
+
+### 4. Verify Frontend Feeds
+- Navigate to `/` (Home feed), `/shorts` (Shorts feed), and `/learn`.
+- Verify the feed loads without any Cloudflare or Firestore errors.
+- Confirm metadata and posts are queried from Firebase Realtime Database.
+
+---
 
 Xora should NOT look like an AI-generated template, basic dashboard, or unfinished prototype.
 

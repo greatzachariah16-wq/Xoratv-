@@ -1,26 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
+import { isFirebaseConfigured } from "@/integrations/firebase/config";
+import { recordMediaIndex } from "@/integrations/firebase/rtdb";
+import { auth } from "@/integrations/firebase/config";
 
 export type MediaBucket = "videos" | "posters" | "avatars";
 
 /**
- * Cloudflare R2 Public CDN / Streaming Base URL.
- * Set via VITE_R2_PUBLIC_URL in environment or defaults to the horror streaming distribution domain.
- */
-export const CLOUDFLARE_R2_PUBLIC_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_R2_PUBLIC_URL) ||
-  "https://pub-r2.horrorstream.net";
-
-/**
  * Render Backend Streaming & API Base URL.
- * Set via VITE_RENDER_BACKEND_URL in environment or defaults to the Render web service.
+ * Set via VITE_RENDER_BACKEND_URL in environment or falls back to current origin when deployed.
  */
 export const RENDER_BACKEND_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_RENDER_BACKEND_URL) ||
-  "https://horror-stream-backend.onrender.com";
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_RENDER_BACKEND_URL) || "";
+
+export function getRenderBaseUrl(): string {
+  if (RENDER_BACKEND_URL) {
+    return RENDER_BACKEND_URL.replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin;
+  }
+  return "";
+}
 
 /**
- * Resolves a media path or external URL to a direct Cloudflare R2 streaming URL
- * or Render backend media endpoint, completely replacing Supabase storage buckets.
+ * Resolves a stored media path or key to a streamable Render backend URL.
  */
 export function resolveMediaUrl(
   bucket: MediaBucket,
@@ -31,33 +34,36 @@ export function resolveMediaUrl(
   const trimmed = path.trim();
   if (!trimmed) return null;
 
-  // Already a full remote URL (HTTP/HTTPS), blob, or data URL
-  if (/^(https?:|\/\/|blob:|data:)/i.test(trimmed)) {
+  // Blob or data URLs are local preview assets
+  if (/^(blob:|data:)/i.test(trimmed)) {
     return trimmed;
   }
 
-  // Strip leading slash
+  // If already an absolute HTTP/HTTPS URL
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Strip leading slashes
   const cleanPath = trimmed.replace(/^\/+/, "");
 
   // If path already starts with the bucket name, don't duplicate it
   const finalKey = cleanPath.startsWith(`${bucket}/`) ? cleanPath : `${bucket}/${cleanPath}`;
 
-  // Prioritize Cloudflare R2 public streaming link
-  const r2Base = CLOUDFLARE_R2_PUBLIC_URL.replace(/\/+$/, "");
-  return `${r2Base}/${finalKey}`;
+  const renderBase = getRenderBaseUrl();
+  return renderBase ? `${renderBase}/${finalKey}` : `/${finalKey}`;
 }
 
 /**
  * Resolves media path into direct stream link.
- * Backward compatible signature previously backed by Supabase storage createSignedUrl.
  */
 export async function signMedia(bucket: MediaBucket, path: string): Promise<string | null> {
   return resolveMediaUrl(bucket, path);
 }
 
 /**
- * Resolves a stored media path or key to a streamable Cloudflare R2 / Render backend URL.
- * Used by VideoPlayer and UserAvatar components across the horror application.
+ * Resolves a stored media path or key to a streamable Render backend URL.
+ * Used by VideoPlayer and UserAvatar components across the application.
  */
 export function useSignedUrl(bucket: MediaBucket, path: string | null | undefined) {
   const { data } = useQuery({
@@ -71,7 +77,7 @@ export function useSignedUrl(bucket: MediaBucket, path: string | null | undefine
 }
 
 /**
- * Uploads media directly to Render backend endpoint or generates Cloudflare R2 object key.
+ * Uploads media directly to Render backend endpoint: POST /api/upload
  */
 export async function uploadMedia(
   bucket: MediaBucket,
@@ -80,41 +86,78 @@ export async function uploadMedia(
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const path = `${bucket}/${userId}/${crypto.randomUUID()}.${ext}`;
+  const uniqueId =
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `f_${Date.now()}`;
+  const key = `${bucket}/${userId}/${uniqueId}.${ext}`;
 
-  onProgress?.(20);
+  onProgress?.(15);
 
-  try {
-    // Attempt upload to Render backend API if running
-    const renderApi = `${RENDER_BACKEND_URL.replace(/\/+$/, "")}/api/upload`;
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("bucket", bucket);
-    formData.append("key", path);
+  const renderBase = getRenderBaseUrl();
+  const uploadEndpoint = `${renderBase}/api/upload`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bucket", bucket);
+  formData.append("key", key);
 
-    const res = await fetch(renderApi, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal,
-    }).catch(() => null);
-
-    clearTimeout(timeoutId);
-
-    if (res && res.ok) {
-      const data = await res.json().catch(() => null);
-      onProgress?.(100);
-      return data?.url || data?.path || path;
+  const headers: Record<string, string> = {};
+  if (auth?.currentUser) {
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      if (idToken) {
+        headers["Authorization"] = `Bearer ${idToken}`;
+      }
+    } catch {
+      // Optional auth token
     }
-  } catch (err) {
-    console.info("[Media] Direct Render upload unreached, using Cloudflare R2 target key:", err);
   }
 
-  // Gracefully simulate local client-side progress & return R2 key
-  onProgress?.(60);
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  onProgress?.(40);
+
+  let res: Response;
+  try {
+    res = await fetch(uploadEndpoint, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Network error";
+    throw new Error(`Failed to connect to Render upload endpoint (${uploadEndpoint}): ${message}`);
+  }
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(
+      `Upload to Render failed with status ${res.status}: ${errText || res.statusText}`,
+    );
+  }
+
+  const data = (await res.json()) as { url?: string; path?: string };
+  if (!data || (!data.url && !data.path)) {
+    throw new Error("Invalid response from Render upload endpoint: missing file url or path");
+  }
+
+  const finalPath = data.path || key;
+  const finalUrl = data.url || resolveMediaUrl(bucket, finalPath) || finalPath;
+
+  onProgress?.(90);
+
+  // Record in RTDB mediaIndex if Firebase is configured
+  if (isFirebaseConfigured()) {
+    try {
+      await recordMediaIndex({
+        objectKey: finalPath,
+        renderUrl: finalUrl,
+        bucket,
+        ownerId: userId,
+        created_at: new Date().toISOString(),
+      });
+    } catch (indexErr) {
+      console.warn("[Media] Note recording mediaIndex in RTDB:", indexErr);
+    }
+  }
+
   onProgress?.(100);
-  return path;
+  return finalUrl;
 }

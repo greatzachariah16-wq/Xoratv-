@@ -1,25 +1,35 @@
 import { queryOptions } from "@tanstack/react-query";
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-} from "firebase/firestore";
-import { db, isFirebaseConfigured } from "@/integrations/firebase/config";
+import { isFirebaseConfigured } from "@/integrations/firebase/config";
 import type {
   FeedType,
   ProfileRecord,
   PostRecord,
   CommentRecord,
   NotificationRecord,
-  Tables,
+  DiscoveryRunRecord,
 } from "@/integrations/firebase/types";
+import {
+  getPost,
+  setPostRecord,
+  deletePostRecord,
+  getFeedPosts,
+  getAllPosts,
+  getProfile,
+  setProfile,
+  getProfileByUsername,
+  getCommentsForPost,
+  addCommentToPost,
+  removeCommentFromPost,
+  toggleLikeRtdb,
+  getUserLikedPosts,
+  getFollowsForUser,
+  toggleFollowRtdb,
+  getNotificationsForUser,
+  addNotificationForUser,
+  markNotificationsReadRtdb,
+  getDiscoveryRunsFromRtdb,
+  recordDiscoveryRun,
+} from "@/integrations/firebase/rtdb";
 import { SEED_HORROR_MOVIES } from "@/integrations/firebase/movies";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -73,7 +83,7 @@ let localComments: (CommentRecord & {
     id: "c-1",
     post_id: "horror-001",
     author_id: "indie-fear",
-    body: "The tension build-up in this film is legendary. Cloudflare R2 streaming quality looks crisp!",
+    body: "The tension build-up in this film is legendary. The streaming quality looks crisp!",
     created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
     author: {
       id: "indie-fear",
@@ -120,29 +130,46 @@ let localNotifications: NotificationRow[] = [
   },
 ];
 
+function attachAuthor(post: PostRecord): PostWithAuthor {
+  const authorProfile = localProfiles.find((p) => p.id === post.author_id);
+  return {
+    ...post,
+    author: authorProfile
+      ? {
+          id: authorProfile.id,
+          username: authorProfile.username,
+          display_name: authorProfile.display_name,
+          avatar_url: authorProfile.avatar_url,
+          location: authorProfile.location ?? null,
+        }
+      : {
+          id: post.author_id || "creator",
+          username: "creator",
+          display_name: "Creator",
+          avatar_url: null,
+          location: null,
+        },
+  };
+}
+
 export function feedQuery(feed: FeedType) {
   return queryOptions({
     queryKey: ["feed", feed],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       if (isFirebaseConfigured()) {
         try {
-          const q = query(
-            collection(db, "posts"),
-            where("feed", "==", feed),
-            where("status", "==", "published"),
-            where("approval_status", "==", "approved"),
-            orderBy("recommendation_score", "desc"),
-            limit(30),
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            return snap.docs.map((d) => ({
-              id: d.id,
-              ...(d.data() as Omit<PostWithAuthor, "id">),
-            }));
+          const rtdbPosts = await getFeedPosts(feed);
+          if (rtdbPosts && rtdbPosts.length > 0) {
+            return rtdbPosts.map((p) => attachAuthor(p));
+          } else {
+            // First time RTDB setup: seed default posts
+            const items = localPosts.filter((p) => p.feed === feed);
+            for (const item of items) {
+              setPostRecord(item).catch(() => {});
+            }
           }
         } catch (err) {
-          console.warn("[Firestore] Query feed fallback to catalog:", err);
+          console.warn("[RealtimeDB] Query feed fallback:", err);
         }
       }
 
@@ -173,6 +200,16 @@ export function discoveryPostsQuery(queue: DiscoveryQueueKey) {
   return queryOptions({
     queryKey: ["admin", "discovery", queue],
     queryFn: async (): Promise<PostWithAuthor[]> => {
+      if (isFirebaseConfigured()) {
+        try {
+          const posts = await getAllPosts();
+          if (posts.length > 0) {
+            return posts.filter((p) => p.source !== "creator").map(attachAuthor);
+          }
+        } catch (err) {
+          console.warn("[RealtimeDB] Discovery posts query note:", err);
+        }
+      }
       return localPosts.filter((p) => p.source !== "creator");
     },
   });
@@ -181,13 +218,23 @@ export function discoveryPostsQuery(queue: DiscoveryQueueKey) {
 export function discoveryRunsQuery() {
   return queryOptions({
     queryKey: ["admin", "discovery-runs"],
-    queryFn: async () => {
+    queryFn: async (): Promise<DiscoveryRunRecord[]> => {
+      if (isFirebaseConfigured()) {
+        try {
+          const runs = await getDiscoveryRunsFromRtdb();
+          if (runs.length > 0) {
+            return runs;
+          }
+        } catch (err) {
+          console.warn("[RealtimeDB] Discovery runs note:", err);
+        }
+      }
       return [
         {
           id: "run-1",
           started_at: new Date(Date.now() - 3600000 * 24).toISOString(),
           completed_at: new Date(Date.now() - 3600000 * 23.9).toISOString(),
-          source: "Cloudflare R2 & Open Web",
+          source: "Open Web Discovery",
           items_found: 18,
           items_inserted: 6,
         },
@@ -202,12 +249,12 @@ export function postQuery(id: string) {
     queryFn: async (): Promise<PostWithAuthor | null> => {
       if (isFirebaseConfigured()) {
         try {
-          const snap = await getDoc(doc(db, "posts", id));
-          if (snap.exists()) {
-            return { id: snap.id, ...(snap.data() as Omit<PostWithAuthor, "id">) };
+          const post = await getPost(id);
+          if (post) {
+            return attachAuthor(post);
           }
         } catch (err) {
-          console.warn("[Firestore] Post query fallback:", err);
+          console.warn("[RealtimeDB] Post query fallback:", err);
         }
       }
 
@@ -221,6 +268,15 @@ export function profileQuery(username: string) {
   return queryOptions({
     queryKey: ["profile", username],
     queryFn: async (): Promise<Profile | null> => {
+      if (isFirebaseConfigured()) {
+        try {
+          const profile = await getProfileByUsername(username);
+          if (profile) return profile;
+        } catch (err) {
+          console.warn("[RealtimeDB] Profile query note:", err);
+        }
+      }
+
       const match = localProfiles.find((p) => p.username.toLowerCase() === username.toLowerCase());
       if (match) return match;
 
@@ -241,6 +297,18 @@ export function profilePostsQuery(userId: string | undefined) {
     queryKey: ["profile-posts", userId],
     enabled: Boolean(userId),
     queryFn: async (): Promise<PostWithAuthor[]> => {
+      if (isFirebaseConfigured() && userId) {
+        try {
+          const all = await getAllPosts();
+          if (all.length > 0) {
+            return all
+              .filter((p) => p.author_id === userId && p.status === "published")
+              .map(attachAuthor);
+          }
+        } catch (err) {
+          console.warn("[RealtimeDB] Profile posts query note:", err);
+        }
+      }
       return localPosts.filter((p) => p.author_id === userId && p.status === "published");
     },
   });
@@ -254,6 +322,34 @@ export function commentsQuery(postId: string) {
   return queryOptions({
     queryKey: ["comments", postId],
     queryFn: async (): Promise<CommentWithAuthor[]> => {
+      if (isFirebaseConfigured()) {
+        try {
+          const comments = await getCommentsForPost(postId);
+          if (comments.length > 0) {
+            return comments.map((c) => {
+              const author = localProfiles.find((p) => p.id === c.author_id);
+              return {
+                ...c,
+                author: author
+                  ? {
+                      id: author.id,
+                      username: author.username,
+                      display_name: author.display_name,
+                      avatar_url: author.avatar_url,
+                    }
+                  : {
+                      id: c.author_id,
+                      username: "viewer",
+                      display_name: "Viewer",
+                      avatar_url: null,
+                    },
+              };
+            });
+          }
+        } catch (err) {
+          console.warn("[RealtimeDB] Comments query fallback:", err);
+        }
+      }
       return localComments.filter((c) => c.post_id === postId);
     },
   });
@@ -265,6 +361,14 @@ export function myLikesQuery(userId: string | null | undefined) {
     enabled: Boolean(userId),
     queryFn: async (): Promise<string[]> => {
       if (!userId) return [];
+      if (isFirebaseConfigured()) {
+        try {
+          const liked = await getUserLikedPosts(userId);
+          if (liked.length > 0) return liked;
+        } catch (err) {
+          console.warn("[RealtimeDB] Likes query fallback:", err);
+        }
+      }
       const userPrefix = `${userId}:`;
       const likedPostIds: string[] = [];
       localLikes.forEach((entry) => {
@@ -284,6 +388,14 @@ export function myFollowsQuery(userId: string | null | undefined) {
     enabled: Boolean(userId),
     queryFn: async (): Promise<string[]> => {
       if (!userId) return [];
+      if (isFirebaseConfigured()) {
+        try {
+          const follows = await getFollowsForUser(userId);
+          if (follows.length > 0) return follows;
+        } catch (err) {
+          console.warn("[RealtimeDB] Follows query fallback:", err);
+        }
+      }
       const userPrefix = `${userId}:`;
       const follows: string[] = [];
       localFollows.forEach((entry) => {
@@ -306,6 +418,29 @@ export function notificationsQuery(userId: string | null | undefined) {
     enabled: Boolean(userId),
     queryFn: async (): Promise<NotificationRow[]> => {
       if (!userId) return [];
+      if (isFirebaseConfigured()) {
+        try {
+          const notifs = await getNotificationsForUser(userId);
+          if (notifs.length > 0) {
+            return notifs.map((n) => {
+              const actor = localProfiles.find((p) => p.id === n.actor_id);
+              return {
+                ...n,
+                actor: actor
+                  ? {
+                      id: actor.id,
+                      username: actor.username,
+                      display_name: actor.display_name,
+                      avatar_url: actor.avatar_url,
+                    }
+                  : null,
+              };
+            });
+          }
+        } catch (err) {
+          console.warn("[RealtimeDB] Notifications query note:", err);
+        }
+      }
       return localNotifications.filter((n) => n.user_id === userId || n.user_id === "demo-user");
     },
   });
@@ -341,15 +476,23 @@ export async function toggleLike(postId: string, userId: string, liked: boolean)
   } else {
     localLikes.add(key);
   }
+
+  if (isFirebaseConfigured()) {
+    try {
+      await toggleLikeRtdb(postId, userId, liked);
+    } catch (err) {
+      console.warn("[RealtimeDB] Toggle like note:", err);
+    }
+  }
 }
 
-export async function deletePost(postId: string) {
+export async function deletePost(postId: string, feed: FeedType = "home") {
   localPosts = localPosts.filter((p) => p.id !== postId);
   if (isFirebaseConfigured()) {
     try {
-      await deleteDoc(doc(db, "posts", postId));
+      await deletePostRecord(postId, feed);
     } catch (err) {
-      console.warn("[Firestore] Failed to delete remote post:", err);
+      console.warn("[RealtimeDB] Failed to delete remote post:", err);
     }
   }
 }
@@ -360,6 +503,14 @@ export async function toggleFollow(targetId: string, userId: string, following: 
     localFollows.delete(key);
   } else {
     localFollows.add(key);
+  }
+
+  if (isFirebaseConfigured()) {
+    try {
+      await toggleFollowRtdb(userId, targetId, following);
+    } catch (err) {
+      console.warn("[RealtimeDB] Toggle follow note:", err);
+    }
   }
 }
 
@@ -381,6 +532,14 @@ export function adminPostsQuery() {
   return queryOptions({
     queryKey: ["admin", "posts"],
     queryFn: async (): Promise<PostWithAuthor[]> => {
+      if (isFirebaseConfigured()) {
+        try {
+          const posts = await getAllPosts();
+          if (posts.length > 0) return posts.map(attachAuthor);
+        } catch (err) {
+          console.warn("[RealtimeDB] Admin posts query note:", err);
+        }
+      }
       return localPosts;
     },
   });
@@ -401,11 +560,28 @@ export function addLocalComment(comment: { postId: string; authorId: string; bod
     },
   };
   localComments = [newComment, ...localComments];
+
+  if (isFirebaseConfigured()) {
+    addCommentToPost(newComment).catch((err) =>
+      console.warn("[RealtimeDB] Add comment note:", err),
+    );
+  }
+
   return newComment;
 }
 
-export function deleteLocalComment(id: string) {
+export function deleteLocalComment(id: string, postId?: string) {
+  const comment = localComments.find((c) => c.id === id);
   localComments = localComments.filter((c) => c.id !== id);
+
+  if (isFirebaseConfigured()) {
+    const targetPostId = postId || comment?.post_id;
+    if (targetPostId) {
+      removeCommentFromPost(targetPostId, id).catch((err) =>
+        console.warn("[RealtimeDB] Delete comment note:", err),
+      );
+    }
+  }
 }
 
 export function addLocalPost(post: Omit<PostRecord, "id" | "created_at">): string {
@@ -417,7 +593,7 @@ export function addLocalPost(post: Omit<PostRecord, "id" | "created_at">): strin
     stream_url: post.media_path ? resolveMediaUrl("videos", post.media_path) : null,
     featured: false,
     recommendation_score: 90,
-    source: "Cloudflare R2",
+    source: "render",
     author: {
       id: post.author_id || "creator",
       username: "creator",
@@ -427,15 +603,34 @@ export function addLocalPost(post: Omit<PostRecord, "id" | "created_at">): strin
     },
   };
   localPosts = [record, ...localPosts];
+
+  if (isFirebaseConfigured()) {
+    setPostRecord(record).catch((err) => console.warn("[RealtimeDB] Add post note:", err));
+  }
+
   return id;
 }
 
 export function updateLocalPostStatus(id: string, status: "published" | "removed") {
   localPosts = localPosts.map((p) => (p.id === id ? { ...p, status } : p));
+  if (isFirebaseConfigured()) {
+    getPost(id)
+      .then((p) => {
+        if (p) {
+          return setPostRecord({ ...p, status });
+        }
+      })
+      .catch((err) => console.warn("[RealtimeDB] Update post status note:", err));
+  }
 }
 
 export function markNotificationsAsRead(userId: string) {
   localNotifications = localNotifications.map((n) =>
     n.user_id === userId ? { ...n, read: true } : n,
   );
+  if (isFirebaseConfigured()) {
+    markNotificationsReadRtdb(userId).catch((err) =>
+      console.warn("[RealtimeDB] Mark read note:", err),
+    );
+  }
 }

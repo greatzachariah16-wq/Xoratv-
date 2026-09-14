@@ -1,26 +1,11 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-} from "firebase/firestore";
 import { ref, get, set, remove } from "firebase/database";
-import { db, rtdb, isFirebaseConfigured } from "./config";
+import { rtdb, isFirebaseConfigured } from "./config";
 import type { MovieMetadata, PostRecord } from "./types";
 import { resolveMediaUrl } from "@/lib/media";
 
-export const MOVIES_COLLECTION = "movies";
-export const POSTS_COLLECTION = "posts";
-
 /**
- * Initial catalogue of full-length horror movies with Cloudflare R2 / streaming URLs.
- * Ensures instant, smooth playback and metadata rendering even before remote Firestore is seeded.
+ * Initial catalogue of full-length horror movies with Render / streaming URLs.
+ * Ensures instant, smooth playback and metadata rendering as fallback when RTDB is empty AND Firebase is not configured.
  */
 export const SEED_HORROR_MOVIES: (PostRecord & {
   author?: {
@@ -50,7 +35,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
     quality_score: 95,
     is_color: false,
     rights_status: "public_domain",
-    source: "Cloudflare R2 Public Streaming",
+    source: "render",
     created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
     year: 1968,
     genre: "Zombie Horror",
@@ -82,7 +67,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
     quality_score: 92,
     is_color: false,
     rights_status: "public_domain",
-    source: "Cloudflare R2 Public Streaming",
+    source: "render",
     created_at: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
     year: 1922,
     genre: "Vampire Gothic",
@@ -114,7 +99,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
     quality_score: 88,
     is_color: false,
     rights_status: "public_domain",
-    source: "Cloudflare R2 Public Streaming",
+    source: "render",
     created_at: new Date(Date.now() - 3600000 * 24 * 7).toISOString(),
     year: 1962,
     genre: "Supernatural Psychological",
@@ -146,7 +131,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
     quality_score: 90,
     is_color: false,
     rights_status: "public_domain",
-    source: "Cloudflare R2 Public Streaming",
+    source: "render",
     created_at: new Date(Date.now() - 3600000 * 24 * 9).toISOString(),
     year: 1959,
     genre: "Haunted House Thriller",
@@ -178,7 +163,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
     quality_score: 89,
     is_color: false,
     rights_status: "public_domain",
-    source: "Cloudflare R2 Public Streaming",
+    source: "render",
     created_at: new Date(Date.now() - 3600000 * 24 * 12).toISOString(),
     year: 1920,
     genre: "Psychological Classic",
@@ -210,7 +195,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
     quality_score: 96,
     is_color: true,
     rights_status: "creative_commons",
-    source: "Render Backend Streaming",
+    source: "render",
     created_at: new Date(Date.now() - 3600000 * 10).toISOString(),
     year: 2025,
     genre: "Modern Vampire",
@@ -226,7 +211,7 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
 ];
 
 /**
- * Fetch horror movie metadata list from Firestore, falling back to cached seed catalog.
+ * Fetch horror movie metadata list from RTDB, falling back to cached seed catalog.
  */
 export async function getMoviesMetadata(limitCount = 50): Promise<MovieMetadata[]> {
   const defaultList: MovieMetadata[] = SEED_HORROR_MOVIES.map((p) => ({
@@ -250,7 +235,7 @@ export async function getMoviesMetadata(limitCount = 50): Promise<MovieMetadata[
     return defaultList;
   }
 
-  // 1. Try Firebase Realtime Database
+  // Fetch from Firebase Realtime Database
   try {
     const moviesRef = ref(rtdb, "movies");
     const rtdbSnap = await get(moviesRef);
@@ -279,27 +264,11 @@ export async function getMoviesMetadata(limitCount = 50): Promise<MovieMetadata[
     console.warn("[RealtimeDB] Reading note:", rtdbErr);
   }
 
-  // 2. Try Firestore fallback
-  try {
-    const q = query(
-      collection(db, MOVIES_COLLECTION),
-      where("status", "==", "published"),
-      orderBy("created_at", "desc"),
-      limit(limitCount),
-    );
-    const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MovieMetadata, "id">) }));
-    }
-  } catch (err) {
-    console.warn("[Firestore] Error reading movies collection, fallback active:", err);
-  }
-
   return defaultList;
 }
 
 /**
- * Fetch a single movie metadata document by ID.
+ * Fetch a single movie metadata document by ID from Realtime Database.
  */
 export async function getMovieMetadataById(id: string): Promise<MovieMetadata | null> {
   if (!isFirebaseConfigured()) {
@@ -323,7 +292,6 @@ export async function getMovieMetadataById(id: string): Promise<MovieMetadata | 
     };
   }
 
-  // 1. Try Realtime Database
   try {
     const itemRef = ref(rtdb, `movies/${id}`);
     const snap = await get(itemRef);
@@ -334,18 +302,7 @@ export async function getMovieMetadataById(id: string): Promise<MovieMetadata | 
     console.warn(`[RealtimeDB] Movie ${id} read note:`, rtdbErr);
   }
 
-  // 2. Try Firestore
-  try {
-    const docRef = doc(db, MOVIES_COLLECTION, id);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return { id: snap.id, ...(snap.data() as Omit<MovieMetadata, "id">) };
-    }
-  } catch (err) {
-    console.warn(`[Firestore] Error fetching movie ${id}:`, err);
-  }
-
-  // 3. Static fallback
+  // Static fallback
   const fallback = SEED_HORROR_MOVIES.find((m) => m.id === id);
   if (!fallback) return null;
   return {
@@ -367,7 +324,7 @@ export async function getMovieMetadataById(id: string): Promise<MovieMetadata | 
 }
 
 /**
- * Save or update movie metadata in Realtime Database & Firestore.
+ * Save or update movie metadata in Realtime Database.
  */
 export async function saveMovieMetadata(movie: MovieMetadata): Promise<void> {
   if (!isFirebaseConfigured()) {
@@ -379,16 +336,10 @@ export async function saveMovieMetadata(movie: MovieMetadata): Promise<void> {
   } catch (err) {
     console.warn("[RealtimeDB] Save movie note:", err);
   }
-  try {
-    const docRef = doc(db, MOVIES_COLLECTION, movie.id);
-    await setDoc(docRef, movie, { merge: true });
-  } catch {
-    // optional Firestore fallback
-  }
 }
 
 /**
- * Delete movie metadata document in Realtime Database & Firestore.
+ * Delete movie metadata document in Realtime Database.
  */
 export async function deleteMovieMetadata(id: string): Promise<void> {
   if (!isFirebaseConfigured()) {
@@ -399,11 +350,5 @@ export async function deleteMovieMetadata(id: string): Promise<void> {
     await remove(ref(rtdb, `movies/${id}`));
   } catch (err) {
     console.warn("[RealtimeDB] Delete movie note:", err);
-  }
-  try {
-    const docRef = doc(db, MOVIES_COLLECTION, id);
-    await deleteDoc(docRef);
-  } catch {
-    // optional Firestore fallback
   }
 }

@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession({
             user: {
               id: "demo-user",
-              email: "viewer@horrorstream.net",
+              email: "viewer@xora.tv",
               displayName: "Horror Fan",
               photoURL:
                 "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession({
           user: {
             id: "demo-user",
-            email: "viewer@horrorstream.net",
+            email: "viewer@xora.tv",
             displayName: "Horror Fan",
             photoURL:
               "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
