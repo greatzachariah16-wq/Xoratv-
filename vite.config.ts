@@ -13,4 +13,7 @@ export default defineConfig({
     server: { entry: "server" },
     client: { entry: "client" },
   },
+  nitro: {
+    preset: process.env.NITRO_PRESET || "render-com",
+  },
 });

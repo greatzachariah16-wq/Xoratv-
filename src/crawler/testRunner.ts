@@ -5,7 +5,7 @@
  * SEARCH -> DISCOVER -> HEADLESS RENDER -> PLAYER DETECTION -> PLAYBACK VERIFICATION -> METADATA -> POSTER -> STORE
  */
 
-import puppeteer, { Browser } from "puppeteer";
+import type { Browser, PuppeteerNode } from "puppeteer";
 import path from "path";
 import { QueryGenerator } from "./queryGenerator.ts";
 import { GenreClassifier } from "./genreClassifier.ts";
@@ -631,7 +631,15 @@ export class CrawlerTestRunner {
    */
   public async executeDiagnosticCrawl(): Promise<CrawlSummaryReport> {
     console.log("=== Launching Headless Chromium Browser ===");
-    const browser = await puppeteer.launch({
+    let puppeteerModule: PuppeteerNode;
+    try {
+      puppeteerModule = (await import("puppeteer")).default as unknown as PuppeteerNode;
+    } catch {
+      console.warn("Puppeteer is not installed or available in this runtime environment.");
+      throw new Error("Puppeteer is not installed or available in this deployment environment.");
+    }
+
+    const browser = await puppeteerModule.launch({
       executablePath: this.chromePath,
       headless: true,
       args: [

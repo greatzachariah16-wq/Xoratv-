@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: xoratv
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NITRO_PRESET
+        value: render-com
+      - key: HOST
+        value: 0.0.0.0
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"
