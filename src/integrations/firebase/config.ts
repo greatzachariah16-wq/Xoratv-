@@ -31,7 +31,7 @@ function parseFirebaseEnv() {
     "https://xora-tv-default-rtdb.firebaseio.com";
 
   return {
-    apiKey: parsedApiKey || "AIzaSyDummyApiKeyPlaceholderForDevelopment",
+    apiKey: parsedApiKey || "AIzaSyAPtmWP9CPeSLLqu4HEW_JVe61axsn0IJc",
     authDomain:
       (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) ||
       parsedAuthDomain ||

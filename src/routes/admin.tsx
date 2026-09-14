@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { RowSkeleton } from "@/components/xora/Skeletons";
+import { ProviderDiscoveryPanel } from "@/components/xora/ProviderDiscoveryPanel";
 import { timeAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/admin")({
@@ -78,6 +79,8 @@ function AdminPage() {
           </div>
         ))}
       </div>
+
+      <ProviderDiscoveryPanel />
 
       <h2 className="mt-8 font-display text-lg font-semibold">Recent posts</h2>
       <div className="mt-3 space-y-2">

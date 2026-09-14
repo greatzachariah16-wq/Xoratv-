@@ -109,11 +109,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-    scripts: [
-      {
-        children: `(function(){var m=function(){(function(s){s.dataset.zone='11712670',s.src='https://nap5k.com/tag.min.js'})((document.body || document.head).appendChild(document.createElement('script')))};if(document.readyState==='complete'){m();}else{window.addEventListener('load',m);}})();`,
-      },
-    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { feedQuery, type FeedType } from "@/lib/api";
 import { PostCard } from "./PostCard";
-import { HilltopAdsVideoSlider } from "./HilltopAdsVideoSlider";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
 
@@ -33,10 +32,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
   return (
     <div className="space-y-4">
       {data.map((post) => (
-        <div key={post.id} className="space-y-4">
-          <PostCard post={post} vertical={vertical} />
-          {vertical ? <HilltopAdsVideoSlider /> : null}
-        </div>
+        <PostCard key={post.id} post={post} vertical={vertical} />
       ))}
     </div>
   );

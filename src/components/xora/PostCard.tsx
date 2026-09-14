@@ -18,7 +18,6 @@ import { useLikes, useFollows } from "@/hooks/useEngagement";
 import { useAuth } from "@/hooks/useAuth";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
-import { HilltopAdsVideoSlider } from "./HilltopAdsVideoSlider";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -143,14 +142,23 @@ export function PostCard({ post, vertical = false }: Props) {
         {post.kind === "video" ? (
           <div className="relative">
             <VideoPlayer
+              source={post.source}
+              streamUrl={post.stream_url}
               mediaPath={post.media_path}
               posterPath={post.poster_path}
+              externalUrl={post.stream_url}
+              externalPoster={post.poster_path}
               vertical={vertical}
               title={post.title || "Xora video"}
             />
             {post.duration_seconds ? (
               <span className="pointer-events-none absolute left-3 top-3 rounded-md bg-ink/70 px-2 py-1 font-mono text-[10px] text-background">
                 {duration(post.duration_seconds)}
+              </span>
+            ) : null}
+            {post.source && post.source !== "render" && post.source !== "creator" ? (
+              <span className="pointer-events-none absolute right-3 top-3 rounded-md bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-background">
+                {post.source}
               </span>
             ) : null}
           </div>
@@ -160,8 +168,6 @@ export function PostCard({ post, vertical = false }: Props) {
           </p>
         )}
       </div>
-
-      {post.kind === "video" && !vertical ? <HilltopAdsVideoSlider className="mt-3 px-3" /> : null}
 
       <div className="px-3 pb-3 pt-3">
         {post.title ? (

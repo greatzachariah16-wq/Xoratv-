@@ -49,6 +49,7 @@ function CreatePage() {
       let posterPath: string | null = null;
       let durationSeconds: number | null = null;
 
+      // User file hosting is intentionally deferred to a separate media host (not Render ephemeral disk).
       if (kind === "video") {
         if (!video) throw new Error("Choose a video file");
         durationSeconds = await readDuration(video).catch(() => null);

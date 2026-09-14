@@ -30,8 +30,6 @@ import {
   getDiscoveryRunsFromRtdb,
   recordDiscoveryRun,
 } from "@/integrations/firebase/rtdb";
-import { SEED_HORROR_MOVIES } from "@/integrations/firebase/movies";
-import { resolveMediaUrl } from "@/lib/media";
 
 export type { FeedType };
 export type Profile = ProfileRecord;
@@ -41,7 +39,7 @@ export type PostWithAuthor = PostRecord & {
 };
 
 // In-memory / local state cache for instant reactivity and offline/preview operation
-let localPosts: PostWithAuthor[] = [...SEED_HORROR_MOVIES];
+let localPosts: PostWithAuthor[] = [];
 
 const localProfiles: ProfileRecord[] = [
   {
@@ -161,19 +159,16 @@ export function feedQuery(feed: FeedType) {
           const rtdbPosts = await getFeedPosts(feed);
           if (rtdbPosts && rtdbPosts.length > 0) {
             return rtdbPosts.map((p) => attachAuthor(p));
-          } else {
-            // First time RTDB setup: seed default posts
-            const items = localPosts.filter((p) => p.feed === feed);
-            for (const item of items) {
-              setPostRecord(item).catch(() => {});
-            }
           }
+          // When RTDB is configured and feed is empty, return empty list (no fake mock seed)
+          return [];
         } catch (err) {
-          console.warn("[RealtimeDB] Query feed fallback:", err);
+          console.warn("[RealtimeDB] Query feed error:", err);
+          return [];
         }
       }
 
-      // Filter and sort local horror catalog
+      // Offline / unconfigured demo fallback: return local posts or empty list
       const items = localPosts.filter(
         (p) => p.feed === feed && p.status === "published" && p.approval_status === "approved",
       );
@@ -452,18 +447,28 @@ export function searchQuery(term: string) {
     enabled: term.trim().length > 1,
     queryFn: async () => {
       const q = term.trim().toLowerCase();
+      let postList: PostRecord[] = localPosts;
+      if (isFirebaseConfigured()) {
+        try {
+          postList = await getAllPosts();
+        } catch (err) {
+          console.warn("[RealtimeDB] Search query error:", err);
+        }
+      }
       const people = localProfiles.filter(
         (p) =>
           p.username.toLowerCase().includes(q) ||
           (p.display_name && p.display_name.toLowerCase().includes(q)),
       );
-      const posts = localPosts.filter(
-        (p) =>
-          p.status === "published" &&
-          ((p.title && p.title.toLowerCase().includes(q)) ||
-            (p.caption && p.caption.toLowerCase().includes(q)) ||
-            (p.genre && p.genre.toLowerCase().includes(q))),
-      );
+      const posts = postList
+        .filter(
+          (p) =>
+            p.status === "published" &&
+            ((p.title && p.title.toLowerCase().includes(q)) ||
+              (p.caption && p.caption.toLowerCase().includes(q)) ||
+              (p.genre && p.genre.toLowerCase().includes(q))),
+        )
+        .map(attachAuthor);
       return { people, posts };
     },
   });

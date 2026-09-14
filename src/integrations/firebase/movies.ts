@@ -211,28 +211,11 @@ export const SEED_HORROR_MOVIES: (PostRecord & {
 ];
 
 /**
- * Fetch horror movie metadata list from RTDB, falling back to cached seed catalog.
+ * Fetch movie metadata list from RTDB. Does NOT auto-seed mock movies.
  */
 export async function getMoviesMetadata(limitCount = 50): Promise<MovieMetadata[]> {
-  const defaultList: MovieMetadata[] = SEED_HORROR_MOVIES.map((p) => ({
-    id: p.id,
-    title: p.title || "Untitled Horror",
-    year: p.year ?? 2024,
-    genre: p.genre ?? "Horror",
-    overview: p.caption,
-    posterUrl: resolveMediaUrl("posters", p.poster_path),
-    streamUrl: p.stream_url || resolveMediaUrl("videos", p.media_path),
-    durationSeconds: p.duration_seconds,
-    quality: "1080p",
-    rating: 4.8,
-    status: p.status,
-    approval_status: p.approval_status,
-    created_at: p.created_at,
-    source: p.source,
-  }));
-
   if (!isFirebaseConfigured()) {
-    return defaultList;
+    return [];
   }
 
   // Fetch from Firebase Realtime Database
@@ -247,24 +230,12 @@ export async function getMoviesMetadata(limitCount = 50): Promise<MovieMetadata[
           return list.slice(0, limitCount);
         }
       }
-    } else {
-      // Auto-seed initial catalog into Realtime Database
-      try {
-        const seedMap: Record<string, MovieMetadata> = {};
-        for (const item of defaultList) {
-          seedMap[item.id] = item;
-        }
-        await set(moviesRef, seedMap);
-      } catch (seedErr) {
-        console.warn("[RealtimeDB] Seeding note:", seedErr);
-      }
-      return defaultList;
     }
+    return [];
   } catch (rtdbErr) {
     console.warn("[RealtimeDB] Reading note:", rtdbErr);
+    return [];
   }
-
-  return defaultList;
 }
 
 /**
@@ -272,24 +243,7 @@ export async function getMoviesMetadata(limitCount = 50): Promise<MovieMetadata[
  */
 export async function getMovieMetadataById(id: string): Promise<MovieMetadata | null> {
   if (!isFirebaseConfigured()) {
-    const found = SEED_HORROR_MOVIES.find((m) => m.id === id);
-    if (!found) return null;
-    return {
-      id: found.id,
-      title: found.title || "Untitled Horror",
-      year: found.year ?? 2024,
-      genre: found.genre ?? "Horror",
-      overview: found.caption,
-      posterUrl: resolveMediaUrl("posters", found.poster_path),
-      streamUrl: found.stream_url || resolveMediaUrl("videos", found.media_path),
-      durationSeconds: found.duration_seconds,
-      quality: "1080p",
-      rating: 4.8,
-      status: found.status,
-      approval_status: found.approval_status,
-      created_at: found.created_at,
-      source: found.source,
-    };
+    return null;
   }
 
   try {
@@ -302,25 +256,7 @@ export async function getMovieMetadataById(id: string): Promise<MovieMetadata | 
     console.warn(`[RealtimeDB] Movie ${id} read note:`, rtdbErr);
   }
 
-  // Static fallback
-  const fallback = SEED_HORROR_MOVIES.find((m) => m.id === id);
-  if (!fallback) return null;
-  return {
-    id: fallback.id,
-    title: fallback.title || "Untitled Horror",
-    year: fallback.year ?? 2024,
-    genre: fallback.genre ?? "Horror",
-    overview: fallback.caption,
-    posterUrl: resolveMediaUrl("posters", fallback.poster_path),
-    streamUrl: fallback.stream_url || resolveMediaUrl("videos", fallback.media_path),
-    durationSeconds: fallback.duration_seconds,
-    quality: "1080p",
-    rating: 4.8,
-    status: fallback.status,
-    approval_status: fallback.approval_status,
-    created_at: fallback.created_at,
-    source: fallback.source,
-  };
+  return null;
 }
 
 /**

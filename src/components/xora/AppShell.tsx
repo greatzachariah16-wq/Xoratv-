@@ -5,7 +5,6 @@ import { Bell, GraduationCap, Home, Plus, Search, Shield, Clapperboard, User } f
 import { useAuth } from "@/hooks/useAuth";
 import { notificationsQuery } from "@/lib/api";
 import { Logo } from "./Logo";
-import { AdverticaBanner } from "./AdverticaBanner";
 import { UserAvatar } from "./UserAvatar";
 import { cn } from "@/lib/utils";
 
@@ -177,9 +176,6 @@ export function AppShell({
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
-          <div className="sticky top-14 z-30 mb-5 flex justify-center overflow-x-clip lg:top-0">
-            <AdverticaBanner />
-          </div>
           {children}
         </div>
       </main>

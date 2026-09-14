@@ -10,7 +10,6 @@ import { auth, isFirebaseConfigured } from "@/integrations/firebase/config";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/xora/Logo";
-import { AdverticaBanner } from "@/components/xora/AdverticaBanner";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -106,7 +105,6 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="rise w-full max-w-sm">
-        <AdverticaBanner className="mb-6" />
         <div className="flex justify-center">
           <Link to="/" className="press">
             <Logo />

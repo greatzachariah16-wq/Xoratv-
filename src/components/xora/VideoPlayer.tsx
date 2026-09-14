@@ -3,6 +3,7 @@ import { Loader2, Maximize2, Minimize2, Pause, Play, Volume2, VolumeX } from "lu
 import { useSignedUrl } from "@/lib/media";
 import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { parseEmbedInfo } from "@/integrations/providers/embed";
 
 type Props = {
   mediaPath?: string | null;
@@ -11,6 +12,8 @@ type Props = {
   externalUrl?: string | null;
   /** Direct https thumbnail URL for externally hosted videos. */
   externalPoster?: string | null;
+  source?: string | null;
+  streamUrl?: string | null;
   vertical?: boolean;
   title?: string;
   autoPlay?: boolean;
@@ -18,7 +21,39 @@ type Props = {
   className?: string;
 };
 
-export function VideoPlayer({
+function ProviderEmbedPlayer({
+  embedUrl,
+  title,
+  vertical,
+  className,
+}: {
+  embedUrl: string;
+  title: string;
+  vertical?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden bg-black flex items-center justify-center rounded-2xl",
+        vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
+        className,
+      )}
+    >
+      <iframe
+        src={embedUrl}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        className="h-full w-full border-0 rounded-2xl"
+      />
+    </div>
+  );
+}
+
+function NativeVideoPlayer({
   mediaPath,
   posterPath,
   externalUrl,
@@ -331,4 +366,24 @@ export function VideoPlayer({
       </div>
     </div>
   );
+}
+
+export function VideoPlayer(props: Props) {
+  const embedInfo = parseEmbedInfo(
+    props.streamUrl || props.externalUrl || props.mediaPath,
+    props.source,
+  );
+
+  if (embedInfo) {
+    return (
+      <ProviderEmbedPlayer
+        embedUrl={embedInfo.embedUrl}
+        title={props.title || "Video"}
+        vertical={props.vertical}
+        className={props.className}
+      />
+    );
+  }
+
+  return <NativeVideoPlayer {...props} />;
 }

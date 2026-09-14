@@ -60,6 +60,50 @@ Configure the following variables in the Render Dashboard under **Environment**:
 | `VITE_FIREBASE_APP_ID` | Firebase App ID | `1:977340710920:web:...` |
 | `FIREBASE_DATABASE_URL` | Server-side Firebase RTDB URL | `https://xora-tv-default-rtdb.firebaseio.com` |
 | `FIREBASE_SERVICE_ACCOUNT` | (Optional) Service account JSON for admin access | `{...}` |
+| `VITE_YOUTUBE_API_KEY` | YouTube Data API v3 Key for content discovery | `AIzaSy...` |
+| `VITE_VIMEO_ACCESS_TOKEN` | Vimeo API Access Token | `e9f...` |
+| `VITE_DAILYMOTION_API_KEY` | (Optional) Dailymotion API key (public search works keyless) | `...` |
+
+---
+
+## Content Provider Discovery & Ingestion
+
+Xora TV integrates with three official, free content providers to discover metadata and embed legally authorized videos without storing or re-hosting full video bytes:
+
+1. **YouTube Data API v3**:
+   - Searches videos and metadata via official `/v3/search` and `/v3/videos` endpoints.
+   - Requires `VITE_YOUTUBE_API_KEY` or `YOUTUBE_API_KEY`.
+   - Embeds content using `https://www.youtube-nocookie.com/embed/<id>` with safe privacy parameters.
+
+2. **Vimeo API**:
+   - Searches curated videos and creative shorts via official `/videos` endpoint.
+   - Requires `VITE_VIMEO_ACCESS_TOKEN` or `VIMEO_ACCESS_TOKEN`.
+   - Embeds content using `https://player.vimeo.com/video/<id>?dnt=1`.
+
+3. **Dailymotion API**:
+   - Discovers public metadata via `https://api.dailymotion.com/videos` (public keyless search works out-of-the-box, or optional `VITE_DAILYMOTION_API_KEY`).
+   - Embeds content using `https://www.dailymotion.com/embed/video/<id>`.
+
+### Admin Discovery & Ingestion Workflow
+- Admins can search across any combination of providers from the **Admin Discovery Panel** (`/admin`).
+- Discovered candidates are normalized into `ProviderCandidate` objects and stored in RTDB under `/crawler/candidates/<id>`.
+- Admins review candidates and click **Publish** to promote a candidate into the live `/posts` and `/postsByFeed/<feed>` indexes.
+- Playback uses official responsive iframes (`VideoPlayer`), requiring no local video files on Render.
+
+---
+
+## Important Architectural Notes & Changes
+
+### 1. Complete Removal of Advertising Networks
+- All third-party advertising scripts and popunder networks (HilltopAds, Advertica) have been completely removed.
+- Components (`AdverticaBanner`, `HilltopAdsVideoSlider`), ad script injection in root routes, and ad worker code have been eliminated for a fast, clean user experience.
+
+### 2. Mock / Seed Video Removal
+- Mock horror seed movies (`SEED_HORROR_MOVIES`) that previously referenced broken local `/movies/*.mp4` Render paths have been removed from the production feed path.
+- The feeds (`home`, `shorts`, `learn`) now read strictly from live Firebase Realtime Database (`/posts`, `/postsByFeed`). When empty, a clean empty state is shown rather than auto-seeding dummy entries.
+
+### 3. User Video File Hosting Deferred
+- **Notice**: User video file hosting on Render's ephemeral container disk is intentionally deferred. In production, persisting video uploads on local container disks causes data loss on container restarts. In a future pass, user video uploads will be routed to dedicated cloud object storage (e.g. S3-compatible or managed media storage). Provider-discovered content (YouTube, Vimeo, Dailymotion embeds) serves as the primary playback engine.
 
 ---
 
