@@ -2,8 +2,7 @@ import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
-import { notificationsQuery } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
+import { notificationsQuery, markNotificationsAsRead } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { UserAvatar } from "@/components/xora/UserAvatar";
@@ -37,12 +36,8 @@ function NotificationsPage() {
 
   useEffect(() => {
     if (!user || !data?.some((n) => !n.read)) return;
-    void supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", user.id)
-      .eq("read", false)
-      .then(() => queryClient.invalidateQueries({ queryKey: ["notifications"] }));
+    markNotificationsAsRead(user.id);
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
   }, [user, data, queryClient]);
 
   return (

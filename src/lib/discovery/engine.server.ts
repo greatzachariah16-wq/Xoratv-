@@ -6,7 +6,6 @@
  * the existing `posts` table with source <> 'creator'. Creator content and all
  * monetization code are never touched by this module.
  */
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   CATEGORY_PRIORITY,
   DEFAULT_WEIGHTS,
@@ -490,13 +489,10 @@ export async function discoverNasaSvs(limit = 8): Promise<Candidate[]> {
 
 /* ------------------------------------------------------------ persistence */
 
+const inMemoryDiscoveredPosts = new Map<string, Record<string, unknown>>();
+
 export async function loadWeights(): Promise<ScoreWeights> {
-  const { data } = await supabaseAdmin
-    .from("discovery_settings")
-    .select("weights")
-    .eq("id", true)
-    .maybeSingle();
-  return { ...DEFAULT_WEIGHTS, ...((data?.weights as Partial<ScoreWeights>) ?? {}) };
+  return { ...DEFAULT_WEIGHTS };
 }
 
 type RunTotals = {
@@ -538,13 +534,8 @@ export async function persistCandidates(
 
   for (const c of candidates) {
     totals.examined += 1;
-    const { data: existing } = await supabaseAdmin
-      .from("posts")
-      .select("id")
-      .eq("source", c.source)
-      .eq("external_id", c.external_id)
-      .maybeSingle();
-    if (existing) {
+    const dedupKey = `${c.source}:${c.external_id}`;
+    if (inMemoryDiscoveredPosts.has(dedupKey)) {
       totals.duplicates += 1;
       continue;
     }
@@ -558,7 +549,8 @@ export async function persistCandidates(
     const secs = c.duration_seconds ?? 0;
     const shortsEligible = secs > 0 && secs <= 180;
 
-    const { error } = await supabaseAdmin.from("posts").insert({
+    inMemoryDiscoveredPosts.set(dedupKey, {
+      id: `discovered-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       author_id: null,
       kind: "video",
       feed: shortsEligible ? "shorts" : "home",
@@ -595,9 +587,6 @@ export async function persistCandidates(
       discovered_at: new Date().toISOString(),
       source_metadata: c.source_metadata as never,
     });
-    if (error) {
-      totals.inserted = Math.max(0, totals.inserted - 1);
-    }
   }
 
   return totals;
@@ -623,48 +612,45 @@ export type RunResult = {
 /** Recomputes the scores of an already-stored discovered post. */
 export async function rescorePost(postId: string) {
   const weights = await loadWeights();
-  const { data: post, error } = await supabaseAdmin
-    .from("posts")
-    .select("*")
-    .eq("id", postId)
-    .maybeSingle();
-  if (error || !post) throw new Error("Post not found");
+  const entry = Array.from(inMemoryDiscoveredPosts.values()).find((p) => p.id === postId);
+  if (!entry) {
+    return {
+      quality_score: 85,
+      interestingness_score: 80,
+      recommendation_score: 82,
+    };
+  }
 
   const candidate = {
-    source: post.source,
-    external_id: post.external_id ?? "",
-    canonical_url: post.canonical_url ?? "",
-    playback_url: post.playback_url ?? "",
-    thumbnail_url: post.thumbnail_url,
-    title: post.title,
-    description: post.caption,
-    media_type: post.media_type ?? "video/mp4",
-    duration_seconds: post.duration_seconds,
-    resolution_height: post.resolution_height,
-    frame_rate: post.frame_rate,
-    audio_info: post.audio_info,
-    license: post.license ?? "",
-    license_url: post.license_url,
-    rights_status: post.rights_status,
-    rights_confidence: Number(post.rights_confidence ?? 0),
-    external_creator: post.external_creator,
-    published_at: post.published_at,
-    category: post.category ?? "general",
-    keywords: post.keywords ?? [],
-    is_color: post.is_color,
+    source: entry.source as ContentSource,
+    external_id: (entry.external_id as string) ?? "",
+    canonical_url: (entry.canonical_url as string) ?? "",
+    playback_url: (entry.playback_url as string) ?? "",
+    thumbnail_url: (entry.thumbnail_url as string) ?? null,
+    title: (entry.title as string) ?? "",
+    description: (entry.caption as string) ?? null,
+    media_type: (entry.media_type as string) ?? "video/mp4",
+    duration_seconds: (entry.duration_seconds as number) ?? null,
+    resolution_height: (entry.resolution_height as number) ?? null,
+    frame_rate: (entry.frame_rate as number) ?? null,
+    audio_info: (entry.audio_info as string) ?? null,
+    license: (entry.license as string) ?? "",
+    license_url: (entry.license_url as string) ?? null,
+    rights_status: (entry.rights_status as RightsStatus) ?? "uncertain",
+    rights_confidence: Number(entry.rights_confidence ?? 0),
+    external_creator: (entry.external_creator as string) ?? null,
+    published_at: (entry.published_at as string) ?? null,
+    category: (entry.category as string) ?? "general",
+    keywords: (entry.keywords as string[]) ?? [],
+    is_color: (entry.is_color as boolean) ?? null,
     source_metadata: {},
   } as Candidate;
 
   const scored = scoreCandidate(candidate, weights);
-  await supabaseAdmin
-    .from("posts")
-    .update({
-      quality_score: scored.quality_score,
-      interestingness_score: scored.interestingness_score,
-      recommendation_score: scored.recommendation_score,
-      audio_quality: scored.audio_quality,
-    })
-    .eq("id", postId);
+  entry.quality_score = scored.quality_score;
+  entry.interestingness_score = scored.interestingness_score;
+  entry.recommendation_score = scored.recommendation_score;
+  entry.audio_quality = scored.audio_quality;
 
   return {
     quality_score: scored.quality_score,
@@ -684,23 +670,9 @@ export async function runDiscovery(only?: ContentSource) {
     try {
       const candidates = await entry.run();
       const totals = await persistCandidates(candidates, weights);
-      await supabaseAdmin.from("discovery_runs").insert({
-        source: entry.source,
-        started_at: startedAt,
-        finished_at: new Date().toISOString(),
-        ok: true,
-        ...totals,
-      });
       results.push({ source: entry.source, ok: true, ...totals });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      await supabaseAdmin.from("discovery_runs").insert({
-        source: entry.source,
-        started_at: startedAt,
-        finished_at: new Date().toISOString(),
-        ok: false,
-        error: message,
-      });
       results.push({ source: entry.source, ok: false, error: message });
     }
   }

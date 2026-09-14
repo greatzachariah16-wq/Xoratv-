@@ -16,3 +16,7 @@ export * from "./releaseDetector.ts";
 export * from "./signalCollector.ts";
 export * from "./storage.ts";
 export * from "./accountSessionBlueprint.ts";
+export * from "./headlessEngine.ts";
+export * from "./sessionManager.ts";
+export * from "./youtubePipeline.ts";
+export * from "./metadataScorer.ts";

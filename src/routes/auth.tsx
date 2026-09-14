@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth, isFirebaseConfigured } from "@/integrations/firebase/config";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/xora/Logo";
@@ -38,28 +43,49 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { username: username.trim().toLowerCase() },
-          },
-        });
-        if (error) throw error;
-        if (data.session) {
+        if (isFirebaseConfigured()) {
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          if (username.trim()) {
+            await updateProfile(cred.user, { displayName: username.trim() }).catch(() => {});
+          }
           toast.success("Account created — welcome to Xora");
         } else {
-          toast.success("Account created — check your email to confirm, then sign in.");
-          setMode("signin");
+          localStorage.setItem(
+            "xora_demo_user",
+            JSON.stringify({
+              user: {
+                id: "user-" + Date.now(),
+                email,
+                displayName: username.trim() || email.split("@")[0],
+                photoURL: null,
+              },
+            }),
+          );
+          toast.success("Account created — welcome to Xora");
+          window.location.href = "/";
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Welcome back");
+        if (isFirebaseConfigured()) {
+          await signInWithEmailAndPassword(auth, email, password);
+          toast.success("Welcome back");
+        } else {
+          localStorage.setItem(
+            "xora_demo_user",
+            JSON.stringify({
+              user: {
+                id: "user-returning",
+                email,
+                displayName: email.split("@")[0],
+                photoURL: null,
+              },
+            }),
+          );
+          toast.success("Welcome back");
+          window.location.href = "/";
+        }
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(error instanceof Error ? error.message : "Authentication error");
     } finally {
       setBusy(false);
     }

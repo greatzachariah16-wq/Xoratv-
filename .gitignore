@@ -20,6 +20,16 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Environment Variables & Secrets
+.env
+*.env
+!.env.example
+
+# Binaries & Large Tools
+chrome/
+*.tar.gz
+crawler-diagnostic-result.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

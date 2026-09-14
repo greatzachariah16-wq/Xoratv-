@@ -3,8 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
-import { commentsQuery } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
+import { commentsQuery, addLocalComment, deleteLocalComment } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { timeAgo } from "@/lib/format";
 import { UserAvatar } from "./UserAvatar";
@@ -25,10 +24,7 @@ export function Comments({ postId }: { postId: string }) {
   const add = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to comment");
-      const { error } = await supabase
-        .from("comments")
-        .insert({ post_id: postId, author_id: user.id, body: body.trim() });
-      if (error) throw error;
+      addLocalComment({ postId, authorId: user.id, body: body.trim() });
     },
     onSuccess: () => {
       setBody("");
@@ -39,8 +35,7 @@ export function Comments({ postId }: { postId: string }) {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("comments").delete().eq("id", id);
-      if (error) throw error;
+      deleteLocalComment(id);
     },
     onSuccess: invalidate,
     onError: () => toast.error("Couldn't delete that comment"),

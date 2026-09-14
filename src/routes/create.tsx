@@ -3,13 +3,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Lock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { addLocalPost } from "@/lib/api";
 import { uploadMedia } from "@/lib/media";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { cn } from "@/lib/utils";
-import type { Enums } from "@/integrations/supabase/types";
+import type { Enums } from "@/integrations/firebase/types";
 
 export const Route = createFileRoute("/create")({
   head: () => ({
@@ -56,23 +56,22 @@ function CreatePage() {
         if (poster) posterPath = await uploadMedia("posters", user.id, poster);
       }
 
-      const { data, error } = await supabase
-        .from("posts")
-        .insert({
-          author_id: user.id,
-          kind,
-          feed: kind === "text" ? ("home" as const) : feed,
-          status: "published" as const,
-          ...(title.trim() ? { title: title.trim() } : {}),
-          ...(caption.trim() ? { caption: caption.trim() } : {}),
-          ...(mediaPath ? { media_path: mediaPath } : {}),
-          ...(posterPath ? { poster_path: posterPath } : {}),
-          ...(durationSeconds ? { duration_seconds: durationSeconds } : {}),
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      return data.id;
+      const postId = addLocalPost({
+        author_id: user.id,
+        kind,
+        feed: kind === "text" ? ("home" as const) : feed,
+        status: "published" as const,
+        approval_status: "approved" as const,
+        title: title.trim() || null,
+        caption: caption.trim() || null,
+        media_path: mediaPath,
+        poster_path: posterPath,
+        duration_seconds: durationSeconds,
+        featured: false,
+        recommendation_score: 90,
+        source: "creator",
+      });
+      return postId;
     },
     onSuccess: (postId) => {
       queryClient.invalidateQueries({ queryKey: ["feed"] });

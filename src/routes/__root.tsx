@@ -111,7 +111,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       {
-        children: `(function(){var m=function(){(function(s){s.dataset.zone='11712670',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))};if(document.readyState==='complete'){m();}else{window.addEventListener('load',m);}})();`,
+        children: `(function(){var m=function(){(function(s){s.dataset.zone='11712670',s.src='https://nap5k.com/tag.min.js'})((document.body || document.head).appendChild(document.createElement('script')))};if(document.readyState==='complete'){m();}else{window.addEventListener('load',m);}})();`,
       },
     ],
   }),
@@ -123,11 +123,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>

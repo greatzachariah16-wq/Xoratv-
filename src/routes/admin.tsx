@@ -2,8 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { adminPostsQuery, adminStatsQuery } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
+import { adminPostsQuery, adminStatsQuery, updateLocalPostStatus } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
@@ -31,8 +30,7 @@ function AdminPage() {
 
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "published" | "removed" }) => {
-      const { error } = await supabase.from("posts").update({ status }).eq("id", id);
-      if (error) throw error;
+      updateLocalPostStatus(id, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
