@@ -60,13 +60,74 @@ Configure the following variables in the Render Dashboard under **Environment**:
 | `VITE_FIREBASE_APP_ID` | Firebase App ID | `1:977340710920:web:...` |
 | `FIREBASE_DATABASE_URL` | Server-side Firebase RTDB URL | `https://xora-tv-default-rtdb.firebaseio.com` |
 | `FIREBASE_SERVICE_ACCOUNT` | (Optional) Service account JSON for admin access | `{...}` |
+| `VITE_ADMIN_UIDS` | Comma-separated Firebase UIDs who have admin moderation access | `uid123,uid456` |
 | `VITE_YOUTUBE_API_KEY` | YouTube Data API v3 Key for content discovery | `AIzaSy...` |
 | `VITE_VIMEO_ACCESS_TOKEN` | Vimeo API Access Token | `e9f...` |
 | `VITE_DAILYMOTION_API_KEY` | (Optional) Dailymotion API key (public search works keyless) | `...` |
 
 ---
 
-## Content Provider Discovery & Ingestion
+## Firebase Authentication & Google OAuth Consent Setup
+
+Xora uses **Firebase Authentication** as its single, unified authentication engine for:
+1. **Email / Password Sign-Up & Sign-In**
+2. **Continue with Google** (via `GoogleAuthProvider` with popup and mobile redirect fallback)
+3. **Automatic Profile & Username Reservation Synchronization** in Firebase Realtime Database (`/profiles/{uid}` and `/usernames/{username}`)
+
+### 1. Enable Sign-In Providers in Firebase Console
+
+1. Open [Firebase Console](https://console.firebase.google.com/) and select your project (`xora-tv`).
+2. In the left navigation, go to **Build** > **Authentication** > **Sign-in method** tab.
+3. Enable **Email/Password**:
+   - Toggle **Email/Password** to **Enabled**.
+   - Click **Save**.
+4. Enable **Google**:
+   - Click **Add new provider** > **Google**.
+   - Toggle **Enable**.
+   - Set the **Public-facing name for project** to `Xora`.
+   - Select your **Project support email** from the dropdown.
+   - Click **Save**.
+
+### 2. Configure Authorized Domains in Firebase Console
+
+To prevent `auth/unauthorized-domain` errors during Google sign-in:
+1. Go to **Authentication** > **Settings** tab > **Authorized domains**.
+2. Ensure the following domains are listed:
+   - `localhost` (for local development)
+   - `xoratv-x.onrender.com` (production site)
+   - `xora-tv.firebaseapp.com` (Firebase default domain)
+   - Any custom domain you attach to Render or your DNS.
+3. Click **Add domain** if any domain is missing.
+
+### 3. Display the Xora Name & Logo on Google's OAuth Consent Screen
+
+When users click **Continue with Google**, the branded Google OAuth consent screen displays the application name and logo configured in Google Cloud Console. Follow these steps to configure your branding:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) with the same Google account.
+2. Select your Firebase project from the project dropdown (e.g. `xora-tv` / project number `977340710920`).
+3. Navigate to **APIs & Services** > **OAuth consent screen** (or **Branding**).
+4. Configure the App Information:
+   - **App name**: `Xora`
+   - **User support email**: Select your email address.
+   - **App logo**: Upload the official square Xora logo. You can use:
+     - `public/favicon.png` or
+     - `public/icons/xora-oauth-logo.png` (512×512 PNG included in repository) or
+     - `public/icons/icon-512.png`.
+   - **Application home page**: `https://xoratv-x.onrender.com`
+   - **Application privacy policy link**: `https://xoratv-x.onrender.com`
+   - **Authorized domains**: Add `onrender.com` and `firebaseapp.com`.
+   - **Developer contact information**: Enter your email address.
+5. Click **Save and Continue**.
+6. *Note on Verification*: For internal or test users, branding displays immediately. For general public users outside your workspace/organization, Google may review the app name and logo before public verification is granted.
+
+### 4. Admin Role & Allowlist Configuration
+
+Admin privileges (e.g. access to the `/admin` Content Discovery and moderation panel) are strictly protected:
+- **RTDB Profile Flag**: Set `is_admin: true` on the user record in Firebase Realtime Database under `/profiles/<uid>`.
+- **Environment Allowlist**: Set `VITE_ADMIN_UIDS` in your Render environment variables or `.env` with comma-separated Firebase UIDs (e.g. `VITE_ADMIN_UIDS=yVfE8K...,abc123...`).
+- Normal users default to `isAdmin: false`.
+
+---
 
 Xora TV integrates with three official, free content providers to discover metadata and embed legally authorized videos without storing or re-hosting full video bytes:
 

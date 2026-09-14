@@ -51,6 +51,7 @@ export interface ProfileRecord {
   bio?: string | null;
   website?: string | null;
   location?: string | null;
+  is_admin?: boolean | null;
   created_at: string;
 }
 

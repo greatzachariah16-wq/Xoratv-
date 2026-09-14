@@ -128,8 +128,26 @@ let localNotifications: NotificationRow[] = [
   },
 ];
 
-function attachAuthor(post: PostRecord): PostWithAuthor {
-  const authorProfile = localProfiles.find((p) => p.id === post.author_id);
+const profileMemoryCache = new Map<string, ProfileRecord>();
+
+async function attachAuthor(post: PostRecord): Promise<PostWithAuthor> {
+  let authorProfile = localProfiles.find((p) => p.id === post.author_id);
+  if (!authorProfile && post.author_id) {
+    if (profileMemoryCache.has(post.author_id)) {
+      authorProfile = profileMemoryCache.get(post.author_id);
+    } else if (isFirebaseConfigured()) {
+      try {
+        const remote = await getProfile(post.author_id);
+        if (remote) {
+          profileMemoryCache.set(post.author_id, remote);
+          authorProfile = remote;
+        }
+      } catch {
+        // ignore fallback
+      }
+    }
+  }
+
   return {
     ...post,
     author: authorProfile
@@ -158,7 +176,7 @@ export function feedQuery(feed: FeedType) {
         try {
           const rtdbPosts = await getFeedPosts(feed);
           if (rtdbPosts && rtdbPosts.length > 0) {
-            return rtdbPosts.map((p) => attachAuthor(p));
+            return await Promise.all(rtdbPosts.map((p) => attachAuthor(p)));
           }
           // When RTDB is configured and feed is empty, return empty list (no fake mock seed)
           return [];
@@ -173,10 +191,14 @@ export function feedQuery(feed: FeedType) {
         (p) => p.feed === feed && p.status === "published" && p.approval_status === "approved",
       );
 
-      return items.sort((a, b) => {
-        if (b.featured !== a.featured) return b.featured ? 1 : -1;
-        return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-      });
+      return await Promise.all(
+        items
+          .sort((a, b) => {
+            if (b.featured !== a.featured) return b.featured ? 1 : -1;
+            return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+          })
+          .map((p) => attachAuthor(p)),
+      );
     },
   });
 }
@@ -246,7 +268,7 @@ export function postQuery(id: string) {
         try {
           const post = await getPost(id);
           if (post) {
-            return attachAuthor(post);
+            return await attachAuthor(post);
           }
         } catch (err) {
           console.warn("[RealtimeDB] Post query fallback:", err);
@@ -254,7 +276,8 @@ export function postQuery(id: string) {
       }
 
       const match = localPosts.find((p) => p.id === id);
-      return match ?? null;
+      if (match) return await attachAuthor(match);
+      return null;
     },
   });
 }
@@ -296,15 +319,21 @@ export function profilePostsQuery(userId: string | undefined) {
         try {
           const all = await getAllPosts();
           if (all.length > 0) {
-            return all
-              .filter((p) => p.author_id === userId && p.status === "published")
-              .map(attachAuthor);
+            return await Promise.all(
+              all
+                .filter((p) => p.author_id === userId && p.status === "published")
+                .map(attachAuthor),
+            );
           }
         } catch (err) {
           console.warn("[RealtimeDB] Profile posts query note:", err);
         }
       }
-      return localPosts.filter((p) => p.author_id === userId && p.status === "published");
+      return await Promise.all(
+        localPosts
+          .filter((p) => p.author_id === userId && p.status === "published")
+          .map(attachAuthor),
+      );
     },
   });
 }

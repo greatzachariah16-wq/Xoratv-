@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { isFirebaseConfigured } from "@/integrations/firebase/config";
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from "firebase/auth";
-import { auth, isFirebaseConfigured } from "@/integrations/firebase/config";
-import { lovable } from "@/integrations/lovable/index";
+  signInWithEmail,
+  signUpWithEmail,
+  signInWithGoogle,
+  checkRedirectAuthResult,
+  mapAuthError,
+} from "@/integrations/firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/xora/Logo";
 
@@ -30,76 +32,136 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
-  const { user } = useAuth();
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  // If already authenticated, redirect to home
   useEffect(() => {
-    if (user) void navigate({ to: "/" });
-  }, [user, navigate]);
+    if (!authLoading && user) {
+      void navigate({ to: "/" });
+    }
+  }, [user, authLoading, navigate]);
+
+  // Check for pending Google sign-in redirect results (mobile browsers)
+  useEffect(() => {
+    let mounted = true;
+    checkRedirectAuthResult()
+      .then((profile) => {
+        if (mounted && profile) {
+          toast.success("Signed in with Google — welcome to Xora");
+          void navigate({ to: "/" });
+        }
+      })
+      .catch((err) => {
+        if (mounted) {
+          console.error("Redirect auth error:", err);
+          toast.error(mapAuthError(err));
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (!username.trim()) {
+          toast.error("Please enter a username for your profile.");
+          setBusy(false);
+          return;
+        }
+        if (password.length < 6) {
+          toast.error("Password must be at least 6 characters long.");
+          setBusy(false);
+          return;
+        }
+
         if (isFirebaseConfigured()) {
-          const cred = await createUserWithEmailAndPassword(auth, email, password);
-          if (username.trim()) {
-            await updateProfile(cred.user, { displayName: username.trim() }).catch(() => {});
-          }
+          await signUpWithEmail(email, password, username);
           toast.success("Account created — welcome to Xora");
+          void navigate({ to: "/" });
         } else {
+          // Local demo session when Firebase is not configured
           localStorage.setItem(
             "xora_demo_user",
             JSON.stringify({
               user: {
                 id: "user-" + Date.now(),
-                email,
+                email: email.trim(),
                 displayName: username.trim() || email.split("@")[0],
                 photoURL: null,
               },
             }),
           );
-          toast.success("Account created — welcome to Xora");
+          toast.success("Account created — welcome to Xora (Demo Mode)");
           window.location.href = "/";
         }
       } else {
         if (isFirebaseConfigured()) {
-          await signInWithEmailAndPassword(auth, email, password);
-          toast.success("Welcome back");
+          await signInWithEmail(email, password);
+          toast.success("Welcome back to Xora");
+          void navigate({ to: "/" });
         } else {
           localStorage.setItem(
             "xora_demo_user",
             JSON.stringify({
               user: {
                 id: "user-returning",
-                email,
+                email: email.trim(),
                 displayName: email.split("@")[0],
                 photoURL: null,
               },
             }),
           );
-          toast.success("Welcome back");
+          toast.success("Welcome back to Xora (Demo Mode)");
           window.location.href = "/";
         }
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Authentication error");
+      toast.error(mapAuthError(error));
     } finally {
       setBusy(false);
     }
   };
 
-  const google = async () => {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      toast.error("Google sign-in failed");
+  const handleGoogleSignIn = async () => {
+    if (!isFirebaseConfigured()) {
+      localStorage.setItem(
+        "xora_demo_user",
+        JSON.stringify({
+          user: {
+            id: "demo-google-user",
+            email: "viewer@xora.tv",
+            displayName: "Horror Fan",
+            photoURL:
+              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+          },
+        }),
+      );
+      toast.success("Signed in with Google (Demo Mode)");
+      window.location.href = "/";
       return;
     }
-    if (result.redirected) return;
-    void navigate({ to: "/" });
+
+    setGoogleBusy(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.redirected) {
+        // Redirect initiated (e.g. on mobile devices)
+        return;
+      }
+      toast.success("Signed in with Google — welcome to Xora");
+      void navigate({ to: "/" });
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      toast.error(mapAuthError(error));
+    } finally {
+      setGoogleBusy(false);
+    }
   };
 
   return (
@@ -122,10 +184,18 @@ function AuthPage() {
 
           <button
             type="button"
-            onClick={google}
-            className="press mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
+            onClick={handleGoogleSignIn}
+            disabled={googleBusy || busy}
+            className="press mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-60"
           >
-            Continue with Google
+            {googleBusy ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Signing in with Google…
+              </>
+            ) : (
+              "Continue with Google"
+            )}
           </button>
 
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
@@ -146,6 +216,7 @@ function AuthPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   minLength={3}
+                  maxLength={24}
                   pattern="[a-zA-Z0-9_]+"
                   className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
                   placeholder="yourhandle"
@@ -184,7 +255,7 @@ function AuthPage() {
             </div>
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || googleBusy}
               className="press w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             >
               {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
