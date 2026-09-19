@@ -529,6 +529,7 @@ export function renderEmbeddedPlayer(
         title="${safeTitle}"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
       ></iframe>
     </div>
     <div class="youtube-shield">
