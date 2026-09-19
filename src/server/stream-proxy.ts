@@ -485,7 +485,7 @@ export function renderEmbeddedPlayer(
       bottom: 8px;
       right: 8px;
       z-index: 20;
-      pointer-events: auto;
+      pointer-events: none;
       background: rgba(8, 10, 15, 0.94);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.18);

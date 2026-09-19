@@ -192,38 +192,8 @@ function ProviderEmbedPlayer({
         loading="lazy"
         sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
         referrerPolicy="no-referrer-when-downgrade"
-        className="h-full w-full border-0 rounded-2xl pointer-events-none"
+        className="h-full w-full border-0 rounded-2xl pointer-events-auto"
       />
-
-      {/* Unclickable Glass Shield: captures all clicks, toggles play/pause, eliminates external redirects entirely */}
-      <div
-        id="cinema-glass-shield"
-        onClick={togglePlayState}
-        className="absolute inset-0 z-10 cursor-pointer bg-transparent transition"
-        title={isPlaying ? "Click to Pause" : "Click to Play"}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === " " || e.key === "Enter") {
-            e.preventDefault();
-            togglePlayState();
-          }
-        }}
-        aria-label={isPlaying ? "Pause Cinema" : "Play Cinema"}
-      />
-
-      {/* Transient Play/Pause indicator badge when glass shield is clicked */}
-      {showStatusBadge ? (
-        <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-black/20 backdrop-blur-[2px] transition animate-in fade-in zoom-in-75 duration-200">
-          <div className="flex size-16 items-center justify-center rounded-full bg-black/80 text-white shadow-2xl ring-1 ring-white/20">
-            {isPlaying ? (
-              <Play className="ml-1 size-8 fill-current text-primary" />
-            ) : (
-              <Pause className="size-8 fill-current text-white" />
-            )}
-          </div>
-        </div>
-      ) : null}
 
       {/* Bottom right watermark shield: covers YouTube logo cleanly without allowing redirect clicks */}
       <div className="pointer-events-none absolute bottom-2 right-2.5 z-20 flex select-none items-center gap-1.5 rounded-full border border-white/15 bg-black/90 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white shadow-xl backdrop-blur-md">
