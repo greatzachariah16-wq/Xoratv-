@@ -51,6 +51,7 @@ function ProviderEmbedPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
   const [showStatusBadge, setShowStatusBadge] = useState<boolean>(false);
+  const fillCinema = className?.split(/\s+/).includes("h-full") ?? false;
 
   useEffect(() => {
     if (postId) {
@@ -120,7 +121,7 @@ function ProviderEmbedPlayer({
     <div
       className={cn(
         "group relative overflow-hidden bg-black flex items-center justify-center rounded-2xl select-none",
-        vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
+        fillCinema ? "h-full w-full" : vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
         className,
       )}
     >
@@ -220,6 +221,7 @@ function NativeVideoPlayer({
   const [total, setTotal] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const fillCinema = className?.split(/\s+/).includes("h-full") ?? false;
 
   // Tracking refs to ensure events fire at most once per playback session
   const trackedStart = useRef(false);
@@ -475,7 +477,7 @@ function NativeVideoPlayer({
       ref={containerRef}
       className={cn(
         "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
-        isFullscreen ? "h-full rounded-none" : aspect,
+        isFullscreen || fillCinema ? "h-full rounded-none" : aspect,
         className,
       )}
     >
