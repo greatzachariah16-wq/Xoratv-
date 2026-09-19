@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
   Film,
   Layers3,
-  Loader2,
   Play,
   PlusCircle,
   Search,
@@ -14,7 +13,6 @@ import {
   X,
 } from "lucide-react";
 import { AppShell, FeedTabs } from "@/components/xora/AppShell";
-import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { cn } from "@/lib/utils";
 
@@ -159,10 +157,7 @@ function XTvCard({
 function XTvSeriesPage() {
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
-  const [active, setActive] = useState<XTvSeriesItem | null>(null);
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [playerError, setPlayerError] = useState<string | null>(null);
-  const [resolving, setResolving] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch all published titles
   const { data: allItems = [], isFetching, refetch } = useQuery({
@@ -229,29 +224,8 @@ function XTvSeriesPage() {
   const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
 
-  async function openPlayer(item: XTvSeriesItem) {
-    setActive(item);
-    setStreamUrl(null);
-    setPlayerError(null);
-    setResolving(true);
-    try {
-      if (item.videoUrl) {
-        setStreamUrl(item.videoUrl);
-        return;
-      }
-      const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(item.id));
-      const json = (await res.json()) as { ok: boolean; streamUrl?: string; error?: string };
-      if (!res.ok || !json.ok || !json.streamUrl) {
-        throw new Error(json.error || "The stream could not be resolved.");
-      }
-      setStreamUrl(json.streamUrl);
-    } catch (error) {
-      setPlayerError(
-        error instanceof Error ? error.message : "The stream could not be resolved.",
-      );
-    } finally {
-      setResolving(false);
-    }
+  function openPlayer(item: XTvSeriesItem) {
+    void navigate({ to: "/watch", search: { id: item.id } });
   }
 
   return (
@@ -347,74 +321,6 @@ function XTvSeriesPage() {
             })}
           </div>
         </section>
-
-        {/* X Series Cinema — opens in-place when a title is selected */}
-        {active ? (
-          <section id="xseries-cinema-page" className="overflow-hidden rounded-[1.8rem] border border-border/70 bg-ink shadow-2xl">
-            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.06] via-transparent to-transparent p-3 md:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3 px-1 md:px-2">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-                    <Film className="size-3" /> X Series Cinema
-                  </p>
-                  <h2 className="mt-1 truncate font-display text-lg font-semibold tracking-tight text-background md:text-2xl">{active.title}</h2>
-                </div>
-                <button id="btn-close-player" type="button" onClick={() => setActive(null)} className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/10 text-white transition hover:bg-white/15" aria-label="Close cinema">
-                  <X className="size-4" />
-                </button>
-              </div>
-              <div className="overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl ring-1 ring-white/5">
-                {resolving ? (
-                  <div className="grid aspect-video place-items-center bg-black text-white">
-                    <div className="text-center">
-                      <Loader2 className="mx-auto size-8 animate-spin text-primary" />
-                      <p className="mt-3 text-xs text-white/60">Connecting to playback stream...</p>
-                    </div>
-                  </div>
-                ) : playerError ? (
-                  <div className="grid aspect-video place-items-center bg-black px-6 text-center text-white">
-                    <div>
-                      <Film className="mx-auto size-8 text-primary" />
-                      <p className="mt-3 font-semibold">Playback unavailable</p>
-                      <p className="mt-1 text-xs text-white/55">{playerError}</p>
-                      <button id="btn-retry-player" type="button" onClick={() => void openPlayer(active)} className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">Try again</button>
-                    </div>
-                  </div>
-                ) : streamUrl ? (
-                  <VideoPlayer streamUrl={streamUrl} externalPoster={active.thumbnailUrl} title={active.title} autoPlay vertical={false} className="w-full" />
-                ) : null}
-              </div>
-              <div className="mt-4 rounded-[1.15rem] border border-white/10 bg-white/[0.045] p-4 md:p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Now Playing</span>
-                      {active.genre ? <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-medium text-white/60">{active.genre}</span> : null}
-                      {active.seasons && active.seasons > 1 ? <span className="flex items-center gap-1 text-[10px] text-white/55"><Layers3 className="size-3" /> {active.seasons} seasons</span> : null}
-                    </div>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-white/65">{active.description || "Settle in and enjoy this X Series title in Cinema mode."}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {filtered.filter((item) => item.id !== active.id).length > 0 ? (
-              <div className="border-t border-white/10 px-3 py-5 md:px-5 md:py-6">
-                <div className="mb-4 flex items-end justify-between gap-4 px-1">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Up Next</p>
-                    <h3 className="mt-1 font-display text-xl font-semibold tracking-tight text-background">More from X Series</h3>
-                  </div>
-                  <span className="hidden text-xs text-white/40 sm:block">Choose another title to keep watching</span>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filtered.filter((item) => item.id !== active.id).slice(0, 6).map((item) => (
-                    <XTvCard key={item.id} item={item} onPlay={openPlayer} />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
 
         {/* Featured Section */}
         {featured ? (
