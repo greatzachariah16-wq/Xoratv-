@@ -7,53 +7,36 @@ import appletConfig from "../../../firebase-applet-config.json";
 export const DEFAULT_FIREBASE_DATABASE_URL = `https://${appletConfig.projectId}-default-rtdb.firebaseio.com`;
 
 /**
- * Live Production Firebase Configuration for Xora TV.
- * Configured with live provisioned Firestore and Auth backend.
+ * Authoritative Live Production Firebase Configuration for Xora TV.
+ * Sourced directly from provisioned firebase-applet-config.json.
  */
-function getLiveFirebaseConfig() {
+function getFirebaseConfig() {
   const clean = (val?: string): string => {
     if (!val) return "";
     return val.replace(/^[",'\s]+|[",';\s]+$/g, "").trim();
   };
 
-  const rawEnvKey =
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY) || "";
+  // Check if environment override has a valid active key for this project
+  const envKey =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY
+      ? clean(import.meta.env.VITE_FIREBASE_API_KEY)
+      : "";
 
-  const apiKey = clean(rawEnvKey) || appletConfig.apiKey;
-  const authDomain =
-    clean(typeof import.meta !== "undefined" ? import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN : "") ||
-    appletConfig.authDomain;
-  const projectId =
-    clean(typeof import.meta !== "undefined" ? import.meta.env?.VITE_FIREBASE_PROJECT_ID : "") ||
-    appletConfig.projectId;
-  const storageBucket =
-    clean(
-      typeof import.meta !== "undefined" ? import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET : "",
-    ) || appletConfig.storageBucket;
-  const messagingSenderId =
-    clean(
-      typeof import.meta !== "undefined" ? import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID : "",
-    ) || appletConfig.messagingSenderId;
-  const appId =
-    clean(typeof import.meta !== "undefined" ? import.meta.env?.VITE_FIREBASE_APP_ID : "") ||
-    appletConfig.appId;
-  const databaseURL =
-    clean(typeof import.meta !== "undefined" ? import.meta.env?.VITE_FIREBASE_DATABASE_URL : "") ||
-    DEFAULT_FIREBASE_DATABASE_URL;
+  const apiKey = (envKey.startsWith("AIzaSy") ? envKey : "") || appletConfig.apiKey;
 
   return {
     apiKey,
-    authDomain,
-    projectId,
-    databaseURL,
-    storageBucket,
-    messagingSenderId,
-    appId,
-    firestoreDatabaseId: appletConfig.firestoreDatabaseId,
+    authDomain: appletConfig.authDomain || `${appletConfig.projectId}.firebaseapp.com`,
+    projectId: appletConfig.projectId,
+    databaseURL: DEFAULT_FIREBASE_DATABASE_URL,
+    storageBucket: appletConfig.storageBucket,
+    messagingSenderId: appletConfig.messagingSenderId,
+    appId: appletConfig.appId,
+    firestoreDatabaseId: appletConfig.firestoreDatabaseId || "(default)",
   };
 }
 
-export const firebaseConfig = getLiveFirebaseConfig();
+export const firebaseConfig = getFirebaseConfig();
 
 export const isFirebaseConfigured = (): boolean => {
   const key = firebaseConfig.apiKey;
@@ -73,13 +56,22 @@ if (getApps().length === 0) {
   app = getApps()[0]!;
 }
 
-export const db: Firestore = getFirestore(app, appletConfig.firestoreDatabaseId);
+export const db: Firestore = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const rtdb: Database = getDatabase(app);
-export const auth: Auth = getAuth(app);
+
+let authInstance: Auth;
+try {
+  authInstance = getAuth(app);
+} catch (error) {
+  console.warn("[Firebase] Auth initialization fallback:", error);
+  authInstance = {} as Auth;
+}
+
+export const auth: Auth = authInstance;
 export { app };
 
-// Test Firestore connection on initialization
-if (typeof window !== "undefined") {
+// Test Firestore connection on initial client boot
+if (typeof window !== "undefined" && isFirebaseConfigured()) {
   getDocFromServer(doc(db, "test", "connection")).catch((error: unknown) => {
     if (error instanceof Error && error.message.includes("the client is offline")) {
       console.warn("[Firebase] Client is offline or database initializing:", error.message);
