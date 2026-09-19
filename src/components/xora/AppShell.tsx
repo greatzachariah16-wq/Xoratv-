@@ -45,9 +45,26 @@ export function AppShell({
   rail?: ReactNode;
   wide?: boolean;
 }) {
-  const { profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const unread = useUnreadCount();
+
+  const currentProfile =
+    profile ||
+    (user
+      ? {
+          id: user.id,
+          username: user.displayName
+            ? user.displayName.toLowerCase().replace(/\s+/g, "_")
+            : user.email
+              ? user.email.split("@")[0]
+              : "user_" + user.id.slice(0, 6),
+          display_name: user.displayName || user.email?.split("@")[0] || "User",
+          avatar_url:
+            user.photoURL ||
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        }
+      : null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,18 +115,28 @@ export function AppShell({
             <Search className="size-4.5" aria-hidden="true" />
             Search
           </Link>
-          {profile ? (
+          {currentProfile ? (
             <Link
               to="/profile/$username"
-              params={{ username: profile.username }}
-              className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              params={{ username: currentProfile.username }}
+              className={cn(
+                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                pathname.startsWith("/profile")
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
             >
               <User className="size-4.5" aria-hidden="true" /> Profile
             </Link>
           ) : (
             <Link
               to="/auth"
-              className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className={cn(
+                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                pathname.startsWith("/auth")
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
             >
               <User className="size-4.5" aria-hidden="true" /> Sign in
             </Link>
@@ -198,14 +225,18 @@ export function AppShell({
               <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
             ) : null}
           </Link>
-          {profile ? (
+          {currentProfile ? (
             <Link
               to="/profile/$username"
-              params={{ username: profile.username }}
+              params={{ username: currentProfile.username }}
               aria-label="Your profile"
               className="press ml-1"
             >
-              <UserAvatar path={profile.avatar_url} name={profile.display_name} size={32} />
+              <UserAvatar
+                path={currentProfile.avatar_url}
+                name={currentProfile.display_name}
+                size={32}
+              />
             </Link>
           ) : (
             <Link to="/auth" aria-label="Sign in" className="press ml-1">
