@@ -51,7 +51,6 @@ function ProviderEmbedPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
   const [showStatusBadge, setShowStatusBadge] = useState<boolean>(false);
-  const fillCinema = className?.split(/\s+/).includes("h-full") ?? false;
 
   useEffect(() => {
     if (postId) {
@@ -75,7 +74,16 @@ function ProviderEmbedPlayer({
     }
   }, [postId, authorId, genre, feed]);
 
+  // Ensure origin is always accurately set in embed URL
   let embedSrc = embedUrl;
+  const currentOrigin =
+    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
+  if (!embedSrc.includes("enablejsapi=1") && !embedSrc.includes("/api/stream/embed/")) {
+    embedSrc += (embedSrc.includes("?") ? "&" : "?") + "enablejsapi=1";
+  }
+  if (currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
+    embedSrc += `&origin=${encodeURIComponent(currentOrigin)}`;
+  }
   if (autoPlay) {
     if (embedSrc.includes("autoplay=0")) {
       embedSrc = embedSrc.replace("autoplay=0", "autoplay=1");
@@ -88,7 +96,7 @@ function ProviderEmbedPlayer({
     }
   }
 
-  // Handle YouTube & video frame play/pause command via postMessage (no redirection possible)
+  // Handle play/pause command across YouTube, Vimeo, Dailymotion, and Custom Proxy streams
   const togglePlayState = useCallback(
     (e?: React.MouseEvent) => {
       if (e) {
@@ -103,15 +111,30 @@ function ProviderEmbedPlayer({
       setShowStatusBadge(true);
       setTimeout(() => setShowStatusBadge(false), 900);
 
-      // Send YouTube postMessage play/pause command
       try {
-        const command = nextPlaying ? "playVideo" : "pauseVideo";
-        iframe.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: command, args: [] }),
+        const targetWindow = iframe.contentWindow;
+
+        // 1. YouTube postMessage standard format
+        const ytCommand = nextPlaying ? "playVideo" : "pauseVideo";
+        targetWindow.postMessage(
+          JSON.stringify({ event: "command", func: ytCommand, args: [] }),
           "*",
         );
-      } catch {
-        // Fallback or ignore cross-origin error
+
+        // 2. Custom internal stream-proxy player postMessage protocol
+        targetWindow.postMessage(
+          JSON.stringify({ type: "xora_player_cmd", action: nextPlaying ? "play" : "pause" }),
+          "*",
+        );
+
+        // 3. Vimeo postMessage standard format
+        const vimeoAction = nextPlaying ? "play" : "pause";
+        targetWindow.postMessage(JSON.stringify({ method: vimeoAction }), "*");
+
+        // 4. Dailymotion postMessage format
+        targetWindow.postMessage(JSON.stringify({ command: nextPlaying ? "play" : "pause" }), "*");
+      } catch (err) {
+        console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
       }
     },
     [isPlaying],
@@ -121,7 +144,7 @@ function ProviderEmbedPlayer({
     <div
       className={cn(
         "group relative overflow-hidden bg-black flex items-center justify-center rounded-2xl select-none",
-        fillCinema ? "h-full w-full" : vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
+        vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
         className,
       )}
     >
@@ -185,6 +208,28 @@ function ProviderEmbedPlayer({
         <span className="size-1.5 rounded-full bg-primary" />
         <span>XORA CINEMA</span>
       </div>
+
+      {/* Floating interactive control pill on bottom-left for explicit Play/Pause toggle */}
+      <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={togglePlayState}
+          aria-label={isPlaying ? "Pause Cinema" : "Play Cinema"}
+          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+        >
+          {isPlaying ? (
+            <>
+              <Pause className="size-3.5 fill-current" />
+              <span>Pause</span>
+            </>
+          ) : (
+            <>
+              <Play className="size-3.5 fill-current text-primary" />
+              <span>Play</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
@@ -221,7 +266,6 @@ function NativeVideoPlayer({
   const [total, setTotal] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const fillCinema = className?.split(/\s+/).includes("h-full") ?? false;
 
   // Tracking refs to ensure events fire at most once per playback session
   const trackedStart = useRef(false);
@@ -477,7 +521,7 @@ function NativeVideoPlayer({
       ref={containerRef}
       className={cn(
         "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
-        isFullscreen || fillCinema ? "h-full rounded-none" : aspect,
+        isFullscreen ? "h-full rounded-none" : aspect,
         className,
       )}
     >

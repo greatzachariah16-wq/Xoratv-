@@ -524,7 +524,8 @@ export function renderEmbeddedPlayer(
     </div>
     <div class="iframe-wrapper">
       <iframe
-        src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeVideoId)}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&controls=1"
+        id="ytPlayerFrame"
+        src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeVideoId)}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&controls=1&enablejsapi=1"
         title="${safeTitle}"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
@@ -535,6 +536,34 @@ export function renderEmbeddedPlayer(
       <span>XORA CINEMA</span>
     </div>
   </div>
+  <script>
+    // Bridge postMessage commands from outer parent container down to inner YouTube iframe
+    window.addEventListener('message', function(event) {
+      try {
+        const frame = document.getElementById('ytPlayerFrame');
+        if (!frame || !frame.contentWindow) return;
+        let data = event.data;
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+        }
+        if (data && (data.event === 'command' || data.type === 'xora_player_cmd')) {
+          let ytFunc = 'playVideo';
+          if (data.func) {
+            ytFunc = data.func;
+          } else if (data.action === 'pause') {
+            ytFunc = 'pauseVideo';
+          }
+          frame.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: ytFunc,
+            args: []
+          }), '*');
+        }
+      } catch (e) {
+        // Ignore parsing errors from other postMessages
+      }
+    });
+  </script>
 </body>
 </html>`;
   }
@@ -682,6 +711,23 @@ export function renderEmbeddedPlayer(
     video.addEventListener('error', () => {
       const err = video.error;
       showError('Unable to load dynamic stream. Upstream source may be temporarily restricted or offline.');
+    });
+
+    // Support postMessage play/pause from parent
+    window.addEventListener('message', function(event) {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+        }
+        if (data && (data.event === 'command' || data.type === 'xora_player_cmd')) {
+          if (data.func === 'playVideo' || data.action === 'play') {
+            video.play().catch(function() {});
+          } else if (data.func === 'pauseVideo' || data.action === 'pause') {
+            video.pause();
+          }
+        }
+      } catch (e) {}
     });
 
     initPlayer();
