@@ -105,6 +105,26 @@ export function mapAuthError(err: unknown): string {
 }
 
 /**
+ * Derives a clean username from an email address (e.g. ericgreat668@gmail.com -> ericgreat).
+ * Extracts the email prefix before '@', strips special characters and trailing digits.
+ */
+export function extractUsernameFromEmail(email: string): string {
+  const prefix = email.trim().toLowerCase().split("@")[0] || "user";
+  const clean = prefix.replace(/[^a-z0-9_]/g, "");
+  // Strip trailing numbers (e.g. ericgreat668 -> ericgreat)
+  const withoutTrailingDigits = clean.replace(/\d+$/, "");
+  if (withoutTrailingDigits.length >= 3) {
+    return withoutTrailingDigits.slice(0, 24);
+  }
+  // If stripping digits makes it too short (e.g. ab123 -> ab), keep digits
+  if (clean.length >= 3) {
+    return clean.slice(0, 24);
+  }
+  // If still too short, pad or fallback
+  return clean.length > 0 ? clean.padEnd(3, "0").slice(0, 24) : "user";
+}
+
+/**
  * Normalizes a raw string into a safe, valid handle:
  * lowercase, alphanumeric and underscores only, trimmed to max 24 chars.
  */
@@ -138,7 +158,7 @@ export async function ensureProfileExists(
   const rawCandidate =
     preferredUsername ||
     fbUser.displayName ||
-    (fbUser.email ? fbUser.email.split("@")[0] : null) ||
+    (fbUser.email ? extractUsernameFromEmail(fbUser.email) : null) ||
     "xora_fan";
 
   let candidate = normalizeUsername(rawCandidate);
@@ -173,24 +193,30 @@ export async function ensureProfileExists(
 }
 
 /**
- * Signs up a new user with Email and Password, sets display name,
- * reserves handle in /usernames, and creates /profiles/{uid} record.
+ * Signs up a new user with Email and Password, automatically deriving username from email
+ * (e.g. ericgreat668@gmail.com -> ericgreat) or using an optional custom handle.
  */
 export async function signUpWithEmail(
   email: string,
   pass: string,
-  username: string,
+  username?: string,
 ): Promise<ProfileRecord> {
   const cleanEmail = email.trim().toLowerCase();
-  const cleanUsername = normalizeUsername(username);
+  const rawHandle = username?.trim() || extractUsernameFromEmail(cleanEmail);
+  let cleanUsername = normalizeUsername(rawHandle);
   if (cleanUsername.length < 3) {
-    throw new Error("Username must be at least 3 characters (letters, numbers, underscores).");
+    cleanUsername = extractUsernameFromEmail(cleanEmail);
   }
 
   // Pre-check handle availability in RTDB
   const existing = await getProfileByUsername(cleanUsername);
   if (existing) {
-    throw new Error(`Username @${cleanUsername} is already taken. Please choose another.`);
+    if (username && username.trim()) {
+      throw new Error(`Username @${cleanUsername} is already taken. Please choose another.`);
+    } else {
+      // If auto-derived username is taken, append unique random suffix
+      cleanUsername = `${cleanUsername.slice(0, 18)}_${Math.floor(100 + Math.random() * 900)}`;
+    }
   }
 
   // Save local account backup
@@ -198,7 +224,7 @@ export async function signUpWithEmail(
     id: "user-" + Date.now(),
     email: cleanEmail,
     username: cleanUsername,
-    displayName: username.trim(),
+    displayName: cleanUsername,
     password: pass,
     photoURL: null,
     createdAt: new Date().toISOString(),
@@ -210,7 +236,7 @@ export async function signUpWithEmail(
       id: localAccount.id,
       username: cleanUsername,
       email: cleanEmail,
-      display_name: username.trim(),
+      display_name: cleanUsername,
       avatar_url:
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
       bio: "Horror cinephile on Xora.",
@@ -234,13 +260,13 @@ export async function signUpWithEmail(
   }
 
   const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-  await updateProfile(cred.user, { displayName: username.trim() }).catch(() => {});
+  await updateProfile(cred.user, { displayName: cleanUsername }).catch(() => {});
 
   const profileRecord: ProfileRecord = {
     id: cred.user.uid,
     username: cleanUsername,
     email: cleanEmail,
-    display_name: username.trim(),
+    display_name: cleanUsername,
     avatar_url:
       cred.user.photoURL ||
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",

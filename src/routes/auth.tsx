@@ -6,6 +6,7 @@ import { isFirebaseConfigured } from "@/integrations/firebase/config";
 import {
   signInWithIdentifier,
   signUpWithEmail,
+  extractUsernameFromEmail,
   signInWithGoogle,
   checkRedirectAuthResult,
   sendPasswordReset,
@@ -32,7 +33,6 @@ function AuthPage() {
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -91,18 +91,14 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        if (!username.trim()) {
-          toast.error("Please enter a username for your profile.");
-          setBusy(false);
-          return;
-        }
         if (password.length < 6) {
           toast.error("Password must be at least 6 characters long.");
           setBusy(false);
           return;
         }
 
-        await signUpWithEmail(email.trim(), password, username.trim());
+        const derivedUsername = extractUsernameFromEmail(email.trim());
+        await signUpWithEmail(email.trim(), password, derivedUsername);
         toast.success("Account created — welcome to Xora");
         void navigate({ to: "/" });
       } else {
@@ -241,7 +237,7 @@ function AuthPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 {mode === "signin"
                   ? "Sign in using your email address or username."
-                  : "Pick a handle and start sharing."}
+                  : "Enter your email and password to create an account."}
               </p>
 
               <button
@@ -267,25 +263,6 @@ function AuthPage() {
               </div>
 
               <form onSubmit={submit} className="space-y-3">
-                {mode === "signup" ? (
-                  <div>
-                    <label htmlFor="username" className="text-xs font-medium text-muted-foreground">
-                      Username / Handle
-                    </label>
-                    <input
-                      id="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      minLength={3}
-                      maxLength={24}
-                      pattern="[a-zA-Z0-9_]+"
-                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                      placeholder="yourhandle (e.g. horror_fan)"
-                    />
-                  </div>
-                ) : null}
-
                 {mode === "signup" ? (
                   <div>
                     <label htmlFor="email" className="text-xs font-medium text-muted-foreground">
