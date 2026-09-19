@@ -77,7 +77,7 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
     <article
       id={`card-${item.id}`}
       className={cn(
-        "group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-surface shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl",
+        "group relative overflow-hidden rounded-[1.5rem] border border-border/60 bg-surface shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift",
         featured ? "md:col-span-2" : "",
       )}
     >
@@ -90,7 +90,7 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
       >
         <div
           className={cn(
-            "relative overflow-hidden bg-gradient-to-br",
+            "relative overflow-hidden bg-gradient-to-br isolate",
             toneClass(item.tone),
             featured ? "aspect-[16/8]" : "aspect-[16/10]",
           )}
@@ -101,48 +101,41 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
               alt={item.title}
               loading="lazy"
               referrerPolicy="no-referrer"
-              className="absolute inset-0 h-full w-full object-cover opacity-80 transition duration-700 group-hover:scale-105 group-hover:opacity-95"
+              className="absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.035]"
             />
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
-            <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white backdrop-blur-md">
-              {item.tag || "X SERIES"}
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-              <Film className="size-3" /> {item.genre || "FEATURE"}
-            </span>
-          </div>
-          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5">
-            <div className="max-w-[78%]">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">
-                {item.genre || "Cinema"}
-              </p>
-              <h2
-                className={cn(
-                  "font-display font-semibold tracking-tight text-white",
-                  featured ? "text-2xl md:text-4xl" : "text-lg",
-                )}
-              >
-                {item.title}
-              </h2>
-            </div>
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
+          <div className="absolute right-4 bottom-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/20 bg-primary text-primary-foreground shadow-xl transition duration-300 group-hover:scale-105 group-hover:shadow-primary/20">
               <Play className="ml-0.5 size-4 fill-current" />
             </span>
           </div>
         </div>
       </Link>
-      <div className="flex items-center justify-between gap-3 px-4 py-3.5 text-[11px] text-muted-foreground">
-        <span className="line-clamp-1">{item.description}</span>
-        <span className="flex shrink-0 items-center gap-1">
-          <Layers3 className="size-3.5" />
-          {item.seasons && item.seasons > 1
-            ? `${item.seasons} seasons`
-            : item.durationSeconds && item.durationSeconds > 0
-              ? `${Math.round(item.durationSeconds / 60)} min`
-              : "Feature"}
-        </span>
+
+      <div className="border-t border-border/50 bg-surface/95 px-4 py-4">
+        <div className="flex min-w-0 items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2
+              className={cn(
+                "line-clamp-2 font-display font-semibold tracking-tight text-foreground",
+                featured ? "text-xl md:text-2xl" : "text-base md:text-[17px]",
+              )}
+            >
+              {item.title}
+            </h2>
+            <div className="mt-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <span>{item.genre || "Cinema"}</span>
+              <span className="size-1 rounded-full bg-primary/60" />
+              <span>
+                {item.seasons && item.seasons > 1
+                  ? `${item.seasons} seasons`
+                  : item.durationSeconds && item.durationSeconds > 0
+                    ? `${Math.round(item.durationSeconds / 60)} min`
+                    : "Feature"}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -226,14 +219,15 @@ function XTvSeriesPage() {
       <div className="space-y-7 pb-10">
         <FeedTabs active="xtv-series" />
 
-        <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface px-5 py-7 shadow-sm md:px-8 md:py-9">
-          <div className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-primary/10 blur-3xl" />
+        <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-surface px-5 py-8 shadow-card md:px-8 md:py-10">
+          <div className="pointer-events-none absolute -right-28 -top-32 size-80 rounded-full bg-primary/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 -left-24 size-72 rounded-full bg-primary/[0.06] blur-3xl" />
           <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary shadow-sm">
                 <Sparkles className="size-3" /> X Series Cinema
               </div>
-              <h1 className="font-display text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
+              <h1 className="font-display text-3xl font-semibold tracking-[-0.04em] md:text-5xl">
                 Stories worth <span className="text-primary">staying for.</span>
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
