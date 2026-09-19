@@ -2,6 +2,18 @@
 @source "../src";
 @import "tw-animate-css";
 
+html,
+body,
+#root {
+  max-width: 100vw;
+  overflow-x: hidden !important;
+  touch-action: pan-y;
+}
+
+.touch-pan-x {
+  touch-action: pan-x;
+}
+
 /*
  * Xora design system — warm cream & clay editorial studio.
  * All colors are oklch semantic tokens. Never hardcode colors in components.

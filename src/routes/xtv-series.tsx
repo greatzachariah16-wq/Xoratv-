@@ -9,11 +9,16 @@ import {
   Play,
   PlusCircle,
   Search,
+  Shuffle,
   Sparkles,
   X,
 } from "lucide-react";
 import { AppShell, FeedTabs } from "@/components/xora/AppShell";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
+import { useAuth } from "@/hooks/useAuth";
+import { loadUserSignals, trackEvent } from "@/lib/events";
+import { getOrCreateSessionId } from "@/lib/ranking";
+import type { UserSignals } from "@/integrations/firebase/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/xtv-series")({
@@ -72,7 +77,88 @@ function toneClass(tone?: string) {
   return "from-[#343534] via-[#202322] to-[#111312]";
 }
 
-function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: boolean }) {
+/**
+ * Same provider-agnostic recommendation and shuffle algorithm as homepage/shorts.
+ * Balances user genre learning with exploration jitter to mix every available genre.
+ */
+function rankAndShuffleXSeries(
+  items: XTvSeriesItem[],
+  signals?: UserSignals | null,
+  userId?: string | null,
+): XTvSeriesItem[] {
+  if (!items || items.length <= 1) return items;
+
+  const sessionId = getOrCreateSessionId();
+  const utcDate = new Date().toISOString().slice(0, 10);
+  const seedString = `xseries_${userId || "anon"}_${sessionId}_${utcDate}`;
+
+  let hash = 2166136261;
+  for (let i = 0; i < seedString.length; i++) {
+    hash ^= seedString.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  let s = hash >>> 0;
+
+  const prng = () => {
+    let t = (s += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const scored = items.map((item) => {
+    let score = 50;
+
+    // 1. User Genre Affinity from tracked signals
+    if (signals?.genres) {
+      const primaryGenre = item.genre?.toLowerCase() || "";
+      if (primaryGenre && signals.genres[primaryGenre]) {
+        score += (signals.genres[primaryGenre] || 0) * 4;
+      }
+      if (Array.isArray(item.categories)) {
+        item.categories.forEach((c) => {
+          const lower = c.toLowerCase();
+          if (signals.genres[lower]) {
+            score += (signals.genres[lower] || 0) * 2;
+          }
+        });
+      }
+    }
+
+    // 2. Recency boost
+    const yr = item.year || 2026;
+    score += (yr - 2000) * 0.2;
+
+    // 3. Seeded Exploration Noise Jitter (-8 to +8) for genre diversity
+    const jitter = (prng() - 0.5) * 16;
+    score += jitter;
+
+    return { item, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map((s) => s.item);
+}
+
+function XTvCard({
+  item,
+  featured = false,
+  userId,
+}: {
+  item: XTvSeriesItem;
+  featured?: boolean;
+  userId?: string | null;
+}) {
+  const handleInteraction = () => {
+    trackEvent({
+      type: "open_video",
+      postId: item.id,
+      genre: item.genre,
+      feed: "xtv-series",
+      userId,
+    });
+  };
+
   return (
     <article
       id={`card-${item.id}`}
@@ -85,6 +171,7 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
         id={`btn-play-card-${item.id}`}
         to="/watch"
         search={{ id: item.id }}
+        onClick={handleInteraction}
         className="block w-full text-left"
         aria-label={`Play ${item.title}`}
       >
@@ -124,8 +211,16 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
 }
 
 function XTvSeriesPage() {
+  const { user } = useAuth();
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
+
+  // Fetch user interaction signals for learning preferences
+  const { data: userSignals } = useQuery({
+    queryKey: ["user-signals", user?.id],
+    queryFn: () => loadUserSignals(user?.id),
+    staleTime: 10_000,
+  });
 
   // Fetch all published titles
   const {
@@ -153,7 +248,7 @@ function XTvSeriesPage() {
     return Array.from(cats);
   }, [allItems]);
 
-  // Filter items based on active category button and search term
+  // Filter items based on active category button and search term, then apply ranking & shuffling
   const filtered = useMemo(() => {
     let list = allItems;
     if (genre && genre !== "All") {
@@ -183,26 +278,29 @@ function XTvSeriesPage() {
     }
 
     const q = search.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((item) =>
-      [item.title, item.description, item.genre, item.tag, ...(item.categories || [])]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [allItems, genre, search]);
+    if (q) {
+      list = list.filter((item) =>
+        [item.title, item.description, item.genre, item.tag, ...(item.categories || [])]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+
+    return rankAndShuffleXSeries(list, userSignals, user?.id);
+  }, [allItems, genre, search, userSignals, user?.id]);
 
   const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
 
   return (
     <AppShell wide>
-      <div className="space-y-7 pb-10">
+      <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
 
         <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface px-5 py-7 shadow-sm md:px-8 md:py-9">
-          <div className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="pointer-events-none absolute right-0 top-0 size-72 -translate-y-1/3 translate-x-1/3 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
@@ -241,7 +339,8 @@ function XTvSeriesPage() {
 
           {/* Category Filter Buttons */}
           <div
-            className="mt-7 flex gap-2 overflow-x-auto pb-1"
+            className="mt-7 flex gap-2 overflow-x-auto pb-1 max-w-full touch-pan-x no-scrollbar"
+            style={{ touchAction: "pan-x" }}
             role="tablist"
             aria-label="Filter by category"
           >
@@ -312,7 +411,7 @@ function XTvSeriesPage() {
               </span>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
-              <XTvCard item={featured} featured />
+              <XTvCard item={featured} featured userId={user?.id} />
               <div className="flex flex-col justify-between rounded-[1.35rem] border border-border/60 bg-surface p-6">
                 <div>
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -334,6 +433,15 @@ function XTvSeriesPage() {
                     id="btn-watch-featured"
                     to="/watch"
                     search={{ id: featured.id }}
+                    onClick={() => {
+                      trackEvent({
+                        type: "open_video",
+                        postId: featured.id,
+                        genre: featured.genre,
+                        feed: "xtv-series",
+                        userId: user?.id,
+                      });
+                    }}
                     className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                   >
                     Watch full movie <ArrowRight className="size-3.5" />
@@ -360,10 +468,13 @@ function XTvSeriesPage() {
               <button
                 type="button"
                 onClick={() => refetch()}
-                className="text-xs text-muted-foreground hover:text-primary transition"
-                title="Refresh titles"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition"
+                title="Reshuffle feed"
               >
-                {filtered.length} {filtered.length === 1 ? "title" : "titles"}
+                <Shuffle className="size-3.5" />
+                <span>
+                  {filtered.length} {filtered.length === 1 ? "title" : "titles"}
+                </span>
               </button>
             </div>
           </div>
@@ -371,7 +482,7 @@ function XTvSeriesPage() {
           {shelves.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {shelves.map((item) => (
-                <XTvCard key={item.id} item={item} />
+                <XTvCard key={item.id} item={item} userId={user?.id} />
               ))}
             </div>
           ) : filtered.length > 0 ? (
@@ -422,4 +533,5 @@ function XTvSeriesPage() {
     </AppShell>
   );
 }
+
 export default XTvSeriesPage;
