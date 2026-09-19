@@ -16,10 +16,20 @@ function getFirebaseConfig() {
     return val.replace(/^[",'\s]+|[",';\s]+$/g, "").trim();
   };
 
-  // Check if environment override has a valid active key for this project
+  // Allow full override via environment variables (e.g. Render deployments to custom projects like xoratv)
   const envKey =
     typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY
       ? clean(import.meta.env.VITE_FIREBASE_API_KEY)
+      : "";
+
+  const envAuthDomain =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN
+      ? clean(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN)
+      : "";
+
+  const envProjectId =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID
+      ? clean(import.meta.env.VITE_FIREBASE_PROJECT_ID)
       : "";
 
   const envRtdb =
@@ -27,17 +37,38 @@ function getFirebaseConfig() {
       ? clean(import.meta.env.VITE_FIREBASE_DATABASE_URL)
       : "";
 
+  const envStorageBucket =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET
+      ? clean(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET)
+      : "";
+
+  const envMessagingSenderId =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID
+      ? clean(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID)
+      : "";
+
+  const envAppId =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID
+      ? clean(import.meta.env.VITE_FIREBASE_APP_ID)
+      : "";
+
   const apiKey = (envKey.startsWith("AIzaSy") ? envKey : "") || appletConfig.apiKey;
+  const projectId = envProjectId || appletConfig.projectId;
+  const authDomain = envAuthDomain || appletConfig.authDomain || `${projectId}.firebaseapp.com`;
   const databaseURL = envRtdb || DEFAULT_FIREBASE_DATABASE_URL;
+  const storageBucket =
+    envStorageBucket || appletConfig.storageBucket || `${projectId}.firebasestorage.app`;
+  const messagingSenderId = envMessagingSenderId || appletConfig.messagingSenderId;
+  const appId = envAppId || appletConfig.appId;
 
   return {
     apiKey,
-    authDomain: appletConfig.authDomain || `${appletConfig.projectId}.firebaseapp.com`,
-    projectId: appletConfig.projectId,
+    authDomain,
+    projectId,
     databaseURL,
-    storageBucket: appletConfig.storageBucket,
-    messagingSenderId: appletConfig.messagingSenderId,
-    appId: appletConfig.appId,
+    storageBucket,
+    messagingSenderId,
+    appId,
     firestoreDatabaseId: appletConfig.firestoreDatabaseId || "(default)",
   };
 }
