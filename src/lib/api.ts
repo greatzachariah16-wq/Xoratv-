@@ -33,6 +33,7 @@ import {
 } from "@/integrations/firebase/rtdb";
 import { rankPostsForUser, getOrCreateSessionId, type RankContext } from "./ranking";
 import { loadUserSignals, trackEvent } from "./events";
+import { SEED_HORROR_MOVIES } from "@/integrations/firebase/movies";
 
 export type { FeedType };
 export type Profile = ProfileRecord;
@@ -42,7 +43,7 @@ export type PostWithAuthor = PostRecord & {
 };
 
 // In-memory / local state cache for instant reactivity and offline/preview operation
-let localPosts: PostWithAuthor[] = [];
+let localPosts: PostWithAuthor[] = [...SEED_HORROR_MOVIES];
 
 const localProfiles: ProfileRecord[] = [
   {
@@ -191,6 +192,12 @@ export async function fetchRankedFeed(
 
   if (rawPosts.length === 0) {
     rawPosts = localPosts.filter((p) => p.feed === feed);
+    // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
+    if (isFirebaseConfigured() && rawPosts.length > 0) {
+      rawPosts.forEach((post) => {
+        setPostRecord(post).catch(() => {});
+      });
+    }
   }
 
   // 1. If following mode requested on Home feed

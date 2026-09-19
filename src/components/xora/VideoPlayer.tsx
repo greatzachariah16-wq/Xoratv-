@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Maximize2, Minimize2, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Gauge, Loader2, Maximize2, Minimize2, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useSignedUrl } from "@/lib/media";
 import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { trackEvent } from "@/lib/events";
 import type { FeedType } from "@/integrations/firebase/types";
+import {
+  getActiveDataSaverConfig,
+  recordPlaybackConsumption,
+  getOptimizedImageUrl,
+  useDataSaver,
+} from "@/lib/data-saver";
 
 type Props = {
   mediaPath?: string | null;
@@ -74,7 +80,8 @@ function ProviderEmbedPlayer({
     }
   }, [postId, authorId, genre, feed]);
 
-  // Ensure origin is always accurately set in embed URL
+  // Ensure origin is always accurately set in embed URL and apply 300MB/hr mobile data saver params
+  const dataSaver = getActiveDataSaverConfig();
   let embedSrc = embedUrl;
   const currentOrigin =
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
@@ -83,6 +90,20 @@ function ProviderEmbedPlayer({
   }
   if (currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += `&origin=${encodeURIComponent(currentOrigin)}`;
+  }
+  // Mobile Data Saver: apply 360p / 300MB/hr bandwidth constraints to embeds
+  if (dataSaver.maxBitrateKbps <= 667) {
+    if (embedSrc.includes("youtube.com") || embedSrc.includes("youtube-nocookie.com")) {
+      if (!embedSrc.includes("vq="))
+        embedSrc +=
+          (embedSrc.includes("?") ? "&" : "?") + "vq=medium&playsinline=1&modestbranding=1";
+    } else if (embedSrc.includes("vimeo.com")) {
+      if (!embedSrc.includes("quality="))
+        embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
+    } else if (embedSrc.includes("dailymotion.com")) {
+      if (!embedSrc.includes("quality="))
+        embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360";
+    }
   }
   if (autoPlay) {
     if (embedSrc.includes("autoplay=0")) {
@@ -252,11 +273,13 @@ function NativeVideoPlayer({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const { config: dataSaver } = useDataSaver();
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
   const src = effectiveStream ?? signedSrc;
-  const poster = externalPoster ?? signedPoster;
+  const rawPoster = externalPoster ?? signedPoster;
+  const poster = getOptimizedImageUrl(rawPoster);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false); // start unmuted for shorts autoplay
@@ -272,6 +295,7 @@ function NativeVideoPlayer({
   const tracked3s = useRef(false);
   const trackedComplete = useRef(false);
   const timer3sRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTimeRef = useRef<number>(0);
 
   // Reset transient state whenever the source video changes.
   useEffect(() => {
@@ -281,6 +305,7 @@ function NativeVideoPlayer({
     setCurrent(0);
     setTotal(0);
     setScrubbing(false);
+    lastTimeRef.current = 0;
     trackedStart.current = false;
     tracked3s.current = false;
     trackedComplete.current = false;
@@ -313,7 +338,15 @@ function NativeVideoPlayer({
           .then(({ default: Hls }) => {
             if (!videoRef.current) return;
             if (Hls.isSupported()) {
-              const hls = new Hls({ enableWorker: true });
+              const hls = new Hls({
+                enableWorker: true,
+                maxBitrate: dataSaver.maxBitrateKbps * 1000,
+                maxBufferLength: dataSaver.maxBufferLengthSeconds,
+                maxMaxBufferLength: dataSaver.maxBufferLengthSeconds * 2,
+                maxBufferSize: dataSaver.maxBufferSizeMb * 1024 * 1024,
+                capLevelToPlayerSize: true,
+                backBufferLength: 4,
+              });
               hls.loadSource(src);
               hls.attachMedia(videoRef.current);
               hlsRef.current = hls;
@@ -346,7 +379,7 @@ function NativeVideoPlayer({
       video.removeAttribute("src");
       video.load();
     };
-  }, [src]);
+  }, [src, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
@@ -400,7 +433,13 @@ function NativeVideoPlayer({
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
-    setCurrent(video.currentTime);
+    const now = video.currentTime;
+    const prev = lastTimeRef.current || 0;
+    if (now > prev && now - prev < 2) {
+      recordPlaybackConsumption(now - prev, dataSaver.maxBitrateKbps);
+    }
+    lastTimeRef.current = now;
+    setCurrent(now);
     if (video.duration && !trackedComplete.current && postId) {
       if (video.currentTime / video.duration >= 0.85) {
         trackedComplete.current = true;
@@ -658,6 +697,15 @@ function NativeVideoPlayer({
           </span>
 
           <div className="flex-1" />
+
+          {/* Data Saver Mode Pill */}
+          <div
+            className="hidden sm:flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400 backdrop-blur-md"
+            title={`Optimized for mobile: Max ${dataSaver.maxBitrateKbps} kbps (≤ 300 MB/hr)`}
+          >
+            <Gauge className="size-3 text-emerald-400" />
+            <span>{dataSaver.maxBitrateKbps <= 667 ? "300MB/h Max" : "HD"}</span>
+          </div>
 
           <button
             type="button"

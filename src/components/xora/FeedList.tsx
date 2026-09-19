@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
+import { DataSaverBadge } from "./DataSaverBadge";
 import { cn } from "@/lib/utils";
 
 export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?: boolean }) {
@@ -82,33 +83,37 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
   return (
     <div className="space-y-4">
       {feed === "home" ? (
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-          <button
-            type="button"
-            onClick={() => setMode("for_you")}
-            className={cn(
-              "press flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              mode === "for_you"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-secondary text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Compass className="size-3.5" aria-hidden="true" />
-            For You
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("following")}
-            className={cn(
-              "press flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              mode === "following"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-secondary text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Users className="size-3.5" aria-hidden="true" />
-            Following
-          </button>
+        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("for_you")}
+              className={cn(
+                "press flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                mode === "for_you"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "bg-secondary text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Compass className="size-3.5" aria-hidden="true" />
+              For You
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("following")}
+              className={cn(
+                "press flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                mode === "following"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "bg-secondary text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Users className="size-3.5" aria-hidden="true" />
+              Following
+            </button>
+          </div>
+
+          <DataSaverBadge />
         </div>
       ) : null}
 
