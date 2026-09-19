@@ -45,6 +45,30 @@ export function hashKey(str: string): string {
   return pathSafe(`${Math.abs(hash)}_${str.slice(0, 32)}`);
 }
 
+/**
+ * Recursively removes `undefined` properties from an object so Firebase Realtime Database `set()` doesn't reject them.
+ */
+export function sanitizeForRtdb<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForRtdb(item)) as unknown as T;
+  }
+  if (typeof obj === "object") {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeForRtdb(value);
+      }
+    }
+    return cleaned as unknown as T;
+  }
+  return obj;
+}
+
 export interface MediaIndexEntry {
   postId?: string | null;
   objectKey: string;
@@ -73,7 +97,7 @@ export async function getProfile(uid: string): Promise<ProfileRecord | null> {
 
 export async function setProfile(profile: ProfileRecord): Promise<void> {
   const safeUid = pathSafe(profile.id);
-  await set(ref(rtdb, `profiles/${safeUid}`), profile);
+  await set(ref(rtdb, `profiles/${safeUid}`), sanitizeForRtdb(profile));
   if (profile.username) {
     const safeUsername = pathSafe(profile.username.toLowerCase());
     await set(ref(rtdb, `usernames/${safeUsername}`), profile.id);
@@ -96,7 +120,7 @@ export async function getPost(postId: string): Promise<PostRecord | null> {
 
 export async function setPostRecord(post: PostRecord): Promise<void> {
   const safeId = pathSafe(post.id);
-  await set(ref(rtdb, `posts/${safeId}`), post);
+  await set(ref(rtdb, `posts/${safeId}`), sanitizeForRtdb(post));
 
   // Write to postsByFeed
   const feed = post.feed || "home";
@@ -106,7 +130,7 @@ export async function setPostRecord(post: PostRecord): Promise<void> {
     status: post.status,
     approval_status: post.approval_status,
   };
-  await set(ref(rtdb, `postsByFeed/${feed}/${safeId}`), feedEntry);
+  await set(ref(rtdb, `postsByFeed/${feed}/${safeId}`), sanitizeForRtdb(feedEntry));
 
   // Write media index if media object exists
   if (post.media_path) {
@@ -120,7 +144,7 @@ export async function setPostRecord(post: PostRecord): Promise<void> {
       ownerId: post.author_id,
       created_at: post.created_at,
     };
-    await set(ref(rtdb, `mediaIndex/videos/${keyHash}`), mediaEntry);
+    await set(ref(rtdb, `mediaIndex/videos/${keyHash}`), sanitizeForRtdb(mediaEntry));
   }
   if (post.poster_path) {
     const objectKey = post.poster_path;
@@ -133,7 +157,7 @@ export async function setPostRecord(post: PostRecord): Promise<void> {
       ownerId: post.author_id,
       created_at: post.created_at,
     };
-    await set(ref(rtdb, `mediaIndex/posters/${keyHash}`), posterEntry);
+    await set(ref(rtdb, `mediaIndex/posters/${keyHash}`), sanitizeForRtdb(posterEntry));
   }
 }
 
@@ -193,7 +217,7 @@ export async function getCommentsForPost(postId: string): Promise<CommentRecord[
 export async function addCommentToPost(comment: CommentRecord): Promise<void> {
   const safePostId = pathSafe(comment.post_id);
   const safeCommentId = pathSafe(comment.id);
-  await set(ref(rtdb, `comments/${safePostId}/${safeCommentId}`), comment);
+  await set(ref(rtdb, `comments/${safePostId}/${safeCommentId}`), sanitizeForRtdb(comment));
 }
 
 export async function removeCommentFromPost(postId: string, commentId: string): Promise<void> {
@@ -268,7 +292,7 @@ export async function addNotificationForUser(
 ): Promise<void> {
   const safeUid = pathSafe(uid);
   const safeNotifId = pathSafe(notif.id);
-  await set(ref(rtdb, `notifications/${safeUid}/${safeNotifId}`), notif);
+  await set(ref(rtdb, `notifications/${safeUid}/${safeNotifId}`), sanitizeForRtdb(notif));
 }
 
 export async function markNotificationsReadRtdb(uid: string): Promise<void> {
@@ -287,7 +311,7 @@ export async function markNotificationsReadRtdb(uid: string): Promise<void> {
 export async function recordMediaIndex(entry: MediaIndexEntry): Promise<void> {
   const bucket = pathSafe(entry.bucket || "videos");
   const keyHash = hashKey(entry.objectKey);
-  await set(ref(rtdb, `mediaIndex/${bucket}/${keyHash}`), entry);
+  await set(ref(rtdb, `mediaIndex/${bucket}/${keyHash}`), sanitizeForRtdb(entry));
 }
 
 // --- DISCOVERY RUNS ---
@@ -298,7 +322,7 @@ export async function getDiscoveryRunsFromRtdb(): Promise<DiscoveryRunRecord[]> 
 }
 
 export async function recordDiscoveryRun(run: DiscoveryRunRecord): Promise<void> {
-  await set(ref(rtdb, `discovery_runs/${pathSafe(run.id)}`), run);
+  await set(ref(rtdb, `discovery_runs/${pathSafe(run.id)}`), sanitizeForRtdb(run));
 }
 
 // --- USER EVENTS & SIGNALS ROLLUP ---
@@ -306,7 +330,7 @@ export async function appendUserEventRtdb(uid: string, event: UserEventRecord): 
   const safeUid = pathSafe(uid);
   const eventsRef = ref(rtdb, `userEvents/${safeUid}`);
   const newEventRef = push(eventsRef);
-  await set(newEventRef, event);
+  await set(newEventRef, sanitizeForRtdb(event));
 }
 
 export async function getUserSignalsRtdb(uid: string): Promise<UserSignals | null> {
@@ -340,7 +364,7 @@ export async function updateUserSignalsRtdb(
     updatedAt: new Date().toISOString(),
   };
 
-  await set(signalRef, updated);
+  await set(signalRef, sanitizeForRtdb(updated));
 }
 
 // --- XTV SERIES CONTENT ENGINE ---
@@ -399,10 +423,10 @@ export async function getXTvSeriesItems(options?: {
 
 export async function saveXTvSeriesItem(item: XTvSeriesItem): Promise<void> {
   const safeId = pathSafe(item.id);
-  await set(ref(rtdb, `xtvSeries/items/${safeId}`), item);
+  await set(ref(rtdb, `xtvSeries/items/${safeId}`), sanitizeForRtdb(item));
 }
 
 export async function saveXTvSeriesRun(run: XTvSeriesRun): Promise<void> {
   const safeId = pathSafe(run.id);
-  await set(ref(rtdb, `xtvSeries/runs/${safeId}`), run);
+  await set(ref(rtdb, `xtvSeries/runs/${safeId}`), sanitizeForRtdb(run));
 }

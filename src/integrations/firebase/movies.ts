@@ -2,6 +2,7 @@ import { ref, get, set, remove } from "firebase/database";
 import { rtdb, isFirebaseConfigured } from "./config";
 import type { MovieMetadata, PostRecord } from "./types";
 import { resolveMediaUrl } from "@/lib/media";
+import { sanitizeForRtdb } from "./rtdb";
 
 /**
  * Initial catalogue of full-length horror movies with Render / streaming URLs.
@@ -268,7 +269,7 @@ export async function saveMovieMetadata(movie: MovieMetadata): Promise<void> {
     return;
   }
   try {
-    await set(ref(rtdb, `movies/${movie.id}`), movie);
+    await set(ref(rtdb, `movies/${movie.id}`), sanitizeForRtdb(movie));
   } catch (err) {
     console.warn("[RealtimeDB] Save movie note:", err);
   }
