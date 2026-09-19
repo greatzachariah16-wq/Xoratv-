@@ -55,7 +55,10 @@ function getFirebaseConfig() {
   const apiKey = (envKey.startsWith("AIzaSy") ? envKey : "") || appletConfig.apiKey;
   const projectId = envProjectId || appletConfig.projectId;
   const authDomain = envAuthDomain || appletConfig.authDomain || `${projectId}.firebaseapp.com`;
-  const databaseURL = envRtdb || DEFAULT_FIREBASE_DATABASE_URL;
+  const databaseURL =
+    envRtdb ||
+    (appletConfig as Record<string, string>).databaseURL ||
+    DEFAULT_FIREBASE_DATABASE_URL;
   const storageBucket =
     envStorageBucket || appletConfig.storageBucket || `${projectId}.firebasestorage.app`;
   const messagingSenderId = envMessagingSenderId || appletConfig.messagingSenderId;
