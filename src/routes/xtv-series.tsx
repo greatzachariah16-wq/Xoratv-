@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Film,
   Layers3,
+  Loader2,
   Play,
   PlusCircle,
   Search,
@@ -13,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell, FeedTabs } from "@/components/xora/AppShell";
+import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +24,8 @@ export const Route = createFileRoute("/xtv-series")({
       { title: "X Series — Movies, Series & Cinema | Xora" },
       {
         name: "description",
-        content: "Curated movies and series published directly from the sovereign Xora Studio.",
+        content:
+          "Curated movies and series published directly from the sovereign Xora Studio.",
       },
     ],
   }),
@@ -72,26 +75,35 @@ function toneClass(tone?: string) {
   return "from-[#343534] via-[#202322] to-[#111312]";
 }
 
-function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: boolean }) {
+function XTvCard({
+  item,
+  featured = false,
+  onPlay,
+}: {
+  item: XTvSeriesItem;
+  featured?: boolean;
+  onPlay: (item: XTvSeriesItem) => void;
+}) {
   return (
     <article
       id={`card-${item.id}`}
       className={cn(
-        "group relative overflow-hidden rounded-[1.5rem] border border-border/60 bg-surface shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift",
+        "group relative overflow-hidden rounded-[1.45rem] border border-border/60 bg-surface shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-lift",
         featured ? "md:col-span-2" : "",
       )}
     >
-      <Link
+      <button
         id={`btn-play-card-${item.id}`}
-        to="/watch"
-        search={{ id: item.id }}
+        type="button"
+        onClick={() => onPlay(item)}
         className="block w-full text-left"
         aria-label={`Play ${item.title}`}
       >
         <div
           className={cn(
-            "relative overflow-hidden bg-gradient-to-br isolate",
+            "relative overflow-hidden bg-gradient-to-br",
             toneClass(item.tone),
+            "isolate",
             featured ? "aspect-[16/8]" : "aspect-[16/10]",
           )}
         >
@@ -101,39 +113,42 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
               alt={item.title}
               loading="lazy"
               referrerPolicy="no-referrer"
-              className="absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.035]"
+              className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 ease-out group-hover:scale-[1.035] group-hover:opacity-100"
             />
           ) : null}
           <div className="absolute right-4 bottom-4">
-            <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/20 bg-primary text-primary-foreground shadow-xl transition duration-300 group-hover:scale-105 group-hover:shadow-primary/20">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/20 bg-primary text-primary-foreground shadow-lg transition duration-300 group-hover:scale-105 group-hover:shadow-xl">
               <Play className="ml-0.5 size-4 fill-current" />
             </span>
           </div>
         </div>
-      </Link>
+      </button>
 
-      <div className="border-t border-border/50 bg-surface/95 px-4 py-4">
-        <div className="flex min-w-0 items-start justify-between gap-4">
+      <div className="border-t border-border/50 bg-surface/95 px-4 py-3.5">
+        <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <h2
               className={cn(
                 "line-clamp-2 font-display font-semibold tracking-tight text-foreground",
-                featured ? "text-xl md:text-2xl" : "text-base md:text-[17px]",
+                featured ? "text-lg md:text-xl" : "text-base",
               )}
             >
               {item.title}
             </h2>
-            <div className="mt-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              <span>{item.genre || "Cinema"}</span>
-              <span className="size-1 rounded-full bg-primary/60" />
-              <span>
-                {item.seasons && item.seasons > 1
-                  ? `${item.seasons} seasons`
-                  : item.durationSeconds && item.durationSeconds > 0
-                    ? `${Math.round(item.durationSeconds / 60)} min`
-                    : "Feature"}
-              </span>
-            </div>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {item.genre || "Cinema"}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1 pt-1 text-[11px] text-muted-foreground">
+            <span className="flex shrink-0 items-center gap-1">
+              <Layers3 className="size-3.5" />
+              {item.seasons && item.seasons > 1
+                ? `${item.seasons} seasons`
+                : item.durationSeconds && item.durationSeconds > 0
+                  ? `${Math.round(item.durationSeconds / 60)} min`
+                  : "Feature"}
+            </span>
           </div>
         </div>
       </div>
@@ -144,13 +159,13 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
 function XTvSeriesPage() {
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
+  const [active, setActive] = useState<XTvSeriesItem | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
 
   // Fetch all published titles
-  const {
-    data: allItems = [],
-    isFetching,
-    refetch,
-  } = useQuery({
+  const { data: allItems = [], isFetching, refetch } = useQuery({
     queryKey: ["xtv-series-all"],
     queryFn: () => fetchXTvSeries("All"),
     staleTime: 30_000,
@@ -214,25 +229,49 @@ function XTvSeriesPage() {
   const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
 
+  async function openPlayer(item: XTvSeriesItem) {
+    setActive(item);
+    setStreamUrl(null);
+    setPlayerError(null);
+    setResolving(true);
+    try {
+      if (item.videoUrl) {
+        setStreamUrl(item.videoUrl);
+        return;
+      }
+      const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(item.id));
+      const json = (await res.json()) as { ok: boolean; streamUrl?: string; error?: string };
+      if (!res.ok || !json.ok || !json.streamUrl) {
+        throw new Error(json.error || "The stream could not be resolved.");
+      }
+      setStreamUrl(json.streamUrl);
+    } catch (error) {
+      setPlayerError(
+        error instanceof Error ? error.message : "The stream could not be resolved.",
+      );
+    } finally {
+      setResolving(false);
+    }
+  }
+
   return (
     <AppShell wide>
       <div className="space-y-7 pb-10">
         <FeedTabs active="xtv-series" />
 
-        <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-surface px-5 py-8 shadow-card md:px-8 md:py-10">
-          <div className="pointer-events-none absolute -right-28 -top-32 size-80 rounded-full bg-primary/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-24 size-72 rounded-full bg-primary/[0.06] blur-3xl" />
+        <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface px-5 py-7 shadow-sm md:px-8 md:py-9">
+          <div className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary shadow-sm">
-                <Sparkles className="size-3" /> X Series Cinema
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                <Sparkles className="size-3" /> X Series
               </div>
-              <h1 className="font-display text-3xl font-semibold tracking-[-0.04em] md:text-5xl">
+              <h1 className="font-display text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
                 Stories worth <span className="text-primary">staying for.</span>
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
-                Curated cinema and exclusive productions published directly by Xora. Full-page
-                sovereign streaming in high definition.
+                Curated cinema and exclusive productions published directly by Xora.
+                Clean, high-definition streaming without watermarks or third-party ads.
               </p>
             </div>
             <div className="flex w-full max-w-sm items-center gap-2 rounded-2xl border border-border/70 bg-background/70 px-3 py-2.5 shadow-inner">
@@ -259,11 +298,7 @@ function XTvSeriesPage() {
           </div>
 
           {/* Category Filter Buttons */}
-          <div
-            className="mt-7 flex gap-2 overflow-x-auto pb-1"
-            role="tablist"
-            aria-label="Filter by category"
-          >
+          <div className="mt-7 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter by category">
             {availableCategories.map((cat) => {
               const isActive = genre === cat;
               const count =
@@ -275,9 +310,7 @@ function XTvSeriesPage() {
                         m.genre?.toLowerCase() === g ||
                         m.tag?.toLowerCase() === g ||
                         (Array.isArray(m.categories) &&
-                          m.categories.some(
-                            (c) => c.toLowerCase() === g || c.toLowerCase().includes(g),
-                          ))
+                          m.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g)))
                       );
                     }).length;
 
@@ -301,7 +334,9 @@ function XTvSeriesPage() {
                     <span
                       className={cn(
                         "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
-                        isActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground",
+                        isActive
+                          ? "bg-white/25 text-white"
+                          : "bg-muted text-muted-foreground",
                       )}
                     >
                       {count}
@@ -312,6 +347,65 @@ function XTvSeriesPage() {
             })}
           </div>
         </section>
+
+        {/* Video Player Modal/Inline Section */}
+        {active ? (
+          <section id="xseries-player-section" className="overflow-hidden rounded-[1.5rem] border border-primary/30 bg-ink p-3 shadow-xl md:p-4">
+            <div className="mb-3 flex items-center justify-between px-1">
+              <div>
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                  <Film className="size-3" /> X Series Cinema
+                </p>
+                <h2 className="font-display text-lg font-semibold text-background">
+                  {active.title}
+                </h2>
+              </div>
+              <button
+                id="btn-close-player"
+                type="button"
+                onClick={() => setActive(null)}
+                className="grid size-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
+                aria-label="Close player"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {resolving ? (
+              <div className="grid aspect-video place-items-center rounded-xl bg-black text-white">
+                <div className="text-center">
+                  <Loader2 className="mx-auto size-7 animate-spin text-primary" />
+                  <p className="mt-3 text-xs text-white/65">Connecting to playback stream...</p>
+                </div>
+              </div>
+            ) : playerError ? (
+              <div className="grid aspect-video place-items-center rounded-xl bg-black px-6 text-center text-white">
+                <div>
+                  <Film className="mx-auto size-8 text-primary" />
+                  <p className="mt-3 font-semibold">Playback unavailable</p>
+                  <p className="mt-1 text-xs text-white/55">{playerError}</p>
+                  <button
+                    id="btn-retry-player"
+                    type="button"
+                    onClick={() => void openPlayer(active)}
+                    className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+                  >
+                    Try again
+                  </button>
+                </div>
+              </div>
+            ) : streamUrl ? (
+              <VideoPlayer
+                streamUrl={streamUrl}
+                externalPoster={active.thumbnailUrl}
+                title={active.title}
+                autoPlay
+                vertical={false}
+                className="w-full"
+              />
+            ) : null}
+          </section>
+        ) : null}
 
         {/* Featured Section */}
         {featured ? (
@@ -331,33 +425,35 @@ function XTvSeriesPage() {
               </span>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
-              <XTvCard item={featured} featured />
+              <XTvCard item={featured} featured onPlay={openPlayer} />
               <div className="flex flex-col justify-between rounded-[1.35rem] border border-border/60 bg-surface p-6">
                 <div>
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                     <Sparkles className="size-5" />
                   </div>
                   <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                    Full-Page Cinema
+                    Instant Playback
                   </p>
                   <h3 className="mt-2 font-display text-2xl font-semibold tracking-tight">
                     {featured.title}
                   </h3>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
                     {featured.description ||
-                      "Click to launch full-page cinema playback in high definition."}
+                      "Press play to start watching immediately in full high definition."}
                   </p>
                 </div>
                 <div className="mt-6 flex items-center gap-3">
-                  <Link
+                  <button
                     id="btn-watch-featured"
-                    to="/watch"
-                    search={{ id: featured.id }}
+                    type="button"
+                    onClick={() => openPlayer(featured)}
                     className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                   >
-                    Watch full movie <ArrowRight className="size-3.5" />
-                  </Link>
-                  <span className="text-xs text-muted-foreground">{featured.genre}</span>
+                    Watch featured <ArrowRight className="size-3.5" />
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {featured.genre}
+                  </span>
                 </div>
               </div>
             </div>
@@ -390,7 +486,7 @@ function XTvSeriesPage() {
           {shelves.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {shelves.map((item) => (
-                <XTvCard key={item.id} item={item} />
+                <XTvCard key={item.id} item={item} onPlay={openPlayer} />
               ))}
             </div>
           ) : filtered.length > 0 ? (
@@ -402,10 +498,12 @@ function XTvSeriesPage() {
               <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <Film className="size-6" />
               </div>
-              <h3 className="mt-4 font-display text-xl font-semibold">No titles published yet</h3>
+              <h3 className="mt-4 font-display text-xl font-semibold">
+                No titles published yet
+              </h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                All media in X Series is published directly from the sovereign Admin Studio. Import
-                and approve your titles in the admin panel to display them here instantly.
+                All media in X Series is published directly from the sovereign Admin Studio.
+                Import and approve your titles in the admin panel to display them here instantly.
               </p>
               <Link
                 to="/admin/xseris"
@@ -419,7 +517,9 @@ function XTvSeriesPage() {
               <div className="mx-auto grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
                 <Film className="size-5" />
               </div>
-              <h3 className="mt-3 font-display text-lg font-semibold">No titles in "{genre}"</h3>
+              <h3 className="mt-3 font-display text-lg font-semibold">
+                No titles in "{genre}"
+              </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 There are no published titles matching this category.
               </p>
@@ -441,4 +541,5 @@ function XTvSeriesPage() {
     </AppShell>
   );
 }
+
 export default XTvSeriesPage;
