@@ -9,6 +9,8 @@ import { timeAgo } from "@/lib/format";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { AdminLoginGate } from "@/components/admin/AdminLoginGate";
 import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
+import { AdminLiveUsersTracker } from "@/components/admin/AdminLiveUsersTracker";
+import { AdminSupportInbox } from "@/components/admin/AdminSupportInbox";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -137,10 +139,16 @@ function AdminPage() {
 
           <nav
             aria-label="Admin sections"
-            className="hidden items-center gap-8 text-[13px] font-medium text-muted-foreground md:flex"
+            className="hidden items-center gap-6 text-[13px] font-medium text-muted-foreground md:flex"
           >
             <Link to="/admin" hash="overview" className="text-foreground">
               Overview
+            </Link>
+            <Link to="/admin" hash="presence" className="transition-colors hover:text-foreground">
+              Live Tracker
+            </Link>
+            <Link to="/admin" hash="support" className="transition-colors hover:text-foreground">
+              Support
             </Link>
             <Link to="/admin" hash="discovery" className="transition-colors hover:text-foreground">
               Discovery
@@ -226,9 +234,9 @@ function AdminPage() {
         >
           {[
             {
-              label: "Creators",
+              label: "Registered Users",
               value: stats?.users ?? 0,
-              detail: "Registered accounts",
+              detail: "Active accounts on XoraTV",
               icon: Users,
             },
             {
@@ -269,6 +277,11 @@ function AdminPage() {
             onLogout={logout}
             onRefreshSession={refreshSession}
           />
+        </div>
+
+        <div className="mt-8 space-y-8">
+          <AdminLiveUsersTracker />
+          <AdminSupportInbox />
         </div>
 
         <Link

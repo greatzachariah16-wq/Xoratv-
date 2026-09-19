@@ -1,4 +1,4 @@
-import { push, ref, set } from "@/integrations/firebase/rtdb";
+import { push, ref, set, get, update, onValue } from "@/integrations/firebase/rtdb";
 import { isFirebaseConfigured, rtdb } from "@/integrations/firebase/config";
 
 export type SupportCategory =
@@ -6,6 +6,7 @@ export type SupportCategory =
 
 export type SupportTicket = {
   id: string;
+  rtdbKey?: string;
   user_id: string;
   email: string | null;
   display_name: string | null;
@@ -40,7 +41,7 @@ export async function createSupportTicket(
 
   if (isFirebaseConfigured()) {
     const ticketRef = push(ref(rtdb, "supportTickets"));
-    await set(ticketRef, record);
+    await set(ticketRef, { ...record, rtdbKey: ticketRef.key });
   } else {
     const existing = JSON.parse(
       localStorage.getItem("xora_support_tickets") || "[]",
@@ -49,4 +50,75 @@ export async function createSupportTicket(
   }
 
   return record;
+}
+
+export function subscribeToSupportTickets(
+  callback: (tickets: SupportTicket[]) => void,
+): () => void {
+  if (isFirebaseConfigured()) {
+    const ticketsRef = ref(rtdb, "supportTickets");
+    const unsub = onValue(ticketsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        callback([]);
+        return;
+      }
+      const raw = snapshot.val() as Record<string, SupportTicket>;
+      const list = Object.entries(raw).map(([key, val]) => ({
+        ...val,
+        rtdbKey: key,
+      }));
+      list.sort((a, b) => b.created_at - a.created_at);
+      callback(list);
+    });
+    return unsub;
+  } else {
+    const local = JSON.parse(
+      localStorage.getItem("xora_support_tickets") || "[]",
+    ) as SupportTicket[];
+    callback(local);
+    const interval = setInterval(() => {
+      const updated = JSON.parse(
+        localStorage.getItem("xora_support_tickets") || "[]",
+      ) as SupportTicket[];
+      callback(updated);
+    }, 2000);
+    return () => clearInterval(interval);
+  }
+}
+
+export async function updateSupportTicketStatus(
+  ticketId: string,
+  rtdbKey: string | undefined,
+  status: SupportTicket["status"],
+): Promise<void> {
+  if (isFirebaseConfigured()) {
+    if (rtdbKey) {
+      await update(ref(rtdb, `supportTickets/${rtdbKey}`), {
+        status,
+        updated_at: Date.now(),
+      });
+    } else {
+      const snapshot = await get(ref(rtdb, "supportTickets"));
+      if (snapshot.exists()) {
+        const raw = snapshot.val() as Record<string, SupportTicket>;
+        for (const [key, val] of Object.entries(raw)) {
+          if (val.id === ticketId) {
+            await update(ref(rtdb, `supportTickets/${key}`), {
+              status,
+              updated_at: Date.now(),
+            });
+            break;
+          }
+        }
+      }
+    }
+  } else {
+    const local = JSON.parse(
+      localStorage.getItem("xora_support_tickets") || "[]",
+    ) as SupportTicket[];
+    const updated = local.map((t) =>
+      t.id === ticketId ? { ...t, status, updated_at: Date.now() } : t,
+    );
+    localStorage.setItem("xora_support_tickets", JSON.stringify(updated));
+  }
 }

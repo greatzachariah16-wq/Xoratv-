@@ -95,6 +95,13 @@ export async function getProfile(uid: string): Promise<ProfileRecord | null> {
   return snapshot.exists() ? (snapshot.val() as ProfileRecord) : null;
 }
 
+export async function getAllRegisteredProfiles(): Promise<ProfileRecord[]> {
+  const snapshot = await get(ref(rtdb, "profiles"));
+  if (!snapshot.exists()) return [];
+  const val = snapshot.val();
+  return Object.values(val) as ProfileRecord[];
+}
+
 export async function setProfile(profile: ProfileRecord): Promise<void> {
   const safeUid = pathSafe(profile.id);
   await set(ref(rtdb, `profiles/${safeUid}`), sanitizeForRtdb(profile));

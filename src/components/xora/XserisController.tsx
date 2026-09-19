@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ExternalLink, Loader2, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +106,44 @@ export function XserisController() {
     }
   }
 
+  async function publishAllMovies() {
+    const publishable = items.filter(
+      (item) => item.processing_status !== "published" && item.processing_status !== "duplicate",
+    );
+    if (!publishable.length) {
+      toast.info("No unpublished candidates remaining.");
+      return;
+    }
+    setBusy(true);
+    let successCount = 0;
+    try {
+      for (const item of publishable) {
+        const v = value(item);
+        const finalCategories = v.categories?.length ? v.categories : ["Feature"];
+        const payload = { ...v, categories: finalCategories };
+        const r = await fetch(
+          "/api/xseris/candidates/" + encodeURIComponent(item.id) + "/publish",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+        const data = await r.json();
+        if (r.ok && data.ok) {
+          successCount++;
+          setItems((list) => list.map((x) => (x.id === item.id ? data.item : x)));
+        }
+      }
+      toast.success(`Successfully published ${successCount} movies across all links!`);
+    } catch {
+      toast.error("1-Click publish completed with some warnings.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div id="xseris" className="mt-10 scroll-mt-6 space-y-5">
       <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
@@ -151,11 +189,26 @@ export function XserisController() {
       </section>
       {items.length > 0 && (
         <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
-          <div className="mb-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-              Review queue
-            </p>
-            <h3 className="mt-1 font-display text-xl font-semibold">{items.length} candidates</h3>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Review queue
+              </p>
+              <h3 className="mt-1 font-display text-xl font-semibold">{items.length} candidates</h3>
+            </div>
+            <Button
+              onClick={publishAllMovies}
+              disabled={
+                busy ||
+                !items.some(
+                  (i) => i.processing_status !== "published" && i.processing_status !== "duplicate",
+                )
+              }
+              className="h-11 rounded-full bg-success px-5 text-success-foreground shadow-card hover:bg-success/90"
+            >
+              {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
+              1-Click Publish All Discovered Movies
+            </Button>
           </div>
           <div className="space-y-3">
             {items.map((item) => {

@@ -16,6 +16,7 @@ import {
   getFeedPosts,
   getAllPosts,
   getProfile,
+  getAllRegisteredProfiles,
   setProfile,
   getProfileByUsername,
   getCommentsForPost,
@@ -742,10 +743,25 @@ export function adminStatsQuery() {
   return queryOptions({
     queryKey: ["admin", "stats"],
     queryFn: async () => {
+      let registeredUsersCount = localProfiles.length;
+      const totalPosts = localPosts.length;
+      const totalComments = localComments.length;
+
+      if (isFirebaseConfigured()) {
+        try {
+          const profiles = await getAllRegisteredProfiles();
+          if (profiles && profiles.length > 0) {
+            registeredUsersCount = profiles.length;
+          }
+        } catch {
+          // fallback to localProfiles
+        }
+      }
+
       return {
-        users: localProfiles.length + 12,
-        posts: localPosts.length,
-        comments: localComments.length,
+        users: registeredUsersCount,
+        posts: totalPosts,
+        comments: totalComments,
         flagged: 0,
       };
     },

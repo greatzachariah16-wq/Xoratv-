@@ -16,6 +16,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePresenceTracker } from "@/hooks/usePresenceTracker";
 import { notificationsQuery } from "@/lib/api";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
@@ -45,6 +46,7 @@ export function AppShell({
   rail?: ReactNode;
   wide?: boolean;
 }) {
+  usePresenceTracker();
   const { user, profile, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const unread = useUnreadCount();
