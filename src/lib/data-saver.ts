@@ -206,11 +206,33 @@ export function getDataUsageStats(): DataUsageStats {
  */
 import { useEffect, useState } from "react";
 
+const DEFAULT_CONFIG: DataSaverConfig = {
+  mode: "300mb_saver",
+  autoDetectMobile: true,
+  maxBitrateKbps: 667,
+  maxResolutionHeight: 360,
+  maxBufferLengthSeconds: 8,
+  maxBufferSizeMb: 6,
+  enableImageCompression: true,
+};
+
+const DEFAULT_STATS: DataUsageStats = {
+  sessionBytesUsed: 0,
+  sessionPlaybackSeconds: 0,
+  currentBitrateKbps: 550,
+  hourlyRateMb: 280,
+  savingsPercent: 84,
+};
+
 export function useDataSaver() {
-  const [config, setConfig] = useState<DataSaverConfig>(getActiveDataSaverConfig);
-  const [stats, setStats] = useState<DataUsageStats>(getDataUsageStats);
+  const [config, setConfig] = useState<DataSaverConfig>(DEFAULT_CONFIG);
+  const [stats, setStats] = useState<DataUsageStats>(DEFAULT_STATS);
 
   useEffect(() => {
+    // Sync actual client state after mounting to avoid SSR hydration mismatch
+    setConfig(getActiveDataSaverConfig());
+    setStats(getDataUsageStats());
+
     const update = () => {
       setConfig(getActiveDataSaverConfig());
       setStats(getDataUsageStats());
