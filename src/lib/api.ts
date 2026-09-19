@@ -743,19 +743,19 @@ export function adminStatsQuery() {
   return queryOptions({
     queryKey: ["admin", "stats"],
     queryFn: async () => {
-      let registeredUsersCount = localProfiles.length;
+      let registeredUsersCount = 0;
       const totalPosts = localPosts.length;
       const totalComments = localComments.length;
 
       if (isFirebaseConfigured()) {
         try {
           const profiles = await getAllRegisteredProfiles();
-          if (profiles && profiles.length > 0) {
-            registeredUsersCount = profiles.length;
-          }
+          registeredUsersCount = profiles ? profiles.length : 0;
         } catch {
-          // fallback to localProfiles
+          registeredUsersCount = 0;
         }
+      } else {
+        registeredUsersCount = localProfiles.length;
       }
 
       return {

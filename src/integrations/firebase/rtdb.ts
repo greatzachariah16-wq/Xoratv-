@@ -98,8 +98,23 @@ export async function getProfile(uid: string): Promise<ProfileRecord | null> {
 export async function getAllRegisteredProfiles(): Promise<ProfileRecord[]> {
   const snapshot = await get(ref(rtdb, "profiles"));
   if (!snapshot.exists()) return [];
-  const val = snapshot.val();
-  return Object.values(val) as ProfileRecord[];
+  const val = snapshot.val() as Record<string, ProfileRecord>;
+  const list = Object.values(val);
+  return list.filter((p) => {
+    if (!p || !p.id) return false;
+    // Exclude discovery/importer creator stubs
+    if (
+      p.id.startsWith("creator_") ||
+      p.id.startsWith("creator-") ||
+      p.id.startsWith("studio-") ||
+      p.id.startsWith("indie-") ||
+      p.id.startsWith("creature-") ||
+      p.id.includes("creator")
+    ) {
+      return false;
+    }
+    return Boolean(p.email || p.id.length >= 20);
+  });
 }
 
 export async function setProfile(profile: ProfileRecord): Promise<void> {
