@@ -1,0 +1,128 @@
+{
+  "rules": {
+    "profiles": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "usernames": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "posts": {
+      ".read": true,
+      "$postId": {
+        ".write": "auth != null"
+      }
+    },
+    "postsByFeed": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "comments": {
+      ".read": true,
+      "$postId": {
+        ".write": "auth != null"
+      }
+    },
+    "likes": {
+      ".read": true,
+      "$postId": {
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "follows": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null"
+      }
+    },
+    "mediaIndex": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "discovery_runs": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "movies": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "crawler": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "chatRooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "userChatRooms": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "chatMessages": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+    "supportTickets": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".indexOn": ["user_id", "status", "created_at", "priority"],
+      "$ticketId": {
+        ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || data.child('user_id').val() === auth.uid)",
+        ".write": "auth != null && ( (!data.exists() && newData.child('user_id').val() === auth.uid) || (data.exists() && root.child('admins').child(auth.uid).val() === true) )",
+        ".validate": "newData.hasChildren(['id','user_id','category','subject','message','status','priority','created_at','updated_at']) && newData.child('id').isString() && newData.child('user_id').isString() && newData.child('category').isString() && (newData.child('category').val() === 'technical' || newData.child('category').val() === 'account' || newData.child('category').val() === 'billing' || newData.child('category').val() === 'report' || newData.child('category').val() === 'privacy' || newData.child('category').val() === 'feedback' || newData.child('category').val() === 'other') && newData.child('subject').isString() && newData.child('subject').val().length > 0 && newData.child('message').isString() && newData.child('message').val().length > 0 && newData.child('status').isString() && (newData.child('status').val() === 'open' || newData.child('status').val() === 'pending' || newData.child('status').val() === 'resolved' || newData.child('status').val() === 'closed') && (!data.exists() ? newData.child('status').val() === 'open' : true) && newData.child('priority').isString() && (newData.child('priority').val() === 'normal' || newData.child('priority').val() === 'high') && newData.child('created_at').isNumber() && newData.child('updated_at').isNumber() && (!data.exists() || (newData.child('id').val() === data.child('id').val() && newData.child('user_id').val() === data.child('user_id').val() && newData.child('created_at').val() === data.child('created_at').val()))"
+      }
+    },
+    "xseris": {
+      ".read": true,
+      ".write": true,
+      "mediaItems": {
+        ".indexOn": ["status", "source_provider", "created_at"]
+      },
+      "candidates": {
+        ".indexOn": ["status", "updated_at", "source_provider", "created_at"]
+      },
+      "mediaItemsByCategory": {}
+    },
+    "xseries": {
+      ".read": true,
+      ".write": true,
+      "mediaItems": {
+        ".indexOn": ["status", "source_provider", "created_at"]
+      },
+      "candidates": {
+        ".indexOn": ["status", "updated_at", "source_provider", "created_at"]
+      },
+      "mediaItemsByCategory": {}
+    },
+    "xtvSeries": {
+      ".read": true,
+      ".write": "auth != null",
+      "items": {
+        ".indexOn": ["genre", "tag", "createdAt"]
+      }
+    }
+  }
+}
