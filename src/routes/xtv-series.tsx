@@ -101,48 +101,23 @@ function XTvCard({ item, featured = false }: { item: XTvSeriesItem; featured?: b
               alt={item.title}
               loading="lazy"
               referrerPolicy="no-referrer"
-              className="absolute inset-0 h-full w-full object-cover opacity-80 transition duration-700 group-hover:scale-105 group-hover:opacity-95"
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
-            <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-white backdrop-blur-md">
-              {item.tag || "X SERIES"}
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-              <Film className="size-3" /> {item.genre || "FEATURE"}
-            </span>
-          </div>
-          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5">
-            <div className="max-w-[78%]">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">
-                {item.genre || "Cinema"}
-              </p>
-              <h2
-                className={cn(
-                  "font-display font-semibold tracking-tight text-white",
-                  featured ? "text-2xl md:text-4xl" : "text-lg",
-                )}
-              >
-                {item.title}
-              </h2>
-            </div>
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
-              <Play className="ml-0.5 size-4 fill-current" />
+          <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition duration-300 group-hover:opacity-100">
+            <span className="grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
+              <Play className="ml-0.5 size-5 fill-current" />
             </span>
           </div>
         </div>
       </Link>
-      <div className="flex items-center justify-between gap-3 px-4 py-3.5 text-[11px] text-muted-foreground">
-        <span className="line-clamp-1">{item.description}</span>
-        <span className="flex shrink-0 items-center gap-1">
-          <Layers3 className="size-3.5" />
-          {item.seasons && item.seasons > 1
-            ? `${item.seasons} seasons`
-            : item.durationSeconds && item.durationSeconds > 0
-              ? `${Math.round(item.durationSeconds / 60)} min`
-              : "Feature"}
-        </span>
+      <div className="p-4">
+        <h3 className="truncate font-display text-base font-semibold tracking-tight group-hover:text-primary transition">
+          {item.title}
+        </h3>
+        {item.description ? (
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+        ) : null}
       </div>
     </article>
   );

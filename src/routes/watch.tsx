@@ -352,18 +352,14 @@ function WatchPage() {
                         alt={movie.title}
                         loading="lazy"
                         referrerPolicy="no-referrer"
-                        className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-95"
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                    <div className="absolute inset-0 grid place-items-center opacity-0 transition duration-300 group-hover:opacity-100">
+                    <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition duration-300 group-hover:opacity-100">
                       <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
                         <Play className="ml-0.5 size-4 fill-current" />
                       </span>
                     </div>
-                    <span className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
-                      {movie.genre || "Feature"}
-                    </span>
                   </div>
                   <div className="p-3.5">
                     <h4 className="line-clamp-1 text-sm font-semibold text-white group-hover:text-primary transition">
