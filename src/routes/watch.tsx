@@ -7,8 +7,6 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
-  Pause,
-  Play,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
