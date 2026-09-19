@@ -1,10 +1,10 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getDatabase, type Database } from "firebase/database";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore, doc, getDocFromServer } from "firebase/firestore";
+import { getFirestore, type Firestore } from "firebase/firestore";
 import appletConfig from "../../../firebase-applet-config.json";
 
-export const DEFAULT_FIREBASE_DATABASE_URL = `https://${appletConfig.projectId}-default-rtdb.firebaseio.com`;
+export const DEFAULT_FIREBASE_DATABASE_URL = "https://xora-tv-default-rtdb.firebaseio.com";
 
 /**
  * Authoritative Live Production Firebase Configuration for Xora TV.
@@ -22,13 +22,19 @@ function getFirebaseConfig() {
       ? clean(import.meta.env.VITE_FIREBASE_API_KEY)
       : "";
 
+  const envRtdb =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_DATABASE_URL
+      ? clean(import.meta.env.VITE_FIREBASE_DATABASE_URL)
+      : "";
+
   const apiKey = (envKey.startsWith("AIzaSy") ? envKey : "") || appletConfig.apiKey;
+  const databaseURL = envRtdb || DEFAULT_FIREBASE_DATABASE_URL;
 
   return {
     apiKey,
     authDomain: appletConfig.authDomain || `${appletConfig.projectId}.firebaseapp.com`,
     projectId: appletConfig.projectId,
-    databaseURL: DEFAULT_FIREBASE_DATABASE_URL,
+    databaseURL,
     storageBucket: appletConfig.storageBucket,
     messagingSenderId: appletConfig.messagingSenderId,
     appId: appletConfig.appId,
@@ -57,7 +63,15 @@ if (getApps().length === 0) {
 }
 
 export const db: Firestore = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const rtdb: Database = getDatabase(app);
+
+let rtdbInstance: Database;
+try {
+  rtdbInstance = getDatabase(app, firebaseConfig.databaseURL);
+} catch (err) {
+  console.warn("[Firebase] Realtime Database init warning:", err);
+  rtdbInstance = getDatabase(app);
+}
+export const rtdb: Database = rtdbInstance;
 
 let authInstance: Auth;
 try {
@@ -69,12 +83,3 @@ try {
 
 export const auth: Auth = authInstance;
 export { app };
-
-// Test Firestore connection on initial client boot
-if (typeof window !== "undefined" && isFirebaseConfigured()) {
-  getDocFromServer(doc(db, "test", "connection")).catch((error: unknown) => {
-    if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.warn("[Firebase] Client is offline or database initializing:", error.message);
-    }
-  });
-}
