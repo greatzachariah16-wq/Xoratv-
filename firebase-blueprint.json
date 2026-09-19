@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with display information and follower metrics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "minLength": 3, "maxLength": 24, "pattern": "^[a-z0-9_]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "bio": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "followerCount": { "type": "number" },
+        "followingCount": { "type": "number" }
+      },
+      "required": ["id", "username", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A video or content post published by a creator",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "caption": { "type": "string", "maxLength": 1000 },
+        "kind": { "type": "string", "enum": ["video", "text"] },
+        "feed": { "type": "string", "enum": ["home", "shorts", "learn"] },
+        "status": { "type": "string", "enum": ["published", "draft", "removed"] },
+        "mediaPath": { "type": "string", "maxLength": 500 },
+        "posterPath": { "type": "string", "maxLength": 500 },
+        "streamUrl": { "type": "string", "maxLength": 500 },
+        "durationSeconds": { "type": "number" },
+        "likeCount": { "type": "number" },
+        "commentCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorId", "kind", "feed", "status", "createdAt"]
+    },
+    "Movie": {
+      "title": "Movie",
+      "description": "Featured movie item in the Xora TV catalogue",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "year": { "type": "number" },
+        "genre": { "type": "string", "maxLength": 50 },
+        "overview": { "type": "string", "maxLength": 2000 },
+        "posterUrl": { "type": "string", "maxLength": 500 },
+        "streamUrl": { "type": "string", "maxLength": 500 },
+        "durationSeconds": { "type": "number" },
+        "status": { "type": "string", "enum": ["published", "draft", "removed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "status", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User comment on a post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "postId": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "body": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "postId", "authorId", "body", "createdAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "Like record on a post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "Public profile documents"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Catalog of published video and content posts"
+    },
+    "/movies/{movieId}": {
+      "schema": "Movie",
+      "description": "Curated feature movie library"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "User comments on posts"
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": "Like",
+      "description": "User likes on posts"
+    }
+  }
+}

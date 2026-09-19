@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Profiles Collection
+    match /profiles/{userId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        incoming().keys().hasAll(['id', 'username', 'createdAt']) &&
+        incoming().id == userId &&
+        incoming().username is string &&
+        incoming().username.size() >= 3 &&
+        incoming().username.size() <= 24;
+      allow update: if isOwner(userId) &&
+        incoming().id == userId &&
+        incoming().username == existing().username &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if false;
+    }
+
+    // Movies Collection
+    match /movies/{movieId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if false;
+    }
+
+    // Posts Collection
+    match /posts/{postId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() &&
+        isValidId(postId) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().keys().hasAll(['id', 'authorId', 'kind', 'feed', 'status', 'createdAt']);
+      allow update: if isSignedIn() &&
+        existing().authorId == request.auth.uid &&
+        incoming().authorId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn() &&
+          isValidId(commentId) &&
+          incoming().authorId == request.auth.uid &&
+          incoming().postId == postId;
+        allow update: if isSignedIn() && existing().authorId == request.auth.uid;
+        allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+      }
+
+      // Likes subcollection
+      match /likes/{userId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isOwner(userId) && incoming().postId == postId;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
