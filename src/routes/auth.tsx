@@ -10,6 +10,7 @@ import {
   signInWithGoogle,
   checkRedirectAuthResult,
   sendPasswordReset,
+  clearLocalAccounts,
   mapAuthError,
 } from "@/integrations/firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -368,6 +369,18 @@ function AuthPage() {
             <Link to="/privacy" hash="terms" className="hover:underline hover:text-foreground">
               Terms of Service
             </Link>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => {
+                clearLocalAccounts();
+                toast.success("All previous test accounts and cached sessions have been deleted.");
+              }}
+              className="hover:underline hover:text-destructive"
+              title="Wipe previous cached credentials and test accounts"
+            >
+              Reset Test Data
+            </button>
           </div>
         </div>
       </div>

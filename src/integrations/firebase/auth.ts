@@ -52,6 +52,18 @@ function saveLocalAccount(account: LocalAccount): void {
   }
 }
 
+export function clearLocalAccounts(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(LOCAL_ACCOUNTS_KEY);
+    localStorage.removeItem("xora_demo_user");
+    localStorage.removeItem("xora_auth_user");
+    sessionStorage.clear();
+  } catch (err) {
+    console.warn("[Auth] Failed to clear local accounts:", err);
+  }
+}
+
 export function findLocalAccount(identifier: string): LocalAccount | null {
   const clean = identifier.trim().toLowerCase().replace(/^@/, "");
   const accounts = getLocalAccounts();
