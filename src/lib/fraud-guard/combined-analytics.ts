@@ -41,7 +41,18 @@ export class CombinedAnalyticsEngine {
     let backgroundDwellSeconds = 0;
 
     if (input.deviceFingerprint) {
-      const { environment, webgl } = input.deviceFingerprint;
+      const environment = input.deviceFingerprint.environment || {
+        webdriver: false,
+        phantomJs: false,
+        nightmareJs: false,
+        selenium: false,
+        domAutomation: false,
+      };
+      const webgl = input.deviceFingerprint.webgl || {
+        renderer: "",
+        unmaskedRenderer: "",
+        isHeadlessGpu: false,
+      };
 
       // Check webdriver automation
       if (environment.webdriver) {
@@ -98,12 +109,12 @@ export class CombinedAnalyticsEngine {
     // Check interaction behavioral entropy
     if (input.telemetry) {
       const tel = input.telemetry;
-      interactionEventCount = tel.totalInteractionEvents;
-      foregroundDwellSeconds = tel.activeForegroundSeconds;
-      backgroundDwellSeconds = tel.backgroundSeconds;
+      interactionEventCount = tel.totalInteractionEvents || 0;
+      foregroundDwellSeconds = tel.activeForegroundSeconds || 0;
+      backgroundDwellSeconds = tel.backgroundSeconds || 0;
 
       // Scroll velocity check
-      if (tel.scrollCount >= 5 && !tel.hasHumanScrollCurves) {
+      if ((tel.scrollCount || 0) >= 5 && !tel.hasHumanScrollCurves) {
         hasHumanInteractionEntropy = false;
         allSignals.push({
           type: "BEHAVIORAL_SYNTHETIC_INTERACTION",
@@ -120,7 +131,7 @@ export class CombinedAnalyticsEngine {
       }
 
       // Touch dynamics check (0-pixel contact radius on touch device)
-      if (tel.touchCount >= 4 && tel.averageTouchRadius === 0) {
+      if ((tel.touchCount || 0) >= 4 && tel.averageTouchRadius === 0) {
         hasHumanInteractionEntropy = false;
         allSignals.push({
           type: "BEHAVIORAL_SYNTHETIC_INTERACTION",
@@ -137,8 +148,8 @@ export class CombinedAnalyticsEngine {
       }
 
       // Background dwell ratio
-      const totalDwell = tel.activeForegroundSeconds + tel.backgroundSeconds;
-      if (totalDwell > 40 && tel.backgroundSeconds / totalDwell > 0.85) {
+      const totalDwell = foregroundDwellSeconds + backgroundDwellSeconds;
+      if (totalDwell > 40 && backgroundDwellSeconds / totalDwell > 0.85) {
         allSignals.push({
           type: "BEHAVIORAL_SYNTHETIC_INTERACTION",
           severity: "low",
@@ -146,15 +157,15 @@ export class CombinedAnalyticsEngine {
           description:
             "Abnormally high background dwell ratio (>85% backgrounded during active session).",
           evidence: {
-            foregroundSec: tel.activeForegroundSeconds,
-            backgroundSec: tel.backgroundSeconds,
+            foregroundSec: foregroundDwellSeconds,
+            backgroundSec: backgroundDwellSeconds,
           },
           detectedAt: nowIso,
         });
       }
 
       // Click burst spamming
-      if (tel.rapidClickBurstCount > 0) {
+      if ((tel.rapidClickBurstCount || 0) > 0) {
         allSignals.push({
           type: "BURST_REWARD_CLAIMING",
           severity: "medium",

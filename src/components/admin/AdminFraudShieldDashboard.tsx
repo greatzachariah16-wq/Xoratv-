@@ -28,14 +28,17 @@ import {
   CombinedAnalyticsEngine,
   CombinedFraudReporter,
   FraudReporter,
+  FRAUD_GUARD_CONFIG,
   getRecentEnforcementDecisions,
   resolveEnforcementDecision,
   determineEnforcementAction,
+  rtdbSet,
   type EnforcementDecision,
   type EnforcementTier,
   type FlaggedDeviceSummary,
   type UnifiedAnalyticsOverview,
   type UnifiedFraudReport,
+  type UnifiedSessionInput,
 } from "@/lib/fraud-guard";
 import { Button } from "@/components/ui/button";
 
@@ -147,76 +150,76 @@ export function AdminFraudShieldDashboard() {
           : `fp_sim_${Math.random().toString(36).slice(2, 7)}`;
       const fakeIp = type === "webdriver_bot" ? "198.51.100.42" : "72.14.201.2";
 
-      // Build simulated telemetry
-      const simulatedInput = {
+      let heartbeatPayload: UnifiedSessionInput["heartbeat"] = undefined;
+      if (type === "speed_hacker") {
+        const sessionId = `hb_sim_${Date.now()}`;
+        const nonce = `nonce_${Math.random().toString(36).slice(2, 8)}`;
+        const now = Date.now();
+        // Seed a valid nonce issued 15s ago with 0 last playback into RTDB
+        const noncePath = `${FRAUD_GUARD_CONFIG.rtdbPaths.heartbeatNonces}/${sessionId}/${nonce}`;
+        await rtdbSet(noncePath, {
+          nonce,
+          sessionId,
+          accountId: fakeAccountId,
+          deviceFingerprintId: fakeDeviceId,
+          issuedAt: now - 15000,
+          expiresAt: now + 300000,
+          lastPlaybackSeconds: 0,
+          lastHeartbeatWallClock: now - 15000,
+          used: false,
+        });
+
+        heartbeatPayload = {
+          sessionId,
+          nonce,
+          currentPlaybackSeconds: 300, // 300s media progressed in 15s real elapsed time = 20x speed hack!
+          claimedDeltaSeconds: 300,
+        };
+      }
+
+      // Build simulated telemetry conforming directly to UnifiedSessionInput
+      const simulatedInput: UnifiedSessionInput = {
         accountId: fakeAccountId,
         email: `${fakeAccountId}@example.test`,
         clientIp: fakeIp,
         deviceFingerprint: {
           fingerprintId: fakeDeviceId,
-          components: {
-            screenResolution: [1920, 1080],
-            availableResolution: [1920, 1040],
-            colorDepth: 24,
-            devicePixelRatio: 2,
-            hardwareConcurrency: 8,
-            deviceMemory: 8,
+          hardware: {
+            platform: type === "clean" ? "iPhone" : "MacIntel",
+            screenResolution: "1920x1080",
+            hardwareConcurrency: type === "webdriver_bot" ? 2 : 8,
+            timezone: "America/New_York",
             maxTouchPoints: type === "clean" ? 5 : 0,
-            touchSupport: type === "clean",
-            webglVendor: type === "webdriver_bot" ? "Google Inc. (Google)" : "Apple",
-            webglRenderer:
-              type === "webdriver_bot" ? "Google SwiftShader (Headless)" : "Apple M2 Max",
-            languages: ["en-US"],
-            platform: "MacIntel",
-            timezoneOffset: 300,
-            hasAudioContext: true,
-            hasWebGL: true,
           },
-          canvasSubpixelHash: "hash_" + Math.random().toString(36).slice(2, 8),
-          audioOscillatorHash: "audio_" + Math.random().toString(36).slice(2, 8),
-          entropyScore: type === "webdriver_bot" ? 0.05 : 0.85,
-          createdAt: new Date().toISOString(),
+          webgl: {
+            renderer: type === "webdriver_bot" ? "Google SwiftShader (Headless)" : "Apple M2 Max",
+            unmaskedRenderer: type === "webdriver_bot" ? "Google Inc. (Google)" : "Apple",
+            isHeadlessGpu: type === "webdriver_bot",
+          },
+          environment: {
+            webdriver: type === "webdriver_bot",
+            phantomJs: false,
+            nightmareJs: false,
+            selenium: type === "webdriver_bot",
+            domAutomation: false,
+          },
         },
         telemetry: {
-          sessionDurationMs: 65000,
-          backgroundDwellMs: type === "webdriver_bot" ? 64000 : 2000,
-          backgroundRatio: type === "webdriver_bot" ? 0.98 : 0.03,
-          scrollMetrics: {
-            sampleCount: type === "webdriver_bot" ? 0 : 45,
-            avgVelocity: 1.2,
-            velocityVariance: type === "webdriver_bot" ? 0 : 0.65,
-            decelerationCount: type === "webdriver_bot" ? 0 : 12,
-            isSyntheticLinear: type === "webdriver_bot",
-          },
-          touchMetrics: {
-            touchCount: type === "clean" ? 18 : 0,
-            avgRadius: type === "clean" ? 12 : 0,
-            zeroRadiusCount: 0,
-            zeroRadiusRatio: 0,
-            jitterVariance: type === "clean" ? 1.4 : 0,
-            isMechanicalTapPattern: false,
-          },
-          automationIndicators: {
-            webdriver: type === "webdriver_bot",
-            phantom: false,
-            nightmare: false,
-            selenium: type === "webdriver_bot",
-            headlessRenderer: type === "webdriver_bot",
-            missingPlugins: type === "webdriver_bot",
-            inconsistentDimensions: false,
-            debuggerAttached: false,
-          },
-          recordedAt: new Date().toISOString(),
+          scrollCount: type === "webdriver_bot" ? 0 : 25,
+          scrollVelocityVariance: type === "webdriver_bot" ? 0 : 0.65,
+          hasHumanScrollCurves: type !== "webdriver_bot",
+          touchCount: type === "clean" ? 18 : 0,
+          averageTouchRadius: type === "clean" ? 12 : 0,
+          touchPressureVariance: type === "clean" ? 0.35 : 0,
+          hasHumanTouchJitter: type === "clean",
+          mouseMoveCount: type === "clean" ? 0 : 40,
+          mouseTrajectoryCurvature: type === "clean" ? 0 : 1.2,
+          activeForegroundSeconds: type === "webdriver_bot" ? 1 : 65,
+          backgroundSeconds: type === "webdriver_bot" ? 64 : 2,
+          rapidClickBurstCount: 0,
+          totalInteractionEvents: type === "webdriver_bot" ? 0 : 43,
         },
-        heartbeat:
-          type === "speed_hacker"
-            ? {
-                sessionId: `hb_sim_${Date.now()}`,
-                nonce: `nonce_${Math.random().toString(36).slice(2, 8)}`,
-                currentPlaybackSeconds: 300,
-                claimedDeltaSeconds: 300, // Claims 300s playback in 15s real elapsed time!
-              }
-            : undefined,
+        heartbeat: heartbeatPayload,
       };
 
       // 1. Evaluate unified session
@@ -225,8 +228,8 @@ export function AdminFraudShieldDashboard() {
       // If device_sharing scenario, force collision signal to demonstrate the exception rule
       if (type === "device_sharing") {
         report.serverSideSignals.isMultiAccountAbuse = true;
-        report.serverSideSignals.collisionAccountCount = 4;
-        report.trustScore = 20; // Would be Tier 3 normally
+        report.serverSideSignals.deviceCollisionCount = 4;
+        report.trustScore = 22; // Would be Tier 3 normally (<25)
         report.allSignals = [
           {
             type: "MULTI_ACCOUNT_DEVICE_COLLISION",
@@ -252,7 +255,9 @@ export function AdminFraudShieldDashboard() {
       await loadData(false);
     } catch (err) {
       console.error("Simulation error", err);
-      toast.error("Failed to run simulation");
+      toast.error(
+        err instanceof Error ? `Simulation error: ${err.message}` : "Failed to run simulation",
+      );
     } finally {
       setSimRunning(false);
     }
