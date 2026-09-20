@@ -29,6 +29,7 @@ export * from "./scoring-engine";
 export * from "./reporter";
 export * from "./combined-analytics";
 export * from "./combined-reporter";
+export * from "./enforcement-rules";
 
 /**
  * Unified FraudGuard Anti-Bot & Anti-Reward-Abuse Facade.
@@ -204,5 +205,33 @@ export class FraudGuard {
     deviceFingerprintId: string,
   ): Promise<CombinedDeviceProfile | null> {
     return CombinedFraudReporter.getCombinedDeviceProfile(deviceFingerprintId);
+  }
+
+  /**
+   * Determines the tiered enforcement action for a fraud report.
+   */
+  public static async determineEnforcementAction(report: UnifiedFraudReport) {
+    const { determineEnforcementAction } = await import("./enforcement-rules");
+    return determineEnforcementAction(report);
+  }
+
+  /**
+   * Retrieves recent enforcement decisions from Firebase RTDB.
+   */
+  public static async getRecentEnforcementDecisions(limit = 50) {
+    const { getRecentEnforcementDecisions } = await import("./enforcement-rules");
+    return getRecentEnforcementDecisions(limit);
+  }
+
+  /**
+   * Resolves or clears an enforcement decision.
+   */
+  public static async resolveEnforcementDecision(
+    decisionId: string,
+    resolution: "approved" | "confirmed_bot",
+    resolutionNotes?: string,
+  ) {
+    const { resolveEnforcementDecision } = await import("./enforcement-rules");
+    return resolveEnforcementDecision(decisionId, resolution, resolutionNotes);
   }
 }
