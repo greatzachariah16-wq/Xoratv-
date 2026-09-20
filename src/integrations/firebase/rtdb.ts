@@ -98,22 +98,39 @@ export async function getProfile(uid: string): Promise<ProfileRecord | null> {
 export async function getAllRegisteredProfiles(): Promise<ProfileRecord[]> {
   const snapshot = await get(ref(rtdb, "profiles"));
   if (!snapshot.exists()) return [];
-  const val = snapshot.val() as Record<string, ProfileRecord>;
+  const val = snapshot.val() as Record<
+    string,
+    ProfileRecord & { is_third_party?: boolean; external_source?: string; email?: string }
+  >;
   const list = Object.values(val);
   return list.filter((p) => {
     if (!p || !p.id) return false;
-    // Exclude discovery/importer creator stubs
+    // Explicit third-party non-Xora creator flag check
+    if (p.is_third_party || p.external_source) return false;
+
+    const lowerId = p.id.toLowerCase();
+    // Exclude external creator stubs from discovery / YouTube / Archive / Wikimedia / NOAA
     if (
-      p.id.startsWith("creator_") ||
-      p.id.startsWith("creator-") ||
-      p.id.startsWith("studio-") ||
-      p.id.startsWith("indie-") ||
-      p.id.startsWith("creature-") ||
-      p.id.includes("creator")
+      lowerId.startsWith("creator_") ||
+      lowerId.startsWith("creator-") ||
+      lowerId.startsWith("studio-") ||
+      lowerId.startsWith("indie-") ||
+      lowerId.startsWith("creature-") ||
+      lowerId.startsWith("yt_") ||
+      lowerId.startsWith("archive_") ||
+      lowerId.startsWith("ext_") ||
+      lowerId.startsWith("guest_") ||
+      lowerId.includes("creator") ||
+      lowerId.includes("channel") ||
+      lowerId.includes("provider") ||
+      lowerId.includes("bot") ||
+      lowerId.includes("noaa")
     ) {
       return false;
     }
-    return Boolean(p.email || p.id.length >= 20);
+
+    // Must be a genuine Xora user account with an email address or real user profile created via Auth
+    return Boolean(p.email || (p.username && !lowerId.includes("creator") && p.id.length >= 15));
   });
 }
 

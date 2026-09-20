@@ -84,10 +84,11 @@ export interface NotificationRecord {
   id: string;
   user_id: string;
   actor_id: string;
-  kind: "like" | "comment" | "follow";
+  kind: "like" | "comment" | "follow" | "support_reply";
   post_id: string | null;
   read: boolean;
   created_at: string;
+  message?: string;
 }
 
 export interface DiscoveryRunRecord {

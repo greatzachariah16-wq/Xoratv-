@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertCircle,
@@ -10,6 +10,7 @@ import {
   FileQuestion,
   LifeBuoy,
   Mail,
+  MessageSquare,
   MessageSquareText,
   ShieldCheck,
   Sparkles,
@@ -20,7 +21,13 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/xora/AppShell";
 import { Logo } from "@/components/xora/Logo";
 import { useAuth } from "@/hooks/useAuth";
-import { createSupportTicket, type SupportCategory } from "@/integrations/firebase/support";
+import {
+  createSupportTicket,
+  subscribeToUserSupportTickets,
+  type SupportCategory,
+  type SupportTicket,
+} from "@/integrations/firebase/support";
+import { timeAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
@@ -118,6 +125,7 @@ function SupportPage() {
       <div className="rise mx-auto max-w-4xl">
         <SupportHeader />
         <SupportHero />
+        <UserTicketsList />
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
           <SupportForm />
           <FaqPanel />
@@ -125,6 +133,98 @@ function SupportPage() {
         <SupportFooter />
       </div>
     </AppShell>
+  );
+}
+
+function UserTicketsList() {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeToUserSupportTickets(user.id, (data) => {
+      setTickets(data);
+    });
+    return () => unsub();
+  }, [user]);
+
+  if (!user || tickets.length === 0) return null;
+
+  return (
+    <section className="mt-8 rounded-3xl border border-primary/20 bg-primary/5 p-6 shadow-card sm:p-7">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+        <MessageSquare className="size-4" /> My Support Tickets & Admin Replies ({tickets.length})
+      </div>
+      <h2 className="mt-1 font-display text-xl font-semibold">Track Your Support Requests</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Replies from the Xora Support Team appear here in real-time.
+      </p>
+
+      <div className="mt-5 space-y-4">
+        {tickets.map((t) => (
+          <div
+            key={t.id}
+            className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm space-y-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
+              <div>
+                <span className="font-mono text-[10px] font-bold text-primary uppercase">
+                  {t.id}
+                </span>
+                <h3 className="font-semibold text-sm text-foreground mt-0.5">{t.subject}</h3>
+              </div>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase ${
+                  t.status === "open"
+                    ? "bg-amber-500/15 text-amber-500"
+                    : t.status === "resolved"
+                      ? "bg-success/15 text-success"
+                      : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {t.status === "pending" ? "Admin Replied" : t.status}
+              </span>
+            </div>
+
+            <div className="text-xs text-muted-foreground bg-surface p-3 rounded-xl border border-border/60">
+              <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Your Request Message ({timeAgo(t.created_at)})
+              </span>
+              <p className="text-foreground/90 whitespace-pre-wrap">{t.message}</p>
+            </div>
+
+            {t.replies && t.replies.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <ShieldCheck className="size-3.5" /> Support Team Replies ({t.replies.length})
+                </h4>
+                {t.replies.map((reply) => (
+                  <div
+                    key={reply.id}
+                    className="rounded-xl border border-primary/25 bg-primary/10 p-3 text-xs space-y-1"
+                  >
+                    <div className="flex items-center justify-between text-primary font-semibold text-[11px]">
+                      <span>{reply.sender_name}</span>
+                      <span className="text-[10px] text-muted-foreground font-normal">
+                        {timeAgo(reply.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                      {reply.message}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground italic flex items-center gap-1.5 pt-1">
+                <Clock3 className="size-3" /> Waiting for support team response... You will be
+                notified when an admin replies.
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

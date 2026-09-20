@@ -562,7 +562,15 @@ export function notificationsQuery(userId: string | null | undefined) {
           const notifs = await getNotificationsForUser(userId);
           if (notifs.length > 0) {
             return notifs.map((n) => {
-              const actor = localProfiles.find((p) => p.id === n.actor_id);
+              const actor =
+                n.actor_id === "xora_support_admin"
+                  ? {
+                      id: "xora_support_admin",
+                      username: "xora_support",
+                      display_name: "Xora Support Team",
+                      avatar_url: null,
+                    }
+                  : localProfiles.find((p) => p.id === n.actor_id);
               return {
                 ...n,
                 actor: actor
@@ -764,6 +772,23 @@ export function adminStatsQuery() {
         comments: totalComments,
         flagged: 0,
       };
+    },
+  });
+}
+
+export function adminRegisteredUsersQuery() {
+  return queryOptions({
+    queryKey: ["admin", "registered-users-list"],
+    queryFn: async (): Promise<ProfileRecord[]> => {
+      if (isFirebaseConfigured()) {
+        try {
+          const profiles = await getAllRegisteredProfiles();
+          return profiles || [];
+        } catch {
+          return [];
+        }
+      }
+      return localProfiles.filter((p) => Boolean(p.email || p.username));
     },
   });
 }

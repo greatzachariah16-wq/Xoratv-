@@ -11,6 +11,7 @@ import { AdminLoginGate } from "@/components/admin/AdminLoginGate";
 import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
 import { AdminLiveUsersTracker } from "@/components/admin/AdminLiveUsersTracker";
 import { AdminSupportInbox } from "@/components/admin/AdminSupportInbox";
+import { AdminUsersDirectory } from "@/components/admin/AdminUsersDirectory";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -147,6 +148,9 @@ function AdminPage() {
             <Link to="/admin" hash="presence" className="transition-colors hover:text-foreground">
               Live Tracker
             </Link>
+            <Link to="/admin" hash="users" className="transition-colors hover:text-foreground">
+              Users
+            </Link>
             <Link to="/admin" hash="support" className="transition-colors hover:text-foreground">
               Support
             </Link>
@@ -281,6 +285,7 @@ function AdminPage() {
 
         <div className="mt-8 space-y-8">
           <AdminLiveUsersTracker />
+          <AdminUsersDirectory />
           <AdminSupportInbox />
         </div>
 

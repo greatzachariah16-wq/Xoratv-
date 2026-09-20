@@ -1,8 +1,24 @@
-import { push, ref, set, get, update, onValue } from "@/integrations/firebase/rtdb";
+import {
+  push,
+  ref,
+  set,
+  get,
+  update,
+  onValue,
+  addNotificationForUser,
+} from "@/integrations/firebase/rtdb";
 import { isFirebaseConfigured, rtdb } from "@/integrations/firebase/config";
 
 export type SupportCategory =
   "technical" | "account" | "billing" | "report" | "privacy" | "feedback" | "other";
+
+export type SupportTicketReply = {
+  id: string;
+  sender: "admin" | "user";
+  sender_name: string;
+  message: string;
+  created_at: number;
+};
 
 export type SupportTicket = {
   id: string;
@@ -18,6 +34,7 @@ export type SupportTicket = {
   priority: "normal" | "high";
   created_at: number;
   updated_at: number;
+  replies?: SupportTicketReply[];
 };
 
 function makeTicketId(): string {
@@ -66,6 +83,11 @@ export function subscribeToSupportTickets(
       const list = Object.entries(raw).map(([key, val]) => ({
         ...val,
         rtdbKey: key,
+        replies: val.replies
+          ? Array.isArray(val.replies)
+            ? val.replies
+            : Object.values(val.replies)
+          : [],
       }));
       list.sort((a, b) => b.created_at - a.created_at);
       callback(list);
@@ -84,6 +106,97 @@ export function subscribeToSupportTickets(
     }, 2000);
     return () => clearInterval(interval);
   }
+}
+
+export function subscribeToUserSupportTickets(
+  userId: string,
+  callback: (tickets: SupportTicket[]) => void,
+): () => void {
+  return subscribeToSupportTickets((allTickets) => {
+    const userTickets = allTickets.filter((t) => t.user_id === userId);
+    callback(userTickets);
+  });
+}
+
+export async function addSupportTicketReply(
+  ticket: SupportTicket,
+  replyText: string,
+  adminName = "Xora Support Team",
+  newStatus: SupportTicket["status"] = "pending",
+): Promise<SupportTicketReply> {
+  const reply: SupportTicketReply = {
+    id: `reply_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    sender: "admin",
+    sender_name: adminName,
+    message: replyText,
+    created_at: Date.now(),
+  };
+
+  const updatedReplies = [...(ticket.replies || []), reply];
+  const now = Date.now();
+
+  if (isFirebaseConfigured()) {
+    let keyToUpdate = ticket.rtdbKey;
+    if (!keyToUpdate) {
+      const snapshot = await get(ref(rtdb, "supportTickets"));
+      if (snapshot.exists()) {
+        const raw = snapshot.val() as Record<string, SupportTicket>;
+        for (const [k, val] of Object.entries(raw)) {
+          if (val.id === ticket.id) {
+            keyToUpdate = k;
+            break;
+          }
+        }
+      }
+    }
+
+    if (keyToUpdate) {
+      await update(ref(rtdb, `supportTickets/${keyToUpdate}`), {
+        replies: updatedReplies,
+        status: newStatus,
+        updated_at: now,
+      });
+    }
+
+    if (ticket.user_id && !ticket.user_id.startsWith("guest_")) {
+      const notifId = `notif_sup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      await addNotificationForUser(ticket.user_id, {
+        id: notifId,
+        user_id: ticket.user_id,
+        actor_id: "xora_support_admin",
+        kind: "support_reply",
+        post_id: null,
+        read: false,
+        created_at: new Date().toISOString(),
+        message: `Xora Support replied to "${ticket.subject}": ${replyText.slice(0, 90)}...`,
+      });
+    }
+  } else {
+    const local = JSON.parse(
+      localStorage.getItem("xora_support_tickets") || "[]",
+    ) as SupportTicket[];
+    const updated = local.map((t) =>
+      t.id === ticket.id
+        ? { ...t, replies: updatedReplies, status: newStatus, updated_at: now }
+        : t,
+    );
+    localStorage.setItem("xora_support_tickets", JSON.stringify(updated));
+
+    const localNotifs = JSON.parse(localStorage.getItem("xora_notifications") || "[]");
+    localNotifs.unshift({
+      id: `notif_sup_${Date.now()}`,
+      user_id: ticket.user_id,
+      actor_id: "xora_support_admin",
+      kind: "support_reply",
+      post_id: null,
+      read: false,
+      created_at: new Date().toISOString(),
+      message: `Xora Support replied to "${ticket.subject}": ${replyText.slice(0, 90)}...`,
+    });
+    localStorage.setItem("xora_notifications", JSON.stringify(localNotifs));
+  }
+
+  return reply;
 }
 
 export async function updateSupportTicketStatus(
