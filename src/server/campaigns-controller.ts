@@ -188,6 +188,91 @@ export async function handleCampaignsRoute(request: Request, url: URL): Promise<
       }
     }
 
+    // POST /api/admin/campaigns/upload-banner
+    if (pathname === "/api/admin/campaigns/upload-banner" && request.method === "POST") {
+      try {
+        const contentType = request.headers.get("content-type") || "";
+        let bannerUrl = "";
+
+        if (contentType.includes("multipart/form-data")) {
+          const formData = await request.formData();
+          const file = formData.get("file") as File | null;
+          if (!file) {
+            return jsonReply({ ok: false, error: "No image file provided in upload" }, 400);
+          }
+
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const mimeType = file.type || "image/jpeg";
+
+          // Try uploading to Cloudinary server-side if configured
+          const cloudName =
+            process.env.VITE_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME;
+          const apiKey = process.env.CLOUDINARY_API_KEY;
+          const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+          if (cloudName && apiKey && apiSecret) {
+            try {
+              const timestamp = Math.round(Date.now() / 1000);
+              const signaturePayload = `folder=xora/ads&timestamp=${timestamp}${apiSecret}`;
+              const signature = crypto.createHash("sha1").update(signaturePayload).digest("hex");
+
+              const cFormData = new FormData();
+              cFormData.append("file", `data:${mimeType};base64,${buffer.toString("base64")}`);
+              cFormData.append("api_key", apiKey);
+              cFormData.append("timestamp", String(timestamp));
+              cFormData.append("signature", signature);
+              cFormData.append("folder", "xora/ads");
+
+              const cRes = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                {
+                  method: "POST",
+                  body: cFormData,
+                },
+              );
+
+              if (cRes.ok) {
+                const cData = await cRes.json();
+                if (cData.secure_url || cData.url) {
+                  bannerUrl = cData.secure_url || cData.url;
+                }
+              }
+            } catch (cErr) {
+              console.warn("[Campaign Upload] Cloudinary server upload fallback:", cErr);
+            }
+          }
+
+          // If not Cloudinary or Cloudinary failed, generate high-quality web data URI
+          if (!bannerUrl) {
+            bannerUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+          }
+
+          return jsonReply({
+            ok: true,
+            url: bannerUrl,
+            message: "Banner uploaded from device successfully.",
+          });
+        } else {
+          const body = (await request.json().catch(() => ({}))) as {
+            dataUrl?: string;
+            filename?: string;
+          };
+          if (!body.dataUrl) {
+            return jsonReply({ ok: false, error: "No image data provided" }, 400);
+          }
+          return jsonReply({
+            ok: true,
+            url: body.dataUrl,
+            message: "Banner uploaded from device successfully.",
+          });
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error processing banner upload";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
     // POST /api/admin/campaigns/delete
     if (pathname === "/api/admin/campaigns/delete" && request.method === "POST") {
       try {

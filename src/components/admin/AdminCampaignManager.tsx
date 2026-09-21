@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   BarChart3,
@@ -7,7 +7,11 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  FileImage,
+  HardDrive,
+  ImageIcon,
   Layers,
+  Link as LinkIcon,
   Megaphone,
   MousePointerClick,
   Pause,
@@ -18,6 +22,7 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  UploadCloud,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +49,7 @@ import type {
   CampaignStatus,
 } from "@/lib/campaigns/types";
 import { DeepShadowAdShell } from "@/components/ads/DeepShadowAdShell";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
 
 const PLACEMENT_LABELS: Record<CampaignPlacement, string> = {
   all: "All Placements",
@@ -54,6 +59,31 @@ const PLACEMENT_LABELS: Record<CampaignPlacement, string> = {
   xseries_feed: "X Series Catalog",
   chat_banner: "Live Chat Banner",
 };
+
+const SAMPLE_PRESETS = [
+  {
+    name: "Cyberpunk Action",
+    url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80",
+  },
+  {
+    name: "Midnight Horror",
+    url: "https://images.unsplash.com/photo-1509281373149-e957c6296406?w=800&auto=format&fit=crop&q=80",
+  },
+  {
+    name: "Mobile Data / Telecom",
+    url: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&auto=format&fit=crop&q=80",
+  },
+  {
+    name: "Cinema Premiere",
+    url: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&auto=format&fit=crop&q=80",
+  },
+];
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function AdminCampaignManager() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -67,6 +97,14 @@ export function AdminCampaignManager() {
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Banner upload mode & file details
+  const [bannerUploadMode, setBannerUploadMode] = useState<"device" | "url" | "presets">("device");
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedFileSize, setUploadedFileSize] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
   const [headline, setHeadline] = useState("");
@@ -118,9 +156,10 @@ export function AdminCampaignManager() {
     setHeadline("");
     setSubheadline("");
     setDescription("");
-    setBannerUrl(
-      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80",
-    );
+    setBannerUrl("");
+    setUploadedFileName("");
+    setUploadedFileSize("");
+    setBannerUploadMode("device");
     setCtaText("Claim Offer");
     setCtaUrl("/rewards");
     setPlacement("reward_popup");
@@ -139,6 +178,9 @@ export function AdminCampaignManager() {
     setSubheadline(camp.subheadline || "");
     setDescription(camp.description || "");
     setBannerUrl(camp.bannerUrl || "");
+    setUploadedFileName("");
+    setUploadedFileSize("");
+    setBannerUploadMode(camp.bannerUrl?.startsWith("data:") ? "device" : "url");
     setCtaText(camp.ctaText || "Learn More");
     setCtaUrl(camp.ctaUrl || "");
     setPlacement(camp.placement);
@@ -196,20 +238,108 @@ export function AdminCampaignManager() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Dedicated device image processing with multi-tier upload fallback
+  const processDeviceImage = async (file: File) => {
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (PNG, JPG, WebP, GIF, SVG).");
+      return;
+    }
 
+    // Immediate local object URL for instant UI preview
+    const localPreview = URL.createObjectURL(file);
+    setBannerUrl(localPreview);
+    setUploadedFileName(file.name);
+    setUploadedFileSize(formatFileSize(file.size));
     setIsUploadingImage(true);
+    setUploadProgress(20);
+
     try {
-      const result = await uploadToCloudinary(file, { resourceType: "image", folder: "xora/ads" });
-      setBannerUrl(result.url);
-      toast.success("Banner image uploaded successfully!");
+      let uploadedUrl = "";
+
+      // Tier 1: Cloudinary direct client upload if configured
+      if (isCloudinaryConfigured()) {
+        try {
+          const result = await uploadToCloudinary(file, {
+            resourceType: "image",
+            folder: "xora/ads",
+            onProgress: (p) => setUploadProgress(Math.max(20, p)),
+          });
+          if (result.url) {
+            uploadedUrl = result.url;
+          }
+        } catch (cErr) {
+          console.warn("[Device Upload] Direct Cloudinary upload fallback:", cErr);
+        }
+      }
+
+      // Tier 2: Server-side banner upload endpoint
+      if (!uploadedUrl) {
+        setUploadProgress(60);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/admin/campaigns/upload-banner", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.ok && json.url) {
+            uploadedUrl = json.url;
+          }
+        }
+      }
+
+      // Tier 3: Local data URI fallback (guarantees device upload never fails)
+      if (!uploadedUrl) {
+        setUploadProgress(80);
+        uploadedUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed reading local device file"));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      setBannerUrl(uploadedUrl);
+      setUploadProgress(100);
+      toast.success(`Banner "${file.name}" uploaded from your device!`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Image upload failed";
+      const msg = err instanceof Error ? err.message : "Device upload failed";
       toast.error(msg);
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      void processDeviceImage(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      void processDeviceImage(file);
     }
   };
 
@@ -218,6 +348,11 @@ export function AdminCampaignManager() {
 
     if (!headline.trim() || !ctaText.trim() || !ctaUrl.trim()) {
       toast.error("Please fill in the headline, CTA text, and CTA URL.");
+      return;
+    }
+
+    if (!bannerUrl.trim()) {
+      toast.error("Please upload a banner image from your device or provide a banner image URL.");
       return;
     }
 
@@ -320,8 +455,8 @@ export function AdminCampaignManager() {
             In-House Ad & Campaign Manager
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Configure dynamic in-house promotional cards, reward popup sponsors, and custom partner
-            campaigns.
+            Configure promotional banners uploaded from your device, reward popup sponsors, and
+            partner campaigns.
           </p>
         </div>
 
@@ -449,7 +584,7 @@ export function AdminCampaignManager() {
           <p className="mt-1">
             {searchQuery
               ? "No campaign matched your query."
-              : "Create your first in-house promotional campaign."}
+              : "Create your first in-house promotional campaign with a custom banner."}
           </p>
           <Button onClick={openCreateModal} size="sm" className="mt-4 rounded-full text-xs">
             <Plus className="size-3 mr-1.5" /> Create Campaign
@@ -598,7 +733,8 @@ export function AdminCampaignManager() {
               {editingCampaign ? "Edit In-House Campaign" : "Create In-House Campaign"}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Configure copy, media banner, destination target, and placement priorities.
+              Upload custom banner imagery directly from your device, configure copy, CTA link, and
+              placements.
             </DialogDescription>
           </DialogHeader>
 
@@ -648,27 +784,206 @@ export function AdminCampaignManager() {
                 </div>
               </div>
 
-              <div>
-                <Label className="text-xs font-semibold">Banner Image URL</Label>
-                <div className="mt-1 flex gap-2">
-                  <Input
-                    placeholder="https://images.unsplash.com/..."
-                    value={bannerUrl}
-                    onChange={(e) => setBannerUrl(e.target.value)}
-                    className="h-9 rounded-xl text-xs bg-background/50"
-                  />
-                  <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-xl border border-border bg-secondary/50 px-3 text-xs font-medium hover:bg-secondary">
-                    <Upload className="size-3" />
-                    {isUploadingImage ? "..." : "Upload"}
+              {/* Enhanced Banner Media Section with Device Upload */}
+              <div className="space-y-2.5 rounded-2xl border border-border/60 bg-secondary/20 p-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <ImageIcon className="size-3.5 text-primary" />
+                    <span>Banner Media *</span>
+                  </Label>
+
+                  {/* Mode switcher tabs */}
+                  <div className="flex items-center gap-1 rounded-lg bg-background/60 p-0.5 border border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => setBannerUploadMode("device")}
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-semibold transition ${
+                        bannerUploadMode === "device"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <HardDrive className="size-2.5 inline mr-1" />
+                      From Device
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBannerUploadMode("url")}
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-semibold transition ${
+                        bannerUploadMode === "url"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <LinkIcon className="size-2.5 inline mr-1" />
+                      Image URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBannerUploadMode("presets")}
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-semibold transition ${
+                        bannerUploadMode === "presets"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Sparkles className="size-2.5 inline mr-1" />
+                      Presets
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. Device Upload Mode */}
+                {bannerUploadMode === "device" && (
+                  <div className="space-y-2">
+                    {/* Hidden Native File Input */}
                     <input
+                      ref={fileInputRef}
                       type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
+                      accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml"
+                      onChange={handleFileInputChange}
                       disabled={isUploadingImage}
                       className="hidden"
                     />
-                  </label>
-                </div>
+
+                    {/* Drag & Drop Dropzone Box */}
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 text-center transition ${
+                        dragActive
+                          ? "border-primary bg-primary/10 shadow-lift scale-[1.01]"
+                          : "border-border/80 bg-background/40 hover:border-primary/50 hover:bg-background/70"
+                      } ${isUploadingImage ? "opacity-75 pointer-events-none" : ""}`}
+                    >
+                      {isUploadingImage ? (
+                        <div className="flex flex-col items-center py-2 space-y-2">
+                          <RefreshCw className="size-6 animate-spin text-primary" />
+                          <span className="text-xs font-semibold text-foreground">
+                            Uploading from device ({uploadProgress}%)...
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            Processing and preparing banner
+                          </span>
+                        </div>
+                      ) : bannerUrl ? (
+                        <div className="flex w-full items-center justify-between gap-3 text-left">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={bannerUrl}
+                              alt="Uploaded banner"
+                              className="size-12 shrink-0 rounded-lg object-cover border border-primary/30 shadow-card"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground truncate">
+                                <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                                <span className="truncate">
+                                  {uploadedFileName || "Device Banner Loaded"}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">
+                                {uploadedFileSize ? `${uploadedFileSize} • ` : ""}Click or drag to
+                                replace
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fileInputRef.current?.click();
+                              }}
+                              className="h-7 text-[10px] rounded-lg border-border"
+                            >
+                              Replace
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBannerUrl("");
+                                setUploadedFileName("");
+                                setUploadedFileSize("");
+                              }}
+                              className="h-7 size-7 p-0 text-muted-foreground hover:text-rose-400 rounded-lg"
+                              title="Remove banner"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center py-2 space-y-1.5">
+                          <div className="grid size-10 place-items-center rounded-xl bg-primary/15 text-primary group-hover:bg-primary/25 transition">
+                            <UploadCloud className="size-5" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-semibold text-foreground block">
+                              Click to choose from your device, or drag & drop here
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block mt-0.5">
+                              Supports PNG, JPG, WebP, GIF, SVG (recommended ratio ~21:9 or 16:9)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Direct Image URL Mode */}
+                {bannerUploadMode === "url" && (
+                  <div className="space-y-1.5">
+                    <Input
+                      placeholder="https://images.unsplash.com/... or https://..."
+                      value={bannerUrl}
+                      onChange={(e) => setBannerUrl(e.target.value)}
+                      className="h-9 rounded-xl text-xs bg-background/50"
+                    />
+                    <span className="text-[10px] text-muted-foreground block">
+                      Direct HTTP(S) image URL hosted on CDN or image server.
+                    </span>
+                  </div>
+                )}
+
+                {/* 3. Sample Presets Mode */}
+                {bannerUploadMode === "presets" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {SAMPLE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          setBannerUrl(preset.url);
+                          setUploadedFileName(preset.name);
+                          toast.success(`Applied "${preset.name}" banner preset.`);
+                        }}
+                        className={`group relative overflow-hidden rounded-xl border p-2 text-left transition ${
+                          bannerUrl === preset.url
+                            ? "border-primary bg-primary/10 shadow-sm"
+                            : "border-border/60 bg-background/40 hover:border-primary/40"
+                        }`}
+                      >
+                        <img
+                          src={preset.url}
+                          alt={preset.name}
+                          className="h-12 w-full rounded-lg object-cover mb-1.5"
+                        />
+                        <span className="text-[11px] font-semibold text-foreground block truncate">
+                          {preset.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -776,7 +1091,7 @@ export function AdminCampaignManager() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isSaving || isUploadingImage}
                   className="rounded-xl text-xs h-9 bg-primary px-5 text-primary-foreground"
                 >
                   {isSaving
