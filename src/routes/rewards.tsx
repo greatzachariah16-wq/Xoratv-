@@ -30,6 +30,8 @@ import {
   maskPhone,
   normalizeNigerianPhone,
 } from "@/lib/rewards/phone";
+import { RewardPopup } from "@/components/rewards/RewardPopup";
+import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 
 export const Route = createFileRoute("/rewards")({
   head: () => ({
@@ -247,6 +249,16 @@ function RewardsPage() {
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2.5 py-1.5 border border-border">
                 <Clock className="size-3.5 text-amber-500" /> 30-Day Validity
               </span>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <RewardPopup
+                trigger={
+                  <Button className="rounded-full px-5 text-xs font-semibold shadow-lift">
+                    <Gift className="size-3.5 mr-1.5" /> Open Quick Claim Popup
+                  </Button>
+                }
+              />
             </div>
           </div>
         </div>
@@ -521,6 +533,17 @@ function RewardsPage() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* In-House Partner Promotion */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="size-3.5 text-primary" /> Sponsored Partner
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Featured</span>
+                </div>
+                <XoraInHouseAd placement="reward_popup" variant="card" />
               </div>
 
               {/* Policy Disclaimer */}

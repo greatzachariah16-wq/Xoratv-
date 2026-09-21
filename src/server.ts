@@ -9,6 +9,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleRewardsRoute } from "./server/rewards-controller";
+import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -289,6 +290,15 @@ export default {
     if (url.pathname.startsWith("/api/rewards") || url.pathname.startsWith("/api/admin/rewards")) {
       const rewardsRes = await handleRewardsRoute(request, url);
       if (rewardsRes) return rewardsRes;
+    }
+
+    // In-House Ads & Promotional Campaigns (User & Admin)
+    if (
+      url.pathname.startsWith("/api/campaigns") ||
+      url.pathname.startsWith("/api/admin/campaigns")
+    ) {
+      const campaignsRes = await handleCampaignsRoute(request, url);
+      if (campaignsRes) return campaignsRes;
     }
 
     // Sovereign Admin Authentication and Management Endpoints

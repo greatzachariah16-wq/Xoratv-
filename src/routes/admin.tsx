@@ -14,6 +14,7 @@ import { AdminSupportInbox } from "@/components/admin/AdminSupportInbox";
 import { AdminUsersDirectory } from "@/components/admin/AdminUsersDirectory";
 import { AdminFraudShieldDashboard } from "@/components/admin/AdminFraudShieldDashboard";
 import { AdminRewardsManager } from "@/components/admin/AdminRewardsManager";
+import { AdminCampaignManager } from "@/components/admin/AdminCampaignManager";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -170,6 +171,9 @@ function AdminPage() {
             >
               Data Rewards
             </Link>
+            <Link to="/admin" hash="campaigns" className="transition-colors hover:text-foreground">
+              In-House Ads
+            </Link>
             <Link to="/admin" hash="discovery" className="transition-colors hover:text-foreground">
               Discovery
             </Link>
@@ -305,6 +309,7 @@ function AdminPage() {
           <AdminSupportInbox />
           <AdminFraudShieldDashboard />
           <AdminRewardsManager />
+          <AdminCampaignManager />
         </div>
 
         <Link

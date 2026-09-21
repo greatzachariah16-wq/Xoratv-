@@ -6,7 +6,12 @@
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
-        "username": { "type": "string", "minLength": 3, "maxLength": 24, "pattern": "^[a-z0-9_]+$" },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[a-z0-9_]+$"
+        },
         "email": { "type": "string", "format": "email", "maxLength": 128 },
         "displayName": { "type": "string", "maxLength": 50 },
         "avatarUrl": { "type": "string", "maxLength": 500 },
