@@ -337,7 +337,7 @@ function WatchPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 sm:gap-4">
               {upNextMovies.map((movie) => (
                 <button
                   key={movie.id}
@@ -347,7 +347,7 @@ function WatchPage() {
                     navigate({ to: "/watch", search: { id: movie.id } });
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] text-left transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-white/[0.06]"
+                  className="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-left transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-white/[0.06] sm:rounded-2xl"
                 >
                   <div className="relative aspect-video w-full overflow-hidden bg-black/60">
                     {movie.thumbnailUrl ? (
@@ -356,20 +356,20 @@ function WatchPage() {
                         alt={movie.title}
                         loading="lazy"
                         referrerPolicy="no-referrer"
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                       />
                     ) : null}
-                    <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition duration-300 group-hover:opacity-100">
-                      <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
-                        <Play className="ml-0.5 size-4 fill-current" />
+                    <div className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100">
+                      <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition group-hover:scale-110 sm:size-10">
+                        <Play className="ml-0.5 size-3.5 fill-current sm:size-4" />
                       </span>
                     </div>
                   </div>
-                  <div className="p-3.5">
-                    <h4 className="line-clamp-1 text-sm font-semibold text-white group-hover:text-primary transition">
+                  <div className="p-2 sm:p-3">
+                    <h4 className="line-clamp-1 text-xs font-semibold text-white transition group-hover:text-primary sm:text-sm">
                       {movie.title}
                     </h4>
-                    <p className="mt-1 line-clamp-1 text-xs text-white/50">
+                    <p className="mt-0.5 line-clamp-1 text-[11px] text-white/50 sm:text-xs">
                       {movie.description || "Stream on Xora"}
                     </p>
                   </div>

@@ -163,7 +163,7 @@ function XTvCard({
     <div className="flex flex-col">
       <article
         id={`card-${item.id}`}
-        className="group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-surface shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl"
+        className="group relative overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md sm:rounded-2xl"
       >
         <Link
           id={`btn-play-card-${item.id}`}
@@ -185,22 +185,29 @@ function XTvCard({
                 alt={item.title}
                 loading="lazy"
                 referrerPolicy="no-referrer"
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
               />
             ) : null}
-            <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition duration-300 group-hover:opacity-100">
-              <span className="grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
-                <Play className="ml-0.5 size-5 fill-current" />
+            <div className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100">
+              <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition group-hover:scale-110 sm:size-10">
+                <Play className="ml-0.5 size-3.5 fill-current sm:size-4" />
               </span>
             </div>
+            {item.genre ? (
+              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/90 backdrop-blur-xs sm:text-[10px]">
+                {item.genre}
+              </span>
+            ) : null}
           </div>
         </Link>
-        <div className="p-4">
-          <h3 className="truncate font-display text-base font-semibold tracking-tight group-hover:text-primary transition">
+        <div className="p-2 sm:p-3">
+          <h3 className="line-clamp-1 font-display text-xs font-semibold tracking-tight transition group-hover:text-primary sm:text-sm">
             {item.title}
           </h3>
           {item.description ? (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground sm:text-xs">
+              {item.description}
+            </p>
           ) : null}
         </div>
       </article>
@@ -409,25 +416,25 @@ function XTvSeriesPage() {
                 {isFetching ? "Refreshing..." : "Curated sovereign stream"}
               </span>
             </div>
-            <div className="grid gap-5 md:grid-cols-2">
-              <XTvCard item={featured} featured userId={user?.id} />
-              <div className="flex flex-col justify-between rounded-[1.35rem] border border-border/60 bg-surface p-6">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+              <XTvCard item={featured} userId={user?.id} />
+              <div className="flex flex-col justify-between rounded-xl border border-border/60 bg-surface p-4 shadow-xs sm:rounded-2xl sm:p-5">
                 <div>
-                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Sparkles className="size-5" />
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10">
+                    <Sparkles className="size-4 sm:size-5" />
                   </div>
-                  <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                     Full-Page Cinema
                   </p>
-                  <h3 className="mt-2 font-display text-2xl font-semibold tracking-tight">
+                  <h3 className="mt-1 font-display text-lg font-semibold tracking-tight sm:text-xl">
                     {featured.title}
                   </h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                     {featured.description ||
                       "Click to launch full-page cinema playback in high definition."}
                   </p>
                 </div>
-                <div className="mt-6 flex items-center gap-3">
+                <div className="mt-4 flex items-center gap-3">
                   <Link
                     id="btn-watch-featured"
                     to="/watch"
@@ -441,7 +448,7 @@ function XTvSeriesPage() {
                         userId: user?.id,
                       });
                     }}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                    className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90"
                   >
                     Watch full movie <ArrowRight className="size-3.5" />
                   </Link>
@@ -454,12 +461,12 @@ function XTvSeriesPage() {
 
         {/* All Titles Shelf */}
         <section id="xseries-catalog-shelf">
-          <div className="mb-4 flex items-end justify-between">
+          <div className="mb-3.5 flex items-end justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                 {genre === "All" ? "Full Collection" : `${genre} Titles`}
               </p>
-              <h2 className="font-display text-xl font-semibold tracking-tight">
+              <h2 className="font-display text-lg font-semibold tracking-tight sm:text-xl">
                 {genre === "All" ? "All Available Titles" : `${genre} on X Series`}
               </h2>
             </div>
@@ -479,7 +486,7 @@ function XTvSeriesPage() {
           </div>
 
           {shelves.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-4">
               {shelves.map((item) => (
                 <XTvCard key={item.id} item={item} userId={user?.id} />
               ))}
