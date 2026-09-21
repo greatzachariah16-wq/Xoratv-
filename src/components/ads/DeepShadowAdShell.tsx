@@ -69,11 +69,18 @@ export function DeepShadowAdShell({
       }).catch(() => {});
     }
 
-    if (campaign.ctaUrl) {
-      if (campaign.ctaUrl.startsWith("http://") || campaign.ctaUrl.startsWith("https://")) {
-        window.open(campaign.ctaUrl, "_blank", "noopener,noreferrer");
+    const rawCta = (campaign.ctaUrl || "").trim();
+    if (rawCta) {
+      // Clean accidental spaces inside local routes (e.g. '/rewards data rewards' -> '/rewards')
+      const targetUrl =
+        rawCta.startsWith("http://") || rawCta.startsWith("https://")
+          ? rawCta
+          : rawCta.split(/\s+/)[0];
+
+      if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
       } else {
-        window.location.href = campaign.ctaUrl;
+        window.location.href = targetUrl;
       }
     }
   };

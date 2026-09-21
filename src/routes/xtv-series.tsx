@@ -20,6 +20,7 @@ import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
+import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/xtv-series")({
@@ -398,6 +399,9 @@ function XTvSeriesPage() {
             })}
           </div>
         </section>
+
+        {/* Xora In-House Ad Campaign Placement */}
+        <XoraInHouseAd placement="xseries_feed" variant="banner" className="my-2" />
 
         {/* Featured Section */}
         {featured ? (

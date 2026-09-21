@@ -32,9 +32,17 @@ export function XoraInHouseAd({
         if (res.ok) {
           const data = (await res.json()) as { ok: boolean; campaigns: Campaign[] };
           if (data.ok && data.campaigns && data.campaigns.length > 0) {
-            // Select highest priority campaign or random top campaign
             if (isMounted) {
-              setCampaign(data.campaigns[0]);
+              // Prefer exact placement match first if available
+              const exactMatches = data.campaigns.filter((c) => c.placement === placement);
+              const pool = exactMatches.length > 0 ? exactMatches : data.campaigns;
+
+              // Pick top priority campaign or random among highest priority group
+              const maxPriority = Math.max(...pool.map((c) => c.priority ?? 50));
+              const topTier = pool.filter((c) => (c.priority ?? 50) >= maxPriority - 10);
+              const selected = topTier[Math.floor(Math.random() * topTier.length)];
+
+              setCampaign(selected || pool[0]);
             }
           }
         }

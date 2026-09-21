@@ -136,11 +136,17 @@ export async function getActiveCampaigns(placement?: string): Promise<Campaign[]
     // Check date boundaries if set
     if (c.startDate) {
       const start = new Date(c.startDate).getTime();
-      if (start > now) return false;
+      if (!isNaN(start) && start > now) return false;
     }
     if (c.endDate) {
-      const end = new Date(c.endDate).getTime();
-      if (end < now) return false;
+      let end = new Date(c.endDate).getTime();
+      if (!isNaN(end)) {
+        // If endDate is YYYY-MM-DD without time, extend to end-of-day 23:59:59.999
+        if (!c.endDate.includes("T")) {
+          end += 86399999;
+        }
+        if (end < now) return false;
+      }
     }
 
     // Filter by placement

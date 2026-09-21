@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
+import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import ChatPage, {
   type ChatRoom,
   type ChatMessage,
@@ -324,6 +325,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <AppShell wide>
       <div className="mx-auto max-w-6xl pb-8">
+        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
         <ChatPage
           currentUserId={user?.id || null}
           currentProfile={currentProfileLite}

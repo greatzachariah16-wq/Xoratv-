@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
+import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { cn } from "@/lib/utils";
 
@@ -250,6 +251,9 @@ function WatchPage() {
 
         {/* Adcash placement beneath video player */}
         <AdcashPlacement slotId={`cinema-${activeId}`} className="my-6" />
+
+        {/* Xora In-House Ad Campaign Placement */}
+        <XoraInHouseAd placement="cinema_under_player" variant="banner" className="my-4" />
 
         {/* Movie Information & Details */}
         {activeMovie ? (

@@ -5,6 +5,7 @@ import { Sparkles, Users, Compass, Loader2 } from "lucide-react";
 import { feedInfiniteQuery, type FeedType } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
+import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
 import { DataSaverBadge } from "./DataSaverBadge";
@@ -151,18 +152,23 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         />
       ) : (
         <div className="space-y-4">
-          {allPosts.map((post) => {
+          {allPosts.map((post, index) => {
             const isAutoPlay = feed === "shorts" || vertical ? activeShortId === post.id : false;
+            const showInHouseAd = (index + 1) % 5 === 0;
             return (
-              <div
-                key={post.id}
-                ref={(el) => {
-                  if (el) cardRefs.current.set(post.id, el);
-                  else cardRefs.current.delete(post.id);
-                }}
-                data-post-id={post.id}
-              >
-                <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
+              <div key={post.id}>
+                <div
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(post.id, el);
+                    else cardRefs.current.delete(post.id);
+                  }}
+                  data-post-id={post.id}
+                >
+                  <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
+                </div>
+                {showInHouseAd && (
+                  <XoraInHouseAd placement="home_feed" variant="compact" className="my-3.5" />
+                )}
               </div>
             );
           })}
