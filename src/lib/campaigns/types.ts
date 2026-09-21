@@ -1,5 +1,12 @@
 export type CampaignPlacement =
-  "all" | "reward_popup" | "cinema_under_player" | "home_feed" | "xseries_feed" | "chat_banner";
+  | "all"
+  | "reward_popup"
+  | "cinema_popup"
+  | "cinema_under_player"
+  | "home_feed"
+  | "xseries_feed"
+  | "learn_feed"
+  | "chat_banner";
 
 export type CampaignStatus = "active" | "paused" | "archived";
 

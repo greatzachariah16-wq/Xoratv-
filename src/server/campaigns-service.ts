@@ -4,108 +4,16 @@ import type { Campaign, CampaignPlacement, CampaignAnalytics } from "../lib/camp
 
 const CAMPAIGNS_RTDB_PATH = "campaigns";
 
-const DEFAULT_INITIAL_CAMPAIGNS: Campaign[] = [
-  {
-    id: "camp-default-01",
-    headline: "Stream 4K Horror Originals on XoraTV",
-    subheadline: "Unlimited indie shockers, psychological thrillers, and exclusive shorts.",
-    description: "Experience genuine African and global horror cinema without subscription fees.",
-    bannerUrl:
-      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80",
-    ctaText: "Explore X Series",
-    ctaUrl: "/xtv-series",
-    placement: "all",
-    status: "active",
-    priority: 95,
-    sponsorName: "Xora Studios",
-    badge: "Featured Premiere",
-    impressions: 142,
-    clicks: 18,
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "camp-default-02",
-    headline: "MTN Pulse Night Data Bundle Offer",
-    subheadline: "Stream up to 5GB of late-night cinema at blazing 5G speed.",
-    description: "Get subsidized streaming bundles directly delivered to your registered MTN line.",
-    bannerUrl:
-      "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80",
-    ctaText: "Claim Free 1GB",
-    ctaUrl: "/rewards",
-    placement: "reward_popup",
-    status: "active",
-    priority: 90,
-    sponsorName: "MTN Nigeria Partner",
-    badge: "Sponsored Reward",
-    impressions: 89,
-    clicks: 14,
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "camp-default-03",
-    headline: "Xora Indie Filmmakers Grant 2026",
-    subheadline: "Submit your horror, thriller, or documentary short for global distribution.",
-    description: "Funded micro-grants for emerging creators across Nigeria and the diaspora.",
-    bannerUrl:
-      "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800&auto=format&fit=crop&q=80",
-    ctaText: "Submit Project",
-    ctaUrl: "/create",
-    placement: "cinema_under_player",
-    status: "active",
-    priority: 85,
-    sponsorName: "Xora Foundation",
-    badge: "Creator Spotlight",
-    impressions: 64,
-    clicks: 9,
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-/**
- * Ensures initial default campaigns exist if none are stored in RTDB or local memory.
- */
-async function ensureInitialCampaigns(): Promise<void> {
-  const existing = await queryRtdb(CAMPAIGNS_RTDB_PATH).catch(() => null);
-  if (!existing || typeof existing !== "object" || Object.keys(existing).length === 0) {
-    const initialMap: Record<string, Campaign> = {};
-    for (const c of DEFAULT_INITIAL_CAMPAIGNS) {
-      initialMap[c.id] = c;
-    }
-    await queryRtdb(CAMPAIGNS_RTDB_PATH, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(initialMap),
-    }).catch((err) => {
-      console.warn("[Campaigns Service] Failed to seed initial campaigns in RTDB:", err);
-    });
-
-    // Also populate in-memory fallback
-    const store = getLocalStore();
-    for (const c of DEFAULT_INITIAL_CAMPAIGNS) {
-      store.set(`${CAMPAIGNS_RTDB_PATH}/${c.id}`, c);
-    }
-  }
-}
-
 /**
  * Fetch all campaigns from database.
  */
 export async function getAllCampaigns(): Promise<Campaign[]> {
-  await ensureInitialCampaigns();
   const raw = (await queryRtdb(CAMPAIGNS_RTDB_PATH).catch(() => null)) as Record<
     string,
     Campaign
   > | null;
 
   const campaignMap = new Map<string, Campaign>();
-
-  // Load default fallback campaigns first
-  for (const c of DEFAULT_INITIAL_CAMPAIGNS) {
-    campaignMap.set(c.id, c);
-  }
 
   if (raw && typeof raw === "object") {
     for (const [id, c] of Object.entries(raw)) {
@@ -184,9 +92,7 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
     return item as Campaign;
   }
 
-  // Fallback to default initial campaigns if not yet modified in RTDB
-  const defaultItem = DEFAULT_INITIAL_CAMPAIGNS.find((c) => c.id === id);
-  return defaultItem ? { ...defaultItem } : null;
+  return null;
 }
 
 /**

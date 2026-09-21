@@ -1025,11 +1025,13 @@ export function AdminCampaignManager() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Placements</SelectItem>
-                      <SelectItem value="reward_popup">Reward Popup</SelectItem>
-                      <SelectItem value="cinema_under_player">Cinema Player</SelectItem>
-                      <SelectItem value="home_feed">Home Feed</SelectItem>
-                      <SelectItem value="xseries_feed">X Series Feed</SelectItem>
+                      <SelectItem value="home_feed">Homepage Feed</SelectItem>
+                      <SelectItem value="xseries_feed">X Series Catalog</SelectItem>
+                      <SelectItem value="learn_feed">Learn Feed</SelectItem>
                       <SelectItem value="chat_banner">Chat Banner</SelectItem>
+                      <SelectItem value="cinema_popup">Cinema Large Pop-up Banner</SelectItem>
+                      <SelectItem value="reward_popup">Reward Popup Modal</SelectItem>
+                      <SelectItem value="cinema_under_player">Cinema Player Footer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

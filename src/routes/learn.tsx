@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, FeedTabs } from "@/components/xora/AppShell";
 import { FeedList } from "@/components/xora/FeedList";
 import { TrendingRail } from "@/components/xora/TrendingRail";
+import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 
 export const Route = createFileRoute("/learn")({
   head: () => ({
@@ -31,6 +32,7 @@ function Learn() {
         </p>
       </header>
       <FeedTabs active="learn" />
+      <XoraInHouseAd placement="learn_feed" variant="banner" className="mb-4 mt-2" />
       <FeedList feed="learn" />
     </AppShell>
   );
