@@ -100,27 +100,36 @@ export async function getAllCampaigns(): Promise<Campaign[]> {
     Campaign
   > | null;
 
-  if (raw && typeof raw === "object") {
-    return Object.values(raw)
-      .filter((c): c is Campaign => Boolean(c && typeof c === "object" && c.id))
-      .sort(
-        (a, b) =>
-          (b.priority ?? 50) - (a.priority ?? 50) ||
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+  const campaignMap = new Map<string, Campaign>();
+
+  // Load default fallback campaigns first
+  for (const c of DEFAULT_INITIAL_CAMPAIGNS) {
+    campaignMap.set(c.id, c);
   }
 
-  // Check in-memory store
-  const store = getLocalStore();
-  const list: Campaign[] = [];
-  const prefix = `${CAMPAIGNS_RTDB_PATH}/`;
-  for (const [k, v] of store.entries()) {
-    if (k.startsWith(prefix) && v && typeof v === "object" && "id" in v) {
-      list.push(v as Campaign);
+  if (raw && typeof raw === "object") {
+    for (const [id, c] of Object.entries(raw)) {
+      if (c && typeof c === "object" && c.id) {
+        campaignMap.set(c.id, c);
+      }
+    }
+  } else {
+    // Check in-memory store
+    const store = getLocalStore();
+    const prefix = `${CAMPAIGNS_RTDB_PATH}/`;
+    for (const [k, v] of store.entries()) {
+      if (k.startsWith(prefix) && v && typeof v === "object" && "id" in v) {
+        const c = v as Campaign;
+        campaignMap.set(c.id, c);
+      }
     }
   }
 
-  return list.sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
+  return Array.from(campaignMap.values()).sort(
+    (a, b) =>
+      (b.priority ?? 50) - (a.priority ?? 50) ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
 
 /**
