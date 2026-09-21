@@ -1,6 +1,6 @@
 {
   "name": "Xora",
-  "description": "Xseris streaming network and custom logo-free video streaming web platform with admin controller and media catalog",
+  "description": "Xseris streaming network, sovereign content command center, automated VTUshare MTN mobile data viewer rewards, and media catalog",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

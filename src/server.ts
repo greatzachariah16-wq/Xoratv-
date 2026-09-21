@@ -8,6 +8,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
+import { handleRewardsRoute } from "./server/rewards-controller";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -282,6 +283,12 @@ export default {
     ) {
       const xseriesRes = await handleXseriesRoute(request, url);
       if (xseriesRes) return xseriesRes;
+    }
+
+    // Automated VTUshare MTN Data Rewards Endpoints (User & Admin)
+    if (url.pathname.startsWith("/api/rewards") || url.pathname.startsWith("/api/admin/rewards")) {
+      const rewardsRes = await handleRewardsRoute(request, url);
+      if (rewardsRes) return rewardsRes;
     }
 
     // Sovereign Admin Authentication and Management Endpoints

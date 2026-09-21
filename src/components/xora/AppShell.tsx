@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   CircleHelp,
+  Gift,
   GraduationCap,
   Home,
   Plus,
@@ -28,6 +29,7 @@ const NAV = [
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/chat", label: "Chat", icon: MessageCircle },
+  { to: "/rewards", label: "Rewards", icon: Gift },
   { to: "/notifications", label: "Alerts", icon: Bell },
 ] as const;
 

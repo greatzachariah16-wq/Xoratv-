@@ -13,6 +13,7 @@ import { AdminLiveUsersTracker } from "@/components/admin/AdminLiveUsersTracker"
 import { AdminSupportInbox } from "@/components/admin/AdminSupportInbox";
 import { AdminUsersDirectory } from "@/components/admin/AdminUsersDirectory";
 import { AdminFraudShieldDashboard } from "@/components/admin/AdminFraudShieldDashboard";
+import { AdminRewardsManager } from "@/components/admin/AdminRewardsManager";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -162,6 +163,13 @@ function AdminPage() {
             >
               Fraud Shield
             </Link>
+            <Link
+              to="/admin"
+              hash="data-rewards"
+              className="transition-colors hover:text-foreground"
+            >
+              Data Rewards
+            </Link>
             <Link to="/admin" hash="discovery" className="transition-colors hover:text-foreground">
               Discovery
             </Link>
@@ -296,6 +304,7 @@ function AdminPage() {
           <AdminUsersDirectory />
           <AdminSupportInbox />
           <AdminFraudShieldDashboard />
+          <AdminRewardsManager />
         </div>
 
         <Link

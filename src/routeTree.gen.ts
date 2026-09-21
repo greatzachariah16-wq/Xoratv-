@@ -18,6 +18,7 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RewardsRouteImport } from './routes/rewards'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShortsRouteImport } from './routes/shorts'
@@ -73,6 +74,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RewardsRoute = RewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/learn': typeof LearnRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
+  '/rewards': typeof RewardsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/shorts': typeof ShortsRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/learn': typeof LearnRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
+  '/rewards': typeof RewardsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/shorts': typeof ShortsRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/learn': typeof LearnRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
+  '/rewards': typeof RewardsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/shorts': typeof ShortsRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/notifications'
     | '/privacy'
+    | '/rewards'
     | '/search'
     | '/settings'
     | '/shorts'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/notifications'
     | '/privacy'
+    | '/rewards'
     | '/search'
     | '/settings'
     | '/shorts'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/notifications'
     | '/privacy'
+    | '/rewards'
     | '/search'
     | '/settings'
     | '/shorts'
@@ -277,6 +289,7 @@ export interface RootRouteChildren {
   LearnRoute: typeof LearnRoute
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
+  RewardsRoute: typeof RewardsRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
   ShortsRoute: typeof ShortsRoute
@@ -350,6 +363,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rewards': {
+      id: '/rewards'
+      path: '/rewards'
+      fullPath: '/rewards'
+      preLoaderRoute: typeof RewardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -464,6 +484,7 @@ const rootRouteChildren: RootRouteChildren = {
   LearnRoute: LearnRoute,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,
+  RewardsRoute: RewardsRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   ShortsRoute: ShortsRoute,
