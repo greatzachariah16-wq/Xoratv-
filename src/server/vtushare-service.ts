@@ -29,62 +29,73 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
 let latestWalletBalance: number | null = null;
 
 /**
- * Standard default fallback MTN plans (calibrated to VTUshare SME & Direct structure)
+ * Standard default fallback MTN plans (calibrated directly to live active VTUshare records)
  */
 export const DEFAULT_MTN_PLANS: VtusharePlan[] = [
   {
-    id: "mtn_500mb_sme",
+    id: "vtushare_990_25",
     network: "MTN",
-    networkId: "1",
-    bundle: "500MB",
-    type: "sme",
-    name: "MTN 500MB SME Data (30 Days)",
-    size: "500MB",
-    price: 135,
-    validity: "30 days",
-  },
-  {
-    id: "mtn_1gb_sme",
-    network: "MTN",
-    networkId: "1",
-    bundle: "1GB",
-    type: "sme",
-    name: "MTN 1GB SME Data (30 Days)",
+    networkId: "2",
+    bundle: "990",
+    type: "25",
+    name: "MTN 1GB AWOOF (30 Days)",
     size: "1GB",
-    price: 265,
+    price: 280,
     validity: "30 days",
   },
   {
-    id: "mtn_2gb_sme",
+    id: "vtushare_988_56",
     network: "MTN",
-    networkId: "1",
-    bundle: "2GB",
-    type: "sme",
-    name: "MTN 2GB SME Data (30 Days)",
+    networkId: "2",
+    bundle: "988",
+    type: "56",
+    name: "MTN 1GB SME (1 Day)",
+    size: "1GB",
+    price: 300,
+    validity: "1 day",
+  },
+  {
+    id: "vtushare_878_11",
+    network: "MTN",
+    networkId: "2",
+    bundle: "878",
+    type: "11",
+    name: "MTN 500MB DataShare",
+    size: "500MB",
+    price: 400,
+    validity: "30 days",
+  },
+  {
+    id: "vtushare_991_25",
+    network: "MTN",
+    networkId: "2",
+    bundle: "991",
+    type: "25",
+    name: "MTN 2GB AWOOF (30 Days)",
     size: "2GB",
-    price: 530,
+    price: 560,
     validity: "30 days",
   },
   {
-    id: "mtn_3gb_sme",
+    id: "vtushare_992_25",
     network: "MTN",
-    networkId: "1",
-    bundle: "3GB",
-    type: "sme",
-    name: "MTN 3GB SME Data (30 Days)",
+    networkId: "2",
+    bundle: "992",
+    type: "25",
+    name: "MTN 3GB AWOOF (30 Days)",
     size: "3GB",
-    price: 795,
+    price: 840,
     validity: "30 days",
   },
   {
-    id: "mtn_5gb_sme",
+    id: "vtushare_993_25",
     network: "MTN",
-    networkId: "1",
-    bundle: "5GB",
-    type: "sme",
-    name: "MTN 5GB SME Data (30 Days)",
+    networkId: "2",
+    bundle: "993",
+    type: "25",
+    name: "MTN 5GB AWOOF (30 Days)",
     size: "5GB",
-    price: 1325,
+    price: 1400,
     validity: "30 days",
   },
 ];
@@ -92,7 +103,7 @@ export const DEFAULT_MTN_PLANS: VtusharePlan[] = [
 export const DEFAULT_REWARD_CONFIG: RewardConfig = {
   enabled: true,
   rewardDataSize: "1GB",
-  selectedPlan: DEFAULT_MTN_PLANS[1], // 1GB SME
+  selectedPlan: DEFAULT_MTN_PLANS[0], // 1GB AWOOF (bundle: 990, type: 25)
   maxDailyBudget: 50000,
   maxRewardsPerUser: 1,
   minBalanceThreshold: 500,
@@ -304,7 +315,7 @@ export async function fetchLiveVtushareBalance(): Promise<{
 }
 
 /**
- * Fetch and refresh plan catalog from VTUshare (POST /api/v1/getPlans)
+ * Fetch and refresh plan catalog from VTUshare directly from active portal tables with API failover
  */
 export async function refreshVtusharePlans(): Promise<{
   ok: boolean;
@@ -312,6 +323,137 @@ export async function refreshVtusharePlans(): Promise<{
   error?: string;
   source: "live" | "cached" | "fallback";
 }> {
+  const { username, password } = getVtushareCredentials();
+
+  // Primary Method: Ingest live active bundle options directly from VTUshare portal
+  try {
+    const getRes = await fetch("https://vtushare.com.ng/login", {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      signal: AbortSignal.timeout(10000),
+    });
+    const getHtml = await getRes.text();
+    const cookies = getRes.headers.getSetCookie
+      ? getRes.headers.getSetCookie()
+      : [getRes.headers.get("set-cookie") || ""];
+    const csrf = getHtml.match(/name="_token"\s+value="([^"]+)"/)?.[1];
+
+    if (csrf) {
+      const cookieMap: Record<string, string> = {};
+      for (const c of cookies) {
+        if (!c) continue;
+        const [kv] = c.split(";");
+        const [k, v] = kv.split("=");
+        if (k && v) cookieMap[k.trim()] = v;
+      }
+      const cookieHeader = () =>
+        Object.entries(cookieMap)
+          .map(([k, v]) => `${k}=${v}`)
+          .join("; ");
+
+      const postRes = await fetch("https://vtushare.com.ng/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookieHeader(),
+          Referer: "https://vtushare.com.ng/login",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+        body: new URLSearchParams({
+          _token: csrf,
+          name: username || "zachariah",
+          password,
+        }).toString(),
+        redirect: "manual",
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const postCookies = postRes.headers.getSetCookie
+        ? postRes.headers.getSetCookie()
+        : [postRes.headers.get("set-cookie") || ""];
+      for (const c of postCookies) {
+        if (!c) continue;
+        const [kv] = c.split(";");
+        const [k, v] = kv.split("=");
+        if (k && v) cookieMap[k.trim()] = v;
+      }
+
+      const activeCategories = [
+        { type: "25", label: "AWOOF" },
+        { type: "56", label: "SME" },
+        { type: "11", label: "DATASHARE" },
+        { type: "50", label: "GIFTING" },
+      ];
+
+      const livePlans: VtusharePlan[] = [];
+
+      for (const cat of activeCategories) {
+        try {
+          const bRes = await fetch(
+            `https://vtushare.com.ng/data/bundle?provider=2&type=${cat.type}`,
+            {
+              headers: { Cookie: cookieHeader(), "User-Agent": "Mozilla/5.0" },
+              signal: AbortSignal.timeout(8000),
+            },
+          );
+          const bHtml = await bRes.text();
+          const regex = /<option[^>]*value=['"](\d+)['"][^>]*>(.*?)<\/option>/gi;
+          let m: RegExpExecArray | null;
+          while ((m = regex.exec(bHtml)) !== null) {
+            const bundle = m[1];
+            const text = m[2].trim();
+            if (!bundle || text.includes("Select")) continue;
+
+            const priceMatch =
+              text.match(/(?:=|₦|NGN|N)?\s*([0-9,]+)$/i) || text.match(/([0-9,]+)\s*$/);
+            const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, ""), 10) : 0;
+            const sizeMatch = text.match(/(\d+(?:\.\d+)?\s*(?:MB|GB))/i);
+            const size = sizeMatch ? sizeMatch[1].replace(/\s+/g, "").toUpperCase() : "1GB";
+
+            livePlans.push({
+              id: `vtushare_${bundle}_${cat.type}`,
+              network: "MTN",
+              networkId: "2",
+              bundle,
+              type: cat.type,
+              name: `MTN ${text}`,
+              size,
+              price: price || 280,
+              validity: text.includes("30") ? "30 days" : text.includes("7") ? "7 days" : "1 day",
+            });
+          }
+        } catch {
+          // Continue to next category
+        }
+      }
+
+      if (livePlans.length > 0) {
+        livePlans.sort((a, b) => a.price - b.price);
+
+        // Find best 1GB plan
+        const best1gb =
+          livePlans.find((p) => p.bundle === "990") ||
+          livePlans.find((p) => p.size === "1GB" && p.type === "25") ||
+          livePlans.find((p) => p.size === "1GB") ||
+          livePlans[0];
+
+        await updateStoredRewardConfig({
+          cachedPlans: livePlans,
+          selectedPlan: best1gb,
+          lastCatalogRefresh: new Date().toISOString(),
+        });
+
+        return {
+          ok: true,
+          plans: livePlans,
+          source: "live",
+        };
+      }
+    }
+  } catch (webErr) {
+    console.warn("[VTUshare] Live portal bundle fetch warning:", webErr);
+  }
+
+  // Fallback Method: Official API v1 endpoint
   const authRes = await getVtushareAuthToken();
   if (!authRes.ok || !authRes.token) {
     const config = await getStoredRewardConfig();
@@ -380,7 +522,6 @@ export async function refreshVtusharePlans(): Promise<{
         const nameRaw = String(rec.name || rec.plan_name || "");
         const nameUpper = nameRaw.toUpperCase();
 
-        // In VTUshare, network "2" is MTN, or name mentions MTN/AWOOF/SME
         const isMtn =
           networkRaw === "2" ||
           networkRaw === "1" ||
@@ -394,11 +535,10 @@ export async function refreshVtusharePlans(): Promise<{
         const bundle = String(rec.bundle_id || rec.bundle || rec.plan_id || rec.id || "");
         if (!bundle || bundle === "undefined") continue;
 
-        const type = String(rec.type || rec.plan_type || "12");
+        const type = String(rec.type || rec.plan_type || "25");
         const price = Number(rec.amount || rec.price || 0);
         if (price <= 0) continue;
 
-        // Determine human readable data size
         let size = "1GB";
         const sizeMatch = nameRaw.match(/(\d+(?:\.\d+)?\s*(?:MB|GB))/i);
         if (sizeMatch) {
@@ -429,12 +569,9 @@ export async function refreshVtusharePlans(): Promise<{
       }
     }
 
-    // Sort by price ascending
     parsedPlans.sort((a, b) => a.price - b.price);
-
     const finalPlans = parsedPlans.length > 0 ? parsedPlans : DEFAULT_MTN_PLANS;
 
-    // Save to RTDB rewardConfig
     await updateStoredRewardConfig({
       cachedPlans: finalPlans,
       lastCatalogRefresh: new Date().toISOString(),
@@ -478,6 +615,39 @@ export async function executeVtushareDataPurchase(params: {
   const normPhone = normalizeNigerianPhone(phone);
   const { email, password, username, isConfigured } = getVtushareCredentials();
 
+  let cleanBundle = String(bundle || "990");
+  let cleanType = String(type || "25");
+  let cleanNetwork = String(network || "2");
+
+  // In VTUshare, MTN network ID is strictly "2"
+  if (cleanNetwork === "1" || cleanNetwork.toLowerCase() === "mtn") {
+    cleanNetwork = "2";
+  }
+
+  // Auto-normalize legacy/inactive bundle IDs to verified live active VTUshare bundles
+  if (
+    cleanBundle === "1GB" ||
+    cleanBundle === "748" ||
+    cleanBundle === "752" ||
+    cleanBundle === "744" ||
+    cleanBundle === "mtn_1gb_sme"
+  ) {
+    cleanBundle = "990";
+    cleanType = "25";
+  } else if (cleanBundle === "500MB" || cleanBundle === "mtn_500mb_sme") {
+    cleanBundle = "878";
+    cleanType = "11";
+  } else if (cleanBundle === "2GB" || cleanBundle === "mtn_2gb_sme") {
+    cleanBundle = "991";
+    cleanType = "25";
+  } else if (cleanBundle === "3GB" || cleanBundle === "mtn_3gb_sme") {
+    cleanBundle = "992";
+    cleanType = "25";
+  } else if (cleanBundle === "5GB" || cleanBundle === "mtn_5gb_sme") {
+    cleanBundle = "993";
+    cleanType = "25";
+  }
+
   if (!isConfigured) {
     return {
       ok: false,
@@ -501,9 +671,9 @@ export async function executeVtushareDataPurchase(params: {
       },
       body: JSON.stringify({
         phone: normPhone,
-        network: network || "2",
-        bundle: isNaN(Number(bundle)) ? bundle : Number(bundle),
-        type: isNaN(Number(type)) ? type : Number(type),
+        network: cleanNetwork,
+        bundle: isNaN(Number(cleanBundle)) ? cleanBundle : Number(cleanBundle),
+        type: isNaN(Number(cleanType)) ? cleanType : Number(cleanType),
       }),
       signal: AbortSignal.timeout(20000),
     });
@@ -623,10 +793,10 @@ export async function executeVtushareDataPurchase(params: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         },
         body: JSON.stringify({
-          network: network || "2",
+          network: cleanNetwork,
           phone_number: normPhone,
-          bundle: String(bundle),
-          type: String(type),
+          bundle: String(cleanBundle),
+          type: String(cleanType),
           _token: sessionCsrf,
           Ported_number: false,
         }),
@@ -658,6 +828,21 @@ export async function executeVtushareDataPurchase(params: {
               ref: null,
               message:
                 "Provider error: Insufficient balance on VTUshare wallet (₦0.00). Please fund your wallet on vtushare.com.ng to fulfill data rewards.",
+              raw: webResult,
+            };
+          }
+
+          if (
+            failMsg.includes("Trying to get property") ||
+            failMsg.includes("non-object") ||
+            failMsg.includes("system glitch")
+          ) {
+            return {
+              ok: false,
+              status: "failed",
+              ref: null,
+              message:
+                "Provider plan mismatch: The requested bundle ID is inactive on VTUshare. Auto-mapped to MTN 1GB AWOOF bundle 990.",
               raw: webResult,
             };
           }
@@ -1013,7 +1198,7 @@ export async function claimUserReward(params: {
       phone: normPhone,
       bundle: selectedPlan.bundle,
       type: selectedPlan.type,
-      network: selectedPlan.networkId || "1",
+      network: selectedPlan.networkId || "2",
     });
 
     txRecord.vtushareRef = purchaseRes.ref;
