@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { initAdcashAutoTag } from "@/lib/adcash";
+import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 
 function NotFoundComponent() {
   return (
@@ -144,6 +145,7 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" />
+        <LargeBannerPopupAd />
       </AuthProvider>
     </QueryClientProvider>
   );

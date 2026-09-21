@@ -8,10 +8,7 @@ interface LargeBannerPopupAdProps {
   delayMs?: number;
 }
 
-export function LargeBannerPopupAd({
-  placement = "cinema_popup",
-  delayMs = 1200,
-}: LargeBannerPopupAdProps) {
+export function LargeBannerPopupAd({ placement, delayMs = 600 }: LargeBannerPopupAdProps) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -19,30 +16,48 @@ export function LargeBannerPopupAd({
     let isMounted = true;
     const fetchCampaign = async () => {
       try {
-        const res = await fetch(`/api/campaigns?placement=${encodeURIComponent(placement)}`);
+        // Fetch all active campaigns or target placement
+        const query = placement ? `?placement=${encodeURIComponent(placement)}` : "";
+        const res = await fetch(`/api/campaigns${query}`);
         if (res.ok) {
           const data = (await res.json()) as { ok: boolean; campaigns: Campaign[] };
           if (data.ok && data.campaigns && data.campaigns.length > 0) {
-            // Filter by exact placement or 'all'
-            const activePool = data.campaigns.filter(
-              (c) => c.status === "active" && (c.placement === placement || c.placement === "all"),
-            );
-            if (activePool.length > 0 && isMounted) {
+            // Find active pop-up campaigns (cinema_popup, reward_popup, all, or requested placement)
+            const activePool = data.campaigns.filter((c) => {
+              if (c.status !== "active") return false;
+              if (placement) return c.placement === placement || c.placement === "all";
+              return (
+                c.placement === "cinema_popup" ||
+                c.placement === "reward_popup" ||
+                c.placement === "all" ||
+                c.placement === "home_feed"
+              );
+            });
+
+            const poolToUse =
+              activePool.length > 0
+                ? activePool
+                : data.campaigns.filter((c) => c.status === "active");
+
+            if (poolToUse.length > 0 && isMounted) {
               // Select highest priority
-              const topCampaign = activePool.sort(
+              const topCampaign = poolToUse.sort(
                 (a, b) => (b.priority ?? 50) - (a.priority ?? 50),
               )[0];
+
               setCampaign(topCampaign);
 
-              // Check if dismissed in session
-              const dismissedKey = `xora_ad_dismissed_${topCampaign.id}`;
-              const isDismissed = sessionStorage.getItem(dismissedKey);
-
-              if (!isDismissed) {
-                setTimeout(() => {
-                  if (isMounted) setIsOpen(true);
-                }, delayMs);
-              }
+              setTimeout(() => {
+                if (isMounted) {
+                  setIsOpen(true);
+                  // Record impression
+                  void fetch("/api/campaigns/impression", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: topCampaign.id }),
+                  }).catch(() => {});
+                }
+              }, delayMs);
             }
           }
         }
