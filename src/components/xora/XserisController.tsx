@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { XSERIS_CATEGORIES, type XserisCandidate, type XserisCategory } from "@/lib/xseris/types";
+import { getAdminAuthHeaders } from "@/hooks/useAdminAuth";
 
 const initialUrls = Array.from({ length: 20 }, () => "");
 
@@ -17,7 +18,10 @@ export function XserisController() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/xseris/candidates", { credentials: "include" })
+    fetch("/api/xseris/candidates", {
+      headers: getAdminAuthHeaders({ Accept: "application/json" }),
+      credentials: "include",
+    })
       .then((r) => r.json())
       .then((d) => {
         if (active && d?.ok && Array.isArray(d.items)) {
@@ -55,7 +59,7 @@ export function XserisController() {
       const r = await fetch("/api/xseris/process", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ urls: entered }),
       });
       const data = await r.json();
@@ -85,7 +89,7 @@ export function XserisController() {
       const r = await fetch("/api/xseris/candidates/" + encodeURIComponent(item.id) + "/" + mode, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(v),
       });
       const data = await r.json();
@@ -126,7 +130,7 @@ export function XserisController() {
           {
             method: "POST",
             credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify(payload),
           },
         );

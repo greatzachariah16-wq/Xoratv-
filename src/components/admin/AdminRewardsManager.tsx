@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { RewardConfig, RewardTransaction, VtusharePlan } from "@/lib/rewards/types";
+import { getAdminAuthHeaders } from "@/hooks/useAdminAuth";
 
 interface AdminRewardsOverview {
   ok: boolean;
@@ -77,7 +78,7 @@ export function AdminRewardsManager() {
     try {
       if (showToast) setLoading(true);
       const res = await fetch("/api/admin/rewards/overview", {
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
       });
 
@@ -118,7 +119,7 @@ export function AdminRewardsManager() {
 
       const res = await fetch("/api/admin/rewards/config", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({
           enabled,
@@ -149,7 +150,7 @@ export function AdminRewardsManager() {
     try {
       const res = await fetch("/api/admin/rewards/refresh-plans", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
       });
       const json = await res.json();
@@ -171,7 +172,7 @@ export function AdminRewardsManager() {
     try {
       const res = await fetch("/api/admin/rewards/check-balance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
       });
       const json = await res.json();
@@ -200,7 +201,7 @@ export function AdminRewardsManager() {
     try {
       const res = await fetch("/api/admin/rewards/test-transaction", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({
           phone: testPhone.trim(),

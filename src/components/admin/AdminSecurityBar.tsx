@@ -11,7 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { AdminSessionInfo } from "@/hooks/useAdminAuth";
+import { type AdminSessionInfo, getAdminAuthHeaders } from "@/hooks/useAdminAuth";
 import { Button } from "@/components/ui/button";
 
 interface SecurityAuditEvent {
@@ -71,7 +71,10 @@ export function AdminSecurityBar({
   const fetchAuditLogs = async () => {
     setLoadingLogs(true);
     try {
-      const res = await fetch("/api/admin/audit-logs");
+      const res = await fetch("/api/admin/audit-logs", {
+        headers: getAdminAuthHeaders({ Accept: "application/json" }),
+        credentials: "include",
+      });
       if (res.ok) {
         const data = await res.json();
         setLogs(data.logs || []);
@@ -101,7 +104,8 @@ export function AdminSecurityBar({
     try {
       const res = await fetch("/api/admin/rotate-credentials", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
         body: JSON.stringify({
           newPhrase1,
           newPhrase2,

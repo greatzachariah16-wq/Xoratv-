@@ -9,12 +9,29 @@ export interface AdminSessionInfo {
 
 const STORAGE_KEY = "xora_admin_token";
 
-function getStoredToken(): string | null {
+export function getStoredAdminToken(): string | null {
   try {
     return sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY) || null;
   } catch {
     return null;
   }
+}
+
+export function getAdminAuthHeaders(
+  extraHeaders: Record<string, string> = {},
+): Record<string, string> {
+  const token = getStoredAdminToken();
+  const headers: Record<string, string> = {
+    ...extraHeaders,
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+function getStoredToken(): string | null {
+  return getStoredAdminToken();
 }
 
 function setStoredToken(token: string | null) {

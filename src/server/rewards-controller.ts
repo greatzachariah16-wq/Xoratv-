@@ -225,9 +225,12 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
 
   if (pathname.startsWith("/api/admin/rewards")) {
     const adminSession = verifyAdminSession(request);
-    if (!adminSession) {
+    if (!adminSession.valid) {
       return jsonReply(
-        { ok: false, error: "Unauthorized: Sovereign admin session required." },
+        {
+          ok: false,
+          error: adminSession.error || "Unauthorized: Sovereign admin session required.",
+        },
         401,
       );
     }

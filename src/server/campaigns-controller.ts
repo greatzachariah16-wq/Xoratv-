@@ -87,11 +87,11 @@ export async function handleCampaignsRoute(request: Request, url: URL): Promise<
 
   if (pathname.startsWith("/api/admin/campaigns")) {
     const adminCheck = verifyAdminSession(request);
-    if (!adminCheck.authorized) {
+    if (!adminCheck.valid) {
       return jsonReply(
         {
           ok: false,
-          error: "Unauthorized. Sovereign Admin session required.",
+          error: adminCheck.error || "Unauthorized. Sovereign Admin session required.",
           code: "ADMIN_AUTH_REQUIRED",
         },
         401,

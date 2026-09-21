@@ -50,6 +50,7 @@ import type {
 } from "@/lib/campaigns/types";
 import { DeepShadowAdShell } from "@/components/ads/DeepShadowAdShell";
 import { isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
+import { getAdminAuthHeaders } from "@/hooks/useAdminAuth";
 
 const PLACEMENT_LABELS: Record<CampaignPlacement, string> = {
   all: "All Placements",
@@ -125,7 +126,7 @@ export function AdminCampaignManager() {
     try {
       if (showToast) setLoading(true);
       const res = await fetch("/api/admin/campaigns", {
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
       });
 
@@ -198,7 +199,7 @@ export function AdminCampaignManager() {
     try {
       const res = await fetch("/api/admin/campaigns/toggle-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ id: camp.id, status: nextStatus }),
       });
@@ -222,7 +223,7 @@ export function AdminCampaignManager() {
     try {
       const res = await fetch("/api/admin/campaigns/delete", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ id: camp.id }),
       });
@@ -281,6 +282,8 @@ export function AdminCampaignManager() {
 
         const res = await fetch("/api/admin/campaigns/upload-banner", {
           method: "POST",
+          headers: getAdminAuthHeaders(),
+          credentials: "include",
           body: formData,
         });
 
@@ -382,7 +385,7 @@ export function AdminCampaignManager() {
 
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify(body),
       });
