@@ -50,6 +50,7 @@ export function AdminRewardsManager() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshingPlans, setIsRefreshingPlans] = useState(false);
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
   // Form states
   const [enabled, setEnabled] = useState(true);
@@ -162,6 +163,28 @@ export function AdminRewardsManager() {
       toast.error("Network error refreshing plans.");
     } finally {
       setIsRefreshingPlans(false);
+    }
+  };
+
+  const handleCheckBalance = async () => {
+    setIsCheckingBalance(true);
+    try {
+      const res = await fetch("/api/admin/rewards/check-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (json.ok && typeof json.balance === "number") {
+        toast.success(`Live VTUshare Wallet Balance: ₦${json.balance.toLocaleString()}`);
+        await fetchOverview();
+      } else {
+        toast.error(json.error || "Failed to fetch live balance from VTUshare.");
+      }
+    } catch {
+      toast.error("Network error checking live balance.");
+    } finally {
+      setIsCheckingBalance(false);
     }
   };
 
@@ -296,12 +319,21 @@ export function AdminRewardsManager() {
         <article className="rounded-2xl border border-border/70 bg-card p-4">
           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>Provider Wallet</span>
-            <Coins className="size-4 text-amber-500" />
+            <button
+              type="button"
+              onClick={handleCheckBalance}
+              disabled={isCheckingBalance}
+              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
+              title="Refresh live wallet balance from VTUshare"
+            >
+              <RefreshCw className={`size-3 ${isCheckingBalance ? "animate-spin" : ""}`} />
+              Check Live
+            </button>
           </div>
           <p className="mt-2 font-display text-2xl font-bold">
             {data?.provider.cachedBalance !== null && data?.provider.cachedBalance !== undefined
               ? `₦${data.provider.cachedBalance.toLocaleString()}`
-              : "Active"}
+              : "₦0"}
           </p>
           <span className="mt-1 block text-[11px] text-muted-foreground">
             Account: {data?.provider.emailMasked}

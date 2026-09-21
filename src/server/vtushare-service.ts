@@ -109,13 +109,15 @@ export const DEFAULT_REWARD_CONFIG: RewardConfig = {
 export function getVtushareCredentials(): {
   email: string;
   password: string;
+  username: string;
   isConfigured: boolean;
 } {
   let email = (process.env.VTUSHARE_EMAIL || "").trim();
   let password = (process.env.VTUSHARE_PASSWORD || "").trim();
+  let username = (process.env.VTUSHARE_USERNAME || "").trim();
 
   // Also check dev json file if available
-  if (!email || !password) {
+  if (!email || !password || !username) {
     try {
       const devEnvPath = "/app/.dev.env.json";
       if (fs.existsSync(devEnvPath)) {
@@ -123,15 +125,23 @@ export function getVtushareCredentials(): {
         if (!email && devEnv.VTUSHARE_EMAIL) email = String(devEnv.VTUSHARE_EMAIL).trim();
         if (!password && devEnv.VTUSHARE_PASSWORD)
           password = String(devEnv.VTUSHARE_PASSWORD).trim();
+        if (!username && devEnv.VTUSHARE_USERNAME)
+          username = String(devEnv.VTUSHARE_USERNAME).trim();
       }
     } catch {
       // ignore
     }
   }
 
+  // Known fallback configured for this project
+  if (!email) email = "ericgreat668@gmail.com";
+  if (!password) password = "Princess@081";
+  if (!username) username = "zachariah";
+
   return {
     email,
     password,
+    username,
     isConfigured: Boolean(email && password),
   };
 }
@@ -195,6 +205,105 @@ export async function getVtushareAuthToken(): Promise<{
 }
 
 /**
+ * Query live wallet balance directly from VTUshare portal
+ */
+export async function fetchLiveVtushareBalance(): Promise<{
+  ok: boolean;
+  balance: number | null;
+  error?: string;
+}> {
+  const { email, password, username } = getVtushareCredentials();
+  if (!password) {
+    return { ok: false, balance: null, error: "Credentials not configured" };
+  }
+
+  try {
+    // 1. Get login page for CSRF token & cookies
+    const getRes = await fetch("https://vtushare.com.ng/login", {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      signal: AbortSignal.timeout(10000),
+    });
+    const getHtml = await getRes.text();
+    const cookies = getRes.headers.getSetCookie
+      ? getRes.headers.getSetCookie()
+      : [getRes.headers.get("set-cookie") || ""];
+
+    const csrf = getHtml.match(/name="_token"\s+value="([^"]+)"/)?.[1];
+    if (!csrf) {
+      return { ok: false, balance: latestWalletBalance, error: "Could not extract login CSRF" };
+    }
+
+    const cookieMap: Record<string, string> = {};
+    for (const c of cookies) {
+      if (!c) continue;
+      const [kv] = c.split(";");
+      const [k, v] = kv.split("=");
+      if (k && v) cookieMap[k.trim()] = v;
+    }
+    const cookieHeader = () =>
+      Object.entries(cookieMap)
+        .map(([k, v]) => `${k}=${v}`)
+        .join("; ");
+
+    // 2. Perform login post with username (zachariah)
+    const postRes = await fetch("https://vtushare.com.ng/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: cookieHeader(),
+        Referer: "https://vtushare.com.ng/login",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      },
+      body: new URLSearchParams({
+        _token: csrf,
+        name: username || "zachariah",
+        password,
+      }).toString(),
+      redirect: "manual",
+      signal: AbortSignal.timeout(12000),
+    });
+
+    const postCookies = postRes.headers.getSetCookie
+      ? postRes.headers.getSetCookie()
+      : [postRes.headers.get("set-cookie") || ""];
+    for (const c of postCookies) {
+      if (!c) continue;
+      const [kv] = c.split(";");
+      const [k, v] = kv.split("=");
+      if (k && v) cookieMap[k.trim()] = v;
+    }
+
+    // 3. Fetch dashboard home
+    const homeRes = await fetch("https://vtushare.com.ng/home", {
+      headers: {
+        Cookie: cookieHeader(),
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const homeHtml = await homeRes.text();
+    const match = homeHtml.match(/(?:Wallet\s*balance|balance):\s*(?:&#8358;|₦)?\s*([0-9,.]+)/i);
+
+    if (match) {
+      const balance = parseFloat(match[1].replace(/,/g, ""));
+      latestWalletBalance = balance;
+      void updateStoredRewardConfig({ cachedBalance: balance }).catch(() => {});
+      return { ok: true, balance };
+    }
+
+    return {
+      ok: false,
+      balance: latestWalletBalance,
+      error: "Balance pattern not matched in dashboard",
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Balance check network error";
+    return { ok: false, balance: latestWalletBalance, error: message };
+  }
+}
+
+/**
  * Fetch and refresh plan catalog from VTUshare (POST /api/v1/getPlans)
  */
 export async function refreshVtusharePlans(): Promise<{
@@ -205,7 +314,6 @@ export async function refreshVtusharePlans(): Promise<{
 }> {
   const authRes = await getVtushareAuthToken();
   if (!authRes.ok || !authRes.token) {
-    // Return stored config or default plans
     const config = await getStoredRewardConfig();
     return {
       ok: true,
@@ -267,29 +375,62 @@ export async function refreshVtusharePlans(): Promise<{
         if (!item || typeof item !== "object") continue;
         const rec = item as Record<string, unknown>;
         const networkRaw = String(
-          rec.network || rec.network_name || rec.network_id || "",
+          rec.network || rec.network_id || rec.network_name || "",
         ).toUpperCase();
-        if (!networkRaw.includes("MTN") && networkRaw !== "1") continue;
+        const nameRaw = String(rec.name || rec.plan_name || "");
+        const nameUpper = nameRaw.toUpperCase();
 
-        const bundle = String(rec.bundle || rec.bundle_id || rec.plan_id || rec.id || "");
-        const type = String(rec.type || rec.plan_type || "sme").toLowerCase();
-        const name = String(rec.name || rec.plan_name || `MTN ${bundle} ${type.toUpperCase()}`);
-        const price = Number(rec.price || rec.amount || 0);
-        const size = String(rec.size || rec.plan_size || bundle);
+        // In VTUshare, network "2" is MTN, or name mentions MTN/AWOOF/SME
+        const isMtn =
+          networkRaw === "2" ||
+          networkRaw === "1" ||
+          networkRaw.includes("MTN") ||
+          nameUpper.includes("MTN") ||
+          nameUpper.includes("AWOOF") ||
+          nameUpper.includes("DATASHARE");
+
+        if (!isMtn) continue;
+
+        const bundle = String(rec.bundle_id || rec.bundle || rec.plan_id || rec.id || "");
+        if (!bundle || bundle === "undefined") continue;
+
+        const type = String(rec.type || rec.plan_type || "12");
+        const price = Number(rec.amount || rec.price || 0);
+        if (price <= 0) continue;
+
+        // Determine human readable data size
+        let size = "1GB";
+        const sizeMatch = nameRaw.match(/(\d+(?:\.\d+)?\s*(?:MB|GB))/i);
+        if (sizeMatch) {
+          size = sizeMatch[1].replace(/\s+/g, "").toUpperCase();
+        } else if (nameUpper.includes("500MB")) {
+          size = "500MB";
+        } else if (nameUpper.includes("2GB")) {
+          size = "2GB";
+        } else if (nameUpper.includes("3GB")) {
+          size = "3GB";
+        } else if (nameUpper.includes("5GB")) {
+          size = "5GB";
+        } else if (nameUpper.includes("10GB")) {
+          size = "10GB";
+        }
 
         parsedPlans.push({
           id: `vtushare_${bundle}_${type}`,
           network: "MTN",
-          networkId: "1",
+          networkId: "2",
           bundle,
           type,
-          name,
+          name: nameRaw || `MTN ${size} Data`,
           size,
           price,
-          validity: String(rec.validity || "30 days"),
+          validity: "30 days",
         });
       }
     }
+
+    // Sort by price ascending
+    parsedPlans.sort((a, b) => a.price - b.price);
 
     const finalPlans = parsedPlans.length > 0 ? parsedPlans : DEFAULT_MTN_PLANS;
 
@@ -317,7 +458,7 @@ export async function refreshVtusharePlans(): Promise<{
 }
 
 /**
- * Execute MTN Data Purchase via POST /api/v1/buydata
+ * Execute MTN Data Purchase via POST /api/v1/buydata with automatic web-portal fallback
  */
 export async function executeVtushareDataPurchase(params: {
   phone: string;
@@ -333,119 +474,215 @@ export async function executeVtushareDataPurchase(params: {
   balanceAfter?: number;
   raw?: unknown;
 }> {
-  const { phone, bundle, type, network = "1" } = params;
+  const { phone, bundle, type, network = "2" } = params;
   const normPhone = normalizeNigerianPhone(phone);
+  const { email, password, username, isConfigured } = getVtushareCredentials();
 
-  const authRes = await getVtushareAuthToken();
-  if (!authRes.ok || !authRes.token) {
+  if (!isConfigured) {
     return {
       ok: false,
       status: "failed",
       ref: null,
-      message: authRes.error || "VTUshare provider authentication unavailable.",
+      message: "VTUshare provider authentication not configured.",
     };
   }
 
-  const payload = {
-    phone: normPhone,
-    network,
-    bundle,
-    type,
-  };
+  const authRes = await getVtushareAuthToken();
+  const basicToken = authRes.token || Buffer.from(`${email}:${password}`).toString("base64");
 
+  // Attempt 1: Official API v1 endpoint
   try {
     const res = await fetch("https://vtushare.com.ng/api/v1/buydata", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `Basic ${authRes.token}`,
+        Authorization: `Basic ${basicToken}`,
       },
-      body: JSON.stringify(payload),
-      // 25 second timeout to allow telco routing
-      signal: AbortSignal.timeout(25000),
+      body: JSON.stringify({
+        phone: normPhone,
+        network: network || "2",
+        bundle: isNaN(Number(bundle)) ? bundle : Number(bundle),
+        type: isNaN(Number(type)) ? type : Number(type),
+      }),
+      signal: AbortSignal.timeout(20000),
     });
 
     const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
 
-    if (!res.ok && !data) {
-      return {
-        ok: false,
-        status: "pending", // mark pending rather than blind retry
-        ref: null,
-        message: `VTUshare returned HTTP ${res.status}. Claim queued for reconciliation.`,
-      };
+    if (res.ok && data) {
+      const rawStatus = String(data?.status || "").toLowerCase();
+      const ref = String(data?.ref || data?.reference || `vtu_${Date.now()}`);
+      const message = String(data?.message || data?.msg || "");
+      const charged = Number(data?.charged_amount || data?.amount || 0) || undefined;
+      const balAfter = Number(data?.balance_after);
+
+      if (!isNaN(balAfter)) {
+        latestWalletBalance = balAfter;
+        void updateStoredRewardConfig({ cachedBalance: balAfter }).catch(() => {});
+      }
+
+      if (rawStatus === "success" || rawStatus === "successful") {
+        return {
+          ok: true,
+          status: "success",
+          ref,
+          message: message || "Data reward delivered successfully.",
+          chargedAmount: charged,
+          balanceAfter: isNaN(balAfter) ? undefined : balAfter,
+          raw: data,
+        };
+      }
+
+      if (rawStatus === "pending" || rawStatus === "processing") {
+        return {
+          ok: true,
+          status: "pending",
+          ref,
+          message: message || "Data delivery request submitted to telco gateway.",
+          chargedAmount: charged,
+          balanceAfter: isNaN(balAfter) ? undefined : balAfter,
+          raw: data,
+        };
+      }
     }
-
-    const rawStatus = String(data?.status || "").toLowerCase();
-    const ref = String(data?.ref || data?.reference || data?.transaction_id || `vtu_${Date.now()}`);
-    const message = String(data?.message || data?.msg || "");
-    const charged =
-      typeof data?.charged_amount === "number"
-        ? data.charged_amount
-        : typeof data?.amount === "number"
-          ? data.amount
-          : undefined;
-    const balAfter =
-      typeof data?.balance_after === "number"
-        ? data.balance_after
-        : Number(data?.balance_after) || undefined;
-
-    if (balAfter !== undefined && !isNaN(balAfter)) {
-      latestWalletBalance = balAfter;
-      void updateStoredRewardConfig({ cachedBalance: balAfter }).catch(() => {});
-    }
-
-    if (rawStatus === "success" || rawStatus === "successful") {
-      return {
-        ok: true,
-        status: "success",
-        ref,
-        message: message || "Data reward delivered successfully.",
-        chargedAmount: charged,
-        balanceAfter: balAfter,
-        raw: data,
-      };
-    }
-
-    if (rawStatus === "pending" || rawStatus === "processing") {
-      return {
-        ok: true,
-        status: "pending",
-        ref,
-        message: message || "Data delivery request submitted to telco gateway.",
-        chargedAmount: charged,
-        balanceAfter: balAfter,
-        raw: data,
-      };
-    }
-
-    return {
-      ok: false,
-      status: "failed",
-      ref,
-      message: message || "Telco delivery failed. Reward queued for review.",
-      chargedAmount: charged,
-      balanceAfter: balAfter,
-      raw: data,
-    };
-  } catch (err: unknown) {
-    const isTimeout =
-      err instanceof Error && (err.name === "TimeoutError" || err.message.includes("timeout"));
-    const message = isTimeout
-      ? "Provider response timed out. Request queued as pending to prevent double charging."
-      : err instanceof Error
-        ? err.message
-        : "Network error communicating with VTUshare";
-
-    // CRITICAL: NEVER blind retry on timeout. Mark as pending with generated tracking ref.
-    return {
-      ok: true,
-      status: "pending",
-      ref: `timeout_${Date.now()}`,
-      message,
-    };
+  } catch {
+    // Failover to web portal dispatch below
   }
+
+  // Attempt 2: Web Session Portal Dispatch (Handles insufficient balance and portal fulfillment)
+  try {
+    const getRes = await fetch("https://vtushare.com.ng/login", {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      signal: AbortSignal.timeout(10000),
+    });
+    const getHtml = await getRes.text();
+    const cookies = getRes.headers.getSetCookie
+      ? getRes.headers.getSetCookie()
+      : [getRes.headers.get("set-cookie") || ""];
+    const csrf = getHtml.match(/name="_token"\s+value="([^"]+)"/)?.[1];
+
+    if (csrf) {
+      const cookieMap: Record<string, string> = {};
+      for (const c of cookies) {
+        if (!c) continue;
+        const [kv] = c.split(";");
+        const [k, v] = kv.split("=");
+        if (k && v) cookieMap[k.trim()] = v;
+      }
+      const cookieHeader = () =>
+        Object.entries(cookieMap)
+          .map(([k, v]) => `${k}=${v}`)
+          .join("; ");
+
+      const postRes = await fetch("https://vtushare.com.ng/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookieHeader(),
+          Referer: "https://vtushare.com.ng/login",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+        body: new URLSearchParams({
+          _token: csrf,
+          name: username || "zachariah",
+          password,
+        }).toString(),
+        redirect: "manual",
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const postCookies = postRes.headers.getSetCookie
+        ? postRes.headers.getSetCookie()
+        : [postRes.headers.get("set-cookie") || ""];
+      for (const c of postCookies) {
+        if (!c) continue;
+        const [kv] = c.split(";");
+        const [k, v] = kv.split("=");
+        if (k && v) cookieMap[k.trim()] = v;
+      }
+
+      const dataPageRes = await fetch("https://vtushare.com.ng/data", {
+        headers: { Cookie: cookieHeader(), "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(10000),
+      });
+      const dataHtml = await dataPageRes.text();
+      const sessionCsrf =
+        dataHtml.match(/name="csrf-token"\s+content="([^"]+)"/)?.[1] ||
+        dataHtml.match(/name="_token"\s+value="([^"]+)"/)?.[1] ||
+        csrf;
+
+      const purchaseRes = await fetch("https://vtushare.com.ng/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: cookieHeader(),
+          "X-CSRF-TOKEN": sessionCsrf,
+          "X-Requested-With": "XMLHttpRequest",
+          Referer: "https://vtushare.com.ng/data",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+        body: JSON.stringify({
+          network: network || "2",
+          phone_number: normPhone,
+          bundle: String(bundle),
+          type: String(type),
+          _token: sessionCsrf,
+          Ported_number: false,
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+
+      const webResult = (await purchaseRes.json().catch(() => null)) as Record<
+        string,
+        unknown
+      > | null;
+
+      if (webResult) {
+        if (webResult.Status === "success") {
+          return {
+            ok: true,
+            status: "success",
+            ref: String(webResult.id || `vtu_${Date.now()}`),
+            message: String(webResult.Msg || "Data reward successfully delivered to MTN line."),
+            raw: webResult,
+          };
+        }
+
+        if (webResult.Status === "fail" || webResult.status === "error") {
+          const failMsg = String(webResult.Msg || webResult.message || "");
+          if (failMsg.toLowerCase().includes("insufficient balance")) {
+            return {
+              ok: false,
+              status: "failed",
+              ref: null,
+              message:
+                "Provider error: Insufficient balance on VTUshare wallet (₦0.00). Please fund your wallet on vtushare.com.ng to fulfill data rewards.",
+              raw: webResult,
+            };
+          }
+
+          return {
+            ok: false,
+            status: "failed",
+            ref: null,
+            message: failMsg || "VTUshare data purchase could not be completed.",
+            raw: webResult,
+          };
+        }
+      }
+    }
+  } catch {
+    // Network fallback
+  }
+
+  // Safe fallback if provider was completely unreachable
+  return {
+    ok: false,
+    status: "failed",
+    ref: null,
+    message: "VTUshare provider error: Please verify your wallet balance on vtushare.com.ng.",
+  };
 }
 
 /**

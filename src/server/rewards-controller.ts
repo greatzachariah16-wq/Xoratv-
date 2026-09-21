@@ -2,6 +2,7 @@ import { verifyAdminSession } from "./admin-auth";
 import {
   claimUserReward,
   executeVtushareDataPurchase,
+  fetchLiveVtushareBalance,
   getAllRewardTransactions,
   getStoredRewardConfig,
   getUserRewardTransactions,
@@ -234,9 +235,17 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
     // GET /api/admin/rewards/overview
     if (pathname === "/api/admin/rewards/overview" && request.method === "GET") {
       try {
-        const config = await getStoredRewardConfig();
+        let config = await getStoredRewardConfig();
         const credentials = getVtushareCredentials();
         const transactions = await getAllRewardTransactions(100);
+
+        // If balance has never been fetched, fetch live balance
+        if (config.cachedBalance === null && credentials.isConfigured) {
+          const balRes = await fetchLiveVtushareBalance();
+          if (balRes.ok && balRes.balance !== null) {
+            config = { ...config, cachedBalance: balRes.balance };
+          }
+        }
 
         const totalDelivered = transactions.filter((t) => t.status === "success").length;
         const totalPending = transactions.filter(
@@ -278,6 +287,17 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Admin rewards overview error";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/rewards/check-balance
+    if (pathname === "/api/admin/rewards/check-balance" && request.method === "POST") {
+      try {
+        const balRes = await fetchLiveVtushareBalance();
+        return jsonReply(balRes);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Balance check error";
         return jsonReply({ ok: false, error: msg }, 500);
       }
     }
