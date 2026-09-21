@@ -180,7 +180,13 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
   }
   const store = getLocalStore();
   const item = store.get(`${CAMPAIGNS_RTDB_PATH}/${id}`);
-  return item && typeof item === "object" && "id" in item ? (item as Campaign) : null;
+  if (item && typeof item === "object" && "id" in item) {
+    return item as Campaign;
+  }
+
+  // Fallback to default initial campaigns if not yet modified in RTDB
+  const defaultItem = DEFAULT_INITIAL_CAMPAIGNS.find((c) => c.id === id);
+  return defaultItem ? { ...defaultItem } : null;
 }
 
 /**
