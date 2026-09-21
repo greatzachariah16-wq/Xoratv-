@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
+import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { cn } from "@/lib/utils";
 
@@ -246,6 +247,9 @@ function WatchPage() {
             </div>
           )}
         </div>
+
+        {/* Adcash placement beneath video player */}
+        <AdcashPlacement slotId={`cinema-${activeId}`} className="my-6" />
 
         {/* Movie Information & Details */}
         {activeMovie ? (

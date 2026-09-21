@@ -109,6 +109,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
+    scripts: [
+      {
+        id: "aclib",
+        type: "text/javascript",
+        src: "//acscdn.com/script/aclib.js",
+      },
+      {
+        type: "text/javascript",
+        children: `if(typeof window!=="undefined"){window.aclib=window.aclib||{};if(typeof aclib.runAutoTag==="function"){aclib.runAutoTag({zoneId:'bzh5a2rqfg'});}}`,
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

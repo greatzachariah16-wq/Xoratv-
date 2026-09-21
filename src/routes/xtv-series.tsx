@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
+import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/xtv-series")({
@@ -160,53 +161,53 @@ function XTvCard({
   };
 
   return (
-    <article
-      id={`card-${item.id}`}
-      className={cn(
-        "group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-surface shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl",
-        featured ? "md:col-span-2" : "",
-      )}
-    >
-      <Link
-        id={`btn-play-card-${item.id}`}
-        to="/watch"
-        search={{ id: item.id }}
-        onClick={handleInteraction}
-        className="block w-full text-left"
-        aria-label={`Play ${item.title}`}
+    <div className={cn("flex flex-col", featured ? "md:col-span-2" : "")}>
+      <article
+        id={`card-${item.id}`}
+        className="group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-surface shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl"
       >
-        <div
-          className={cn(
-            "relative overflow-hidden bg-gradient-to-br",
-            toneClass(item.tone),
-            featured ? "aspect-[16/8]" : "aspect-[16/10]",
-          )}
+        <Link
+          id={`btn-play-card-${item.id}`}
+          to="/watch"
+          search={{ id: item.id }}
+          onClick={handleInteraction}
+          className="block w-full text-left"
+          aria-label={`Play ${item.title}`}
         >
-          {item.thumbnailUrl ? (
-            <img
-              src={item.thumbnailUrl}
-              alt={item.title}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-            />
-          ) : null}
-          <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition duration-300 group-hover:opacity-100">
-            <span className="grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
-              <Play className="ml-0.5 size-5 fill-current" />
-            </span>
+          <div
+            className={cn(
+              "relative overflow-hidden bg-gradient-to-br",
+              toneClass(item.tone),
+              featured ? "aspect-[16/8]" : "aspect-[16/10]",
+            )}
+          >
+            {item.thumbnailUrl ? (
+              <img
+                src={item.thumbnailUrl}
+                alt={item.title}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              />
+            ) : null}
+            <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition duration-300 group-hover:opacity-100">
+              <span className="grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition group-hover:scale-110">
+                <Play className="ml-0.5 size-5 fill-current" />
+              </span>
+            </div>
           </div>
+        </Link>
+        <div className="p-4">
+          <h3 className="truncate font-display text-base font-semibold tracking-tight group-hover:text-primary transition">
+            {item.title}
+          </h3>
+          {item.description ? (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+          ) : null}
         </div>
-      </Link>
-      <div className="p-4">
-        <h3 className="truncate font-display text-base font-semibold tracking-tight group-hover:text-primary transition">
-          {item.title}
-        </h3>
-        {item.description ? (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
-        ) : null}
-      </div>
-    </article>
+      </article>
+      <AdcashPlacement slotId={`xtv-${item.id}`} compact />
+    </div>
   );
 }
 
