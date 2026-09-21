@@ -25,6 +25,13 @@ export const EVENT_AFFINITY_WEIGHTS: Record<EventType, number> = {
   view_start: 0,
   open_video: 1,
   click_profile: 2,
+  preroll_requested: 0,
+  preroll_started: 0,
+  preroll_completed: 1,
+  preroll_skipped: 0,
+  preroll_error: 0,
+  preroll_no_fill: 0,
+  content_started_after_preroll: 1,
 };
 
 // Session memory cache for guest or instant local updates

@@ -10,6 +10,7 @@ import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleRewardsRoute } from "./server/rewards-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
+import { handlePrerollRoute } from "./server/preroll-controller";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -299,6 +300,12 @@ export default {
     ) {
       const campaignsRes = await handleCampaignsRoute(request, url);
       if (campaignsRes) return campaignsRes;
+    }
+
+    // Pre-Roll VAST Video Advertising Configuration (User & Admin)
+    if (url.pathname.startsWith("/api/preroll") || url.pathname.startsWith("/api/admin/preroll")) {
+      const prerollRes = await handlePrerollRoute(request, url);
+      if (prerollRes) return prerollRes;
     }
 
     // Sovereign Admin Authentication and Management Endpoints

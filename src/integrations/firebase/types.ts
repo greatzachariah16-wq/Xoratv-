@@ -121,7 +121,14 @@ export type EventType =
   | "hide"
   | "not_interested"
   | "click_profile"
-  | "open_video";
+  | "open_video"
+  | "preroll_requested"
+  | "preroll_started"
+  | "preroll_completed"
+  | "preroll_skipped"
+  | "preroll_error"
+  | "preroll_no_fill"
+  | "content_started_after_preroll";
 
 export interface UserEventRecord {
   type: EventType;

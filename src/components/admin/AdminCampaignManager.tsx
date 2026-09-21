@@ -93,6 +93,15 @@ export function AdminCampaignManager() {
   const [filterPlacement, setFilterPlacement] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Pre-Roll VAST Config State
+  const [prerollEnabled, setPrerollEnabled] = useState(true);
+  const [prerollAdTagUrl, setPrerollAdTagUrl] = useState(
+    "https://youradexchange.com/video/select.php?r=12201910",
+  );
+  const [prerollApplyExternal, setPrerollApplyExternal] = useState(true);
+  const [prerollApplyDirect, setPrerollApplyDirect] = useState(true);
+  const [isSavingPreroll, setIsSavingPreroll] = useState(false);
+
   // Create / Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -148,8 +157,59 @@ export function AdminCampaignManager() {
     }
   };
 
+  const fetchPrerollConfig = async () => {
+    try {
+      const res = await fetch("/api/preroll/config");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.ok && json.config) {
+          setPrerollEnabled(Boolean(json.config.enabled));
+          setPrerollAdTagUrl(
+            json.config.adTagUrl || "https://youradexchange.com/video/select.php?r=12201910",
+          );
+          setPrerollApplyExternal(json.config.applyToExternal !== false);
+          setPrerollApplyDirect(json.config.applyToDirect !== false);
+        }
+      }
+    } catch {
+      // silence
+    }
+  };
+
+  const handleSavePrerollConfig = async () => {
+    setIsSavingPreroll(true);
+    try {
+      const token = localStorage.getItem("xora_admin_token");
+      const res = await fetch("/api/admin/preroll/config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          enabled: prerollEnabled,
+          adTagUrl: prerollAdTagUrl.trim(),
+          applyToExternal: prerollApplyExternal,
+          applyToDirect: prerollApplyDirect,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.ok) {
+        toast.success("Pre-roll video ad configuration saved successfully!");
+      } else {
+        toast.error(json.error || "Failed to save pre-roll configuration");
+      }
+    } catch {
+      toast.error("Error connecting to server to save pre-roll configuration");
+    } finally {
+      setIsSavingPreroll(false);
+    }
+  };
+
   useEffect(() => {
     void fetchCampaigns();
+    void fetchPrerollConfig();
   }, []);
 
   const openCreateModal = () => {
@@ -538,6 +598,101 @@ export function AdminCampaignManager() {
             {analytics?.averageCtr ?? 0}%
           </p>
           <span className="text-[10px] text-muted-foreground">Click-through rate</span>
+        </div>
+      </div>
+
+      {/* Pre-Roll VAST Video Advertising Settings Card */}
+      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-primary/15 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+                VAST / IMA Pre-Roll
+              </span>
+              <span className="text-xs text-muted-foreground font-medium">
+                Video Pre-Roll System
+              </span>
+            </div>
+            <h3 className="mt-1 text-lg font-bold text-foreground">
+              Pre-Roll Video Ads Configuration
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Configure VAST video pre-roll advertisements played before video playback across Xora.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer select-none">
+              <span>Status:</span>
+              <input
+                type="checkbox"
+                checked={prerollEnabled}
+                onChange={(e) => setPrerollEnabled(e.target.checked)}
+                className="size-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span
+                className={prerollEnabled ? "text-emerald-400 font-bold" : "text-muted-foreground"}
+              >
+                {prerollEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </label>
+
+            <Button
+              onClick={() => void handleSavePrerollConfig()}
+              disabled={isSavingPreroll}
+              size="sm"
+              className="h-8 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+            >
+              {isSavingPreroll ? "Saving..." : "Save Pre-Roll Settings"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <div className="md:col-span-2 space-y-1.5">
+            <Label className="text-xs font-semibold">VAST / IMA Ad Tag URL *</Label>
+            <Input
+              value={prerollAdTagUrl}
+              onChange={(e) => setPrerollAdTagUrl(e.target.value)}
+              placeholder="https://youradexchange.com/video/select.php?r=12201910"
+              className="h-9 rounded-xl text-xs bg-background/80 font-mono text-foreground"
+            />
+            <span className="text-[10px] text-muted-foreground block">
+              Default tag:{" "}
+              <code className="text-primary font-mono">
+                https://youradexchange.com/video/select.php?r=12201910
+              </code>
+            </span>
+          </div>
+
+          <div className="space-y-2 flex flex-col justify-center">
+            <Label className="text-xs font-semibold">Target Video Types</Label>
+            <div className="space-y-1.5 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prerollApplyExternal}
+                  onChange={(e) => setPrerollApplyExternal(e.target.checked)}
+                  className="size-3.5 rounded border-border text-primary"
+                />
+                <span className="text-foreground">
+                  Apply to External Videos (YouTube / Vimeo / Dailymotion)
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prerollApplyDirect}
+                  onChange={(e) => setPrerollApplyDirect(e.target.checked)}
+                  className="size-3.5 rounded border-border text-primary"
+                />
+                <span className="text-foreground">
+                  Apply to Direct Streams (MP4 / HLS / Custom)
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
