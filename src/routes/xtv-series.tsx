@@ -143,7 +143,6 @@ function rankAndShuffleXSeries(
 
 function XTvCard({
   item,
-  featured = false,
   userId,
 }: {
   item: XTvSeriesItem;
@@ -161,7 +160,7 @@ function XTvCard({
   };
 
   return (
-    <div className={cn("flex flex-col", featured ? "md:col-span-2" : "")}>
+    <div className="flex flex-col">
       <article
         id={`card-${item.id}`}
         className="group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-surface shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl"
@@ -176,9 +175,8 @@ function XTvCard({
         >
           <div
             className={cn(
-              "relative overflow-hidden bg-gradient-to-br",
+              "relative aspect-video overflow-hidden bg-gradient-to-br",
               toneClass(item.tone),
-              featured ? "aspect-[16/8]" : "aspect-[16/10]",
             )}
           >
             {item.thumbnailUrl ? (
