@@ -106,7 +106,7 @@ export const DEFAULT_REWARD_CONFIG: RewardConfig = {
   selectedPlan: DEFAULT_MTN_PLANS[0], // 1GB AWOOF (bundle: 990, type: 25)
   maxDailyBudget: 50000,
   maxRewardsPerUser: 1,
-  minBalanceThreshold: 500,
+  minBalanceThreshold: 200,
   provider: "vtushare",
   cachedPlans: DEFAULT_MTN_PLANS,
   cachedBalance: null,
@@ -809,25 +809,117 @@ export async function executeVtushareDataPurchase(params: {
       > | null;
 
       if (webResult) {
-        if (webResult.Status === "success") {
+        const rawStatus = String(webResult.Status || webResult.status || "").toLowerCase();
+        const failMsg = String(webResult.Msg || webResult.message || webResult.api_response || "");
+        const ref = String(webResult.id || webResult.reference || `vtu_${Date.now()}`);
+        const charged =
+          Number(webResult.paid_amount || webResult.plan_amount || webResult.amount || 0) ||
+          undefined;
+        const balAfter = Number(webResult.balance_after);
+
+        if (!isNaN(balAfter)) {
+          latestWalletBalance = balAfter;
+          void updateStoredRewardConfig({ cachedBalance: balAfter }).catch(() => {});
+        }
+
+        if (rawStatus === "success" || rawStatus === "successful") {
           return {
             ok: true,
             status: "success",
-            ref: String(webResult.id || `vtu_${Date.now()}`),
+            ref,
             message: String(webResult.Msg || "Data reward successfully delivered to MTN line."),
+            chargedAmount: charged,
+            balanceAfter: isNaN(balAfter) ? undefined : balAfter,
             raw: webResult,
           };
         }
 
-        if (webResult.Status === "fail" || webResult.status === "error") {
-          const failMsg = String(webResult.Msg || webResult.message || "");
+        if (rawStatus === "pending" || rawStatus === "processing") {
+          return {
+            ok: true,
+            status: "pending",
+            ref,
+            message: String(webResult.Msg || "Data delivery request submitted to telco gateway."),
+            chargedAmount: charged,
+            balanceAfter: isNaN(balAfter) ? undefined : balAfter,
+            raw: webResult,
+          };
+        }
+
+        if (rawStatus === "failed" || rawStatus === "fail" || rawStatus === "error") {
+          // If upstream telco has an issue with AWOOF (e.g. "Something has gotten wrong with the service provider"),
+          // automatically failover to 1GB SME (bundle: 988, type: 56, ₦300)
+          if (
+            (cleanBundle === "990" || cleanType === "25") &&
+            (failMsg.toLowerCase().includes("something has gotten wrong") ||
+              failMsg.toLowerCase().includes("service provider") ||
+              failMsg.toLowerCase().includes("glitch"))
+          ) {
+            console.log(
+              "[VTUshare] AWOOF route glitch reported. Executing automatic failover to 1GB SME bundle (988)...",
+            );
+            try {
+              const smePurchaseRes = await fetch("https://vtushare.com.ng/data", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Cookie: cookieHeader(),
+                  "X-CSRF-TOKEN": sessionCsrf,
+                  "X-Requested-With": "XMLHttpRequest",
+                  Referer: "https://vtushare.com.ng/data",
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                },
+                body: JSON.stringify({
+                  network: "2",
+                  phone_number: normPhone,
+                  bundle: "988",
+                  type: "56",
+                  _token: sessionCsrf,
+                  Ported_number: false,
+                }),
+                signal: AbortSignal.timeout(20000),
+              });
+
+              const smeResult = (await smePurchaseRes.json().catch(() => null)) as Record<
+                string,
+                unknown
+              > | null;
+
+              if (smeResult) {
+                const smeStatus = String(smeResult.Status || smeResult.status || "").toLowerCase();
+                const smeBalAfter = Number(smeResult.balance_after);
+                if (!isNaN(smeBalAfter)) {
+                  latestWalletBalance = smeBalAfter;
+                  void updateStoredRewardConfig({ cachedBalance: smeBalAfter }).catch(() => {});
+                }
+
+                if (smeStatus === "success" || smeStatus === "successful") {
+                  return {
+                    ok: true,
+                    status: "success",
+                    ref: String(smeResult.id || `vtu_${Date.now()}`),
+                    message: "Data reward delivered successfully via MTN SME gateway.",
+                    chargedAmount: Number(smeResult.paid_amount || 300),
+                    balanceAfter: isNaN(smeBalAfter) ? undefined : smeBalAfter,
+                    raw: smeResult,
+                  };
+                }
+              }
+            } catch (failoverErr) {
+              console.warn("[VTUshare] SME failover attempt warning:", failoverErr);
+            }
+          }
+
           if (failMsg.toLowerCase().includes("insufficient balance")) {
+            const curBalText =
+              latestWalletBalance !== null
+                ? ` (Current balance: ₦${latestWalletBalance.toLocaleString()})`
+                : "";
             return {
               ok: false,
               status: "failed",
               ref: null,
-              message:
-                "Provider error: Insufficient balance on VTUshare wallet (₦0.00). Please fund your wallet on vtushare.com.ng to fulfill data rewards.",
+              message: `Provider error: Insufficient balance on VTUshare wallet${curBalText}. Please top up your wallet on vtushare.com.ng to fulfill data rewards.`,
               raw: webResult,
             };
           }
@@ -841,8 +933,7 @@ export async function executeVtushareDataPurchase(params: {
               ok: false,
               status: "failed",
               ref: null,
-              message:
-                "Provider plan mismatch: The requested bundle ID is inactive on VTUshare. Auto-mapped to MTN 1GB AWOOF bundle 990.",
+              message: "Provider plan mismatch: The requested bundle ID is inactive on VTUshare.",
               raw: webResult,
             };
           }
@@ -857,16 +948,20 @@ export async function executeVtushareDataPurchase(params: {
         }
       }
     }
-  } catch {
-    // Network fallback
+  } catch (webErr) {
+    console.warn("[VTUshare] Web session purchase error:", webErr);
   }
 
-  // Safe fallback if provider was completely unreachable
+  // Safe fallback
+  const curBalText =
+    latestWalletBalance !== null
+      ? ` Current balance: ₦${latestWalletBalance.toLocaleString()}.`
+      : "";
   return {
     ok: false,
     status: "failed",
     ref: null,
-    message: "VTUshare provider error: Please verify your wallet balance on vtushare.com.ng.",
+    message: `VTUshare provider error: Telco gateway rejected data purchase.${curBalText}`,
   };
 }
 
@@ -903,9 +998,12 @@ export async function updateStoredRewardConfig(
 
   try {
     await queryRtdb("rewardConfig", {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
+      body: JSON.stringify({
+        ...patch,
+        updatedAt: updated.updatedAt,
+      }),
     });
   } catch (err) {
     console.warn("[VTUshare Service] Error saving rewardConfig:", err);

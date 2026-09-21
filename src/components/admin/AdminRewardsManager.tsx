@@ -58,12 +58,12 @@ export function AdminRewardsManager() {
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [maxDailyBudget, setMaxDailyBudget] = useState(50000);
   const [maxRewardsPerUser, setMaxRewardsPerUser] = useState(1);
-  const [minBalanceThreshold, setMinBalanceThreshold] = useState(500);
+  const [minBalanceThreshold, setMinBalanceThreshold] = useState(200);
 
   // Controlled test tool states
   const [testPhone, setTestPhone] = useState("");
-  const [testBundle, setTestBundle] = useState("500MB");
-  const [testType, setTestType] = useState("sme");
+  const [testBundle, setTestBundle] = useState("990");
+  const [testType, setTestType] = useState("25");
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<{
     ok: boolean;
@@ -93,7 +93,7 @@ export function AdminRewardsManager() {
         setSelectedPlanId(json.config.selectedPlan?.id || "");
         setMaxDailyBudget(json.config.maxDailyBudget || 50000);
         setMaxRewardsPerUser(json.config.maxRewardsPerUser || 1);
-        setMinBalanceThreshold(json.config.minBalanceThreshold || 500);
+        setMinBalanceThreshold(json.config.minBalanceThreshold ?? 200);
         if (showToast) toast.success("Rewards configuration reloaded.");
       }
     } catch (err: unknown) {
@@ -530,37 +530,33 @@ export function AdminRewardsManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="test-bundle" className="text-xs font-semibold">
-                    Test Bundle Size
-                  </Label>
-                  <select
-                    id="test-bundle"
-                    value={testBundle}
-                    onChange={(e) => setTestBundle(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
-                  >
-                    <option value="500MB">500MB (Micro Test)</option>
-                    <option value="1GB">1GB (Standard Reward)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="test-type" className="text-xs font-semibold">
-                    Plan Type
-                  </Label>
-                  <select
-                    id="test-type"
-                    value={testType}
-                    onChange={(e) => setTestType(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
-                  >
-                    <option value="sme">SME Data</option>
-                    <option value="gifting">Gifting / Direct</option>
-                    <option value="corporate">Corporate</option>
-                  </select>
-                </div>
+              <div>
+                <Label htmlFor="test-plan" className="text-xs font-semibold">
+                  Test Plan (VTUshare Catalog)
+                </Label>
+                <select
+                  id="test-plan"
+                  value={`${testBundle}_${testType}`}
+                  onChange={(e) => {
+                    const [b, t] = e.target.value.split("_");
+                    setTestBundle(b);
+                    setTestType(t);
+                  }}
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
+                >
+                  <option value="990_25">MTN 1GB AWOOF 30 Days (₦280) — Best Value</option>
+                  <option value="988_56">MTN 1GB SME 1 Day (₦300) — Direct Wholesale</option>
+                  <option value="878_11">MTN 500MB DATASHARE (₦400)</option>
+                  <option value="991_25">MTN 2GB AWOOF 30 Days (₦560)</option>
+                  {data?.provider.plans
+                    ?.filter((p) => p.bundle !== "990" && p.bundle !== "988")
+                    .slice(0, 15)
+                    .map((p) => (
+                      <option key={p.id} value={`${p.bundle}_${p.type}`}>
+                        {p.name} (₦{p.price})
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <Button

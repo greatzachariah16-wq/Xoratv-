@@ -339,14 +339,15 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         }
 
         const norm = normalizeNigerianPhone(body.phone);
-        const bundle = body.bundle || "500MB";
-        const type = body.type || "sme";
+        const config = await getStoredRewardConfig();
+        const bundle = body.bundle || config.selectedPlan?.bundle || "990";
+        const type = body.type || config.selectedPlan?.type || "25";
 
         const testRes = await executeVtushareDataPurchase({
           phone: norm,
           bundle,
           type,
-          network: "1",
+          network: config.selectedPlan?.networkId || "2",
         });
 
         // Record test transaction
