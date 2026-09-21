@@ -36,13 +36,25 @@ export function initAdcashAutoTag(): void {
   if (typeof window.aclib?.runAutoTag === "function") {
     run();
   } else {
-    // If aclib.js is still loading asynchronously, wait for it
-    const timer = setInterval(() => {
-      if (typeof window.aclib?.runAutoTag === "function") {
-        clearInterval(timer);
+    // Inject script dynamically after client hydration to prevent SSR mismatch
+    if (!document.getElementById("aclib-script")) {
+      const script = document.createElement("script");
+      script.id = "aclib-script";
+      script.type = "text/javascript";
+      script.src = "//acscdn.com/script/aclib.js";
+      script.async = true;
+      script.onload = () => {
         run();
-      }
-    }, 200);
-    setTimeout(() => clearInterval(timer), 6000);
+      };
+      document.head.appendChild(script);
+    } else {
+      const timer = setInterval(() => {
+        if (typeof window.aclib?.runAutoTag === "function") {
+          clearInterval(timer);
+          run();
+        }
+      }, 200);
+      setTimeout(() => clearInterval(timer), 6000);
+    }
   }
 }

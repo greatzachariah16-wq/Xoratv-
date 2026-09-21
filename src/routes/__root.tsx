@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
+import { initAdcashAutoTag } from "@/lib/adcash";
 
 function NotFoundComponent() {
   return (
@@ -109,17 +110,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-    scripts: [
-      {
-        id: "aclib",
-        type: "text/javascript",
-        src: "//acscdn.com/script/aclib.js",
-      },
-      {
-        type: "text/javascript",
-        children: `if(typeof window!=="undefined"){window.aclib=window.aclib||{};if(typeof aclib.runAutoTag==="function"){aclib.runAutoTag({zoneId:'bzh5a2rqfg'});}}`,
-      },
-    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -143,6 +133,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    initAdcashAutoTag();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
