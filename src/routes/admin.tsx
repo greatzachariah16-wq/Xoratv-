@@ -15,6 +15,7 @@ import { AdminUsersDirectory } from "@/components/admin/AdminUsersDirectory";
 import { AdminFraudShieldDashboard } from "@/components/admin/AdminFraudShieldDashboard";
 import { AdminRewardsManager } from "@/components/admin/AdminRewardsManager";
 import { AdminCampaignManager } from "@/components/admin/AdminCampaignManager";
+import { AdminMonetagStatus } from "@/components/admin/AdminMonetagStatus";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -304,6 +305,7 @@ function AdminPage() {
         </div>
 
         <div className="mt-8 space-y-8">
+          <AdminMonetagStatus />
           <AdminLiveUsersTracker />
           <AdminUsersDirectory />
           <AdminSupportInbox />

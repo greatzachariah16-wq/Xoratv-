@@ -253,6 +253,64 @@ async function handleUpload(request: Request): Promise<Response> {
   }
 }
 
+async function handleStaticRootFile(request: Request, url: URL): Promise<Response | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const pathname = url.pathname;
+
+  // Only handle root-level files like /8ea04dd6a7bbda76ca13.txt, /sw.js, /robots.txt, etc.
+  if (pathname.startsWith("/api/") || pathname.startsWith("/videos/")) return null;
+
+  const fileName = pathname.replace(/^\/+/, "");
+  if (!fileName || fileName.includes("/")) return null;
+
+  // Priority candidate directories
+  const candidateDirs = [
+    path.resolve(process.cwd(), "public"),
+    path.resolve(process.cwd(), "dist/client"),
+    path.resolve(process.cwd(), ".output/public"),
+    path.resolve("./public"),
+  ];
+
+  for (const dir of candidateDirs) {
+    const filePath = path.join(dir, fileName);
+    if (fs.existsSync(filePath)) {
+      try {
+        const stat = await fs.promises.stat(filePath);
+        if (stat.isFile()) {
+          const ext = path.extname(fileName).toLowerCase();
+          let contentType = "text/plain; charset=utf-8";
+          if (ext === ".js") contentType = "application/javascript; charset=utf-8";
+          else if (ext === ".webmanifest" || ext === ".json")
+            contentType = "application/manifest+json; charset=utf-8";
+          else if (ext === ".png") contentType = "image/png";
+          else if (ext === ".ico") contentType = "image/x-icon";
+          else if (ext === ".txt") contentType = "text/plain; charset=utf-8";
+          else if (ext === ".html") contentType = "text/html; charset=utf-8";
+
+          const content = await fs.promises.readFile(filePath);
+          return new Response(content, {
+            status: 200,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": contentType,
+              "Content-Length": String(stat.size),
+              "Cache-Control":
+                fileName.endsWith(".txt") || fileName === "sw.js"
+                  ? "no-cache, no-store, must-revalidate"
+                  : "public, max-age=86400",
+              ...(fileName === "sw.js" ? { "Service-Worker-Allowed": "/" } : {}),
+            },
+          });
+        }
+      } catch {
+        // Continue checking
+      }
+    }
+  }
+
+  return null;
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
@@ -260,6 +318,12 @@ export default {
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
+    // Direct Root Static Files (Monetag verification files, sw.js, robots.txt, etc.)
+    const staticRootRes = await handleStaticRootFile(request, url);
+    if (staticRootRes) {
+      return staticRootRes;
     }
 
     // Health check endpoint for Render

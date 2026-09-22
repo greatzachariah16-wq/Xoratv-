@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { initAdcashAutoTag } from "@/lib/adcash";
+import { initMonetag } from "@/lib/monetag";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 
 function NotFoundComponent() {
@@ -145,6 +146,7 @@ function RootComponent() {
 
   useEffect(() => {
     initAdcashAutoTag();
+    void initMonetag();
   }, []);
 
   return (
