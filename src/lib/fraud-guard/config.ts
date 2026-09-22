@@ -56,9 +56,9 @@ export const FRAUD_GUARD_CONFIG = {
   // Watch Session Heartbeat Rules
   heartbeat: {
     nonceTtlSeconds: 90, // Nonce expires after 90 seconds
-    minExpectedDeltaSeconds: 8, // Minimum expected time between heartbeats
+    minExpectedDeltaSeconds: 3, // Minimum expected time between heartbeats (supports pause flushes)
     maxExpectedDeltaSeconds: 65, // Maximum expected time between heartbeats
-    maxAllowedSpeedRatio: 2.1, // Catch client time-acceleration or media speedup hacks
+    maxAllowedSpeedRatio: 2.1, // Catch client time-acceleration or media speedup hacks (keep fast-forwarding blocked)
     minAllowedSpeedRatio: 0.1, // Minimum playback progression
   },
 

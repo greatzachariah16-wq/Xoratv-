@@ -27,6 +27,7 @@ import {
   resolveEngagementAlert,
   getEngagementDashboardAnalytics,
   recordPeriodClaim,
+  recordUserEngagementAction,
 } from "./engagement-controller";
 import type { WatchHeartbeatPayload } from "@/lib/fraud-guard/types";
 
@@ -368,6 +369,27 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
       return jsonReply({ ok: true, ...result });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error processing heartbeat";
+      return jsonReply({ ok: false, error: msg }, 500);
+    }
+  }
+
+  // POST /api/engagement/action (like, follow, comment, share)
+  if (pathname === "/api/engagement/action" && request.method === "POST") {
+    try {
+      const body = (await request.json().catch(() => null)) as {
+        userId?: string;
+        type?: "like" | "follow" | "comment" | "share";
+        targetId?: string;
+      } | null;
+
+      if (!body?.userId || !body?.type) {
+        return jsonReply({ ok: false, error: "Missing userId or action type" }, 400);
+      }
+
+      const result = await recordUserEngagementAction(body.userId, body.type, body.targetId);
+      return jsonReply({ ok: true, ...result });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error recording engagement action";
       return jsonReply({ ok: false, error: msg }, 500);
     }
   }

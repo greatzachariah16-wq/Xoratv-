@@ -7,6 +7,7 @@ import {
   Clock,
   ExternalLink,
   Gift,
+  Heart,
   HelpCircle,
   Info,
   Lock,
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  UserPlus,
   Wifi,
   XCircle,
 } from "lucide-react";
@@ -32,7 +34,10 @@ import {
 } from "@/lib/rewards/phone";
 import { RewardPopup } from "@/components/rewards/RewardPopup";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
-import { EngagementAnalyticsCard } from "@/components/rewards/EngagementAnalyticsCard";
+import {
+  EngagementAnalyticsCard,
+  type EngagementStatus,
+} from "@/components/rewards/EngagementAnalyticsCard";
 
 export const Route = createFileRoute("/rewards")({
   head: () => ({
@@ -81,6 +86,7 @@ function RewardsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTxId, setActiveTxId] = useState<string | null>(null);
   const [engagementEligible, setEngagementEligible] = useState(false);
+  const [engagementStatus, setEngagementStatus] = useState<EngagementStatus | null>(null);
 
   // Validation states
   const normalizedPhone = normalizeNigerianPhone(phoneInput);
@@ -363,12 +369,15 @@ function RewardsPage() {
               )}
 
               {/* Claim Card */}
-              <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card">
+              <div
+                id="claim-reward-section"
+                className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card scroll-mt-20"
+              >
                 <div className="flex items-center justify-between border-b border-border pb-4">
                   <div>
                     <h2 className="font-display text-lg font-bold">Claim Your Data</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Input your Nigerian MTN phone number to receive your data.
+                      Input your Nigerian MTN phone number to receive your data reward.
                     </p>
                   </div>
                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -376,8 +385,182 @@ function RewardsPage() {
                   </span>
                 </div>
 
-                {canClaim ? (
+                {statusData?.hasReachedLimit ? (
+                  <div className="mt-5 py-6 text-center text-xs text-muted-foreground">
+                    <CheckCircle2 className="mx-auto size-8 text-emerald-500" />
+                    <p className="mt-2 font-semibold text-sm text-foreground">
+                      Promotional Quota Complete
+                    </p>
+                    <p className="mt-1 max-w-sm mx-auto">
+                      You have claimed your allotted 1GB MTN data reward for this campaign. Thank
+                      you for streaming with XoraTV!
+                    </p>
+                  </div>
+                ) : isProcessing ? (
+                  <div className="mt-5 py-6 text-center text-xs text-muted-foreground">
+                    <RefreshCw className="mx-auto size-8 text-amber-500 animate-spin" />
+                    <p className="mt-2 font-semibold text-sm text-foreground">Claim in Progress</p>
+                    <p className="mt-1 max-w-sm mx-auto">
+                      Your reward request is being fulfilled by the telco gateway. Please wait for
+                      confirmation.
+                    </p>
+                  </div>
+                ) : (
                   <form onSubmit={handleClaim} className="mt-5 space-y-4">
+                    {/* Live Criteria Progress Checklist inside Claim Section */}
+                    <div className="rounded-2xl border border-border bg-secondary/30 p-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-foreground">
+                          Claim Qualification Status
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                            canClaim
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {canClaim ? "Qualified to Claim" : "Requirements Incomplete"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 pt-1 text-[11px]">
+                        {/* Watch Time Status */}
+                        {(() => {
+                          const watchSeconds =
+                            engagementStatus?.currentPeriod.verifiedWatchTimeSeconds ?? 0;
+                          const reqSeconds =
+                            engagementStatus?.currentPeriod.requiredSeconds ?? 3600;
+                          const watchMins = Math.floor(watchSeconds / 60);
+                          const reqMins = Math.round(reqSeconds / 60);
+                          const met = watchSeconds >= reqSeconds;
+                          return (
+                            <div
+                              className={`rounded-xl border p-2 ${
+                                met
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
+                                  : "border-border/80 bg-background/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-[10px] flex items-center gap-1">
+                                  <Clock className="size-3 text-primary" /> Watch
+                                </span>
+                                {met ? (
+                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                ) : (
+                                  <XCircle className="size-3 text-muted-foreground" />
+                                )}
+                              </div>
+                              <span className="block font-mono text-[10px] mt-0.5">
+                                {watchMins}m / {reqMins}m
+                              </span>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Like Video Status */}
+                        {(() => {
+                          const likes =
+                            engagementStatus?.interactives?.likes ??
+                            engagementStatus?.currentPeriod?.likeCount ??
+                            0;
+                          const met = likes >= 1;
+                          return (
+                            <div
+                              className={`rounded-xl border p-2 ${
+                                met
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
+                                  : "border-border/80 bg-background/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-[10px] flex items-center gap-1">
+                                  <Heart className="size-3 text-rose-500" /> Like 1
+                                </span>
+                                {met ? (
+                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                ) : (
+                                  <XCircle className="size-3 text-muted-foreground" />
+                                )}
+                              </div>
+                              <span className="block font-mono text-[10px] mt-0.5">
+                                {likes >= 1 ? "1 / 1" : "0 / 1"}
+                              </span>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Follow Creator Status */}
+                        {(() => {
+                          const follows =
+                            engagementStatus?.interactives?.follows ??
+                            engagementStatus?.currentPeriod?.followCount ??
+                            0;
+                          const met = follows >= 1;
+                          return (
+                            <div
+                              className={`rounded-xl border p-2 ${
+                                met
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
+                                  : "border-border/80 bg-background/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-[10px] flex items-center gap-1">
+                                  <UserPlus className="size-3 text-indigo-500" /> Follow 1
+                                </span>
+                                {met ? (
+                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                ) : (
+                                  <XCircle className="size-3 text-muted-foreground" />
+                                )}
+                              </div>
+                              <span className="block font-mono text-[10px] mt-0.5">
+                                {follows >= 1 ? "1 / 1" : "0 / 1"}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Explicit Warning when Requirements are not met */}
+                      {!canClaim && (
+                        <div className="pt-1">
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium leading-relaxed">
+                            {engagementStatus?.eligibility?.ineligibilityReason ||
+                              "Reward cannot be disbursed without reaching all 3 requirements: 60m watch time, at least 1 video liked, and at least 1 creator followed."}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[10px] rounded-lg"
+                            >
+                              <Link to="/watch">Stream Cinema</Link>
+                            </Button>
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[10px] rounded-lg"
+                            >
+                              <Link to="/browse">Like a Video</Link>
+                            </Button>
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[10px] rounded-lg"
+                            >
+                              <Link to="/browse">Follow a Creator</Link>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div>
                       <Label htmlFor="claim-phone" className="text-xs font-semibold">
                         Nigerian MTN Mobile Number
@@ -393,6 +576,7 @@ function RewardsPage() {
                           className="h-11 pl-10 rounded-2xl text-sm font-mono tracking-wider"
                           autoComplete="tel"
                           required
+                          disabled={!canClaim}
                         />
                       </div>
 
@@ -432,33 +616,26 @@ function RewardsPage() {
                       </ul>
                     </div>
 
+                    {/* Claim Button: disabled until all requirements are met! */}
                     <Button
                       type="submit"
-                      disabled={isSubmitting || !isValidPhone || !isMtn}
-                      className="w-full h-11 rounded-full font-semibold text-xs shadow-lift"
+                      disabled={!canClaim || isSubmitting || !isValidPhone || !isMtn}
+                      className={`w-full h-11 rounded-full font-semibold text-xs shadow-lift ${
+                        !canClaim ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
-                      {isSubmitting ? "Submitting to Telco..." : "Claim 1GB MTN Data Now"}
+                      {isSubmitting ? (
+                        "Submitting to Telco..."
+                      ) : !canClaim ? (
+                        <>
+                          <Lock className="size-3.5 mr-1.5" />
+                          Claim Reward (Requirements Pending)
+                        </>
+                      ) : (
+                        "Claim 1GB MTN Data Now"
+                      )}
                     </Button>
                   </form>
-                ) : (
-                  <div className="mt-5 py-6 text-center text-xs text-muted-foreground">
-                    {statusData?.hasReachedLimit ? (
-                      <div>
-                        <CheckCircle2 className="mx-auto size-8 text-emerald-500" />
-                        <p className="mt-2 font-semibold text-sm text-foreground">
-                          Promotional Quota Complete
-                        </p>
-                        <p className="mt-1 max-w-sm mx-auto">
-                          You have claimed your allotted 1GB MTN data reward for this campaign.
-                          Thank you for streaming with XoraTV!
-                        </p>
-                      </div>
-                    ) : isProcessing ? (
-                      <p>A claim is currently in progress. Please wait for confirmation.</p>
-                    ) : (
-                      <p>Rewards are currently paused or being updated. Please check back later.</p>
-                    )}
-                  </div>
                 )}
               </div>
             </div>
@@ -468,7 +645,16 @@ function RewardsPage() {
               {/* Real-time Engagement Analytics & Reward Integrity Component */}
               <EngagementAnalyticsCard
                 userId={user.id}
-                onEligibilityChange={setEngagementEligible}
+                onEligibilityChange={(eligible, status) => {
+                  setEngagementEligible(eligible);
+                  if (status) setEngagementStatus(status);
+                }}
+                onClaimClick={() => {
+                  const el = document.getElementById("claim-reward-section");
+                  if (el) {
+                    el.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
               />
 
               {/* Previous Claims History */}

@@ -241,6 +241,9 @@ function WatchPage() {
               autoPlay
               vertical={false}
               className="h-full w-full"
+              postId={activeId || "cinema-stream"}
+              authorId={activeMovie?.director || "xora-cinema"}
+              genre={activeMovie?.genre}
             />
           ) : (
             <div className="grid h-full w-full place-items-center bg-black text-center text-xs text-white/50">

@@ -170,8 +170,14 @@ export class HeartbeatValidator {
       });
     }
 
-    // Check for burst spamming
-    if (wallClockDeltaSeconds < FRAUD_GUARD_CONFIG.heartbeat.minExpectedDeltaSeconds) {
+    // Check for burst spamming (skip if this is a legitimate pause/stop flush and playback progression is within normal bounds)
+    const isLegitPauseFlush =
+      Boolean(payload.isPause || payload.isStop) &&
+      speedRatio <= FRAUD_GUARD_CONFIG.heartbeat.maxAllowedSpeedRatio;
+    if (
+      !isLegitPauseFlush &&
+      wallClockDeltaSeconds < FRAUD_GUARD_CONFIG.heartbeat.minExpectedDeltaSeconds
+    ) {
       signals.push({
         type: "BURST_REWARD_CLAIMING",
         severity: "high",

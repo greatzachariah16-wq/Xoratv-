@@ -212,6 +212,20 @@ export async function startEngagementSession(params: {
     body: JSON.stringify(sessionData),
   });
 
+  // Record active watch session on user profile for instant dashboard awareness
+  await queryRtdb(`engagement/users/${userId}/activeWatchSession`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId,
+      videoId,
+      deviceFingerprintId,
+      startedAt: nowIso,
+      lastActiveAt: nowIso,
+      status: "streaming",
+    }),
+  });
+
   // Log audit trail
   await writeAuditLog({
     userId,
@@ -332,6 +346,20 @@ export async function processEngagementHeartbeat(payload: WatchHeartbeatPayload)
     body: JSON.stringify(updatedPeriod),
   });
 
+  // Update active watch session status on user record
+  const currentSessionStatus = payload.isPause ? "paused" : payload.isStop ? "idle" : "streaming";
+  await queryRtdb(`engagement/users/${accountId}/activeWatchSession`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId,
+      videoId: session.videoId,
+      deviceFingerprintId,
+      lastActiveAt: nowIso,
+      status: currentSessionStatus,
+    }),
+  });
+
   // Calculate period remaining time
   const expiresAtMs = new Date(status.currentPeriod.expiresAt).getTime();
   const remainingSeconds = Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
@@ -340,9 +368,16 @@ export async function processEngagementHeartbeat(payload: WatchHeartbeatPayload)
   await writeAuditLog({
     userId: accountId,
     sessionId,
-    eventType: "heartbeat_success",
-    details: `Accumulated ${playbackDelta} seconds of verified watch time. Current total: ${updatedWatchTime}s`,
-    meta: { playbackDelta, updatedWatchTime, trustScore: result.trustScore },
+    eventType: payload.isPause ? "playback_paused" : "heartbeat_success",
+    details: payload.isPause
+      ? `Playback paused. Marked ${playbackDelta}s verified watch time. Current total: ${updatedWatchTime}s`
+      : `Accumulated ${playbackDelta} seconds of verified watch time. Current total: ${updatedWatchTime}s`,
+    meta: {
+      playbackDelta,
+      updatedWatchTime,
+      trustScore: result.trustScore,
+      isPause: Boolean(payload.isPause),
+    },
   });
 
   return {
@@ -401,6 +436,57 @@ export async function getUserEngagementStatus(userId: string): Promise<{
     }
   } catch (err) {
     console.warn(`[Engagement Controller] Error reading userEvents for ${userId}:`, err);
+  }
+
+  // Verify interactive counts against RTDB records if userEvents query was empty
+  try {
+    const followsSnap = (await queryRtdb(`follows/${userId}`)) as Record<string, unknown> | null;
+    if (followsSnap && typeof followsSnap === "object") {
+      const followCount = Object.keys(followsSnap).length;
+      if (followCount > interactiveTally.follows) {
+        interactiveTally.follows = followCount;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  // Ensure currentPeriod counts don't regress
+  interactiveTally.likes = Math.max(interactiveTally.likes, currentPeriod.likeCount || 0);
+  interactiveTally.follows = Math.max(interactiveTally.follows, currentPeriod.followCount || 0);
+
+  // Read active watch session status
+  let activeSession: {
+    status: "streaming" | "paused" | "idle";
+    videoId: string | null;
+    startedAt: string | null;
+    lastActiveAt: string | null;
+  } = {
+    status: "idle",
+    videoId: null,
+    startedAt: null,
+    lastActiveAt: null,
+  };
+
+  try {
+    const activeSessionSnap = (await queryRtdb(
+      `engagement/users/${userId}/activeWatchSession`,
+    )) as {
+      status?: "streaming" | "paused" | "idle";
+      videoId?: string;
+      startedAt?: string;
+      lastActiveAt?: string;
+    } | null;
+    if (activeSessionSnap && typeof activeSessionSnap === "object") {
+      activeSession = {
+        status: activeSessionSnap.status || "idle",
+        videoId: activeSessionSnap.videoId || null,
+        startedAt: activeSessionSnap.startedAt || null,
+        lastActiveAt: activeSessionSnap.lastActiveAt || null,
+      };
+    }
+  } catch {
+    // fallback
   }
 
   // Update computed properties inside current period
@@ -465,18 +551,36 @@ export async function getUserEngagementStatus(userId: string): Promise<{
     // fallback
   }
 
-  // Assess eligibility
+  // Strict Qualification Requirements Evaluation:
+  // 1. Must reach required watch time (e.g. 60m)
+  // 2. Must like at least 1 video
+  // 3. Must follow at least 1 creator
+  // 4. Must meet minimum security trust score
+  const watchTimeMet = currentPeriod.verifiedWatchTimeSeconds >= requiredSeconds;
+  const likeMet = interactiveTally.likes >= 1;
+  const followMet = interactiveTally.follows >= 1;
+  const trustScoreMet = trustScore >= rules.minTrustScoreForReward;
+  const missingMins = Math.max(
+    0,
+    Math.ceil((requiredSeconds - currentPeriod.verifiedWatchTimeSeconds) / 60),
+  );
+
   let eligibleToClaim = true;
   let ineligibilityReason: string | null = null;
 
   if (!rules.enabled) {
     eligibleToClaim = false;
     ineligibilityReason = "The reward campaign is currently paused.";
-  } else if (currentPeriod.verifiedWatchTimeSeconds < requiredSeconds) {
+  } else if (!watchTimeMet) {
     eligibleToClaim = false;
-    const missingMins = Math.ceil((requiredSeconds - currentPeriod.verifiedWatchTimeSeconds) / 60);
-    ineligibilityReason = `Stream for ${missingMins} more minutes of genuine indie & horror content to qualify.`;
-  } else if (trustScore < rules.minTrustScoreForReward) {
+    ineligibilityReason = `Stream for ${missingMins} more minutes of cinema to reach the ${rules.requiredWatchTimeMinutes}-minute watch time requirement.`;
+  } else if (!likeMet) {
+    eligibleToClaim = false;
+    ineligibilityReason = "You must like at least 1 video before claiming your reward.";
+  } else if (!followMet) {
+    eligibleToClaim = false;
+    ineligibilityReason = "You must follow at least 1 creator before claiming your reward.";
+  } else if (!trustScoreMet) {
     eligibleToClaim = false;
     ineligibilityReason = "Your account is currently undergoing verification by platform security.";
   }
@@ -491,6 +595,19 @@ export async function getUserEngagementStatus(userId: string): Promise<{
       requiredSeconds,
     },
     interactives: interactiveTally,
+    requirements: {
+      watchTimeMet,
+      likeMet,
+      followMet,
+      trustScoreMet,
+      missingWatchMinutes: missingMins,
+      missingLikes: Math.max(0, 1 - interactiveTally.likes),
+      missingFollows: Math.max(0, 1 - interactiveTally.follows),
+      requiredWatchMinutes: rules.requiredWatchTimeMinutes,
+      requiredLikes: 1,
+      requiredFollows: 1,
+    },
+    activeSession,
     eligibility: {
       eligibleToClaim,
       ineligibilityReason,
@@ -820,5 +937,59 @@ export async function getEngagementDashboardAnalytics(): Promise<{
     funnelClaimCount,
     funnelDeliveredCount,
     auditLogs,
+  };
+}
+
+/**
+ * Records an engagement action (like, follow, comment, share) directly to the user's active period.
+ */
+export async function recordUserEngagementAction(
+  userId: string,
+  type: "like" | "follow" | "comment" | "share",
+  targetId?: string,
+): Promise<{ ok: boolean; likes: number; follows: number }> {
+  const ts = new Date().toISOString();
+  const eventId = `evt_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+  const eventRecord = {
+    type,
+    targetId: targetId || null,
+    ts,
+  };
+
+  try {
+    await queryRtdb(`userEvents/${userId}/${eventId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(eventRecord),
+    });
+  } catch (err) {
+    console.warn(`[Engagement Controller] Failed to write userEvent ${type} for ${userId}:`, err);
+  }
+
+  const { currentPeriod } = await getOrCreateActivePeriod(userId);
+  if (type === "like") {
+    currentPeriod.likeCount = (currentPeriod.likeCount || 0) + 1;
+  } else if (type === "follow") {
+    currentPeriod.followCount = (currentPeriod.followCount || 0) + 1;
+  } else if (type === "comment") {
+    currentPeriod.commentCount = (currentPeriod.commentCount || 0) + 1;
+  } else if (type === "share") {
+    currentPeriod.shareCount = (currentPeriod.shareCount || 0) + 1;
+  }
+
+  try {
+    await queryRtdb(`engagement/users/${userId}/currentPeriod`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentPeriod),
+    });
+  } catch (err) {
+    console.warn(`[Engagement Controller] Failed to update currentPeriod for ${userId}:`, err);
+  }
+
+  return {
+    ok: true,
+    likes: currentPeriod.likeCount || 0,
+    follows: currentPeriod.followCount || 0,
   };
 }

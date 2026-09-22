@@ -14,6 +14,7 @@ import {
 } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
+import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 
 type Props = {
   mediaPath?: string | null;
@@ -35,200 +36,7 @@ type Props = {
   feed?: FeedType;
 };
 
-function ProviderEmbedPlayer({
-  embedUrl,
-  title,
-  vertical,
-  autoPlay,
-  className,
-  postId,
-  authorId,
-  genre,
-  feed,
-}: {
-  embedUrl: string;
-  title: string;
-  vertical?: boolean;
-  autoPlay?: boolean;
-  className?: string;
-  postId?: string | null;
-  authorId?: string | null;
-  genre?: string | null;
-  feed?: FeedType;
-}) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
-  const [showStatusBadge, setShowStatusBadge] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (postId) {
-      trackEvent({
-        type: "view_start",
-        postId,
-        authorId,
-        genre,
-        feed,
-      });
-      const timer = setTimeout(() => {
-        trackEvent({
-          type: "view_3s",
-          postId,
-          authorId,
-          genre,
-          feed,
-        });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [postId, authorId, genre, feed]);
-
-  // Ensure origin is always accurately set in embed URL and apply 300MB/hr mobile data saver params
-  const dataSaver = getActiveDataSaverConfig();
-  let embedSrc = embedUrl;
-  const currentOrigin =
-    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
-  if (!embedSrc.includes("enablejsapi=1") && !embedSrc.includes("/api/stream/embed/")) {
-    embedSrc += (embedSrc.includes("?") ? "&" : "?") + "enablejsapi=1";
-  }
-  if (currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
-    embedSrc += `&origin=${encodeURIComponent(currentOrigin)}`;
-  }
-  // Mobile Data Saver: apply 360p / 300MB/hr bandwidth constraints to embeds
-  if (dataSaver.maxBitrateKbps <= 667) {
-    if (embedSrc.includes("youtube.com") || embedSrc.includes("youtube-nocookie.com")) {
-      if (!embedSrc.includes("vq="))
-        embedSrc +=
-          (embedSrc.includes("?") ? "&" : "?") + "vq=medium&playsinline=1&modestbranding=1";
-    } else if (embedSrc.includes("vimeo.com")) {
-      if (!embedSrc.includes("quality="))
-        embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
-    } else if (embedSrc.includes("dailymotion.com")) {
-      if (!embedSrc.includes("quality="))
-        embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360";
-    }
-  }
-  if (autoPlay) {
-    if (embedSrc.includes("autoplay=0")) {
-      embedSrc = embedSrc.replace("autoplay=0", "autoplay=1");
-    } else if (!embedSrc.includes("autoplay=1")) {
-      embedSrc += (embedSrc.includes("?") ? "&" : "?") + "autoplay=1";
-    }
-  } else {
-    if (embedSrc.includes("autoplay=1")) {
-      embedSrc = embedSrc.replace("autoplay=1", "autoplay=0");
-    }
-  }
-
-  // Handle play/pause command across YouTube, Vimeo, Dailymotion, and Custom Proxy streams
-  const togglePlayState = useCallback(
-    (e?: React.MouseEvent) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      const iframe = iframeRef.current;
-      if (!iframe || !iframe.contentWindow) return;
-
-      const nextPlaying = !isPlaying;
-      setIsPlaying(nextPlaying);
-      setShowStatusBadge(true);
-      setTimeout(() => setShowStatusBadge(false), 900);
-
-      try {
-        const targetWindow = iframe.contentWindow;
-
-        // 1. YouTube postMessage standard format
-        const ytCommand = nextPlaying ? "playVideo" : "pauseVideo";
-        targetWindow.postMessage(
-          JSON.stringify({ event: "command", func: ytCommand, args: [] }),
-          "*",
-        );
-
-        // 2. Custom internal stream-proxy player postMessage protocol
-        targetWindow.postMessage(
-          JSON.stringify({ type: "xora_player_cmd", action: nextPlaying ? "play" : "pause" }),
-          "*",
-        );
-
-        // 3. Vimeo postMessage standard format
-        const vimeoAction = nextPlaying ? "play" : "pause";
-        targetWindow.postMessage(JSON.stringify({ method: vimeoAction }), "*");
-
-        // 4. Dailymotion postMessage format
-        targetWindow.postMessage(JSON.stringify({ command: nextPlaying ? "play" : "pause" }), "*");
-      } catch (err) {
-        console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
-      }
-    },
-    [isPlaying],
-  );
-
-  return (
-    <div
-      className={cn(
-        "group relative overflow-hidden bg-black flex items-center justify-center rounded-2xl select-none",
-        vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
-        className,
-      )}
-    >
-      {/* Top Cinema Mask Overlay: covers YouTube title, channel avatar, watch later and share buttons */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4">
-        <div className="flex max-w-[70%] items-center gap-2">
-          <span className="rounded bg-primary/20 px-2 py-0.5 text-[9px] font-bold tracking-wider text-primary ring-1 ring-primary/40">
-            XORA CINEMA
-          </span>
-          <span className="truncate text-xs font-semibold text-white drop-shadow">{title}</span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-md">
-          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-          4K HD Master
-        </div>
-      </div>
-
-      <iframe
-        ref={iframeRef}
-        src={embedSrc}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        loading="lazy"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
-        referrerPolicy="no-referrer-when-downgrade"
-        className="h-full w-full border-0 rounded-2xl pointer-events-auto"
-      />
-
-      {/* Bottom right watermark shield: covers YouTube logo cleanly without allowing redirect clicks */}
-      <div className="pointer-events-none absolute bottom-2 right-2.5 z-20 flex select-none items-center gap-1.5 rounded-full border border-white/15 bg-black/90 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white shadow-xl backdrop-blur-md">
-        <span className="size-1.5 rounded-full bg-primary" />
-        <span>XORA CINEMA</span>
-      </div>
-
-      {/* Floating interactive control pill on bottom-left for explicit Play/Pause toggle */}
-      <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={togglePlayState}
-          aria-label={isPlaying ? "Pause Cinema" : "Play Cinema"}
-          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
-        >
-          {isPlaying ? (
-            <>
-              <Pause className="size-3.5 fill-current" />
-              <span>Pause</span>
-            </>
-          ) : (
-            <>
-              <Play className="size-3.5 fill-current text-primary" />
-              <span>Play</span>
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function NativeVideoPlayer({
+export function NativeVideoPlayer({
   mediaPath,
   posterPath,
   externalUrl,
@@ -274,6 +82,7 @@ function NativeVideoPlayer({
   const { user } = useAuth();
   const sessionRef = useRef<{ sessionId: string; nonce: string } | null>(null);
   const lastHeartbeatTimeRef = useRef<number>(0);
+  const devFingerprintIdRef = useRef<string>("");
 
   // Reset transient state whenever the source video changes.
   useEffect(() => {
@@ -303,11 +112,21 @@ function NativeVideoPlayer({
 
     let intervalId: NodeJS.Timeout | null = null;
     let isRequestActive = false;
+    const video = videoRef.current;
+
+    // Guard against fast-forward skips: when seeking happens, reset baseline time so skipped seconds are not counted
+    const handleSeeking = () => {
+      if (video) {
+        lastHeartbeatTimeRef.current = video.currentTime;
+      }
+    };
+    video.addEventListener("seeking", handleSeeking);
 
     const startSessionAndLoop = async () => {
       try {
         const fingerprintData = await generateDeviceFingerprint();
         const devFingerprintId = fingerprintData.fingerprintId;
+        devFingerprintIdRef.current = devFingerprintId;
 
         // 1. Fire Session Start request
         const startRes = await fetch("/api/engagement/start-session", {
@@ -332,24 +151,28 @@ function NativeVideoPlayer({
             nonce: sessionData.nonce,
           };
           lastHeartbeatTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
-          console.log(
-            "[Watch Integrity] Handshake established. Session ID:",
-            sessionData.sessionId,
-          );
+          // Notify dashboard immediately that a watch session has commenced
+          window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
         }
 
-        // 2. Start periodic verification heartbeat loop (intervals matches rules, e.g. 15s)
+        // 2. Start periodic verification heartbeat loop (every 10s of active playback)
         intervalId = setInterval(async () => {
-          const video = videoRef.current;
-          if (!video || video.paused || isRequestActive || !sessionRef.current) {
+          const v = videoRef.current;
+          if (!v || v.paused || isRequestActive || !sessionRef.current) {
             return;
           }
 
-          const currTime = video.currentTime;
+          const currTime = v.currentTime;
           const delta = currTime - lastHeartbeatTimeRef.current;
 
-          // Only send heartbeat if we have a logical step forward (min expected delta is 8s)
-          if (delta >= 10) {
+          // Catch fast forwarding / skipping jump: if delta > 25, reset without claiming skipped time
+          if (delta > 25) {
+            lastHeartbeatTimeRef.current = currTime;
+            return;
+          }
+
+          // Step forward (minimum 8s for regular intervals)
+          if (delta >= 8) {
             isRequestActive = true;
             try {
               const payload = {
@@ -359,7 +182,7 @@ function NativeVideoPlayer({
                 deviceFingerprintId: devFingerprintId,
                 currentPlaybackSeconds: Math.round(currTime),
                 claimedDeltaSeconds: Math.round(delta),
-                videoDurationSeconds: Math.round(video.duration || 0),
+                videoDurationSeconds: Math.round(v.duration || 0),
               };
 
               const hbRes = await fetch("/api/engagement/heartbeat", {
@@ -371,19 +194,12 @@ function NativeVideoPlayer({
               if (hbRes.ok) {
                 const hbData = await hbRes.json();
                 if (hbData?.ok && hbData?.validationResult?.isValid) {
-                  // Handshake success - chain the next cryptographic nonce!
                   sessionRef.current.nonce = hbData.validationResult.nextNonce;
                   lastHeartbeatTimeRef.current = currTime;
-                  console.log(
-                    "[Watch Integrity] Handshake secure. Verified watch total (s):",
-                    hbData.verifiedWatchTimeSeconds,
-                  );
+                  window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
                 } else {
-                  console.warn("[Watch Integrity] Heartbeat validation failed. Session invalid.");
                   sessionRef.current = null;
                 }
-              } else {
-                console.warn("[Watch Integrity] Heartbeat transport error.");
               }
             } catch (err) {
               console.error("[Watch Integrity] Heartbeat error:", err);
@@ -391,7 +207,7 @@ function NativeVideoPlayer({
               isRequestActive = false;
             }
           }
-        }, 15000); // 15 seconds
+        }, 10000); // 10 seconds
       } catch (err) {
         console.error("[Watch Integrity] Setup failed:", err);
       }
@@ -400,8 +216,41 @@ function NativeVideoPlayer({
     startSessionAndLoop();
 
     return () => {
+      video.removeEventListener("seeking", handleSeeking);
       if (intervalId) {
         clearInterval(intervalId);
+      }
+
+      // When video is paused or stopped: immediately flush and mark active watch time!
+      const currentVideo = video;
+      if (currentVideo && sessionRef.current && user) {
+        const currTime = currentVideo.currentTime;
+        const delta = currTime - lastHeartbeatTimeRef.current;
+
+        // Ensure reasonable delta (not a fast-forward jump, and at least 2 genuine seconds)
+        if (delta >= 2 && delta <= 30) {
+          fetch("/api/engagement/heartbeat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: sessionRef.current.sessionId,
+              nonce: sessionRef.current.nonce,
+              accountId: user.id,
+              deviceFingerprintId: devFingerprintIdRef.current || "browser-generic",
+              currentPlaybackSeconds: Math.round(currTime),
+              claimedDeltaSeconds: Math.round(delta),
+              videoDurationSeconds: Math.round(currentVideo.duration || 0),
+              isPause: true,
+            }),
+          })
+            .then((res) => {
+              if (res.ok) {
+                window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
+              }
+            })
+            .catch(() => {});
+          lastHeartbeatTimeRef.current = currTime;
+        }
       }
     };
   }, [playing, user, postId]);

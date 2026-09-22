@@ -695,6 +695,18 @@ export async function toggleLike(postId: string, userId: string, liked: boolean)
   } else {
     localLikes.add(key);
     trackEvent({ type: "like", postId, userId });
+    // Record engagement action to backend
+    fetch("/api/engagement/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, type: "like", targetId: postId }),
+    })
+      .then(() => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
+        }
+      })
+      .catch(() => {});
   }
 
   if (isFirebaseConfigured()) {
@@ -724,6 +736,18 @@ export async function toggleFollow(targetId: string, userId: string, following: 
   } else {
     localFollows.add(key);
     trackEvent({ type: "follow", authorId: targetId, userId });
+    // Record engagement action to backend
+    fetch("/api/engagement/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, type: "follow", targetId }),
+    })
+      .then(() => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
+        }
+      })
+      .catch(() => {});
   }
 
   if (isFirebaseConfigured()) {

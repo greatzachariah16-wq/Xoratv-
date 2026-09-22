@@ -32,6 +32,7 @@ import {
   normalizeNigerianPhone,
 } from "@/lib/rewards/phone";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
+import type { EngagementStatus } from "@/components/rewards/EngagementAnalyticsCard";
 
 interface RewardPopupProps {
   open?: boolean;
@@ -68,6 +69,7 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
   const [phoneInput, setPhoneInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTxId, setActiveTxId] = useState<string | null>(null);
+  const [engagementData, setEngagementData] = useState<EngagementStatus | null>(null);
 
   // Phone validation
   const normalizedPhone = normalizeNigerianPhone(phoneInput);
@@ -80,9 +82,13 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
       return;
     }
     try {
-      const res = await fetch(`/api/rewards/user-status?userId=${encodeURIComponent(user.id)}`);
-      if (res.ok) {
-        const json = (await res.json()) as UserRewardStatus;
+      const [rewardRes, engRes] = await Promise.all([
+        fetch(`/api/rewards/user-status?userId=${encodeURIComponent(user.id)}`),
+        fetch(`/api/engagement/user-status?userId=${encodeURIComponent(user.id)}`),
+      ]);
+
+      if (rewardRes.ok) {
+        const json = (await rewardRes.json()) as UserRewardStatus;
         setStatusData(json);
         if (
           json.latestClaim &&
@@ -90,6 +96,11 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
         ) {
           setActiveTxId(json.latestClaim.xoraTxId);
         }
+      }
+
+      if (engRes.ok) {
+        const engJson = await engRes.json();
+        setEngagementData(engJson);
       }
     } catch {
       // ignore fetch error
@@ -190,7 +201,29 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
     latestClaim?.status === "processing" ||
     latestClaim?.status === "pending" ||
     Boolean(activeTxId);
-  const canClaim = Boolean(statusData?.canClaim && !isProcessing && !statusData?.hasReachedLimit);
+
+  const engagementEligible = Boolean(engagementData?.eligibility?.eligibleToClaim);
+  const canClaim = Boolean(
+    statusData?.canClaim && engagementEligible && !isProcessing && !statusData?.hasReachedLimit,
+  );
+
+  const watchMins = Math.floor((engagementData?.currentPeriod?.verifiedWatchTimeSeconds ?? 0) / 60);
+  const reqMins = Math.round((engagementData?.currentPeriod?.requiredSeconds ?? 3600) / 60);
+  const watchMet = Boolean(
+    engagementData?.requirements?.watchTimeMet ??
+    (engagementData?.currentPeriod?.verifiedWatchTimeSeconds ?? 0) >=
+      (engagementData?.currentPeriod?.requiredSeconds ?? 3600),
+  );
+  const likeMet = Boolean(
+    engagementData?.requirements?.likeMet ??
+    ((engagementData?.interactives?.likes ?? 0) >= 1 ||
+      (engagementData?.currentPeriod?.likeCount ?? 0) >= 1),
+  );
+  const followMet = Boolean(
+    engagementData?.requirements?.followMet ??
+    ((engagementData?.interactives?.follows ?? 0) >= 1 ||
+      (engagementData?.currentPeriod?.followCount ?? 0) >= 1),
+  );
 
   return (
     <Dialog open={showModal} onOpenChange={setModalOpen}>
@@ -273,8 +306,77 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
               )}
 
               {/* Form Input */}
-              {canClaim ? (
+              {statusData?.hasReachedLimit ? (
+                <div className="rounded-2xl border border-border/60 bg-secondary/30 p-4 text-center text-xs text-muted-foreground">
+                  <p className="font-semibold text-foreground">Quota Reached</p>
+                  <p className="mt-0.5 text-[11px]">
+                    You have claimed your allotted promotional data reward for this phase.
+                  </p>
+                </div>
+              ) : isProcessing ? null : (
                 <form onSubmit={handleClaim} className="space-y-3">
+                  {/* Qualification checklist inside Popup */}
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-semibold">
+                      <span>Viewer Qualification</span>
+                      <span className={canClaim ? "text-emerald-400" : "text-amber-400"}>
+                        {canClaim ? "Ready to Claim" : "Pending Requirements"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                      <div
+                        className={`p-1.5 rounded-lg border ${watchMet ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-border/60 bg-background/40"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>Watch</span>
+                          {watchMet ? (
+                            <CheckCircle2 className="size-3 text-emerald-400" />
+                          ) : (
+                            <Info className="size-3 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="font-mono">
+                          {watchMins}m/{reqMins}m
+                        </span>
+                      </div>
+
+                      <div
+                        className={`p-1.5 rounded-lg border ${likeMet ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-border/60 bg-background/40"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>Like</span>
+                          {likeMet ? (
+                            <CheckCircle2 className="size-3 text-emerald-400" />
+                          ) : (
+                            <Info className="size-3 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span>{likeMet ? "1/1" : "0/1"}</span>
+                      </div>
+
+                      <div
+                        className={`p-1.5 rounded-lg border ${followMet ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-border/60 bg-background/40"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>Follow</span>
+                          {followMet ? (
+                            <CheckCircle2 className="size-3 text-emerald-400" />
+                          ) : (
+                            <Info className="size-3 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span>{followMet ? "1/1" : "0/1"}</span>
+                      </div>
+                    </div>
+
+                    {!canClaim && (
+                      <p className="text-[10px] text-amber-400/90 leading-tight">
+                        Must watch 60 mins, like 1 video, and follow 1 creator to claim data.
+                      </p>
+                    )}
+                  </div>
+
                   <div>
                     <Label htmlFor="popup-phone" className="text-xs font-semibold text-foreground">
                       MTN Phone Number
@@ -290,6 +392,7 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
                         className="h-10 pl-10 rounded-xl text-xs font-mono tracking-wider bg-background/50 border-border/80"
                         autoComplete="tel"
                         required
+                        disabled={!canClaim}
                       />
                     </div>
 
@@ -317,20 +420,39 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
 
                   <Button
                     type="submit"
-                    disabled={isSubmitting || !isValidPhone || !isMtn}
-                    className="w-full h-10 rounded-xl font-semibold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-lift"
+                    disabled={!canClaim || isSubmitting || !isValidPhone || !isMtn}
+                    className={`w-full h-10 rounded-xl font-semibold text-xs shadow-lift ${
+                      !canClaim
+                        ? "opacity-50 cursor-not-allowed bg-secondary text-secondary-foreground"
+                        : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                    }`}
                   >
-                    {isSubmitting ? "Delivering..." : "Claim 1GB MTN Data Now"}
+                    {isSubmitting ? (
+                      "Delivering..."
+                    ) : !canClaim ? (
+                      <>
+                        <Lock className="size-3.5 mr-1" />
+                        Claim Reward (Requirements Pending)
+                      </>
+                    ) : (
+                      "Claim 1GB MTN Data Now"
+                    )}
                   </Button>
+
+                  {!canClaim && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-9 rounded-xl text-[11px]"
+                    >
+                      <Link to="/rewards" onClick={() => setModalOpen(false)}>
+                        Go to Rewards Dashboard
+                      </Link>
+                    </Button>
+                  )}
                 </form>
-              ) : statusData?.hasReachedLimit ? (
-                <div className="rounded-2xl border border-border/60 bg-secondary/30 p-4 text-center text-xs text-muted-foreground">
-                  <p className="font-semibold text-foreground">Quota Reached</p>
-                  <p className="mt-0.5 text-[11px]">
-                    You have claimed your allotted promotional data reward for this phase.
-                  </p>
-                </div>
-              ) : null}
+              )}
             </div>
           )}
 

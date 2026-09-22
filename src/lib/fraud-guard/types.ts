@@ -98,6 +98,8 @@ export interface WatchHeartbeatPayload {
   playbackRate?: number;
   claimedDeltaSeconds: number;
   videoDurationSeconds?: number;
+  isPause?: boolean;
+  isStop?: boolean;
   behavioralSignals?: Array<{
     type: string;
     penalty: number;
