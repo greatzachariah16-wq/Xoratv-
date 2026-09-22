@@ -19,7 +19,7 @@ interface DeepShadowAdShellProps {
  * - Layered deep shadow structure
  * - Dark purple/near-black background foundation (#0d0b14 to #181226)
  * - Restrained violet/purple highlight borders (border-primary/20)
- * - Clear distinction as sponsored content while maintaining cinematic polish
+ * - Full landscape orientation responsiveness
  */
 export function DeepShadowAdShell({
   campaign,
@@ -71,7 +71,6 @@ export function DeepShadowAdShell({
 
     const rawCta = (campaign.ctaUrl || "").trim();
     if (rawCta) {
-      // Clean accidental spaces inside local routes (e.g. '/rewards data rewards' -> '/rewards')
       const targetUrl =
         rawCta.startsWith("http://") || rawCta.startsWith("https://")
           ? rawCta
@@ -142,7 +141,7 @@ export function DeepShadowAdShell({
           className,
         )}
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row landscape:flex-row sm:items-center landscape:items-center sm:justify-between landscape:justify-between">
           <div className="space-y-1.5 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
@@ -175,7 +174,7 @@ export function DeepShadowAdShell({
     );
   }
 
-  // Default "card" presentation (e.g. inside Reward Popup or beneath content player)
+  // Default "card" presentation
   return (
     <div
       ref={containerRef}
@@ -186,7 +185,7 @@ export function DeepShadowAdShell({
     >
       {/* Top Banner Media if available */}
       {campaign.bannerUrl && (
-        <div className="relative aspect-[21/9] w-full overflow-hidden bg-black/40 sm:aspect-[2.4/1]">
+        <div className="relative aspect-[21/9] sm:aspect-[2.4/1] landscape:aspect-[21/8] max-h-52 w-full overflow-hidden bg-black/40">
           <img
             src={campaign.bannerUrl}
             alt={campaign.headline}

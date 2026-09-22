@@ -107,34 +107,41 @@ export function LargeBannerPopupAd({ placement, delayMs = 600 }: LargeBannerPopu
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-primary/30 bg-card text-card-foreground shadow-2xl ring-1 ring-white/10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div
+        className={cn(
+          "relative w-full max-w-lg overflow-hidden rounded-3xl border border-primary/30 bg-[#0e0b17] text-card-foreground shadow-2xl ring-1 ring-white/10 max-h-[92vh] flex flex-col",
+          campaign.bannerUrl
+            ? "landscape:max-w-3xl landscape:grid landscape:grid-cols-12 landscape:items-stretch landscape:max-h-[88vh]"
+            : "landscape:max-w-xl",
+        )}
+      >
         {/* Close Button */}
         <button
           type="button"
           onClick={handleDismiss}
-          className="absolute right-3 top-3 z-10 rounded-full bg-black/60 p-2 text-white/80 backdrop-blur-md transition-colors hover:bg-black hover:text-white"
+          className="absolute right-3 top-3 z-30 rounded-full bg-black/75 p-2 text-white/90 backdrop-blur-md transition-colors hover:bg-black hover:text-white ring-1 ring-white/15"
           aria-label="Close ad"
         >
           <X className="size-4" />
         </button>
 
-        {/* Banner Image */}
+        {/* Banner Image (Full width in portrait, Left column in landscape) */}
         {campaign.bannerUrl ? (
-          <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64">
+          <div className="relative h-44 sm:h-56 w-full shrink-0 overflow-hidden bg-muted landscape:col-span-5 landscape:h-full landscape:min-h-[240px]">
             <img
               src={campaign.bannerUrl}
               alt={campaign.headline}
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-            <div className="absolute bottom-3 left-4 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/90 px-3 py-1 text-[11px] font-bold text-primary-foreground shadow-sm">
-                <Sparkles className="size-3" /> {campaign.badge || "Sponsored"}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0e0b17] via-[#0e0b17]/20 to-transparent landscape:bg-gradient-to-r landscape:from-transparent landscape:to-[#0e0b17]" />
+            <div className="absolute bottom-3 left-3 sm:left-4 flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-primary-foreground shadow-sm">
+                <Sparkles className="size-2.5 sm:size-3" /> {campaign.badge || "Sponsored"}
               </span>
               {campaign.sponsorName ? (
-                <span className="rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/90 backdrop-blur-md">
+                <span className="rounded-full bg-black/70 px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white/90 backdrop-blur-md border border-white/10">
                   {campaign.sponsorName}
                 </span>
               ) : null}
@@ -142,48 +149,57 @@ export function LargeBannerPopupAd({ placement, delayMs = 600 }: LargeBannerPopu
           </div>
         ) : null}
 
-        {/* Content Details */}
-        <div className="p-6">
-          {!campaign.bannerUrl ? (
-            <div className="mb-3 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-3 py-1 text-[11px] font-bold text-primary">
-                <Sparkles className="size-3" /> {campaign.badge || "Featured"}
-              </span>
-              {campaign.sponsorName ? (
-                <span className="text-xs font-medium text-muted-foreground">
-                  By {campaign.sponsorName}
+        {/* Content Details (Vertical stack in portrait, Right column in landscape) */}
+        <div
+          className={cn(
+            "p-5 sm:p-6 flex flex-col justify-between overflow-y-auto",
+            campaign.bannerUrl ? "landscape:col-span-7 landscape:p-6" : "w-full",
+          )}
+        >
+          <div>
+            {!campaign.bannerUrl ? (
+              <div className="mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-3 py-1 text-[11px] font-bold text-primary">
+                  <Sparkles className="size-3" /> {campaign.badge || "Featured Promotion"}
                 </span>
-              ) : null}
-            </div>
-          ) : null}
+                {campaign.sponsorName ? (
+                  <span className="text-xs font-medium text-muted-foreground">
+                    By {campaign.sponsorName}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
 
-          <h3 className="font-display text-xl font-bold tracking-tight sm:text-2xl">
-            {campaign.headline}
-          </h3>
+            <h3 className="font-display text-lg sm:text-2xl font-bold tracking-tight text-white leading-snug">
+              {campaign.headline}
+            </h3>
 
-          {campaign.subheadline ? (
-            <p className="mt-1.5 text-sm font-medium text-primary/90">{campaign.subheadline}</p>
-          ) : null}
+            {campaign.subheadline ? (
+              <p className="mt-1.5 text-xs sm:text-sm font-medium text-primary">
+                {campaign.subheadline}
+              </p>
+            ) : null}
 
-          {campaign.description ? (
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              {campaign.description}
-            </p>
-          ) : null}
+            {campaign.description ? (
+              <p className="mt-2 text-xs leading-relaxed text-white/70 sm:text-sm line-clamp-3 sm:line-clamp-4">
+                {campaign.description}
+              </p>
+            ) : null}
+          </div>
 
           {/* Action Buttons */}
-          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-end">
+          <div className="mt-5 sm:mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={handleDismiss}
-              className="rounded-full border border-border bg-background px-5 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
               Skip
             </button>
             <button
               type="button"
               onClick={handleCtaClick}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition-transform active:scale-95 hover:bg-primary/90"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition-transform active:scale-95 hover:bg-primary/90"
             >
               <span>{campaign.ctaText || "Learn More"}</span>
               <ExternalLink className="size-3.5" />
