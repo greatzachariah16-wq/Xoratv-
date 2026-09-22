@@ -12,6 +12,8 @@ import {
   getOptimizedImageUrl,
   useDataSaver,
 } from "@/lib/data-saver";
+import { useAuth } from "@/hooks/useAuth";
+import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 
 type Props = {
   mediaPath?: string | null;
@@ -268,6 +270,11 @@ function NativeVideoPlayer({
   const timer3sRef = useRef<NodeJS.Timeout | null>(null);
   const lastTimeRef = useRef<number>(0);
 
+  // Watch Integrity state and refs
+  const { user } = useAuth();
+  const sessionRef = useRef<{ sessionId: string; nonce: string } | null>(null);
+  const lastHeartbeatTimeRef = useRef<number>(0);
+
   // Reset transient state whenever the source video changes.
   useEffect(() => {
     setPlaying(false);
@@ -280,11 +287,124 @@ function NativeVideoPlayer({
     trackedStart.current = false;
     tracked3s.current = false;
     trackedComplete.current = false;
+    sessionRef.current = null;
+    lastHeartbeatTimeRef.current = 0;
     if (timer3sRef.current) {
       clearTimeout(timer3sRef.current);
       timer3sRef.current = null;
     }
   }, [mediaPath, externalUrl, streamUrl, postId]);
+
+  // Production-Ready Xora Engagement Handshake & Heartbeat Loop
+  useEffect(() => {
+    if (!playing || !user || !postId || !videoRef.current) {
+      return;
+    }
+
+    let intervalId: NodeJS.Timeout | null = null;
+    let isRequestActive = false;
+
+    const startSessionAndLoop = async () => {
+      try {
+        const fingerprintData = await generateDeviceFingerprint();
+        const devFingerprintId = fingerprintData.fingerprintId;
+
+        // 1. Fire Session Start request
+        const startRes = await fetch("/api/engagement/start-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            videoId: postId,
+            deviceFingerprintId: devFingerprintId,
+          }),
+        });
+
+        if (!startRes.ok) {
+          console.warn("[Watch Integrity] Failed to initiate secure watch session");
+          return;
+        }
+
+        const sessionData = await startRes.json();
+        if (sessionData?.ok && sessionData?.sessionId) {
+          sessionRef.current = {
+            sessionId: sessionData.sessionId,
+            nonce: sessionData.nonce,
+          };
+          lastHeartbeatTimeRef.current = videoRef.current ? videoRef.current.currentTime : 0;
+          console.log(
+            "[Watch Integrity] Handshake established. Session ID:",
+            sessionData.sessionId,
+          );
+        }
+
+        // 2. Start periodic verification heartbeat loop (intervals matches rules, e.g. 15s)
+        intervalId = setInterval(async () => {
+          const video = videoRef.current;
+          if (!video || video.paused || isRequestActive || !sessionRef.current) {
+            return;
+          }
+
+          const currTime = video.currentTime;
+          const delta = currTime - lastHeartbeatTimeRef.current;
+
+          // Only send heartbeat if we have a logical step forward (min expected delta is 8s)
+          if (delta >= 10) {
+            isRequestActive = true;
+            try {
+              const payload = {
+                sessionId: sessionRef.current.sessionId,
+                nonce: sessionRef.current.nonce,
+                accountId: user.id,
+                deviceFingerprintId: devFingerprintId,
+                currentPlaybackSeconds: Math.round(currTime),
+                claimedDeltaSeconds: Math.round(delta),
+                videoDurationSeconds: Math.round(video.duration || 0),
+              };
+
+              const hbRes = await fetch("/api/engagement/heartbeat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+
+              if (hbRes.ok) {
+                const hbData = await hbRes.json();
+                if (hbData?.ok && hbData?.validationResult?.isValid) {
+                  // Handshake success - chain the next cryptographic nonce!
+                  sessionRef.current.nonce = hbData.validationResult.nextNonce;
+                  lastHeartbeatTimeRef.current = currTime;
+                  console.log(
+                    "[Watch Integrity] Handshake secure. Verified watch total (s):",
+                    hbData.verifiedWatchTimeSeconds,
+                  );
+                } else {
+                  console.warn("[Watch Integrity] Heartbeat validation failed. Session invalid.");
+                  sessionRef.current = null;
+                }
+              } else {
+                console.warn("[Watch Integrity] Heartbeat transport error.");
+              }
+            } catch (err) {
+              console.error("[Watch Integrity] Heartbeat error:", err);
+            } finally {
+              isRequestActive = false;
+            }
+          }
+        }, 15000); // 15 seconds
+      } catch (err) {
+        console.error("[Watch Integrity] Setup failed:", err);
+      }
+    };
+
+    startSessionAndLoop();
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [playing, user, postId]);
 
   const hlsRef = useRef<import("hls.js").default | null>(null);
 

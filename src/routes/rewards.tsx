@@ -32,6 +32,7 @@ import {
 } from "@/lib/rewards/phone";
 import { RewardPopup } from "@/components/rewards/RewardPopup";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
+import { EngagementAnalyticsCard } from "@/components/rewards/EngagementAnalyticsCard";
 
 export const Route = createFileRoute("/rewards")({
   head: () => ({
@@ -79,6 +80,7 @@ function RewardsPage() {
   const [phoneInput, setPhoneInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTxId, setActiveTxId] = useState<string | null>(null);
+  const [engagementEligible, setEngagementEligible] = useState(false);
 
   // Validation states
   const normalizedPhone = normalizeNigerianPhone(phoneInput);
@@ -207,7 +209,9 @@ function RewardsPage() {
     latestClaim?.status === "pending" ||
     Boolean(activeTxId);
   const isFailed = latestClaim?.status === "failed";
-  const canClaim = Boolean(statusData?.canClaim && !isProcessing && !statusData?.hasReachedLimit);
+  const canClaim = Boolean(
+    statusData?.canClaim && engagementEligible && !isProcessing && !statusData?.hasReachedLimit,
+  );
 
   return (
     <AppShell>
@@ -461,36 +465,11 @@ function RewardsPage() {
 
             {/* Right Column: Policy & Claims History */}
             <div className="lg:col-span-5 space-y-6">
-              {/* Account Status Card */}
-              <div className="rounded-3xl border border-border bg-card p-6 shadow-card">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="size-4 text-primary" />
-                  <h2 className="font-display text-sm font-bold">Eligibility & Verification</h2>
-                </div>
-
-                <div className="mt-4 space-y-3 text-xs">
-                  <div className="flex items-center justify-between py-1.5 border-b border-border/60">
-                    <span className="text-muted-foreground">Account Status</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      Normal Viewer (Active)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-1.5 border-b border-border/60">
-                    <span className="text-muted-foreground">Fraud Shield Verification</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      Passed (Score: Clear)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-1.5 border-b border-border/60">
-                    <span className="text-muted-foreground">Allotted Claims</span>
-                    <span className="font-semibold">
-                      {statusData?.claimCount ?? 0} / {statusData?.maxRewardsPerUser ?? 1}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              {/* Real-time Engagement Analytics & Reward Integrity Component */}
+              <EngagementAnalyticsCard
+                userId={user.id}
+                onEligibilityChange={setEngagementEligible}
+              />
 
               {/* Previous Claims History */}
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card">

@@ -16,6 +16,19 @@ import {
   type RewardTransaction,
 } from "./vtushare-service";
 import { queryRtdb } from "./xseries-service-account";
+import {
+  getEngagementRules,
+  saveEngagementRules,
+  startEngagementSession,
+  processEngagementHeartbeat,
+  getUserEngagementStatus,
+  forceRotateUserPeriod,
+  getEngagementAlerts,
+  resolveEngagementAlert,
+  getEngagementDashboardAnalytics,
+  recordPeriodClaim,
+} from "./engagement-controller";
+import type { WatchHeartbeatPayload } from "@/lib/fraud-guard/types";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS, DELETE",
@@ -33,7 +46,10 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
   // Handle CORS preflight
   if (
     request.method === "OPTIONS" &&
-    (pathname.startsWith("/api/rewards") || pathname.startsWith("/api/admin/rewards"))
+    (pathname.startsWith("/api/rewards") ||
+      pathname.startsWith("/api/admin/rewards") ||
+      pathname.startsWith("/api/engagement") ||
+      pathname.startsWith("/api/admin/engagement"))
   ) {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
@@ -132,13 +148,42 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         );
       }
 
+      // Check real production engagement eligibility and trust score first!
+      const engStatus = await getUserEngagementStatus(body.userId);
+      if (!engStatus.eligibility.eligibleToClaim) {
+        return jsonReply(
+          {
+            ok: false,
+            status: "failed",
+            message:
+              engStatus.eligibility.ineligibilityReason ||
+              "You have not met the engagement criteria to claim this reward.",
+          },
+          400,
+        );
+      }
+
+      // Retrieve actual trust score and risk tier from engagement evaluation
+      const trustScore = engStatus.eligibility.trustScore;
+      const fraudTier =
+        engStatus.eligibility.riskLevel === "critical"
+          ? 3
+          : engStatus.eligibility.riskLevel === "high"
+            ? 2
+            : 0;
+
       const result = await claimUserReward({
         userId: body.userId,
         userEmail: body.userEmail,
         phone: body.phone,
-        trustScore: typeof body.trustScore === "number" ? body.trustScore : 85,
-        fraudTier: typeof body.fraudTier === "number" ? body.fraudTier : 0,
+        trustScore,
+        fraudTier,
       });
+
+      // If successful, register claim inside current period
+      if (result.ok && result.status === "success") {
+        await recordPeriodClaim(body.userId);
+      }
 
       return jsonReply(result, result.ok ? 200 : 400);
     } catch (err: unknown) {
@@ -183,6 +228,95 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Transaction status lookup error";
+      return jsonReply({ ok: false, error: msg }, 500);
+    }
+  }
+
+  // ==============================================================
+  // USER FACING ENGAGEMENT ENDPOINTS
+  // ==============================================================
+
+  // GET /api/engagement/rules
+  if (pathname === "/api/engagement/rules" && request.method === "GET") {
+    try {
+      const rules = await getEngagementRules();
+      return jsonReply({ ok: true, rules });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error fetching engagement rules";
+      return jsonReply({ ok: false, error: msg }, 500);
+    }
+  }
+
+  // GET /api/engagement/user-status?userId=...
+  if (pathname === "/api/engagement/user-status" && request.method === "GET") {
+    try {
+      const userId = url.searchParams.get("userId");
+      if (!userId) {
+        return jsonReply({ ok: false, error: "Missing userId parameter" }, 400);
+      }
+      const status = await getUserEngagementStatus(userId);
+      return jsonReply(status);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error fetching engagement status";
+      return jsonReply({ ok: false, error: msg }, 500);
+    }
+  }
+
+  // POST /api/engagement/start-session
+  if (pathname === "/api/engagement/start-session" && request.method === "POST") {
+    try {
+      const body = (await request.json().catch(() => null)) as {
+        userId?: string;
+        videoId?: string;
+        deviceFingerprintId?: string;
+        clientIp?: string;
+      } | null;
+
+      if (!body?.userId || !body?.videoId || !body?.deviceFingerprintId) {
+        return jsonReply(
+          {
+            ok: false,
+            error: "Missing required parameters (userId, videoId, deviceFingerprintId)",
+          },
+          400,
+        );
+      }
+
+      const clientIp = body.clientIp || request.headers.get("x-forwarded-for") || "127.0.0.1";
+      const session = await startEngagementSession({
+        userId: body.userId,
+        videoId: body.videoId,
+        deviceFingerprintId: body.deviceFingerprintId,
+        clientIp,
+      });
+
+      return jsonReply({ ok: true, ...session });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error starting engagement session";
+      return jsonReply({ ok: false, error: msg }, 500);
+    }
+  }
+
+  // POST /api/engagement/heartbeat
+  if (pathname === "/api/engagement/heartbeat" && request.method === "POST") {
+    try {
+      const body = (await request.json().catch(() => null)) as WatchHeartbeatPayload | null;
+
+      if (!body?.sessionId || !body?.nonce || !body?.accountId || !body?.deviceFingerprintId) {
+        return jsonReply(
+          { ok: false, error: "Missing required heartbeat payload parameters" },
+          400,
+        );
+      }
+
+      if (!body.clientIp) {
+        body.clientIp = request.headers.get("x-forwarded-for") || "127.0.0.1";
+      }
+
+      const result = await processEngagementHeartbeat(body);
+      return jsonReply({ ok: true, ...result });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error processing heartbeat";
       return jsonReply({ ok: false, error: msg }, 500);
     }
   }
@@ -387,6 +521,95 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Test transaction failed";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+  }
+
+  // ==============================================================
+  // ADMIN-ONLY ENGAGEMENT ENDPOINTS
+  // ==============================================================
+  if (pathname.startsWith("/api/admin/engagement")) {
+    const adminSession = verifyAdminSession(request);
+    if (!adminSession.valid) {
+      return jsonReply(
+        {
+          ok: false,
+          error: adminSession.error || "Unauthorized: Sovereign admin session required.",
+        },
+        401,
+      );
+    }
+
+    // POST /api/admin/engagement/rules
+    if (pathname === "/api/admin/engagement/rules" && request.method === "POST") {
+      try {
+        const patch = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+        const rules = await saveEngagementRules(patch);
+        return jsonReply({ ok: true, rules });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error updating engagement rules";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // GET /api/admin/engagement/alerts
+    if (pathname === "/api/admin/engagement/alerts" && request.method === "GET") {
+      try {
+        const alerts = await getEngagementAlerts();
+        return jsonReply({ ok: true, alerts });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error fetching engagement alerts";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/engagement/alerts/resolve
+    if (pathname === "/api/admin/engagement/alerts/resolve" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          alertId?: string;
+          status?: "resolved_safe" | "resolved_restricted";
+          notes?: string;
+        } | null;
+
+        if (!body?.alertId || !body?.status) {
+          return jsonReply(
+            { ok: false, error: "Missing required parameters (alertId, status)" },
+            400,
+          );
+        }
+
+        const success = await resolveEngagementAlert(body.alertId, body.status, body.notes || "");
+        return jsonReply({ ok: success });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error resolving alert";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // GET /api/admin/engagement/analytics
+    if (pathname === "/api/admin/engagement/analytics" && request.method === "GET") {
+      try {
+        const analytics = await getEngagementDashboardAnalytics();
+        return jsonReply({ ok: true, ...analytics });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error fetching dashboard analytics";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/engagement/periods/reset
+    if (pathname === "/api/admin/engagement/periods/reset" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as { userId?: string } | null;
+        if (!body?.userId) {
+          return jsonReply({ ok: false, error: "Missing required parameter: userId" }, 400);
+        }
+        const rotatedPeriod = await forceRotateUserPeriod(body.userId);
+        return jsonReply({ ok: true, currentPeriod: rotatedPeriod });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error resetting user period";
         return jsonReply({ ok: false, error: msg }, 500);
       }
     }

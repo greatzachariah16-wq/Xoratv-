@@ -286,8 +286,13 @@ export default {
       if (xseriesRes) return xseriesRes;
     }
 
-    // Automated VTUshare MTN Data Rewards Endpoints (User & Admin)
-    if (url.pathname.startsWith("/api/rewards") || url.pathname.startsWith("/api/admin/rewards")) {
+    // Automated VTUshare MTN Data Rewards & Engagement Endpoints (User & Admin)
+    if (
+      url.pathname.startsWith("/api/rewards") ||
+      url.pathname.startsWith("/api/admin/rewards") ||
+      url.pathname.startsWith("/api/engagement") ||
+      url.pathname.startsWith("/api/admin/engagement")
+    ) {
       const rewardsRes = await handleRewardsRoute(request, url);
       if (rewardsRes) return rewardsRes;
     }
