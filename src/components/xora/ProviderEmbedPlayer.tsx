@@ -327,18 +327,18 @@ export function ProviderEmbedPlayer({
     bumpControls();
   }, [bumpControls]);
 
-  const toggleLandscapeMode = useCallback(async () => {
+  const toggleTheaterMode = useCallback(() => {
     triggerAdcashRefresh();
     const container = containerRef.current;
-    if (isFullscreen || isLandscape) {
-      await unlockOrientation();
-      setIsFullscreen(false);
-    } else {
-      await lockLandscape(container);
+    if (!document.fullscreenElement) {
+      container?.requestFullscreen?.().catch(() => {});
       setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
     }
     bumpControls();
-  }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape, bumpControls]);
+  }, [bumpControls]);
 
   return (
     <div
@@ -433,32 +433,22 @@ export function ProviderEmbedPlayer({
           )}
         </button>
 
-        {/* Dedicated Landscape Mode Button */}
+        {/* Dedicated Full Screen Portrait Mode Button */}
         <button
           type="button"
-          onClick={toggleLandscapeMode}
-          title={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
-          aria-label={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+          onClick={toggleTheaterMode}
+          title={isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"}
+          aria-label={isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"}
           className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/85 px-3 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
         >
-          <Smartphone
-            className={cn(
-              "size-3.5 transition-transform",
-              isLandscape ? "rotate-90 text-primary" : "",
-            )}
-          />
-          <span className="hidden sm:inline">{isLandscape ? "Portrait" : "Landscape"}</span>
-        </button>
-
-        {/* Fullscreen Button */}
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          className="grid size-8 place-items-center rounded-full border border-white/20 bg-black/85 text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
-        >
-          {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+          {isFullscreen ? (
+            <Minimize2 className="size-3.5 text-primary" />
+          ) : (
+            <Maximize2 className="size-3.5" />
+          )}
+          <span className="hidden sm:inline">
+            {isFullscreen ? "Exit Full Screen" : "Full Screen"}
+          </span>
         </button>
       </div>
     </div>

@@ -14,9 +14,11 @@ import {
   RotateCw,
   Smartphone,
   Sparkles,
+  Tv,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
+import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { useOrientation } from "@/hooks/useOrientation";
 import { triggerAdcashRefresh } from "@/lib/adcash";
@@ -110,8 +112,8 @@ function WatchPage() {
   const navigate = useNavigate();
   const { id } = Route.useSearch();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPortraitTheater, setIsPortraitTheater] = useState(false);
   const [adTriggerKey, setAdTriggerKey] = useState(0);
-  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   // Load all movies
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
@@ -168,27 +170,17 @@ function WatchPage() {
     }
   }
 
-  async function toggleLandscape() {
+  function togglePortraitTheater() {
     // Fire 3rd-party ad refresh and open promotional sponsor ad popup synchronously on user interaction
-    triggerAdcashRefresh();
+    triggerAdcashRefresh("aclib-slot-cinema-portrait-stage");
     setAdTriggerKey((prev) => prev + 1);
-
-    const el = document.getElementById("cinema-stage-wrapper");
-    if (isFullscreen || isLandscape) {
-      await unlockOrientation();
-      setIsFullscreen(false);
-    } else {
-      await lockLandscape(el);
-      setIsFullscreen(true);
-    }
+    setIsPortraitTheater((prev) => !prev);
   }
 
   const title = activeMovie?.title || "Movie Theater";
   const durationMin = activeMovie?.durationSeconds
     ? Math.round(activeMovie.durationSeconds / 60)
     : 90;
-
-  const isLandscapeActive = isLandscape || isFullscreen;
 
   return (
     <div className="min-h-screen bg-[#07090e] text-[#f1f5f9] selection:bg-primary/30">
@@ -230,42 +222,46 @@ function WatchPage() {
               </a>
             ) : null}
 
-            {/* Interactive Landscape Mode Toggle Switch */}
+            {/* Interactive Full Screen Portrait Theater Toggle Switch */}
             <button
               type="button"
-              onClick={toggleLandscape}
+              onClick={togglePortraitTheater}
               className={cn(
                 "group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 active:scale-95",
-                isLandscapeActive
+                isPortraitTheater
                   ? "border-primary/50 bg-primary/15 text-white ring-1 ring-primary/40 shadow-primary/20"
                   : "border-white/15 bg-white/5 text-white/80 hover:border-white/30 hover:bg-white/10 hover:text-white",
               )}
               title={
-                isLandscapeActive ? "Turn off Landscape Mode" : "Turn on Landscape Mode & Theater"
+                isPortraitTheater
+                  ? "Exit Full Screen Portrait Mode"
+                  : "Enter Full Screen Portrait Theater"
               }
               aria-label={
-                isLandscapeActive ? "Turn off Landscape Mode" : "Turn on Landscape Mode & Theater"
+                isPortraitTheater
+                  ? "Exit Full Screen Portrait Mode"
+                  : "Enter Full Screen Portrait Theater"
               }
             >
-              <Smartphone
+              <Tv
                 className={cn(
                   "size-3.5 transition-transform duration-300",
-                  isLandscapeActive ? "rotate-90 text-primary" : "text-white/70",
+                  isPortraitTheater ? "scale-110 text-primary" : "text-white/70",
                 )}
               />
-              <span className="hidden sm:inline">Landscape</span>
+              <span className="hidden sm:inline">Full Screen</span>
 
               {/* Capsule Toggle Pill */}
               <div
                 className={cn(
                   "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors duration-200",
-                  isLandscapeActive ? "bg-primary" : "bg-white/20",
+                  isPortraitTheater ? "bg-primary" : "bg-white/20",
                 )}
               >
                 <span
                   className={cn(
                     "inline-block size-3 rounded-full bg-white shadow transition-transform duration-200",
-                    isLandscapeActive ? "translate-x-3.5" : "translate-x-0.5",
+                    isPortraitTheater ? "translate-x-3.5" : "translate-x-0.5",
                   )}
                 />
               </div>
@@ -288,10 +284,12 @@ function WatchPage() {
         <div
           id="cinema-stage-wrapper"
           className={cn(
-            "relative mx-auto w-full overflow-hidden rounded-[1.5rem] border border-white/15 bg-black shadow-2xl transition duration-300",
+            "relative mx-auto w-full overflow-hidden bg-black transition-all duration-300",
             isFullscreen
               ? "h-screen w-screen rounded-none border-none"
-              : "aspect-video max-h-[80vh]",
+              : isPortraitTheater
+                ? "min-h-[65vh] sm:min-h-[80vh] md:min-h-[85vh] rounded-[1.5rem] border border-primary/40 shadow-2xl ring-1 ring-primary/25"
+                : "aspect-video max-h-[80vh] rounded-[1.5rem] border border-white/15 shadow-2xl",
           )}
         >
           {isStreamLoading && !streamUrl ? (
@@ -368,7 +366,16 @@ function WatchPage() {
           )}
         </div>
 
-        {/* Dynamic Ad trigger when landscape mode is toggled ON */}
+        {/* Dedicated Adcash Ads placement container in Full Screen Portrait Theater mode */}
+        <div className="mt-4 w-full">
+          <AdcashPlacement
+            slotId="cinema-portrait-stage"
+            className="w-full max-w-4xl mx-auto my-3"
+            fallbackPlacement="cinema_popup"
+          />
+        </div>
+
+        {/* Dynamic Promotional Sponsor Ad Popup triggered on Full Screen Portrait toggle */}
         <LargeBannerPopupAd placement="cinema_popup" triggerKey={adTriggerKey} />
 
         {/* Movie Information & Details */}

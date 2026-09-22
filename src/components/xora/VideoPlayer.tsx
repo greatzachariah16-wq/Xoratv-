@@ -490,17 +490,17 @@ export function NativeVideoPlayer({
     legacy?.webkitEnterFullscreen?.();
   }, []);
 
-  const toggleLandscapeMode = useCallback(async () => {
+  const toggleTheaterMode = useCallback(() => {
     triggerAdcashRefresh();
     const container = containerRef.current;
-    if (isFullscreen || isLandscape) {
-      await unlockOrientation();
-      setIsFullscreen(false);
-    } else {
-      await lockLandscape(container);
+    if (!document.fullscreenElement) {
+      container?.requestFullscreen?.().catch(() => {});
       setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
     }
-  }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape]);
+  }, []);
 
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
 
@@ -693,27 +693,15 @@ export function NativeVideoPlayer({
 
           <button
             type="button"
-            onClick={toggleLandscapeMode}
-            title={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
-            aria-label={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+            onClick={toggleTheaterMode}
+            title={isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"}
+            aria-label={
+              isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"
+            }
             className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
           >
-            <Smartphone
-              className={cn(
-                "size-4 transition-transform",
-                isLandscape ? "rotate-90 text-primary" : "",
-              )}
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
-          >
             {isFullscreen ? (
-              <Minimize2 className="size-4" aria-hidden="true" />
+              <Minimize2 className="size-4 text-primary" aria-hidden="true" />
             ) : (
               <Maximize2 className="size-4" aria-hidden="true" />
             )}
