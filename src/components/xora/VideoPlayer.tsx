@@ -5,7 +5,6 @@ import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { trackEvent } from "@/lib/events";
-import { PreRollGate } from "@/components/ads/PreRollGate";
 import type { FeedType } from "@/integrations/firebase/types";
 import {
   getActiveDataSaverConfig,
@@ -724,34 +723,19 @@ export function VideoPlayer(props: Props) {
 
   const isExternal = Boolean(embedInfo);
 
-  return (
-    <PreRollGate
-      mediaPath={props.mediaPath}
-      externalUrl={props.externalUrl}
-      streamUrl={props.streamUrl}
-      source={props.source}
+  return embedInfo ? (
+    <ProviderEmbedPlayer
+      embedUrl={embedInfo.embedUrl}
+      title={props.title || "Video"}
+      vertical={props.vertical}
+      autoPlay={true}
+      className={props.className}
       postId={props.postId}
       authorId={props.authorId}
       genre={props.genre}
-      title={props.title}
-      isExternalProvider={isExternal}
-      className={props.className}
-    >
-      {embedInfo ? (
-        <ProviderEmbedPlayer
-          embedUrl={embedInfo.embedUrl}
-          title={props.title || "Video"}
-          vertical={props.vertical}
-          autoPlay={true}
-          className={props.className}
-          postId={props.postId}
-          authorId={props.authorId}
-          genre={props.genre}
-          feed={props.feed}
-        />
-      ) : (
-        <NativeVideoPlayer {...props} />
-      )}
-    </PreRollGate>
+      feed={props.feed}
+    />
+  ) : (
+    <NativeVideoPlayer {...props} />
   );
 }
