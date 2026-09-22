@@ -336,11 +336,11 @@ export function AdminFraudShieldDashboard() {
           <Button
             type="button"
             size="sm"
-            onClick={() => setActiveTab("simulator")}
+            onClick={() => setActiveTab("multi_user")}
             className="h-9 gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm"
           >
-            <Play className="size-3.5" />
-            Open Simulator
+            <ShieldAlert className="size-3.5" />
+            Open Tracker
           </Button>
         </div>
       </div>
@@ -423,119 +423,127 @@ export function AdminFraudShieldDashboard() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface p-1 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setActiveTab("decisions")}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
-              activeTab === "decisions"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Layers className="size-3.5" />
-            Enforcement Decisions ({decisions.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("devices")}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
-              activeTab === "devices"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Cpu className="size-3.5" />
-            Flagged Devices ({flaggedDevices.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("multi_user")}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
-              activeTab === "multi_user"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ShieldAlert className="size-3.5" />
-            Account Sharing Tracker
-          </button>
-        </div>
-
-        {activeTab === "decisions" && (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search account, IP, device..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8.5 w-48 rounded-xl border border-border bg-surface pl-8 pr-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:w-64"
-              />
-            </div>
-
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-surface p-1">
+      <div className="mt-7 border-b border-border/70 pb-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
+            <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-surface p-1 text-xs font-semibold whitespace-nowrap w-max sm:w-auto">
               <button
                 type="button"
-                onClick={() => setTierFilter("all")}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                  tierFilter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground"
+                onClick={() => setActiveTab("decisions")}
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
+                  activeTab === "decisions"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                All
+                <Layers className="size-3.5 shrink-0" />
+                <span>Enforcement Decisions ({decisions.length})</span>
               </button>
               <button
                 type="button"
-                onClick={() => setTierFilter(3)}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                  tierFilter === 3 ? "bg-rose-500 text-white" : "text-muted-foreground"
+                onClick={() => setActiveTab("devices")}
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
+                  activeTab === "devices"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Tier 3
+                <Cpu className="size-3.5 shrink-0" />
+                <span>Flagged Devices ({flaggedDevices.length})</span>
               </button>
               <button
                 type="button"
-                onClick={() => setTierFilter(2)}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                  tierFilter === 2 ? "bg-amber-500 text-white" : "text-muted-foreground"
+                onClick={() => setActiveTab("multi_user")}
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
+                  activeTab === "multi_user"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Tier 2
-              </button>
-              <button
-                type="button"
-                onClick={() => setTierFilter(1)}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                  tierFilter === 1 ? "bg-blue-500 text-white" : "text-muted-foreground"
-                }`}
-              >
-                Tier 1
-              </button>
-              <button
-                type="button"
-                onClick={() => setTierFilter(0)}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                  tierFilter === 0 ? "bg-emerald-500 text-white" : "text-muted-foreground"
-                }`}
-              >
-                Tier 0
-              </button>
-              <button
-                type="button"
-                onClick={() => setTierFilter("escalated")}
-                className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
-                  tierFilter === "escalated" ? "bg-purple-600 text-white" : "text-muted-foreground"
-                }`}
-              >
-                Escalations
+                <ShieldAlert className="size-3.5 shrink-0" />
+                <span>Account Sharing Tracker</span>
               </button>
             </div>
           </div>
-        )}
+
+          {activeTab === "decisions" && (
+            <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative w-full sm:w-auto">
+                <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search account, IP, device..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8.5 w-full rounded-xl border border-border bg-surface pl-8 pr-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary sm:w-64"
+                />
+              </div>
+
+              <div className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:pb-0">
+                <div className="flex items-center gap-1 rounded-xl border border-border bg-surface p-1 w-max">
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter("all")}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                      tierFilter === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter(3)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                      tierFilter === 3 ? "bg-rose-500 text-white" : "text-muted-foreground"
+                    }`}
+                  >
+                    Tier 3
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter(2)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                      tierFilter === 2 ? "bg-amber-500 text-white" : "text-muted-foreground"
+                    }`}
+                  >
+                    Tier 2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter(1)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                      tierFilter === 1 ? "bg-blue-500 text-white" : "text-muted-foreground"
+                    }`}
+                  >
+                    Tier 1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter(0)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                      tierFilter === 0 ? "bg-emerald-500 text-white" : "text-muted-foreground"
+                    }`}
+                  >
+                    Tier 0
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter("escalated")}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                      tierFilter === "escalated"
+                        ? "bg-purple-600 text-white"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Escalations
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tab 1: Enforcement Decisions Feed */}
@@ -555,16 +563,16 @@ export function AdminFraudShieldDashboard() {
                 No enforcement decisions match filter
               </h3>
               <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                Run a session test in the Ruleset Simulator tab to generate live telemetry and
-                observe decision tiers in real time.
+                Observe live multi-device login collusions and active hardware check-ins on the
+                Account Sharing Tracker tab in real time.
               </p>
               <Button
                 type="button"
                 size="sm"
-                onClick={() => setActiveTab("simulator")}
+                onClick={() => setActiveTab("multi_user")}
                 className="mt-4 h-8.5 rounded-xl bg-primary px-3 text-xs"
               >
-                Go to Simulator
+                Go to Tracker
               </Button>
             </div>
           ) : (
