@@ -11,12 +11,15 @@ import {
   Maximize2,
   Minimize2,
   Play,
+  RotateCw,
+  Smartphone,
   Sparkles,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
+import { useOrientation } from "@/hooks/useOrientation";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/watch")({
@@ -70,6 +73,7 @@ function WatchPage() {
   const movieId = search.id;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   // Fetch all published movies for the catalog and recommendation shelf
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
@@ -124,6 +128,17 @@ function WatchPage() {
     }
   }
 
+  async function toggleLandscape() {
+    const el = document.getElementById("cinema-stage-wrapper");
+    if (isFullscreen || isLandscape) {
+      await unlockOrientation();
+      setIsFullscreen(false);
+    } else {
+      await lockLandscape(el);
+      setIsFullscreen(true);
+    }
+  }
+
   const title = activeMovie?.title || "Movie Theater";
   const durationMin = activeMovie?.durationSeconds
     ? Math.round(activeMovie.durationSeconds / 60)
@@ -168,6 +183,23 @@ function WatchPage() {
                 <span>Popout</span>
               </a>
             ) : null}
+
+            {/* Landscape Mode Button */}
+            <button
+              type="button"
+              onClick={toggleLandscape}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+              title={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+              aria-label={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+            >
+              <Smartphone
+                className={cn(
+                  "size-3.5 transition-transform",
+                  isLandscape ? "rotate-90 text-primary" : "",
+                )}
+              />
+              <span className="hidden sm:inline">{isLandscape ? "Portrait" : "Landscape"}</span>
+            </button>
 
             <button
               type="button"
@@ -248,6 +280,20 @@ function WatchPage() {
           ) : (
             <div className="grid h-full w-full place-items-center bg-black text-center text-xs text-white/50">
               No stream configured for this title.
+            </div>
+          )}
+
+          {/* Floating Exit Cinema Mode Pill on Fullscreen */}
+          {isFullscreen && (
+            <div className="absolute top-4 right-4 z-50">
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-4 py-2 text-xs font-semibold text-white shadow-2xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+              >
+                <Minimize2 className="size-4 text-primary" />
+                <span>Exit Fullscreen</span>
+              </button>
             </div>
           )}
         </div>

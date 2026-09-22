@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Maximize2, Minimize2, Pause, Play, RotateCw, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
 import { getActiveDataSaverConfig } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
+import { useOrientation } from "@/hooks/useOrientation";
 import type { FeedType } from "@/integrations/types";
 
 export interface ProviderEmbedPlayerProps {
@@ -30,11 +31,15 @@ export function ProviderEmbedPlayer({
   genre,
   feed,
 }: ProviderEmbedPlayerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
-  const [showStatusBadge, setShowStatusBadge] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isClient, setIsClient] = useState<boolean>(false);
+  const [controlsVisible, setControlsVisible] = useState<boolean>(true);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
+  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   // Watch session integrity refs for embed players
   const embedSessionRef = useRef<{ sessionId: string; nonce: string; devId: string } | null>(null);
@@ -44,6 +49,26 @@ export function ProviderEmbedPlayer({
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Listen to fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement === containerRef.current));
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  // Auto-hide controls in fullscreen / landscape
+  const bumpControls = useCallback(() => {
+    setControlsVisible(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      if (isPlaying) {
+        setControlsVisible(false);
+      }
+    }, 3500);
+  }, [isPlaying]);
 
   // Listen for iframe postMessage playback state changes from YouTube embeds
   useEffect(() => {
@@ -58,6 +83,7 @@ export function ProviderEmbedPlayer({
             setIsPlaying(true);
           } else if (data.info === 2 || data.info === 0) {
             setIsPlaying(false);
+            setControlsVisible(true);
           }
         }
       } catch {
@@ -254,8 +280,7 @@ export function ProviderEmbedPlayer({
 
       const nextPlaying = !isPlaying;
       setIsPlaying(nextPlaying);
-      setShowStatusBadge(true);
-      setTimeout(() => setShowStatusBadge(false), 900);
+      bumpControls();
 
       try {
         const targetWindow = iframe.contentWindow;
@@ -283,28 +308,74 @@ export function ProviderEmbedPlayer({
         console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
       }
     },
-    [isPlaying],
+    [isPlaying, bumpControls],
   );
+
+  // Fullscreen and Landscape Orientation Handler
+  const toggleFullscreen = useCallback(async () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    } else if (container.requestFullscreen) {
+      await container.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    }
+    bumpControls();
+  }, [bumpControls]);
+
+  const toggleLandscapeMode = useCallback(async () => {
+    const container = containerRef.current;
+    if (isFullscreen || isLandscape) {
+      await unlockOrientation();
+      setIsFullscreen(false);
+    } else {
+      await lockLandscape(container);
+      setIsFullscreen(true);
+    }
+    bumpControls();
+  }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape, bumpControls]);
 
   return (
     <div
+      ref={containerRef}
+      onMouseMove={bumpControls}
+      onTouchStart={bumpControls}
       className={cn(
-        "group relative overflow-hidden bg-black flex items-center justify-center rounded-2xl select-none",
-        vertical ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm" : "aspect-video w-full",
+        "group relative overflow-hidden bg-black flex items-center justify-center select-none transition-all duration-300",
+        isFullscreen
+          ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-black"
+          : vertical
+            ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm rounded-2xl"
+            : "aspect-video w-full rounded-2xl",
         className,
       )}
     >
-      {/* Top Cinema Mask Overlay: covers YouTube title, channel avatar, watch later and share buttons */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4">
+      {/* Top Cinema Mask Overlay: covers title, channel avatar, and branding */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4 transition-opacity duration-300",
+          controlsVisible ? "opacity-100" : "opacity-0",
+        )}
+      >
         <div className="flex max-w-[70%] items-center gap-2">
           <span className="rounded bg-primary/20 px-2 py-0.5 text-[9px] font-bold tracking-wider text-primary ring-1 ring-primary/40">
             XORA CINEMA
           </span>
           <span className="truncate text-xs font-semibold text-white drop-shadow">{title}</span>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-md">
-          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-          4K HD Master
+        <div className="flex items-center gap-2">
+          {isLandscape && (
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[9px] font-semibold text-primary">
+              <RotateCw className="size-2.5" /> Landscape Active
+            </span>
+          )}
+          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-md">
+            <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+            4K HD Master
+          </div>
         </div>
       </div>
 
@@ -318,7 +389,10 @@ export function ProviderEmbedPlayer({
           loading="lazy"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
           referrerPolicy="no-referrer-when-downgrade"
-          className="h-full w-full border-0 rounded-2xl pointer-events-auto"
+          className={cn(
+            "h-full w-full border-0 pointer-events-auto",
+            isFullscreen ? "rounded-none" : "rounded-2xl",
+          )}
         />
       ) : (
         <div className="h-full w-full flex items-center justify-center bg-black/90 text-xs text-white/40">
@@ -326,14 +400,19 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      {/* Bottom right watermark shield: covers YouTube logo cleanly without allowing redirect clicks */}
+      {/* Bottom right watermark shield: covers external embed branding */}
       <div className="pointer-events-none absolute bottom-2 right-2.5 z-20 flex select-none items-center gap-1.5 rounded-full border border-white/15 bg-black/90 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white shadow-xl backdrop-blur-md">
         <span className="size-1.5 rounded-full bg-primary" />
         <span>XORA CINEMA</span>
       </div>
 
-      {/* Floating interactive control pill on bottom-left for explicit Play/Pause toggle */}
-      <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2">
+      {/* Floating interactive control bar on bottom for Play/Pause, Landscape & Fullscreen */}
+      <div
+        className={cn(
+          "absolute bottom-3 left-3 z-30 flex items-center gap-2 transition-opacity duration-300",
+          controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+        )}
+      >
         <button
           type="button"
           onClick={togglePlayState}
@@ -351,6 +430,34 @@ export function ProviderEmbedPlayer({
               <span>Play</span>
             </>
           )}
+        </button>
+
+        {/* Dedicated Landscape Mode Button */}
+        <button
+          type="button"
+          onClick={toggleLandscapeMode}
+          title={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+          aria-label={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+          className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/85 px-3 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+        >
+          <Smartphone
+            className={cn(
+              "size-3.5 transition-transform",
+              isLandscape ? "rotate-90 text-primary" : "",
+            )}
+          />
+          <span className="hidden sm:inline">{isLandscape ? "Portrait" : "Landscape"}</span>
+        </button>
+
+        {/* Fullscreen Button */}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          className="grid size-8 place-items-center rounded-full border border-white/20 bg-black/85 text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+        >
+          {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
         </button>
       </div>
     </div>

@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gauge, Loader2, Maximize2, Minimize2, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import {
+  Gauge,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Pause,
+  Play,
+  Smartphone,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useSignedUrl } from "@/lib/media";
 import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -14,6 +24,7 @@ import {
 } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
+import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 
 type Props = {
@@ -70,6 +81,7 @@ export function NativeVideoPlayer({
   const [total, setTotal] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   // Tracking refs to ensure events fire at most once per playback session
   const trackedStart = useRef(false);
@@ -477,6 +489,17 @@ export function NativeVideoPlayer({
     legacy?.webkitEnterFullscreen?.();
   }, []);
 
+  const toggleLandscapeMode = useCallback(async () => {
+    const container = containerRef.current;
+    if (isFullscreen || isLandscape) {
+      await unlockOrientation();
+      setIsFullscreen(false);
+    } else {
+      await lockLandscape(container);
+      setIsFullscreen(true);
+    }
+  }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape]);
+
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
 
   if (!mediaPath && !externalUrl && !streamUrl) {
@@ -664,6 +687,21 @@ export function NativeVideoPlayer({
             ) : (
               <Volume2 className="size-4" aria-hidden="true" />
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleLandscapeMode}
+            title={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+            aria-label={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
+          >
+            <Smartphone
+              className={cn(
+                "size-4 transition-transform",
+                isLandscape ? "rotate-90 text-primary" : "",
+              )}
+            />
           </button>
 
           <button
