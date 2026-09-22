@@ -7,7 +7,7 @@ import {
   Layers,
   ShieldCheck,
   Globe,
-  Radio,
+  Bell,
 } from "lucide-react";
 
 export function AdminMonetagStatus() {
@@ -54,7 +54,7 @@ export function AdminMonetagStatus() {
               Monetization Diagnostics
             </p>
             <h2 className="font-display text-lg font-semibold text-foreground">
-              Monetag Multitag, Service Worker & Page Push Integration
+              Monetag Multitag & Page Push Integrations
             </h2>
           </div>
         </div>
@@ -74,16 +74,39 @@ export function AdminMonetagStatus() {
         </div>
       </div>
 
-      {/* Primary Grid Diagnostics */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Multitag Domain */}
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Domain */}
         <div className="rounded-xl border border-border/70 bg-background/50 p-4">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <Globe className="size-3.5" />
-            <span>Multitag Domain</span>
+            <span>Monetag SW</span>
           </div>
           <p className="mt-2 font-mono text-sm font-bold text-foreground">{status.domain}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Zone ID: {status.zoneId}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Zone: {status.zoneId}</p>
+        </div>
+
+        {/* Page Push Format */}
+        <div className="rounded-xl border border-border/70 bg-background/50 p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <Bell className="size-3.5 text-primary" />
+            <span>Page Push Format</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            {status.pagePushInjected ? (
+              <>
+                <CheckCircle2 className="size-4 text-emerald-500" />
+                <span className="text-sm font-bold text-emerald-500">Active</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="size-4 text-amber-500" />
+                <span className="text-sm font-bold text-amber-500">Standby</span>
+              </>
+            )}
+          </div>
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground truncate">
+            Zone: {status.pagePushZoneId}
+          </p>
         </div>
 
         {/* Service Worker Status */}
@@ -116,7 +139,7 @@ export function AdminMonetagStatus() {
         <div className="rounded-xl border border-border/70 bg-background/50 p-4">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <CheckCircle2 className="size-3.5" />
-            <span>Root Verification File</span>
+            <span>Verification File</span>
           </div>
           <div className="mt-2 flex items-center gap-1.5">
             {isVerifyingFile ? (
@@ -149,49 +172,16 @@ export function AdminMonetagStatus() {
         <div className="rounded-xl border border-border/70 bg-background/50 p-4">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <RefreshCw className="size-3.5" />
-            <span>Init Lifecycle</span>
+            <span>Global Lifecycle</span>
           </div>
           <p className="mt-2 text-xs font-semibold text-foreground">
-            {status.lastInitAttempt ? "Idempotent Clean" : "Ready"}
+            {status.lastInitAttempt ? "Idempotent Global" : "Ready"}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground truncate">
-            {status.lastError ? `Notice: ${status.lastError}` : "PWA & Multitag Active"}
+            {status.pagePushError || status.lastError
+              ? `Notice: ${status.pagePushError || status.lastError}`
+              : "All Ad Networks Active"}
           </p>
-        </div>
-      </div>
-
-      {/* Monetag Page Push Ad Zone Banner */}
-      <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary">
-              <Radio className="size-4" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-foreground">Monetag Page Push</span>
-                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  {status.pagePush.status}
-                </span>
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  Scope: {status.pagePush.scope}
-                </span>
-              </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Domain: <span className="font-mono text-foreground">{status.pagePush.domain}</span>{" "}
-                · Zone ID:{" "}
-                <span className="font-mono font-bold text-foreground">
-                  {status.pagePush.zoneId}
-                </span>{" "}
-                · Script:{" "}
-                <span className="font-mono text-muted-foreground">{status.pagePush.src}</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 self-end sm:self-auto text-xs text-muted-foreground font-mono">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Active on all routes</span>
-          </div>
         </div>
       </div>
     </section>
