@@ -490,18 +490,6 @@ export function NativeVideoPlayer({
     legacy?.webkitEnterFullscreen?.();
   }, []);
 
-  const toggleTheaterMode = useCallback(() => {
-    triggerAdcashRefresh();
-    const container = containerRef.current;
-    if (!document.fullscreenElement) {
-      container?.requestFullscreen?.().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-      setIsFullscreen(false);
-    }
-  }, []);
-
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
 
   if (!mediaPath && !externalUrl && !streamUrl) {
@@ -693,11 +681,9 @@ export function NativeVideoPlayer({
 
           <button
             type="button"
-            onClick={toggleTheaterMode}
-            title={isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"}
-            aria-label={
-              isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"
-            }
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
             className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
           >
             {isFullscreen ? (

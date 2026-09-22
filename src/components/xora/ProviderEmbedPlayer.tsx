@@ -321,21 +321,9 @@ export function ProviderEmbedPlayer({
       await document.exitFullscreen().catch(() => {});
       setIsFullscreen(false);
     } else if (container.requestFullscreen) {
+      triggerAdcashRefresh();
       await container.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
-    }
-    bumpControls();
-  }, [bumpControls]);
-
-  const toggleTheaterMode = useCallback(() => {
-    triggerAdcashRefresh();
-    const container = containerRef.current;
-    if (!document.fullscreenElement) {
-      container?.requestFullscreen?.().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-      setIsFullscreen(false);
     }
     bumpControls();
   }, [bumpControls]);
@@ -350,8 +338,8 @@ export function ProviderEmbedPlayer({
         isFullscreen
           ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-black"
           : vertical
-            ? "aspect-[9/16] max-h-[78vh] mx-auto w-full max-w-sm rounded-2xl"
-            : "aspect-video w-full rounded-2xl",
+            ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
+            : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
         className,
       )}
     >
@@ -433,12 +421,12 @@ export function ProviderEmbedPlayer({
           )}
         </button>
 
-        {/* Dedicated Full Screen Portrait Mode Button */}
+        {/* Fullscreen Button */}
         <button
           type="button"
-          onClick={toggleTheaterMode}
-          title={isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"}
-          aria-label={isFullscreen ? "Exit Full Screen Portrait Mode" : "Full Screen Portrait Mode"}
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
           className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/85 px-3 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
         >
           {isFullscreen ? (
@@ -447,7 +435,7 @@ export function ProviderEmbedPlayer({
             <Maximize2 className="size-3.5" />
           )}
           <span className="hidden sm:inline">
-            {isFullscreen ? "Exit Full Screen" : "Full Screen"}
+            {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
           </span>
         </button>
       </div>

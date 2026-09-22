@@ -12,15 +12,12 @@ import {
   Minimize2,
   Play,
   RotateCw,
-  Smartphone,
   Sparkles,
-  Tv,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
-import { useOrientation } from "@/hooks/useOrientation";
 import { triggerAdcashRefresh } from "@/lib/adcash";
 import { cn } from "@/lib/utils";
 
@@ -112,7 +109,6 @@ function WatchPage() {
   const navigate = useNavigate();
   const { id } = Route.useSearch();
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPortraitTheater, setIsPortraitTheater] = useState(false);
   const [adTriggerKey, setAdTriggerKey] = useState(0);
 
   // Load all movies
@@ -156,6 +152,9 @@ function WatchPage() {
   }, [allMovies, activeId]);
 
   function toggleFullscreen() {
+    triggerAdcashRefresh("aclib-slot-cinema-portrait-stage");
+    setAdTriggerKey((prev) => prev + 1);
+
     const el = document.getElementById("cinema-stage-wrapper");
     if (!el) return;
     if (!document.fullscreenElement) {
@@ -168,13 +167,6 @@ function WatchPage() {
         .then(() => setIsFullscreen(false))
         .catch(() => {});
     }
-  }
-
-  function togglePortraitTheater() {
-    // Fire 3rd-party ad refresh and open promotional sponsor ad popup synchronously on user interaction
-    triggerAdcashRefresh("aclib-slot-cinema-portrait-stage");
-    setAdTriggerKey((prev) => prev + 1);
-    setIsPortraitTheater((prev) => !prev);
   }
 
   const title = activeMovie?.title || "Movie Theater";
@@ -222,51 +214,6 @@ function WatchPage() {
               </a>
             ) : null}
 
-            {/* Interactive Full Screen Portrait Theater Toggle Switch */}
-            <button
-              type="button"
-              onClick={togglePortraitTheater}
-              className={cn(
-                "group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 active:scale-95",
-                isPortraitTheater
-                  ? "border-primary/50 bg-primary/15 text-white ring-1 ring-primary/40 shadow-primary/20"
-                  : "border-white/15 bg-white/5 text-white/80 hover:border-white/30 hover:bg-white/10 hover:text-white",
-              )}
-              title={
-                isPortraitTheater
-                  ? "Exit Full Screen Portrait Mode"
-                  : "Enter Full Screen Portrait Theater"
-              }
-              aria-label={
-                isPortraitTheater
-                  ? "Exit Full Screen Portrait Mode"
-                  : "Enter Full Screen Portrait Theater"
-              }
-            >
-              <Tv
-                className={cn(
-                  "size-3.5 transition-transform duration-300",
-                  isPortraitTheater ? "scale-110 text-primary" : "text-white/70",
-                )}
-              />
-              <span className="hidden sm:inline">Full Screen</span>
-
-              {/* Capsule Toggle Pill */}
-              <div
-                className={cn(
-                  "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors duration-200",
-                  isPortraitTheater ? "bg-primary" : "bg-white/20",
-                )}
-              >
-                <span
-                  className={cn(
-                    "inline-block size-3 rounded-full bg-white shadow transition-transform duration-200",
-                    isPortraitTheater ? "translate-x-3.5" : "translate-x-0.5",
-                  )}
-                />
-              </div>
-            </button>
-
             <button
               type="button"
               onClick={toggleFullscreen}
@@ -279,17 +226,15 @@ function WatchPage() {
         </div>
       </header>
 
-      {/* Main Cinema Theater Stage */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 md:py-8">
+      {/* Main Cinema Theater Stage - Large YouTube-Grade Viewport */}
+      <main className="mx-auto max-w-[1680px] px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         <div
           id="cinema-stage-wrapper"
           className={cn(
-            "relative mx-auto w-full overflow-hidden bg-black transition-all duration-300",
+            "relative mx-auto w-full overflow-hidden bg-black transition-all duration-300 shadow-2xl",
             isFullscreen
               ? "h-screen w-screen rounded-none border-none"
-              : isPortraitTheater
-                ? "min-h-[65vh] sm:min-h-[80vh] md:min-h-[85vh] rounded-[1.5rem] border border-primary/40 shadow-2xl ring-1 ring-primary/25"
-                : "aspect-video max-h-[80vh] rounded-[1.5rem] border border-white/15 shadow-2xl",
+              : "aspect-video min-h-[380px] sm:min-h-[500px] md:min-h-[640px] lg:min-h-[740px] xl:min-h-[820px] max-h-[90vh] rounded-2xl md:rounded-3xl border border-white/15 ring-1 ring-white/10",
           )}
         >
           {isStreamLoading && !streamUrl ? (
