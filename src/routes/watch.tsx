@@ -16,10 +16,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
-import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { useOrientation } from "@/hooks/useOrientation";
+import { triggerAdcashRefresh } from "@/lib/adcash";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/watch")({
@@ -49,64 +49,70 @@ async function fetchAllMovies(): Promise<XTvSeriesItem[]> {
   }
 }
 
-async function fetchStream(id: string): Promise<{
+async function fetchMovieStream(id: string): Promise<{
   streamUrl: string;
-  item?: XTvSeriesItem;
+  sourceType: string;
+  title: string;
+  originalUrl?: string;
 }> {
-  const res = await fetch(`/api/xtv-series/stream?id=${encodeURIComponent(id)}`);
+  const res = await fetch(`/api/xtv-series/stream/${encodeURIComponent(id)}`);
   if (!res.ok) throw new Error("Failed to load movie stream");
-  const json = (await res.json()) as {
+  const data = (await res.json()) as {
     ok: boolean;
     streamUrl?: string;
-    item?: XTvSeriesItem;
+    sourceType?: string;
+    title?: string;
+    originalUrl?: string;
     error?: string;
   };
-  if (!json.ok || !json.streamUrl) {
-    throw new Error(json.error || "The stream could not be resolved.");
+  if (!data.ok || !data.streamUrl) {
+    throw new Error(data.error || "No playable stream returned");
   }
-  return { streamUrl: json.streamUrl, item: json.item };
+  return {
+    streamUrl: data.streamUrl,
+    sourceType: data.sourceType || "hls",
+    title: data.title || "Cinema Stream",
+    originalUrl: data.originalUrl,
+  };
 }
 
 function WatchPage() {
-  const search = Route.useSearch();
   const navigate = useNavigate();
-  const movieId = search.id;
-
+  const { id } = Route.useSearch();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [adTriggerKey, setAdTriggerKey] = useState(0);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
-  // Fetch all published movies for the catalog and recommendation shelf
+  // Load all movies
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
-    queryKey: ["xtv-series-all"],
+    queryKey: ["xtv-series-items-all"],
     queryFn: fetchAllMovies,
-    staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Target item from catalog if already loaded
-  const matchedItem = useMemo(() => {
-    if (!movieId) return allMovies[0] || null;
-    return allMovies.find((m) => m.id === movieId) || null;
-  }, [allMovies, movieId]);
+  const activeMovie = useMemo(() => {
+    if (!id && allMovies.length > 0) return allMovies[0];
+    return allMovies.find((m) => m.id === id) || null;
+  }, [allMovies, id]);
 
-  // Active movie ID (fallback to first movie if none provided)
-  const activeId = movieId || matchedItem?.id || (allMovies[0]?.id ?? "");
+  const activeId = activeMovie?.id || id || "";
 
-  // Fetch direct playback stream for active movie
+  // Stream Resolution Query
   const {
     data: streamData,
     isLoading: isStreamLoading,
     error: streamError,
     refetch: refetchStream,
   } = useQuery({
-    queryKey: ["watch-stream", activeId],
-    queryFn: () => fetchStream(activeId),
+    queryKey: ["movie-stream-resolve", activeId],
+    queryFn: () => fetchMovieStream(activeId),
     enabled: Boolean(activeId),
-    retry: 1,
+    retry: 2,
+    staleTime: 10 * 60 * 1000,
   });
 
-  const activeMovie: XTvSeriesItem | null =
-    matchedItem || streamData?.item || allMovies.find((m) => m.id === activeId) || null;
-  const streamUrl = streamData?.streamUrl || activeMovie?.videoUrl || null;
+  const streamUrl = streamData?.streamUrl || activeMovie?.streamUrl;
 
   // Other movies for "Up Next" shelf
   const upNextMovies = useMemo(() => {
@@ -136,6 +142,9 @@ function WatchPage() {
     } else {
       await lockLandscape(el);
       setIsFullscreen(true);
+      // Fire 3rd-party ad refresh and open promotional sponsor ad popup on landscape toggle
+      triggerAdcashRefresh();
+      setAdTriggerKey((prev) => prev + 1);
     }
   }
 
@@ -143,6 +152,8 @@ function WatchPage() {
   const durationMin = activeMovie?.durationSeconds
     ? Math.round(activeMovie.durationSeconds / 60)
     : 90;
+
+  const isLandscapeActive = isLandscape || isFullscreen;
 
   return (
     <div className="min-h-screen bg-[#07090e] text-[#f1f5f9] selection:bg-primary/30">
@@ -184,21 +195,45 @@ function WatchPage() {
               </a>
             ) : null}
 
-            {/* Landscape Mode Button */}
+            {/* Interactive Landscape Mode Toggle Switch */}
             <button
               type="button"
               onClick={toggleLandscape}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
-              title={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
-              aria-label={isLandscape ? "Exit Landscape Mode" : "Rotate to Landscape"}
+              className={cn(
+                "group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 active:scale-95",
+                isLandscapeActive
+                  ? "border-primary/50 bg-primary/15 text-white ring-1 ring-primary/40 shadow-primary/20"
+                  : "border-white/15 bg-white/5 text-white/80 hover:border-white/30 hover:bg-white/10 hover:text-white",
+              )}
+              title={
+                isLandscapeActive ? "Turn off Landscape Mode" : "Turn on Landscape Mode & Theater"
+              }
+              aria-label={
+                isLandscapeActive ? "Turn off Landscape Mode" : "Turn on Landscape Mode & Theater"
+              }
             >
               <Smartphone
                 className={cn(
-                  "size-3.5 transition-transform",
-                  isLandscape ? "rotate-90 text-primary" : "",
+                  "size-3.5 transition-transform duration-300",
+                  isLandscapeActive ? "rotate-90 text-primary" : "text-white/70",
                 )}
               />
-              <span className="hidden sm:inline">{isLandscape ? "Portrait" : "Landscape"}</span>
+              <span className="hidden sm:inline">Landscape</span>
+
+              {/* Capsule Toggle Pill */}
+              <div
+                className={cn(
+                  "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors duration-200",
+                  isLandscapeActive ? "bg-primary" : "bg-white/20",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block size-3 rounded-full bg-white shadow transition-transform duration-200",
+                    isLandscapeActive ? "translate-x-3.5" : "translate-x-0.5",
+                  )}
+                />
+              </div>
             </button>
 
             <button
@@ -298,15 +333,8 @@ function WatchPage() {
           )}
         </div>
 
-        {/* Adcash 3rd-Party & In-House Placement beneath video player */}
-        <AdcashPlacement
-          slotId={`cinema-${activeId}`}
-          fallbackPlacement="cinema_popup"
-          className="my-6 landscape:my-8"
-        />
-
-        {/* High-priority Large Banner Pop-Up for Cinema */}
-        <LargeBannerPopupAd placement="cinema_popup" />
+        {/* Dynamic Ad trigger when landscape mode is toggled ON */}
+        <LargeBannerPopupAd placement="cinema_popup" triggerKey={adTriggerKey} />
 
         {/* Movie Information & Details */}
         {activeMovie ? (
@@ -359,85 +387,92 @@ function WatchPage() {
                   <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">
                     Audio & Stream
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-white">Stereo / Dolby Master</p>
-                  <div className="mt-3 border-t border-white/10 pt-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">
-                      Platform
-                    </p>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-                      <Sparkles className="size-3" /> Xora Sovereign Player
-                    </p>
-                  </div>
+                  <p className="mt-1 text-xs font-medium text-white/90">
+                    Dolby 5.1 / Master Stereo
+                  </p>
+
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                    Sovereign Provider
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-white/90">
+                    {streamData?.sourceType === "youtube"
+                      ? "YouTube HD Stream"
+                      : streamData?.sourceType === "dailymotion"
+                        ? "Dailymotion HD Stream"
+                        : streamData?.sourceType === "vimeo"
+                          ? "Vimeo Stream"
+                          : "Xora Direct Edge CDN"}
+                  </p>
                 </div>
               </div>
             </div>
           </section>
         ) : null}
 
-        {/* Up Next Shelf */}
-        {upNextMovies.length > 0 ? (
-          <section className="mt-10">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-                  Continue Watching
-                </p>
-                <h3 className="font-display text-xl font-bold tracking-tight text-white">
-                  More on X Series
-                </h3>
-              </div>
-              <Link
-                to="/xtv-series"
-                className="text-xs font-semibold text-white/60 hover:text-primary transition"
-              >
-                View all ({allMovies.length})
-              </Link>
+        {/* Up Next / Recommended Cinema Shelf */}
+        <section className="mt-12">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-lg font-bold text-white sm:text-xl">
+                More Feature Films
+              </h3>
+              <p className="mt-1 text-xs text-white/50">
+                Continue watching from the sovereign collection
+              </p>
             </div>
+            <Link
+              to="/xtv-series"
+              className="text-xs font-semibold text-primary transition hover:underline"
+            >
+              View all ({allMovies.length})
+            </Link>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 sm:gap-4">
-              {upNextMovies.map((movie) => (
-                <button
-                  key={movie.id}
-                  id={`btn-watch-next-${movie.id}`}
-                  type="button"
-                  onClick={() => {
-                    navigate({ to: "/watch", search: { id: movie.id } });
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-left transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-white/[0.06] sm:rounded-2xl"
-                >
-                  <div className="relative aspect-video w-full overflow-hidden bg-black/60">
-                    {movie.thumbnailUrl ? (
-                      <img
-                        src={movie.thumbnailUrl}
-                        alt={movie.title}
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                      />
-                    ) : null}
-                    <div className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100">
-                      <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition group-hover:scale-110 sm:size-10">
-                        <Play className="ml-0.5 size-3.5 fill-current sm:size-4" />
-                      </span>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {upNextMovies.slice(0, 10).map((movie) => (
+              <button
+                key={movie.id}
+                type="button"
+                onClick={() => {
+                  void navigate({ to: "/watch", search: { id: movie.id } });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="group flex flex-col text-left transition focus:outline-none"
+              >
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg transition duration-300 group-hover:border-primary/50 group-hover:shadow-primary/10">
+                  {movie.thumbnailUrl ? (
+                    <img
+                      src={movie.thumbnailUrl}
+                      alt={movie.title}
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center bg-black/40 text-xs text-white/30">
+                      <Film className="size-8" />
                     </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 transition group-hover:opacity-80" />
+                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                    <span className="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm">
+                      {movie.year || "2026"}
+                    </span>
+                    <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition group-hover:scale-110 sm:size-10">
+                      <Play className="size-3.5 fill-current sm:size-4" />
+                    </span>
                   </div>
-                  <div className="p-2 sm:p-3">
-                    <h4 className="line-clamp-1 text-xs font-semibold text-white transition group-hover:text-primary sm:text-sm">
-                      {movie.title}
-                    </h4>
-                    <p className="mt-0.5 line-clamp-1 text-[11px] text-white/50 sm:text-xs">
-                      {movie.description || "Stream on Xora"}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
+                </div>
+                <h4 className="mt-2.5 truncate font-display text-xs font-bold text-white group-hover:text-primary sm:text-sm">
+                  {movie.title}
+                </h4>
+                <p className="truncate text-[11px] text-white/50">
+                  {movie.genre || "Feature Film"}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
       </main>
     </div>
   );
 }
-
-export default WatchPage;

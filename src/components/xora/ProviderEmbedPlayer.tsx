@@ -6,6 +6,7 @@ import { getActiveDataSaverConfig } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
+import { triggerAdcashRefresh } from "@/lib/adcash";
 import type { FeedType } from "@/integrations/types";
 
 export interface ProviderEmbedPlayerProps {
@@ -334,6 +335,7 @@ export function ProviderEmbedPlayer({
     } else {
       await lockLandscape(container);
       setIsFullscreen(true);
+      triggerAdcashRefresh();
     }
     bumpControls();
   }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape, bumpControls]);

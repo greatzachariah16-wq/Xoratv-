@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useSignedUrl } from "@/lib/media";
 import { duration as fmtDuration } from "@/lib/format";
+import { triggerAdcashRefresh } from "@/lib/adcash";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { trackEvent } from "@/lib/events";
@@ -497,6 +498,7 @@ export function NativeVideoPlayer({
     } else {
       await lockLandscape(container);
       setIsFullscreen(true);
+      triggerAdcashRefresh();
     }
   }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape]);
 

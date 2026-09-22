@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { X, Sparkles, ExternalLink } from "lucide-react";
 import type { Campaign, CampaignPlacement } from "@/lib/campaigns/types";
 import { cn } from "@/lib/utils";
@@ -6,23 +6,28 @@ import { cn } from "@/lib/utils";
 interface LargeBannerPopupAdProps {
   placement?: CampaignPlacement;
   delayMs?: number;
+  triggerKey?: string | number | boolean;
+  onClose?: () => void;
 }
 
-export function LargeBannerPopupAd({ placement, delayMs = 600 }: LargeBannerPopupAdProps) {
+export function LargeBannerPopupAd({
+  placement,
+  delayMs = 600,
+  triggerKey,
+  onClose,
+}: LargeBannerPopupAdProps) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const lastTriggerRef = useRef<string | number | boolean | undefined>(undefined);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchCampaign = async () => {
+  const fetchAndShowAd = useCallback(
+    async (isManualTrigger = false) => {
       try {
-        // Fetch all active campaigns or target placement
         const query = placement ? `?placement=${encodeURIComponent(placement)}` : "";
         const res = await fetch(`/api/campaigns${query}`);
         if (res.ok) {
           const data = (await res.json()) as { ok: boolean; campaigns: Campaign[] };
           if (data.ok && data.campaigns && data.campaigns.length > 0) {
-            // Find active pop-up campaigns (cinema_popup, reward_popup, all, or requested placement)
             const activePool = data.campaigns.filter((c) => {
               if (c.status !== "active") return false;
               if (placement) return c.placement === placement || c.placement === "all";
@@ -39,38 +44,54 @@ export function LargeBannerPopupAd({ placement, delayMs = 600 }: LargeBannerPopu
                 ? activePool
                 : data.campaigns.filter((c) => c.status === "active");
 
-            if (poolToUse.length > 0 && isMounted) {
-              // Select highest priority
+            if (poolToUse.length > 0) {
               const topCampaign = poolToUse.sort(
                 (a, b) => (b.priority ?? 50) - (a.priority ?? 50),
               )[0];
 
               setCampaign(topCampaign);
 
-              setTimeout(() => {
-                if (isMounted) {
+              const timer = setTimeout(
+                () => {
                   setIsOpen(true);
-                  // Record impression
                   void fetch("/api/campaigns/impression", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id: topCampaign.id }),
                   }).catch(() => {});
-                }
-              }, delayMs);
+                },
+                isManualTrigger ? 150 : delayMs,
+              );
+
+              return () => clearTimeout(timer);
             }
           }
         }
       } catch {
-        // silence
+        // silence error
       }
-    };
+    },
+    [placement, delayMs],
+  );
 
-    void fetchCampaign();
+  // Initial load
+  useEffect(() => {
+    let active = true;
+    void fetchAndShowAd(false);
     return () => {
-      isMounted = false;
+      active = false;
     };
-  }, [placement, delayMs]);
+  }, [fetchAndShowAd]);
+
+  // Dynamic trigger when triggerKey changes (e.g. landscape mode toggled on)
+  useEffect(() => {
+    if (triggerKey !== undefined && triggerKey !== lastTriggerRef.current) {
+      lastTriggerRef.current = triggerKey;
+      if (triggerKey) {
+        void fetchAndShowAd(true);
+      }
+    }
+  }, [triggerKey, fetchAndShowAd]);
 
   if (!isOpen || !campaign) return null;
 
@@ -79,6 +100,7 @@ export function LargeBannerPopupAd({ placement, delayMs = 600 }: LargeBannerPopu
     if (campaign) {
       sessionStorage.setItem(`xora_ad_dismissed_${campaign.id}`, "1");
     }
+    if (onClose) onClose();
   };
 
   const handleCtaClick = () => {
