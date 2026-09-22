@@ -649,19 +649,49 @@ export function AdminCampaignManager() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          <div className="md:col-span-2 space-y-1.5">
-            <Label className="text-xs font-semibold">VAST / IMA Ad Tag URL *</Label>
+          <div className="md:col-span-2 space-y-2">
+            <Label className="text-xs font-semibold">VAST / IMA Ad Tag URL or Video MP4 *</Label>
             <Input
               value={prerollAdTagUrl}
               onChange={(e) => setPrerollAdTagUrl(e.target.value)}
               placeholder="https://youradexchange.com/video/select.php?r=12201910"
               className="h-9 rounded-xl text-xs bg-background/80 font-mono text-foreground"
             />
-            <span className="text-[10px] text-muted-foreground block">
-              Default tag:{" "}
-              <code className="text-primary font-mono">
-                https://youradexchange.com/video/select.php?r=12201910
-              </code>
+
+            {/* Quick Tag Presets */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setPrerollAdTagUrl("https://youradexchange.com/video/select.php?r=12201910")
+                }
+                className="rounded-lg border border-border bg-background/50 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-muted"
+              >
+                Your Ad Exchange Zone (12201910)
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPrerollAdTagUrl(
+                    "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_ad_samples&sz=640x480&cust_params=sample_ct%3Dlinear&ciu_szs=300x250%2C728x90&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&url=https%3A%2F%2Fxoratv.com&description_url=https%3A%2F%2Fxoratv.com&correlator=123456789",
+                  )
+                }
+                className="rounded-lg border border-border bg-background/50 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-muted"
+              >
+                Google IMA Live Test VAST Tag
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrerollAdTagUrl("https://vjs.zencdn.net/v/oceans.mp4")}
+                className="rounded-lg border border-border bg-background/50 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-muted"
+              >
+                Direct HD Video Ad (MP4)
+              </button>
+            </div>
+
+            <span className="text-[10px] text-muted-foreground block pt-0.5">
+              Paste a VAST tag URL or direct .mp4 video ad file URL. If VAST exchange returns zero
+              fill, the player seamlessly presents the video ad creative with full skip controls.
             </span>
           </div>
 

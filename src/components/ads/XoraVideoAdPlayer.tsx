@@ -116,6 +116,8 @@ function loadImaSdk(): Promise<boolean> {
   });
 }
 
+const FALLBACK_VIDEO_AD_URL = "https://vjs.zencdn.net/v/oceans.mp4";
+
 export function XoraVideoAdPlayer({
   adTagUrl,
   onAdEnded,
@@ -140,6 +142,7 @@ export function XoraVideoAdPlayer({
   const [skipTime, setSkipTime] = useState(5);
   const [clickUrl, setClickUrl] = useState<string | null>(null);
   const [hasStartedUserPlayback, setHasStartedUserPlayback] = useState(false);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
 
   // Safe fallback termination
   const hasFinishedRef = useRef(false);
@@ -182,35 +185,88 @@ export function XoraVideoAdPlayer({
     [adTagUrl, authorId, genre, onAdEnded, postId],
   );
 
-  // Initialize IMA SDK & AdsLoader
+  // Helper to start direct HTML5 MP4 video ad
+  const startDirectVideoAd = useCallback(
+    (videoSrc: string) => {
+      const videoEl = videoRef.current;
+      if (!videoEl) {
+        finishAdOnce("error");
+        return;
+      }
+
+      videoEl.src = videoSrc;
+      videoEl.load();
+
+      setIsLoading(false);
+      setIsPlaying(true);
+      if (onAdStarted) onAdStarted();
+
+      videoEl
+        .play()
+        .then(() => {
+          setHasStartedUserPlayback(true);
+        })
+        .catch((err) => {
+          console.warn("[XoraVideoAd] Autoplay prevented, waiting for user play trigger:", err);
+        });
+    },
+    [finishAdOnce, onAdStarted],
+  );
+
+  // Helper when VAST returns no fill or error: switch to high quality fallback ad
+  const handleNoFillOrErrorFallback = useCallback(
+    (reason: "no_fill" | "error") => {
+      if (hasFinishedRef.current) return;
+      console.warn(`[XoraVideoAd] VAST ${reason}, switching to fallback video ad creative.`);
+      trackEvent({ type: `preroll_${reason}`, postId, authorId, genre, meta: { adTagUrl } });
+      setIsFallbackMode(true);
+      startDirectVideoAd(FALLBACK_VIDEO_AD_URL);
+    },
+    [adTagUrl, authorId, genre, postId, startDirectVideoAd],
+  );
+
+  // Initialize IMA SDK & AdsLoader or Direct Video Mode
   useEffect(() => {
     let isMounted = true;
     let timeoutGuard: NodeJS.Timeout | null = null;
 
     trackEvent({ type: "preroll_requested", postId, authorId, genre, meta: { adTagUrl } });
 
-    // Safeguard: If VAST ad tag takes > 7 seconds to load or respond, gracefully skip ad to avoid stalling video
+    // Check if adTagUrl is a direct MP4/WebM video
+    const isDirectVideoUrl =
+      adTagUrl.endsWith(".mp4") ||
+      adTagUrl.endsWith(".webm") ||
+      adTagUrl.endsWith(".m3u8") ||
+      adTagUrl.includes(".mp4?") ||
+      adTagUrl.includes("oceans.mp4");
+
+    if (isDirectVideoUrl) {
+      startDirectVideoAd(adTagUrl);
+      return;
+    }
+
+    // Safeguard: If VAST ad tag takes > 6 seconds to respond, fallback to direct ad creative
     timeoutGuard = setTimeout(() => {
-      if (isMounted && !isPlaying && !hasFinishedRef.current) {
-        console.warn("[XoraVideoAd] VAST timeout safeguard reached. Fallback to video content.");
-        finishAdOnce("no_fill");
+      if (isMounted && !isPlaying && !hasFinishedRef.current && !isFallbackMode) {
+        console.warn("[XoraVideoAd] VAST timeout safeguard reached. Switching to fallback ad.");
+        handleNoFillOrErrorFallback("no_fill");
       }
-    }, 7000);
+    }, 6000);
 
     const initIma = async () => {
       const sdkReady = await loadImaSdk();
       if (!isMounted) return;
 
       if (!sdkReady || !window.google?.ima) {
-        console.warn("[XoraVideoAd] Google IMA SDK failed to load. Fallback to content.");
-        finishAdOnce("error");
+        console.warn("[XoraVideoAd] Google IMA SDK unavailable, playing fallback video ad.");
+        handleNoFillOrErrorFallback("error");
         return;
       }
 
       const container = containerRef.current;
       const videoEl = videoRef.current;
       if (!container || !videoEl) {
-        finishAdOnce("error");
+        handleNoFillOrErrorFallback("error");
         return;
       }
 
@@ -300,7 +356,7 @@ export function XoraVideoAdPlayer({
               adsManager.start();
             } catch (err) {
               console.warn("[XoraVideoAd] AdsManager initialization error:", err);
-              finishAdOnce("error");
+              handleNoFillOrErrorFallback("error");
             }
           },
         );
@@ -309,7 +365,7 @@ export function XoraVideoAdPlayer({
         adsLoader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, (errEvt: unknown) => {
           if (timeoutGuard) clearTimeout(timeoutGuard);
           console.warn("[XoraVideoAd] IMA AdErrorEvent:", errEvt);
-          finishAdOnce("no_fill");
+          handleNoFillOrErrorFallback("no_fill");
         });
 
         // 5. Request Ads
@@ -321,7 +377,7 @@ export function XoraVideoAdPlayer({
         adsLoader.requestAds(adsRequest);
       } catch (err) {
         console.warn("[XoraVideoAd] Failed setting up IMA SDK:", err);
-        finishAdOnce("error");
+        handleNoFillOrErrorFallback("error");
       }
     };
 
@@ -332,7 +388,16 @@ export function XoraVideoAdPlayer({
       if (timeoutGuard) clearTimeout(timeoutGuard);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adTagUrl, authorId, finishAdOnce, genre, onAdStarted, postId]);
+  }, [
+    adTagUrl,
+    authorId,
+    finishAdOnce,
+    genre,
+    handleNoFillOrErrorFallback,
+    onAdStarted,
+    postId,
+    startDirectVideoAd,
+  ]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -409,6 +474,15 @@ export function XoraVideoAdPlayer({
         playsInline
         webkit-playsinline="true"
         muted={isMuted}
+        onEnded={() => finishAdOnce("completed")}
+        onError={() => finishAdOnce("error")}
+        onTimeUpdate={() => {
+          if (videoRef.current && videoRef.current.duration) {
+            const dur = videoRef.current.duration;
+            const cur = videoRef.current.currentTime;
+            setRemainingTime(Math.max(0, Math.ceil(dur - cur)));
+          }
+        }}
         className="h-full w-full object-contain pointer-events-auto"
       />
 
