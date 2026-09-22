@@ -49,7 +49,8 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
     (pathname.startsWith("/api/rewards") ||
       pathname.startsWith("/api/admin/rewards") ||
       pathname.startsWith("/api/engagement") ||
-      pathname.startsWith("/api/admin/engagement"))
+      pathname.startsWith("/api/admin/engagement") ||
+      pathname.startsWith("/api/admin/fraud"))
   ) {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
@@ -88,7 +89,11 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
       const config = await getStoredRewardConfig();
       const transactions = await getUserRewardTransactions(userId);
       const successfulOrPending = transactions.filter(
-        (t) => t.status === "success" || t.status === "processing" || t.status === "pending",
+        (t) =>
+          t.status === "success" ||
+          t.status === "processing" ||
+          t.status === "pending" ||
+          t.status === "pending_approval",
       );
 
       const hasReachedLimit = successfulOrPending.length >= config.maxRewardsPerUser;
@@ -145,6 +150,22 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
             message: "Missing user identifier or mobile phone number.",
           },
           400,
+        );
+      }
+
+      // Check if user is restricted
+      const restrictionCheck = (await queryRtdb(`restrictedUsers/${body.userId}`)) as {
+        restrictedAt: string;
+        reason: string;
+      } | null;
+      if (restrictionCheck) {
+        return jsonReply(
+          {
+            ok: false,
+            status: "failed",
+            message: `Your account is restricted. Reason: ${restrictionCheck.reason}`,
+          },
+          403,
         );
       }
 
@@ -282,6 +303,21 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         );
       }
 
+      // Check if user is restricted
+      const restrictionCheck = (await queryRtdb(`restrictedUsers/${body.userId}`)) as {
+        restrictedAt: string;
+        reason: string;
+      } | null;
+      if (restrictionCheck) {
+        return jsonReply(
+          {
+            ok: false,
+            error: `Your account is restricted. Reason: ${restrictionCheck.reason}`,
+          },
+          403,
+        );
+      }
+
       const clientIp = body.clientIp || request.headers.get("x-forwarded-for") || "127.0.0.1";
       const session = await startEngagementSession({
         userId: body.userId,
@@ -306,6 +342,21 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         return jsonReply(
           { ok: false, error: "Missing required heartbeat payload parameters" },
           400,
+        );
+      }
+
+      // Check if user is restricted
+      const restrictionCheck = (await queryRtdb(`restrictedUsers/${body.accountId}`)) as {
+        restrictedAt: string;
+        reason: string;
+      } | null;
+      if (restrictionCheck) {
+        return jsonReply(
+          {
+            ok: false,
+            error: `Your account is restricted. Reason: ${restrictionCheck.reason}`,
+          },
+          403,
         );
       }
 
@@ -462,65 +513,269 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
       }
     }
 
-    // POST /api/admin/rewards/test-transaction
-    if (pathname === "/api/admin/rewards/test-transaction" && request.method === "POST") {
+    // POST /api/admin/rewards/approve
+    if (pathname === "/api/admin/rewards/approve" && request.method === "POST") {
       try {
-        const body = (await request.json().catch(() => null)) as {
-          phone?: string;
-          bundle?: string;
-          type?: string;
-        } | null;
-
-        if (!body?.phone) {
-          return jsonReply({ ok: false, message: "Phone number required for test purchase" }, 400);
+        const body = (await request.json().catch(() => null)) as { xoraTxId?: string } | null;
+        if (!body?.xoraTxId) {
+          return jsonReply({ ok: false, error: "Transaction ID (xoraTxId) is required." }, 400);
         }
 
-        const norm = normalizeNigerianPhone(body.phone);
-        const config = await getStoredRewardConfig();
-        const bundle = body.bundle || config.selectedPlan?.bundle || "990";
-        const type = body.type || config.selectedPlan?.type || "25";
+        const txId = body.xoraTxId;
+        const tx = (await queryRtdb(`rewardTransactions/${txId}`)) as RewardTransaction | null;
+        if (!tx) {
+          return jsonReply({ ok: false, error: "Transaction not found." }, 404);
+        }
 
-        const testRes = await executeVtushareDataPurchase({
-          phone: norm,
-          bundle,
-          type,
-          network: config.selectedPlan?.networkId || "2",
+        if (tx.status !== "pending_approval") {
+          return jsonReply(
+            { ok: false, error: `Transaction cannot be approved from status: ${tx.status}` },
+            400,
+          );
+        }
+
+        // Run purchase
+        const purchaseRes = await executeVtushareDataPurchase({
+          phone: tx.phone,
+          bundle: tx.bundle,
+          type: tx.type,
+          network: "2", // MTN
         });
 
-        // Record test transaction
-        const xoraTxId = `test_${Date.now()}`;
-        const txRecord: RewardTransaction = {
-          xoraTxId,
-          userId: "admin_test",
-          phone: norm,
-          phoneMasked: maskPhone(norm),
-          provider: "vtushare",
-          network: "MTN",
-          bundle,
-          type,
-          planName: `MTN ${bundle} (Admin Test)`,
-          expectedAmount: 135,
-          chargedAmount: testRes.chargedAmount,
-          vtushareRef: testRes.ref,
-          status: testRes.status,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          completedAt: testRes.status === "success" ? new Date().toISOString() : null,
-          errorMessage: testRes.ok ? null : testRes.message,
-        };
+        tx.vtushareRef = purchaseRes.ref;
+        tx.status = purchaseRes.status;
+        tx.updatedAt = new Date().toISOString();
+        tx.errorMessage = purchaseRes.ok ? null : purchaseRes.message;
+        if (purchaseRes.chargedAmount) tx.chargedAmount = purchaseRes.chargedAmount;
+        if (purchaseRes.status === "success") {
+          tx.completedAt = new Date().toISOString();
+          // Record active claim count inside the current period since delivery is confirmed
+          await recordPeriodClaim(tx.userId);
+        }
 
-        await saveRewardTransaction(txRecord);
+        await saveRewardTransaction(tx);
 
         return jsonReply({
-          ok: testRes.ok,
-          status: testRes.status,
-          ref: testRes.ref,
-          message: testRes.message,
-          balanceAfter: testRes.balanceAfter,
-          xoraTxId,
+          ok: purchaseRes.ok,
+          status: purchaseRes.status,
+          message: purchaseRes.message || "Purchase completed.",
+          txId: tx.xoraTxId,
         });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Test transaction failed";
+        const msg = err instanceof Error ? err.message : "Approval execution failed";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/rewards/reject
+    if (pathname === "/api/admin/rewards/reject" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          xoraTxId?: string;
+          reason?: string;
+        } | null;
+        if (!body?.xoraTxId) {
+          return jsonReply({ ok: false, error: "Transaction ID (xoraTxId) is required." }, 400);
+        }
+
+        const txId = body.xoraTxId;
+        const tx = (await queryRtdb(`rewardTransactions/${txId}`)) as RewardTransaction | null;
+        if (!tx) {
+          return jsonReply({ ok: false, error: "Transaction not found." }, 404);
+        }
+
+        if (tx.status !== "pending_approval") {
+          return jsonReply(
+            { ok: false, error: `Transaction cannot be rejected from status: ${tx.status}` },
+            400,
+          );
+        }
+
+        tx.status = "failed";
+        tx.errorMessage = body.reason || "Rejected by administrator.";
+        tx.updatedAt = new Date().toISOString();
+
+        await saveRewardTransaction(tx);
+
+        return jsonReply({
+          ok: true,
+          status: "failed",
+          message: "Transaction successfully rejected.",
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Rejection failed";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+  }
+
+  // ==============================================================
+  // ADMIN-ONLY FRAUD ENFORCEMENT ENDPOINTS
+  // ==============================================================
+  if (pathname.startsWith("/api/admin/fraud")) {
+    const adminSession = verifyAdminSession(request);
+    if (!adminSession.valid) {
+      return jsonReply(
+        {
+          ok: false,
+          error: adminSession.error || "Unauthorized: Sovereign admin session required.",
+        },
+        401,
+      );
+    }
+
+    // GET /api/admin/fraud/account-devices
+    if (pathname === "/api/admin/fraud/account-devices" && request.method === "GET") {
+      try {
+        const data = (await queryRtdb("accountDevices")) as Record<
+          string,
+          Record<string, Record<string, { lastSeenAt: string; email: string | null }>>
+        > | null;
+        const restrictions = (await queryRtdb("restrictedUsers")) as Record<
+          string,
+          { restrictedAt: string; reason: string }
+        > | null;
+
+        // Let's transform this into a list of accounts and their device sharing for today
+        const list: Array<{
+          userId: string;
+          email: string | null;
+          devices: Array<{ deviceId: string; lastSeenAt: string }>;
+          deviceCount: number;
+          isRestricted: boolean;
+          restrictionReason?: string;
+        }> = [];
+
+        if (data) {
+          const todayIso = new Date().toISOString().slice(0, 10);
+          for (const [userId, dateMap] of Object.entries(data)) {
+            const todayDevices = dateMap[todayIso];
+            if (todayDevices) {
+              const devices = Object.entries(todayDevices).map(([deviceId, details]) => ({
+                deviceId,
+                lastSeenAt: details.lastSeenAt,
+              }));
+
+              // Find email from details
+              const firstWithEmail = Object.values(todayDevices).find((d) => d.email);
+              const email = firstWithEmail ? firstWithEmail.email : null;
+
+              const isRestricted = Boolean(restrictions?.[userId]);
+              const restrictionReason = restrictions?.[userId]?.reason;
+
+              list.push({
+                userId,
+                email,
+                devices,
+                deviceCount: devices.length,
+                isRestricted,
+                restrictionReason,
+              });
+            }
+          }
+        }
+
+        // Sort so that accounts with more devices come first (most suspicious first)
+        list.sort((a, b) => b.deviceCount - a.deviceCount);
+
+        return jsonReply({ ok: true, records: list });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error fetching account devices";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/fraud/restrict-account
+    if (pathname === "/api/admin/fraud/restrict-account" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          userId?: string;
+          reason?: string;
+        } | null;
+        if (!body?.userId) {
+          return jsonReply({ ok: false, error: "Missing required parameter: userId" }, 400);
+        }
+
+        const reason = body.reason || "Admin closed due to multi-device access sharing.";
+        const nowIso = new Date().toISOString();
+
+        // Save to restrictedUsers
+        const headers = { "Content-Type": "application/json" };
+        await queryRtdb(`restrictedUsers/${body.userId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ restrictedAt: nowIso, reason }),
+        });
+
+        return jsonReply({ ok: true, message: `Account ${body.userId} successfully restricted.` });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error restricting account";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/fraud/unrestrict-account
+    if (pathname === "/api/admin/fraud/unrestrict-account" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as { userId?: string } | null;
+        if (!body?.userId) {
+          return jsonReply({ ok: false, error: "Missing required parameter: userId" }, 400);
+        }
+
+        // Delete from restrictedUsers
+        await queryRtdb(`restrictedUsers/${body.userId}`, {
+          method: "DELETE",
+        });
+
+        return jsonReply({
+          ok: true,
+          message: `Account ${body.userId} successfully unrestricted.`,
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error unrestricting account";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/fraud/notify-user
+    if (pathname === "/api/admin/fraud/notify-user" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          userId?: string;
+          message?: string;
+        } | null;
+        if (!body?.userId || !body?.message) {
+          return jsonReply(
+            { ok: false, error: "Missing required parameters: userId or message" },
+            400,
+          );
+        }
+
+        const notifId = `notif_warn_${Date.now()}`;
+        const nowIso = new Date().toISOString();
+
+        const notif = {
+          id: notifId,
+          title: "Sovereign Security Warning",
+          body: body.message,
+          type: "warning",
+          read: false,
+          createdAt: nowIso,
+        };
+
+        const headers = { "Content-Type": "application/json" };
+        await queryRtdb(`notifications/${body.userId}/${notifId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(notif),
+        });
+
+        return jsonReply({
+          ok: true,
+          message: `Warning notification dispatched to user ${body.userId}.`,
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error dispatching warning notification";
         return jsonReply({ ok: false, error: msg }, 500);
       }
     }

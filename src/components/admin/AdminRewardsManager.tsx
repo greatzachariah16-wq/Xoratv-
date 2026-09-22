@@ -61,18 +61,8 @@ export function AdminRewardsManager() {
   const [maxRewardsPerUser, setMaxRewardsPerUser] = useState(1);
   const [minBalanceThreshold, setMinBalanceThreshold] = useState(200);
 
-  // Controlled test tool states
-  const [testPhone, setTestPhone] = useState("");
-  const [testBundle, setTestBundle] = useState("990");
-  const [testType, setTestType] = useState("25");
-  const [isSendingTest, setIsSendingTest] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    ok: boolean;
-    status: string;
-    message: string;
-    ref?: string | null;
-    balanceAfter?: number;
-  } | null>(null);
+  // Action state for manual approvals
+  const [processingTxId, setProcessingTxId] = useState<string | null>(null);
 
   const fetchOverview = async (showToast = false) => {
     try {
@@ -189,40 +179,59 @@ export function AdminRewardsManager() {
     }
   };
 
-  const handleRunTestTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!testPhone.trim()) {
-      toast.error("Please enter a destination phone number for the test.");
-      return;
-    }
-
-    setIsSendingTest(true);
-    setTestResult(null);
+  const handleApproveTransaction = async (xoraTxId: string) => {
+    setProcessingTxId(xoraTxId);
     try {
-      const res = await fetch("/api/admin/rewards/test-transaction", {
+      const res = await fetch("/api/admin/rewards/approve", {
         method: "POST",
         headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
-        body: JSON.stringify({
-          phone: testPhone.trim(),
-          bundle: testBundle,
-          type: testType,
-        }),
+        body: JSON.stringify({ xoraTxId }),
       });
 
       const json = await res.json();
-      setTestResult(json);
-      if (json.ok) {
-        toast.success(`Test transaction executed! Status: ${json.status}`);
+      if (res.ok && json.ok) {
+        toast.success(`Reward successfully approved and dispatched! VTU ref: ${json.status}`);
         await fetchOverview();
       } else {
-        toast.error(json.message || "Test transaction was rejected by VTUshare.");
+        toast.error(json.error || json.message || "Failed to approve transaction.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Test transaction failed";
+      const msg = err instanceof Error ? err.message : "Error approving transaction";
       toast.error(msg);
     } finally {
-      setIsSendingTest(false);
+      setProcessingTxId(null);
+    }
+  };
+
+  const handleRejectTransaction = async (xoraTxId: string) => {
+    const reason = window.prompt(
+      "Please enter a reason for rejecting this claim:",
+      "Does not meet view criteria.",
+    );
+    if (reason === null) return; // user cancelled
+
+    setProcessingTxId(xoraTxId);
+    try {
+      const res = await fetch("/api/admin/rewards/reject", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({ xoraTxId, reason }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast.success("Transaction successfully rejected.");
+        await fetchOverview();
+      } else {
+        toast.error(json.error || json.message || "Failed to reject transaction.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error rejecting transaction";
+      toast.error(msg);
+    } finally {
+      setProcessingTxId(null);
     }
   };
 
@@ -493,119 +502,114 @@ export function AdminRewardsManager() {
           </div>
         </div>
 
-        {/* Controlled Test Transaction Card */}
+        {/* Pending Claims Approval Queue Card */}
         <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-card flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-border pb-4">
               <div className="flex items-center gap-2">
-                <Send className="size-4 text-emerald-500" />
+                <Clock className="size-4 text-amber-500" />
                 <h3 className="font-display text-base font-semibold">
-                  Controlled Test Transaction
+                  Pending Claims Approval Queue
                 </h3>
               </div>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                Safe Mode
+              <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                {(data?.transactions || []).filter((t) => t.status === "pending_approval").length}{" "}
+                Pending
               </span>
             </div>
 
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              Execute a single controlled 500MB/1GB purchase to an admin-specified Nigerian MTN
-              phone number to verify VTUshare authorization, telco routing, and response parsing
-              before opening claims to viewers.
+              Verify and manually authorize genuine MTN data reward claims before executing real
+              telco gateway disbursements.
             </p>
 
-            <form onSubmit={handleRunTestTransaction} className="mt-4 space-y-3">
-              <div>
-                <Label htmlFor="test-phone" className="text-xs font-semibold">
-                  Recipient Nigerian MTN Phone Number
-                </Label>
-                <div className="relative mt-1">
-                  <Smartphone className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-                  <Input
-                    id="test-phone"
-                    placeholder="e.g. 08031234567 or 08101234567"
-                    value={testPhone}
-                    onChange={(e) => setTestPhone(e.target.value)}
-                    className="h-10 pl-9 rounded-xl text-xs font-mono"
-                  />
-                </div>
-              </div>
+            <div className="mt-4 space-y-3 max-h-[340px] overflow-y-auto pr-1">
+              {(data?.transactions || []).filter((t) => t.status === "pending_approval").length >
+              0 ? (
+                data?.transactions
+                  .filter((t) => t.status === "pending_approval")
+                  .map((tx) => (
+                    <div
+                      key={tx.xoraTxId}
+                      className="rounded-2xl border border-border bg-background p-3 text-xs space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-foreground text-xs">
+                            {tx.phoneDisplay || tx.phoneMasked || tx.phone}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                            ID: {tx.xoraTxId}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate max-w-[150px] mt-0.5">
+                            User: {tx.userId}
+                          </p>
+                        </div>
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
+                          {tx.planName}
+                        </span>
+                      </div>
 
-              <div>
-                <Label htmlFor="test-plan" className="text-xs font-semibold">
-                  Test Plan (VTUshare Catalog)
-                </Label>
-                <select
-                  id="test-plan"
-                  value={`${testBundle}_${testType}`}
-                  onChange={(e) => {
-                    const [b, t] = e.target.value.split("_");
-                    setTestBundle(b);
-                    setTestType(t);
-                  }}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
-                >
-                  <option value="990_25">MTN 1GB AWOOF 30 Days (₦280) — Best Value</option>
-                  <option value="988_56">MTN 1GB SME 1 Day (₦300) — Direct Wholesale</option>
-                  <option value="878_11">MTN 500MB DATASHARE (₦400)</option>
-                  <option value="991_25">MTN 2GB AWOOF 30 Days (₦560)</option>
-                  {data?.provider.plans
-                    ?.filter((p) => p.bundle !== "990" && p.bundle !== "988")
-                    .slice(0, 15)
-                    .map((p) => (
-                      <option key={p.id} value={`${p.bundle}_${p.type}`}>
-                        {p.name} (₦{p.price})
-                      </option>
-                    ))}
-                </select>
-              </div>
+                      <div className="flex items-center justify-between border-t border-border/50 pt-2 text-[10px] text-muted-foreground">
+                        <div>
+                          Trust Score:{" "}
+                          <span className="font-bold text-foreground">
+                            {tx.trustScore ?? "N/A"}
+                          </span>
+                        </div>
+                        <div>
+                          Fraud Tier:{" "}
+                          <span className="font-bold text-foreground">{tx.fraudTier ?? 0}</span>
+                        </div>
+                      </div>
 
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={isSendingTest}
-                className="w-full mt-2 rounded-full text-xs font-semibold border border-border hover:bg-primary hover:text-primary-foreground transition"
-              >
-                {isSendingTest ? "Transacting with VTUshare..." : "Dispatch Test Transaction"}
-              </Button>
-            </form>
-
-            {testResult && (
-              <div
-                className={`mt-4 rounded-2xl border p-3 text-xs ${
-                  testResult.ok
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200"
-                    : "border-rose-500/30 bg-rose-500/10 text-rose-900 dark:text-rose-200"
-                }`}
-              >
-                <div className="flex items-center gap-2 font-semibold">
-                  {testResult.ok ? (
-                    <CheckCircle2 className="size-4 text-emerald-500" />
-                  ) : (
-                    <XCircle className="size-4 text-rose-500" />
-                  )}
-                  <span>Status: {testResult.status}</span>
-                </div>
-                <p className="mt-1">{testResult.message}</p>
-                {testResult.ref && (
-                  <p className="mt-1 font-mono text-[10px] opacity-80">
-                    Reference: {testResult.ref}
+                      <div className="flex items-center gap-2 pt-1.5 border-t border-border/50">
+                        <Button
+                          size="sm"
+                          disabled={processingTxId !== null}
+                          onClick={() => handleApproveTransaction(tx.xoraTxId)}
+                          className="h-8 flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[11px] gap-1 shadow-lift"
+                        >
+                          {processingTxId === tx.xoraTxId ? (
+                            <RefreshCw className="size-3 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="size-3" />
+                          )}
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={processingTxId !== null}
+                          onClick={() => handleRejectTransaction(tx.xoraTxId)}
+                          className="h-8 flex-1 rounded-lg border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 font-medium text-[11px] gap-1"
+                        >
+                          {processingTxId === tx.xoraTxId ? (
+                            <RefreshCw className="size-3 animate-spin" />
+                          ) : (
+                            <XCircle className="size-3" />
+                          )}
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="py-12 text-center rounded-2xl border border-dashed border-border/80 bg-background/50">
+                  <CheckCircle2 className="mx-auto size-7 text-emerald-500/80" />
+                  <p className="mt-2 font-semibold text-xs text-foreground">All Claims Resolved</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
+                    Awaiting new viewer entries. Submitted claims appear here for your direct
+                    sign-off.
                   </p>
-                )}
-                {testResult.balanceAfter !== undefined && (
-                  <p className="mt-0.5 text-[11px] font-semibold">
-                    Balance After: ₦{testResult.balanceAfter.toLocaleString()}
-                  </p>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Webhook Destination URL:</span>
-            <code className="font-mono text-[10px] bg-background px-1.5 py-0.5 rounded border">
-              /api/rewards/webhook/vtushare
-            </code>
+            <span>Manual Admin Approval Mode:</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">ACTIVE</span>
           </div>
         </div>
       </div>
@@ -731,7 +735,11 @@ export function AdminRewardsManager() {
                   let badge = "bg-secondary text-foreground";
                   if (tx.status === "success")
                     badge = "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
-                  else if (tx.status === "pending" || tx.status === "processing")
+                  else if (
+                    tx.status === "pending" ||
+                    tx.status === "processing" ||
+                    tx.status === "pending_approval"
+                  )
                     badge = "bg-amber-500/15 text-amber-600 dark:text-amber-400";
                   else if (tx.status === "failed")
                     badge = "bg-rose-500/15 text-rose-600 dark:text-rose-400";

@@ -1237,7 +1237,11 @@ export async function claimUserReward(params: {
     // 3. User reward count limit check
     const existing = await getUserRewardTransactions(userId);
     const successfulClaims = existing.filter(
-      (t) => t.status === "success" || t.status === "processing" || t.status === "pending",
+      (t) =>
+        t.status === "success" ||
+        t.status === "processing" ||
+        t.status === "pending" ||
+        t.status === "pending_approval",
     );
 
     if (successfulClaims.length >= config.maxRewardsPerUser) {
@@ -1281,45 +1285,21 @@ export async function claimUserReward(params: {
       planName: selectedPlan.name,
       expectedAmount: selectedPlan.price,
       vtushareRef: null,
-      status: "processing",
+      status: "pending_approval",
       createdAt: nowIso,
       updatedAt: nowIso,
       trustScore,
       fraudTier,
     };
 
-    // Save initial state to prevent any duplicate claim race
+    // Save initial state in pending_approval status
     await saveRewardTransaction(txRecord);
-
-    // 6. Dispatch backend purchase to VTUshare
-    const purchaseRes = await executeVtushareDataPurchase({
-      phone: normPhone,
-      bundle: selectedPlan.bundle,
-      type: selectedPlan.type,
-      network: selectedPlan.networkId || "2",
-    });
-
-    txRecord.vtushareRef = purchaseRes.ref;
-    txRecord.status = purchaseRes.status;
-    txRecord.updatedAt = new Date().toISOString();
-    txRecord.errorMessage = purchaseRes.ok ? null : purchaseRes.message;
-    if (purchaseRes.chargedAmount) txRecord.chargedAmount = purchaseRes.chargedAmount;
-    if (purchaseRes.status === "success") txRecord.completedAt = new Date().toISOString();
-
-    await saveRewardTransaction(txRecord);
-
-    let userMessage = "Your reward is being processed.";
-    if (purchaseRes.status === "success") {
-      userMessage = "Your data reward has been delivered.";
-    } else if (purchaseRes.status === "failed") {
-      userMessage = "We couldn't deliver your reward. Your claim will be reviewed automatically.";
-    }
 
     return {
-      ok: purchaseRes.ok,
-      status: purchaseRes.status,
+      ok: true,
+      status: "pending_approval",
       txId: xoraTxId,
-      message: userMessage,
+      message: "Your reward claim has been submitted and is pending admin approval.",
       maskedPhone: maskPhone(normPhone),
     };
   } finally {

@@ -291,7 +291,8 @@ export default {
       url.pathname.startsWith("/api/rewards") ||
       url.pathname.startsWith("/api/admin/rewards") ||
       url.pathname.startsWith("/api/engagement") ||
-      url.pathname.startsWith("/api/admin/engagement")
+      url.pathname.startsWith("/api/admin/engagement") ||
+      url.pathname.startsWith("/api/admin/fraud")
     ) {
       const rewardsRes = await handleRewardsRoute(request, url);
       if (rewardsRes) return rewardsRes;

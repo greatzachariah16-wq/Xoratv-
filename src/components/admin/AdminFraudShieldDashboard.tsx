@@ -41,9 +41,10 @@ import {
   type UnifiedSessionInput,
 } from "@/lib/fraud-guard";
 import { Button } from "@/components/ui/button";
+import { getAdminAuthHeaders } from "@/hooks/useAdminAuth";
 
 export function AdminFraudShieldDashboard() {
-  const [activeTab, setActiveTab] = useState<"decisions" | "devices" | "simulator">("decisions");
+  const [activeTab, setActiveTab] = useState<"decisions" | "devices" | "multi_user">("decisions");
   const [tierFilter, setTierFilter] = useState<number | "all" | "escalated">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -54,12 +55,18 @@ export function AdminFraudShieldDashboard() {
   const [flaggedDevices, setFlaggedDevices] = useState<FlaggedDeviceSummary[]>([]);
   const [selectedDecision, setSelectedDecision] = useState<EnforcementDecision | null>(null);
 
-  // Simulator state
-  const [simRunning, setSimRunning] = useState(false);
-  const [simResult, setSimResult] = useState<{
-    report: UnifiedFraudReport;
-    decision: EnforcementDecision;
-  } | null>(null);
+  // Account Devices Sharing Telemetry states
+  interface AccountDeviceRecord {
+    userId: string;
+    email: string | null;
+    devices: Array<{ deviceId: string; lastSeenAt: string }>;
+    deviceCount: number;
+    isRestricted: boolean;
+    restrictionReason?: string;
+  }
+
+  const [accountDevicesList, setAccountDevicesList] = useState<AccountDeviceRecord[]>([]);
+  const [isFetchingDevices, setIsFetchingDevices] = useState(false);
 
   const loadData = async (isManualRefresh = false) => {
     if (isManualRefresh) setIsRefreshing(true);
@@ -87,11 +94,17 @@ export function AdminFraudShieldDashboard() {
 
   useEffect(() => {
     void loadData();
+    if (activeTab === "multi_user") {
+      void fetchAccountDevices();
+    }
     const interval = setInterval(() => {
       void loadData(false);
+      if (activeTab === "multi_user") {
+        void fetchAccountDevices();
+      }
     }, 12000); // 12-second live refresh polling
     return () => clearInterval(interval);
-  }, []);
+  }, [activeTab]);
 
   const handleResolve = async (decisionId: string, action: "approved" | "confirmed_bot") => {
     try {
@@ -137,129 +150,99 @@ export function AdminFraudShieldDashboard() {
     }
   };
 
-  // Run a diagnostic simulation session
-  const runSimulation = async (
-    type: "clean" | "webdriver_bot" | "device_sharing" | "speed_hacker",
-  ) => {
-    setSimRunning(true);
+  const fetchAccountDevices = async () => {
+    setIsFetchingDevices(true);
     try {
-      const fakeAccountId = `sim_acc_${Math.random().toString(36).slice(2, 7)}`;
-      const fakeDeviceId =
-        type === "device_sharing"
-          ? "fp_shared_device_household_99"
-          : `fp_sim_${Math.random().toString(36).slice(2, 7)}`;
-      const fakeIp = type === "webdriver_bot" ? "198.51.100.42" : "72.14.201.2";
-
-      let heartbeatPayload: UnifiedSessionInput["heartbeat"] = undefined;
-      if (type === "speed_hacker") {
-        const sessionId = `hb_sim_${Date.now()}`;
-        const nonce = `nonce_${Math.random().toString(36).slice(2, 8)}`;
-        const now = Date.now();
-        // Seed a valid nonce issued 15s ago with 0 last playback into RTDB
-        const noncePath = `${FRAUD_GUARD_CONFIG.rtdbPaths.heartbeatNonces}/${sessionId}/${nonce}`;
-        await rtdbSet(noncePath, {
-          nonce,
-          sessionId,
-          accountId: fakeAccountId,
-          deviceFingerprintId: fakeDeviceId,
-          issuedAt: now - 15000,
-          expiresAt: now + 300000,
-          lastPlaybackSeconds: 0,
-          lastHeartbeatWallClock: now - 15000,
-          used: false,
-        });
-
-        heartbeatPayload = {
-          sessionId,
-          nonce,
-          currentPlaybackSeconds: 300, // 300s media progressed in 15s real elapsed time = 20x speed hack!
-          claimedDeltaSeconds: 300,
-        };
+      const res = await fetch("/api/admin/fraud/account-devices", {
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        setAccountDevicesList(json.records || []);
+      } else {
+        toast.error(json.error || "Failed to load account device mappings.");
       }
-
-      // Build simulated telemetry conforming directly to UnifiedSessionInput
-      const simulatedInput: UnifiedSessionInput = {
-        accountId: fakeAccountId,
-        email: `${fakeAccountId}@example.test`,
-        clientIp: fakeIp,
-        deviceFingerprint: {
-          fingerprintId: fakeDeviceId,
-          hardware: {
-            platform: type === "clean" ? "iPhone" : "MacIntel",
-            screenResolution: "1920x1080",
-            hardwareConcurrency: type === "webdriver_bot" ? 2 : 8,
-            timezone: "America/New_York",
-            maxTouchPoints: type === "clean" ? 5 : 0,
-          },
-          webgl: {
-            renderer: type === "webdriver_bot" ? "Google SwiftShader (Headless)" : "Apple M2 Max",
-            unmaskedRenderer: type === "webdriver_bot" ? "Google Inc. (Google)" : "Apple",
-            isHeadlessGpu: type === "webdriver_bot",
-          },
-          environment: {
-            webdriver: type === "webdriver_bot",
-            phantomJs: false,
-            nightmareJs: false,
-            selenium: type === "webdriver_bot",
-            domAutomation: false,
-          },
-        },
-        telemetry: {
-          scrollCount: type === "webdriver_bot" ? 0 : 25,
-          scrollVelocityVariance: type === "webdriver_bot" ? 0 : 0.65,
-          hasHumanScrollCurves: type !== "webdriver_bot",
-          touchCount: type === "clean" ? 18 : 0,
-          averageTouchRadius: type === "clean" ? 12 : 0,
-          touchPressureVariance: type === "clean" ? 0.35 : 0,
-          hasHumanTouchJitter: type === "clean",
-          mouseMoveCount: type === "clean" ? 0 : 40,
-          mouseTrajectoryCurvature: type === "clean" ? 0 : 1.2,
-          activeForegroundSeconds: type === "webdriver_bot" ? 1 : 65,
-          backgroundSeconds: type === "webdriver_bot" ? 64 : 2,
-          rapidClickBurstCount: 0,
-          totalInteractionEvents: type === "webdriver_bot" ? 0 : 43,
-        },
-        heartbeat: heartbeatPayload,
-      };
-
-      // 1. Evaluate unified session
-      const report = await CombinedAnalyticsEngine.evaluateUnifiedSession(simulatedInput);
-
-      // If device_sharing scenario, force collision signal to demonstrate the exception rule
-      if (type === "device_sharing") {
-        report.serverSideSignals.isMultiAccountAbuse = true;
-        report.serverSideSignals.deviceCollisionCount = 4;
-        report.trustScore = 22; // Would be Tier 3 normally (<25)
-        report.allSignals = [
-          {
-            type: "MULTI_ACCOUNT_DEVICE_COLLISION",
-            source: "server",
-            severity: "high",
-            confidence: 0.9,
-            weight: 35,
-            reason: "Device collision: 4 accounts observed on physical fingerprint.",
-            detectedAt: new Date().toISOString(),
-          },
-        ];
-      }
-
-      // 2. Determine enforcement action & log to Firebase RTDB
-      const decision = await determineEnforcementAction(report);
-
-      setSimResult({ report, decision });
-      toast.success(
-        `Simulation completed: ${decision.tierName} (${decision.trustScore}/100 Trust)`,
-      );
-
-      // Refresh recent decisions
-      await loadData(false);
-    } catch (err) {
-      console.error("Simulation error", err);
-      toast.error(
-        err instanceof Error ? `Simulation error: ${err.message}` : "Failed to run simulation",
-      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error fetching account device sharing list";
+      toast.error(msg);
     } finally {
-      setSimRunning(false);
+      setIsFetchingDevices(false);
+    }
+  };
+
+  const handleRestrictAccount = async (userId: string, defaultReason?: string) => {
+    const reason = window.prompt(
+      "Reason for restricting this account:",
+      defaultReason || "Closed due to suspicious multi-device account sharing.",
+    );
+    if (reason === null) return; // cancelled
+
+    try {
+      const res = await fetch("/api/admin/fraud/restrict-account", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({ userId, reason }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast.success(`Account ${userId} restricted.`);
+        await fetchAccountDevices();
+      } else {
+        toast.error(json.error || "Failed to restrict account.");
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error restricting account.");
+    }
+  };
+
+  const handleUnrestrictAccount = async (userId: string) => {
+    if (!window.confirm(`Are you sure you want to unrestrict account: ${userId}?`)) return;
+
+    try {
+      const res = await fetch("/api/admin/fraud/unrestrict-account", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast.success(`Account ${userId} unrestricted.`);
+        await fetchAccountDevices();
+      } else {
+        toast.error(json.error || "Failed to unrestrict account.");
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error unrestricting account.");
+    }
+  };
+
+  const handleNotifyUser = async (userId: string) => {
+    const defaultMsg =
+      "Multiple device fingerprints have accessed your account today. Please verify your active devices to prevent session termination or account restriction.";
+    const message = window.prompt(
+      "Enter warning notification message to push to this user's notification feed:",
+      defaultMsg,
+    );
+    if (!message) return;
+
+    try {
+      const res = await fetch("/api/admin/fraud/notify-user", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({ userId, message }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast.success(`Warning notification pushed to user ${userId}.`);
+      } else {
+        toast.error(json.error || "Failed to send warning.");
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error sending warning.");
     }
   };
 
@@ -468,15 +451,15 @@ export function AdminFraudShieldDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("simulator")}
+            onClick={() => setActiveTab("multi_user")}
             className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 transition-all ${
-              activeTab === "simulator"
+              activeTab === "multi_user"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Play className="size-3.5" />
-            Ruleset Simulator
+            <ShieldAlert className="size-3.5" />
+            Account Sharing Tracker
           </button>
         </div>
 
@@ -798,206 +781,174 @@ export function AdminFraudShieldDashboard() {
         </div>
       )}
 
-      {/* Tab 3: Simulator & Diagnostic Sandbox */}
-      {activeTab === "simulator" && (
+      {/* Tab 3: Account Devices daily sharing tracker & closed action triggers */}
+      {activeTab === "multi_user" && (
         <div className="mt-4 space-y-6">
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
             <h3 className="font-display text-base font-semibold text-primary">
-              1-Click Ruleset Diagnostic Sandbox
+              Daily Multi-Device Login Sharing Tracker
             </h3>
             <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-              Execute test sessions directly through the client-server pipeline to verify that
-              hard-overrides, score tiers, device-sharing exceptions, and escalation counters
-              trigger accurately.
+              Real-time monitoring of accounts active on multiple separate devices today. This
+              identifies farming/sharing abuse where one user runs parallel browsers or distributes
+              their credentials to multiple people.
             </p>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Scenario 1: Clean User */}
-              <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-3.5">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                    <CheckCircle2 className="size-4" /> Clean Mobile User
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    Natural touch jitter, balanced scroll deceleration, no automation flags.
-                  </p>
-                  <span className="mt-2 block text-[10px] font-medium text-emerald-500">
-                    Expected: Tier 0 — Clear (~95 Score)
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={simRunning}
-                  onClick={() => runSimulation("clean")}
-                  className="mt-3 h-8 w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white"
-                >
-                  Test Clean User
-                </Button>
-              </div>
-
-              {/* Scenario 2: Webdriver Bot */}
-              <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-3.5">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-rose-400">
-                    <Bot className="size-4" /> Webdriver / Headless
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    `navigator.webdriver === true` and Google SwiftShader renderer detected.
-                  </p>
-                  <span className="mt-2 block text-[10px] font-medium text-rose-400">
-                    Expected: Tier 3 Hard Override
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={simRunning}
-                  onClick={() => runSimulation("webdriver_bot")}
-                  className="mt-3 h-8 w-full rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white"
-                >
-                  Test Bot Override
-                </Button>
-              </div>
-
-              {/* Scenario 3: Device Sharing Household */}
-              <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-3.5">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400">
-                    <Cpu className="size-4" /> Shared Family Device
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    4 accounts on 1 iPad, but clean human touches and zero speed hacks.
-                  </p>
-                  <span className="mt-2 block text-[10px] font-medium text-cyan-400">
-                    Expected: Capped at Tier 2 (Exception)
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={simRunning}
-                  onClick={() => runSimulation("device_sharing")}
-                  className="mt-3 h-8 w-full rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white"
-                >
-                  Test Device Sharing
-                </Button>
-              </div>
-
-              {/* Scenario 4: Heartbeat Speed Hacker */}
-              <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-3.5">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-purple-400">
-                    <Flame className="size-4" /> Heartbeat Speed Hack
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    Claims 300 seconds of watch delta in 15 seconds of real wall-clock time.
-                  </p>
-                  <span className="mt-2 block text-[10px] font-medium text-purple-400">
-                    Expected: Tier 3 Hard Override
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={simRunning}
-                  onClick={() => runSimulation("speed_hacker")}
-                  className="mt-3 h-8 w-full rounded-lg bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white"
-                >
-                  Test Speed Hacker
-                </Button>
-              </div>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                Showing {accountDevicesList.length} accounts checking in today
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fetchAccountDevices()}
+                disabled={isFetchingDevices}
+                className="rounded-xl h-8 text-xs font-semibold"
+              >
+                {isFetchingDevices ? (
+                  <>
+                    <RefreshCw className="mr-1.5 size-3 animate-spin" />
+                    Fetching sharing lists...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-1.5 size-3" />
+                    Reload Sharing Telemetry
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
-          {/* Simulation Output Card */}
-          {simResult && (
-            <div className="rounded-2xl border border-border bg-surface/50 p-4 sm:p-6">
-              <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                    Latest Simulator Result
-                  </span>
-                  {getTierBadge(simResult.decision.tier)}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Decision ID:{" "}
-                  <strong className="font-mono">{simResult.decision.decisionId}</strong>
-                </span>
-              </div>
-
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">Trust Score:</span>{" "}
-                    <strong className={getScoreColor(simResult.decision.trustScore)}>
-                      {simResult.decision.trustScore}/100
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Action Type:</span>{" "}
-                    <span className="font-mono font-semibold">{simResult.decision.action}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">User-Facing Status:</span>{" "}
-                    <span className="font-semibold">{simResult.decision.userFacingStatus}</span>{" "}
-                    {simResult.decision.userFacingMessage && (
-                      <span className="text-muted-foreground">
-                        ("{simResult.decision.userFacingMessage}")
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Hard Override:</span>{" "}
-                    <span className="font-semibold">
-                      {simResult.decision.isHardOverride ? "Yes" : "No"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Device-Sharing Exception:</span>{" "}
-                    <span className="font-semibold">
-                      {simResult.decision.deviceSharingExceptionApplied
-                        ? "Applied (Capped at Tier 2)"
-                        : "None"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">7-Day Tier 3 Counter:</span>{" "}
-                    <strong className="font-mono">{simResult.decision.tier3Count7Days}</strong>{" "}
-                    {simResult.decision.escalateToAccountSuspension && (
-                      <span className="text-rose-400 font-bold">
-                        (Escalated to Suspension Review)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-card p-3 text-xs">
-                  <span className="font-semibold text-muted-foreground">Reason & Diagnostics:</span>
-                  <p className="mt-1 text-xs leading-relaxed text-foreground">
-                    {simResult.decision.reason}
-                  </p>
-                  {simResult.decision.hardOverrideSignals.length > 0 && (
-                    <div className="mt-2">
-                      <span className="text-[11px] font-semibold text-rose-400">
-                        Triggered Signals:
-                      </span>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {simResult.decision.hardOverrideSignals.map((s) => (
-                          <span
-                            key={s}
-                            className="rounded bg-rose-500/10 px-1.5 py-0.5 font-mono text-[10px] text-rose-300"
-                          >
-                            {s}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {accountDevicesList.length > 0 ? (
+              accountDevicesList.map((rec) => {
+                const isHighlySuspicious = rec.deviceCount >= 2;
+                return (
+                  <div
+                    key={rec.userId}
+                    className={`rounded-2xl border p-4 sm:p-5 shadow-sm space-y-3 flex flex-col justify-between ${
+                      rec.isRestricted
+                        ? "border-rose-500/20 bg-rose-500/5"
+                        : isHighlySuspicious
+                          ? "border-amber-500/20 bg-amber-500/5"
+                          : "border-border bg-card"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-display font-semibold text-sm text-foreground">
+                              {rec.email || rec.userId}
+                            </span>
+                            {rec.isRestricted && (
+                              <span className="rounded bg-rose-500/10 px-2 py-0.5 text-[9px] font-bold text-rose-600 uppercase">
+                                Restricted
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-mono text-[10px] text-muted-foreground block mt-0.5">
+                            ID: {rec.userId}
                           </span>
-                        ))}
+                        </div>
+                        <div className="text-right">
+                          <span
+                            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                              rec.deviceCount >= 3
+                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                                : rec.deviceCount === 2
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            }`}
+                          >
+                            {rec.deviceCount} Device{rec.deviceCount > 1 ? "s" : ""} Today
+                          </span>
+                        </div>
+                      </div>
+
+                      {rec.isRestricted && rec.restrictionReason && (
+                        <div className="mt-2 rounded-xl bg-rose-500/10 p-2.5 text-[11px] text-rose-800 dark:text-rose-200">
+                          <span className="font-bold">Restriction Reason:</span>{" "}
+                          {rec.restrictionReason}
+                        </div>
+                      )}
+
+                      <div className="mt-3">
+                        <span className="text-[11px] font-semibold text-muted-foreground block border-b border-border/40 pb-1">
+                          Connected Hardware Fingerprints today:
+                        </span>
+                        <div className="mt-1.5 space-y-1.5">
+                          {rec.devices.map((dev) => (
+                            <div
+                              key={dev.deviceId}
+                              className="flex items-center justify-between text-[11px] font-mono bg-background px-2.5 py-1 rounded-lg border border-border/40"
+                            >
+                              <span className="text-foreground truncate max-w-[150px]">
+                                {dev.deviceId}
+                              </span>
+                              <span className="text-muted-foreground text-[10px]">
+                                Last active:{" "}
+                                {new Date(dev.lastSeenAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    <div className="flex items-center gap-2 pt-3 border-t border-border/40">
+                      {rec.isRestricted ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUnrestrictAccount(rec.userId)}
+                          className="flex-1 rounded-xl h-8.5 text-xs font-semibold border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                        >
+                          Unrestrict Account
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleNotifyUser(rec.userId)}
+                            className="flex-1 rounded-xl h-8.5 text-xs font-semibold border-amber-500/20 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+                          >
+                            Notify User
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => handleRestrictAccount(rec.userId)}
+                            className="flex-1 rounded-xl h-8.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white"
+                          >
+                            Close Account
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="col-span-2 py-16 text-center rounded-3xl border border-dashed border-border bg-background/50">
+                <CheckCircle2 className="mx-auto size-8 text-emerald-500/80" />
+                <h4 className="mt-3 font-display font-semibold text-sm text-foreground">
+                  Perfect Isolation
+                </h4>
+                <p className="mt-1.5 text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                  No account sharing or multi-device login collusions observed today. All accounts
+                  are currently mapped 1:1 with device profiles.
+                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 

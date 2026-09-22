@@ -74,6 +74,14 @@ export class DeviceLinker {
     // 4. Update the account node in RTDB (asynchronous, non-blocking for speed)
     void rtdbSet(`${accountsPath}/${cleanAccountId}`, updatedRecord);
 
+    // Record account-devices lookup for multi-device login warning dashboard
+    const todayIso = nowIso.slice(0, 10);
+    const accountDevicesPath = `accountDevices/${cleanAccountId}/${todayIso}/${cleanDeviceId}`;
+    void rtdbSet(accountDevicesPath, {
+      lastSeenAt: nowIso,
+      email: email || null,
+    });
+
     // Also update lightweight device summary for easy indexing
     const summaryPath = `${FRAUD_GUARD_CONFIG.rtdbPaths.devices}/${cleanDeviceId}/summary`;
     void rtdbSet(summaryPath, {
