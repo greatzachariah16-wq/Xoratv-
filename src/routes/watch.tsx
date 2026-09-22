@@ -55,24 +55,54 @@ async function fetchMovieStream(id: string): Promise<{
   title: string;
   originalUrl?: string;
 }> {
-  const res = await fetch(`/api/xtv-series/stream/${encodeURIComponent(id)}`);
-  if (!res.ok) throw new Error("Failed to load movie stream");
-  const data = (await res.json()) as {
-    ok: boolean;
-    streamUrl?: string;
-    sourceType?: string;
-    title?: string;
-    originalUrl?: string;
-    error?: string;
-  };
-  if (!data.ok || !data.streamUrl) {
-    throw new Error(data.error || "No playable stream returned");
+  // 1. Try XTv Series stream resolver
+  try {
+    const res = await fetch(`/api/xtv-series/stream?id=${encodeURIComponent(id)}`);
+    if (res.ok) {
+      const data = (await res.json()) as {
+        ok: boolean;
+        streamUrl?: string;
+        provider?: string;
+        item?: { title?: string; videoUrl?: string };
+      };
+      if (data.ok && data.streamUrl) {
+        return {
+          streamUrl: data.streamUrl,
+          sourceType: data.provider || "hls",
+          title: data.item?.title || "Cinema Stream",
+          originalUrl: data.item?.videoUrl,
+        };
+      }
+    }
+  } catch (error) {
+    void error;
   }
+
+  // 2. Try catalog playback resolution
+  try {
+    const res = await fetch(`/api/catalog/${encodeURIComponent(id)}/playback`);
+    if (res.ok) {
+      const data = (await res.json()) as {
+        ok: boolean;
+        playback?: { url?: string; provider?: string };
+      };
+      if (data.ok && data.playback?.url) {
+        return {
+          streamUrl: data.playback.url,
+          sourceType: data.playback.provider || "embed",
+          title: "Cinema Stream",
+        };
+      }
+    }
+  } catch (error) {
+    void error;
+  }
+
+  // 3. Fallback to direct proxy embed
   return {
-    streamUrl: data.streamUrl,
-    sourceType: data.sourceType || "hls",
-    title: data.title || "Cinema Stream",
-    originalUrl: data.originalUrl,
+    streamUrl: `/api/stream/embed/${encodeURIComponent(id)}`,
+    sourceType: "embed",
+    title: "Cinema Stream",
   };
 }
 
@@ -112,7 +142,11 @@ function WatchPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const streamUrl = streamData?.streamUrl || activeMovie?.streamUrl;
+  const streamUrl =
+    streamData?.streamUrl ||
+    activeMovie?.streamUrl ||
+    activeMovie?.videoUrl ||
+    (activeId ? `/api/stream/embed/${encodeURIComponent(activeId)}` : "");
 
   // Other movies for "Up Next" shelf
   const upNextMovies = useMemo(() => {

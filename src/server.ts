@@ -577,9 +577,17 @@ export default {
     }
 
     // XTv playback endpoint. Resolves either FAO TV channels or X Series media streams
-    if (url.pathname === "/api/xtv-series/stream" && request.method === "GET") {
+    if (
+      (url.pathname === "/api/xtv-series/stream" ||
+        url.pathname.startsWith("/api/xtv-series/stream/")) &&
+      request.method === "GET"
+    ) {
       try {
-        const rawId = url.searchParams.get("channelId") || url.searchParams.get("id") || "";
+        const pathParam = url.pathname.startsWith("/api/xtv-series/stream/")
+          ? decodeURIComponent(url.pathname.replace("/api/xtv-series/stream/", "").trim())
+          : "";
+        const rawId =
+          pathParam || url.searchParams.get("channelId") || url.searchParams.get("id") || "";
         if (!rawId) {
           return new Response(JSON.stringify({ ok: false, error: "Missing channelId or id" }), {
             status: 400,
