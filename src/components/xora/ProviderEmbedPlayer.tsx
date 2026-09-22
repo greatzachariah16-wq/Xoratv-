@@ -328,6 +328,7 @@ export function ProviderEmbedPlayer({
   }, [bumpControls]);
 
   const toggleLandscapeMode = useCallback(async () => {
+    triggerAdcashRefresh();
     const container = containerRef.current;
     if (isFullscreen || isLandscape) {
       await unlockOrientation();
@@ -335,7 +336,6 @@ export function ProviderEmbedPlayer({
     } else {
       await lockLandscape(container);
       setIsFullscreen(true);
-      triggerAdcashRefresh();
     }
     bumpControls();
   }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape, bumpControls]);

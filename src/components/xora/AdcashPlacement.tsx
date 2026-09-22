@@ -25,22 +25,23 @@ export function AdcashPlacement({
 }: AdcashPlacementProps) {
   const [showFallback, setShowFallback] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperId = `aclib-slot-${slotId}`;
 
   useEffect(() => {
-    // Initialize & trigger adcash scanning
+    // Initialize & trigger adcash scanning for this specific slot wrapper
     initAdcashAutoTag();
-    triggerAdcashRefresh();
+    triggerAdcashRefresh(wrapperId);
 
     // Check if 3rd-party script has populated the slot after 2.5s; if empty, show in-house sponsor fallback
     const timer = setTimeout(() => {
-      const slotEl = document.getElementById(`aclib-slot-${slotId}`);
+      const slotEl = document.getElementById(wrapperId);
       if (slotEl && slotEl.childElementCount === 0 && slotEl.clientHeight < 10) {
         setShowFallback(true);
       }
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [slotId]);
+  }, [slotId, wrapperId]);
 
   return (
     <div
@@ -58,8 +59,9 @@ export function AdcashPlacement({
     >
       {/* Target injection anchor for Adcash in-feed / native / display units */}
       <div
-        id={`aclib-slot-${slotId}`}
-        className="adcash-ad-slot flex w-full max-w-full items-center justify-center min-h-[1px] overflow-hidden"
+        id={wrapperId}
+        data-zone={ADCASH_ZONE_ID}
+        className="adcash_auto_tag aclib_zone adcash-ad-slot flex w-full max-w-full items-center justify-center min-h-[1px] overflow-hidden"
       />
 
       {/* Fallback In-House High-Res Sponsored Ad if 3rd-party is loading, unfilled, or blocked */}

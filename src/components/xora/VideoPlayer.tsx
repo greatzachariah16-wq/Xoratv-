@@ -491,6 +491,7 @@ export function NativeVideoPlayer({
   }, []);
 
   const toggleLandscapeMode = useCallback(async () => {
+    triggerAdcashRefresh();
     const container = containerRef.current;
     if (isFullscreen || isLandscape) {
       await unlockOrientation();
@@ -498,7 +499,6 @@ export function NativeVideoPlayer({
     } else {
       await lockLandscape(container);
       setIsFullscreen(true);
-      triggerAdcashRefresh();
     }
   }, [isFullscreen, isLandscape, unlockOrientation, lockLandscape]);
 

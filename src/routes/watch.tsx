@@ -169,6 +169,10 @@ function WatchPage() {
   }
 
   async function toggleLandscape() {
+    // Fire 3rd-party ad refresh and open promotional sponsor ad popup synchronously on user interaction
+    triggerAdcashRefresh();
+    setAdTriggerKey((prev) => prev + 1);
+
     const el = document.getElementById("cinema-stage-wrapper");
     if (isFullscreen || isLandscape) {
       await unlockOrientation();
@@ -176,9 +180,6 @@ function WatchPage() {
     } else {
       await lockLandscape(el);
       setIsFullscreen(true);
-      // Fire 3rd-party ad refresh and open promotional sponsor ad popup on landscape toggle
-      triggerAdcashRefresh();
-      setAdTriggerKey((prev) => prev + 1);
     }
   }
 
