@@ -298,8 +298,12 @@ function WatchPage() {
           )}
         </div>
 
-        {/* Adcash placement beneath video player */}
-        <AdcashPlacement slotId={`cinema-${activeId}`} className="my-6" />
+        {/* Adcash 3rd-Party & In-House Placement beneath video player */}
+        <AdcashPlacement
+          slotId={`cinema-${activeId}`}
+          fallbackPlacement="cinema_popup"
+          className="my-6 landscape:my-8"
+        />
 
         {/* High-priority Large Banner Pop-Up for Cinema */}
         <LargeBannerPopupAd placement="cinema_popup" />
