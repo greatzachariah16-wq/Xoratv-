@@ -1,16 +1,26 @@
 /**
- * Monetag Multitag & Service Worker Integration for XoraTV
+ * Monetag Multitag, Service Worker & Page Push Integration for XoraTV
  *
- * Domain: 3nbf4.com
- * Zone ID: 11865683
- * Service Worker Script: https://3nbf4.com/act/files/service-worker.min.js?r=sw
- * Verification File: /8ea04dd6a7bbda76ca13.txt
+ * 1. Multitag & Service Worker:
+ *    - Domain: 3nbf4.com
+ *    - Zone ID: 11865683
+ *    - SW Script: https://3nbf4.com/act/files/service-worker.min.js?r=sw
+ *    - Verification File: /8ea04dd6a7bbda76ca13.txt
+ *
+ * 2. Page Push Global Advertisement:
+ *    - Domain: nap5k.com
+ *    - Zone ID: 11865738
+ *    - Script: https://nap5k.com/tag.min.js
  */
 
 export const MONETAG_DOMAIN = "3nbf4.com";
 export const MONETAG_ZONE_ID = 11865683;
 export const MONETAG_SW_URL = "https://3nbf4.com/act/files/service-worker.min.js?r=sw";
 export const MONETAG_VERIFICATION_FILE = "8ea04dd6a7bbda76ca13.txt";
+
+export const MONETAG_PAGE_PUSH_DOMAIN = "nap5k.com";
+export const MONETAG_PAGE_PUSH_ZONE_ID = "11865738";
+export const MONETAG_PAGE_PUSH_SRC = "https://nap5k.com/tag.min.js";
 
 export interface MonetagDiagnostics {
   domain: string;
@@ -22,22 +32,89 @@ export interface MonetagDiagnostics {
   lastInitAttempt: string | null;
   lastError: string | null;
   isSecureContext: boolean;
+  pagePush: {
+    domain: string;
+    zoneId: string;
+    src: string;
+    status: "Enabled" | "Standby" | "Notice";
+    scope: "Global";
+    injected: boolean;
+  };
 }
 
 let isInitialized = false;
+let isPagePushInitialized = false;
 let initAttemptTime: string | null = null;
 let lastErrorMessage: string | null = null;
 let registeredScope: string | null = null;
 let isSwRegistered = false;
 
 /**
- * Get current Monetag diagnostics and service-worker status (for admin/debug views)
+ * Initialize Monetag Page Push globally across all XoraTV routes.
+ * Idempotent: ensures the script is appended exactly once per application session.
+ */
+export function initMonetagPagePush(): boolean {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return false;
+  }
+
+  // Idempotency check: prevent duplicate injections across route transitions
+  if (
+    isPagePushInitialized ||
+    document.querySelector(`script[src="${MONETAG_PAGE_PUSH_SRC}"]`) ||
+    document.querySelector(`script[data-zone="${MONETAG_PAGE_PUSH_ZONE_ID}"]`)
+  ) {
+    isPagePushInitialized = true;
+    return true;
+  }
+
+  try {
+    const s = document.createElement("script");
+    s.dataset.zone = MONETAG_PAGE_PUSH_ZONE_ID;
+    s.src = MONETAG_PAGE_PUSH_SRC;
+    s.async = true;
+    s.crossOrigin = "anonymous";
+    s.onerror = () => {
+      if (import.meta.env?.DEV) {
+        console.warn("[Monetag Page Push] Script load notice (may be blocked or offline).");
+      }
+    };
+
+    // Monetag injection anchor
+    const target = [document.documentElement, document.body].filter(Boolean).pop();
+    if (target) {
+      target.appendChild(s);
+      isPagePushInitialized = true;
+      if (import.meta.env?.DEV) {
+        console.log(
+          `[Monetag Page Push] Injected globally (Zone: ${MONETAG_PAGE_PUSH_ZONE_ID}, Domain: ${MONETAG_PAGE_PUSH_DOMAIN})`,
+        );
+      }
+      return true;
+    }
+  } catch (err) {
+    if (import.meta.env?.DEV) {
+      console.warn("[Monetag Page Push] Initialization note:", err);
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get current Monetag diagnostics (for admin/debug views)
  */
 export function getMonetagStatus(): MonetagDiagnostics {
   const isSecure =
     typeof window !== "undefined"
       ? window.isSecureContext || window.location.hostname === "localhost"
       : false;
+
+  const hasPagePushScript =
+    typeof document !== "undefined"
+      ? Boolean(document.querySelector(`script[src="${MONETAG_PAGE_PUSH_SRC}"]`))
+      : false;
+
   return {
     domain: MONETAG_DOMAIN,
     zoneId: MONETAG_ZONE_ID,
@@ -48,11 +125,19 @@ export function getMonetagStatus(): MonetagDiagnostics {
     lastInitAttempt: initAttemptTime,
     lastError: lastErrorMessage,
     isSecureContext: isSecure,
+    pagePush: {
+      domain: MONETAG_PAGE_PUSH_DOMAIN,
+      zoneId: MONETAG_PAGE_PUSH_ZONE_ID,
+      src: MONETAG_PAGE_PUSH_SRC,
+      status: isPagePushInitialized || hasPagePushScript ? "Enabled" : "Standby",
+      scope: "Global",
+      injected: isPagePushInitialized || hasPagePushScript,
+    },
   };
 }
 
 /**
- * Initialize Monetag Multitag Service Worker safely in the browser.
+ * Initialize Monetag Multitag Service Worker & Page Push safely in the browser.
  * Idempotent: will execute registration at most once per application lifecycle.
  */
 export async function initMonetag(): Promise<MonetagDiagnostics> {
@@ -61,7 +146,10 @@ export async function initMonetag(): Promise<MonetagDiagnostics> {
     return getMonetagStatus();
   }
 
-  // Idempotency check: prevent duplicate registration runs
+  // Always ensure Page Push is active globally
+  initMonetagPagePush();
+
+  // Idempotency check: prevent duplicate service-worker registration runs
   if (isInitialized) {
     return getMonetagStatus();
   }
@@ -78,7 +166,7 @@ export async function initMonetag(): Promise<MonetagDiagnostics> {
   }
 
   try {
-    // Check existing registrations to avoid conflicts or duplicate scope registrations
+    // Check existing registrations to avoid conflicts
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();
     const rootRegistration = existingRegistrations.find(
       (reg) => reg.scope === `${window.location.origin}/` || reg.scope.endsWith("/"),
