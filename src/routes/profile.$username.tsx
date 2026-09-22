@@ -10,6 +10,7 @@ import { PostCard } from "@/components/xora/PostCard";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { FeedSkeleton } from "@/components/xora/Skeletons";
+import { EngagementAnalyticsCard } from "@/components/rewards/EngagementAnalyticsCard";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/profile/$username")({
@@ -118,6 +119,12 @@ function ProfilePage() {
           ) : null}
         </div>
       </header>
+
+      {isMe && user && (
+        <div className="mt-6">
+          <EngagementAnalyticsCard userId={user.id} />
+        </div>
+      )}
 
       <div className="mt-6 space-y-4">
         {postsPending || isPending ? (
