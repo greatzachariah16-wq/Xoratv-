@@ -311,12 +311,11 @@ function WatchPage() {
           )}
         </div>
 
-        {/* Dedicated Adcash Ads placement container in Full Screen Portrait Theater mode */}
+        {/* Dedicated Pure Adcash Ads placement container */}
         <div className="mt-4 w-full">
           <AdcashPlacement
             slotId="cinema-portrait-stage"
             className="w-full max-w-4xl mx-auto my-3"
-            fallbackPlacement="cinema_popup"
           />
         </div>
 
