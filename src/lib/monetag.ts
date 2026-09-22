@@ -4,6 +4,7 @@
  * Multitag / SW (3nbf4.com):
  * Domain: 3nbf4.com
  * Zone ID: 11865683
+ * Multitag Tag Script: https://3nbf4.com/act/files/tag.min.js
  * Service Worker Script: https://3nbf4.com/act/files/service-worker.min.js?r=sw
  * Verification File: /8ea04dd6a7bbda76ca13.txt
  *
@@ -16,6 +17,7 @@
 
 export const MONETAG_DOMAIN = "3nbf4.com";
 export const MONETAG_ZONE_ID = 11865683;
+export const MONETAG_MULTITAG_SCRIPT_URL = "https://3nbf4.com/act/files/tag.min.js";
 export const MONETAG_SW_URL = "https://3nbf4.com/act/files/service-worker.min.js?r=sw";
 export const MONETAG_VERIFICATION_FILE = "8ea04dd6a7bbda76ca13.txt";
 
@@ -32,6 +34,7 @@ export interface MonetagDiagnostics {
   lastInitAttempt: string | null;
   lastError: string | null;
   isSecureContext: boolean;
+  multitagInjected: boolean;
   // Page Push format diagnostics
   pagePushZoneId: string;
   pagePushScriptUrl: string;
@@ -45,6 +48,7 @@ let lastErrorMessage: string | null = null;
 let registeredScope: string | null = null;
 let isSwRegistered = false;
 
+let isMultitagInjected = false;
 let isPagePushInitialized = false;
 let isPagePushInjected = false;
 let pagePushErrorText: string | null = null;
@@ -67,11 +71,56 @@ export function getMonetagStatus(): MonetagDiagnostics {
     lastInitAttempt: initAttemptTime,
     lastError: lastErrorMessage,
     isSecureContext: isSecure,
+    multitagInjected: isMultitagInjected,
     pagePushZoneId: MONETAG_PAGE_PUSH_ZONE_ID,
     pagePushScriptUrl: MONETAG_PAGE_PUSH_SCRIPT_URL,
     pagePushInjected: isPagePushInjected,
     pagePushError: pagePushErrorText,
   };
+}
+
+/**
+ * Initialize Monetag Multitag In-Page Tag (Zone 11865683 / 3nbf4.com).
+ * Idempotent: checks for existing script element and flag to prevent duplicate injection.
+ */
+export function initMonetagMultitagTag(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+
+  if (
+    isMultitagInjected ||
+    document.querySelector(`script[src*="3nbf4.com/act/files/tag.min.js"]`) ||
+    document.querySelector(`script[data-zone="${MONETAG_ZONE_ID}"]`)
+  ) {
+    isMultitagInjected = true;
+    return;
+  }
+
+  try {
+    const script = document.createElement("script");
+    script.dataset.zone = String(MONETAG_ZONE_ID);
+    script.src = MONETAG_MULTITAG_SCRIPT_URL;
+    script.async = true;
+    script.setAttribute("data-cfasync", "false");
+
+    script.onload = () => {
+      isMultitagInjected = true;
+      if (import.meta.env?.DEV) {
+        console.log(
+          `[Monetag Multitag] Tag script loaded successfully for Zone: ${MONETAG_ZONE_ID}`,
+        );
+      }
+    };
+
+    const target = [document.documentElement, document.body].filter(Boolean).pop() || document.head;
+    target.appendChild(script);
+    isMultitagInjected = true;
+  } catch (err) {
+    if (import.meta.env?.DEV) {
+      console.warn("[Monetag Multitag] Error attaching Multitag script:", err);
+    }
+  }
 }
 
 /**
@@ -137,11 +186,12 @@ export function initMonetagPagePush(): void {
 }
 
 /**
- * Initialize Monetag Multitag Service Worker & Page Push safely in the browser.
+ * Initialize Monetag Multitag Service Worker, Multitag Tag Script & Page Push safely in the browser.
  * Idempotent: will execute registration at most once per application lifecycle.
  */
 export async function initMonetag(): Promise<MonetagDiagnostics> {
-  // Always trigger idempotent Page Push injection
+  // Trigger client-side tag injections (Multitag + Page Push)
+  initMonetagMultitagTag();
   initMonetagPagePush();
 
   // Production safety: Guard against SSR / non-browser execution
