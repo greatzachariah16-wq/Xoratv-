@@ -1,7 +1,14 @@
-self.options = {
-  domain: "3nbf4.com",
-  zoneId: 11865683,
-};
-self.lary = "";
+// Clean minimal PWA service worker for XoraTV
+const CACHE_NAME = "xora-v1";
 
-importScripts("https://3nbf4.com/act/files/service-worker.min.js?r=sw");
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("fetch", (event) => {
+  // Let standard network requests proceed normally
+});

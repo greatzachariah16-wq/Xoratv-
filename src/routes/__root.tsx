@@ -14,7 +14,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { initAdcashAutoTag } from "@/lib/adcash";
-import { initMonetag } from "@/lib/monetag";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 
 function NotFoundComponent() {
@@ -120,17 +119,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         crossOrigin: "anonymous",
       },
       {
-        id: "monetag-multitag-script",
-        src: "https://3nbf4.com/act/files/tag.min.js",
-        "data-zone": "11865683",
-        "data-cfasync": "false",
-        async: true,
-      },
-      {
-        id: "monetag-pagepush-script",
-        src: "https://nap5k.com/tag.min.js",
-        "data-zone": "11865738",
-        async: true,
+        id: "advexo-script",
+        src: "https://app.advexo.io/adtag.js",
+        "data-server": "https://app.advexo.io",
+        "data-pub": "pmudd1nzy42k",
       },
     ],
   }),
@@ -159,12 +151,16 @@ function RootComponent() {
 
   useEffect(() => {
     initAdcashAutoTag();
-    void initMonetag();
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {/* Global Advexo Ad Placement (Top of every page above content) */}
+        <div className="flex w-full justify-center bg-background py-1.5 border-b border-border/30">
+          <div className="advexo-slot" data-sizes="320x50" />
+        </div>
+
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" />

@@ -257,7 +257,7 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const pathname = url.pathname;
 
-  // Only handle root-level files like /8ea04dd6a7bbda76ca13.txt, /sw.js, /robots.txt, etc.
+  // Only handle root-level files like /sw.js, /robots.txt, /manifest.webmanifest, etc.
   if (pathname.startsWith("/api/") || pathname.startsWith("/videos/")) return null;
 
   const fileName = pathname.replace(/^\/+/, "");
@@ -320,7 +320,7 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    // Direct Root Static Files (Monetag verification files, sw.js, robots.txt, etc.)
+    // Direct Root Static Files (sw.js, robots.txt, manifest, etc.)
     const staticRootRes = await handleStaticRootFile(request, url);
     if (staticRootRes) {
       return staticRootRes;
