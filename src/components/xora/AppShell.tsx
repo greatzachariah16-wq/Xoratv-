@@ -270,7 +270,7 @@ export function AppShell({
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
           className={cn(
-            "mx-auto px-4 pb-36 pt-32 lg:px-8 lg:pb-28 lg:pt-20",
+            "mx-auto px-4 pb-48 pt-32 lg:px-8 lg:pb-28 lg:pt-20",
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
@@ -278,8 +278,8 @@ export function AppShell({
         </div>
       </main>
 
-      {/* Fixed Global Bottom Adsterra Banner Bar — Pinned at bottom of screen */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/80 bg-background/95 px-3 py-1.5 shadow-2xl backdrop-blur-md transition-all lg:left-[248px] xl:right-[320px]">
+      {/* Fixed Global Bottom Adsterra Banner Bar — Pinned ABOVE the mobile bottom navigation bar (above plus icon) on mobile, and at bottom on desktop */}
+      <div className="fixed bottom-[68px] left-0 right-0 z-40 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all lg:bottom-0 lg:left-[248px] lg:border-b-0 xl:right-[320px]">
         <div
           className={cn(
             "mx-auto flex min-h-[50px] items-center justify-center",
@@ -303,7 +303,7 @@ export function AppShell({
 
       <nav
         aria-label="Primary"
-        className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-2 pt-2 backdrop-blur-md lg:hidden"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-2 pt-2 backdrop-blur-md lg:hidden"
         style={{ ["--safe-extra" as string]: "0.5rem" }}
       >
         <ul className="grid grid-cols-5">
