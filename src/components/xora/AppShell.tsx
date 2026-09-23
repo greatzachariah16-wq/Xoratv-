@@ -21,6 +21,7 @@ import { usePresenceTracker } from "@/hooks/usePresenceTracker";
 import { notificationsQuery } from "@/lib/api";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
+import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -251,6 +252,21 @@ export function AppShell({
       </header>
 
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
+        {/* Sticky Global Top HilltopAds Banner Bar */}
+        <div className="sticky top-14 z-30 border-b border-border/80 bg-background/95 px-3 py-2 shadow-md backdrop-blur-md transition-all lg:top-0">
+          <div
+            className={cn(
+              "mx-auto flex items-center justify-center",
+              wide ? "max-w-5xl" : "max-w-[620px]",
+            )}
+          >
+            <HilltopBannerAd
+              slotId="global-top-sticky-banner"
+              className="my-0 w-full rounded-xl border border-border/60 bg-surface/80 shadow-xs"
+            />
+          </div>
+        </div>
+
         <div
           className={cn(
             "mx-auto px-4 pb-28 pt-4 lg:px-8 lg:pb-14 lg:pt-8",

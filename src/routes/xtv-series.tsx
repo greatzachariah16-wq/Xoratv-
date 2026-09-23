@@ -21,7 +21,6 @@ import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
-import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/xtv-series")({
@@ -213,7 +212,6 @@ function XTvCard({
           ) : null}
         </div>
       </article>
-      <HilltopBannerAd slotId={`xtv-${item.id}`} className="mt-2 mb-1" />
       <AdcashPlacement slotId={`xtv-${item.id}`} compact />
     </div>
   );

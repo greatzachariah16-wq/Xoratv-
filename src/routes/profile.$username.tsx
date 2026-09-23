@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFollows } from "@/hooks/useEngagement";
 import { AppShell } from "@/components/xora/AppShell";
 import { PostCard } from "@/components/xora/PostCard";
-import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { FeedSkeleton } from "@/components/xora/Skeletons";
@@ -131,12 +130,7 @@ function ProfilePage() {
         {postsPending || isPending ? (
           <FeedSkeleton count={2} />
         ) : posts?.length ? (
-          posts.map((post) => (
-            <div key={post.id}>
-              <PostCard post={post} />
-              <HilltopBannerAd slotId={post.id} className="my-2.5" />
-            </div>
-          ))
+          posts.map((post) => <PostCard key={post.id} post={post} />)
         ) : (
           <EmptyState
             icon={Sparkles}
