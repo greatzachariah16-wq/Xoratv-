@@ -39,7 +39,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { trackEvent } from "@/lib/events";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
-import { AdcashPlacement } from "./AdcashPlacement";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -336,7 +335,6 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
           </div>
         </div>
       </article>
-      <AdcashPlacement slotId={`post-${post.id}`} />
     </>
   );
 }

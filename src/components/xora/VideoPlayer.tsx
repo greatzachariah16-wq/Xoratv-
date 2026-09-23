@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useSignedUrl } from "@/lib/media";
 import { duration as fmtDuration } from "@/lib/format";
-import { triggerAdcashRefresh } from "@/lib/adcash";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { trackEvent } from "@/lib/events";

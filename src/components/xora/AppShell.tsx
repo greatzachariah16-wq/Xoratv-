@@ -22,7 +22,7 @@ import { notificationsQuery } from "@/lib/api";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
 import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
-import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
+import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -278,7 +278,7 @@ export function AppShell({
         </div>
       </main>
 
-      {/* Fixed Global Bottom ExoClick Banner Bar — Always displayed at bottom of screen */}
+      {/* Fixed Global Bottom Adsterra Banner Bar — Pinned at bottom of screen */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all lg:left-[248px] xl:right-[320px]">
         <div
           className={cn(
@@ -286,9 +286,11 @@ export function AppShell({
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
-          <ExoClickNativeAd
-            zoneId="6037222"
-            className="my-0 w-full rounded-xl border border-border/60 bg-surface/80 shadow-xs max-h-[80px]"
+          <AdsterraBannerAd
+            adKey="075ef17698a6be8914c3d3aaaf74c814"
+            width={320}
+            height={50}
+            className="my-0 w-full overflow-hidden rounded-xl border border-border/60 bg-surface/80 shadow-xs"
           />
         </div>
       </div>

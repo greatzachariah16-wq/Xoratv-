@@ -16,9 +16,7 @@ import {
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
-import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
-import { triggerAdcashRefresh } from "@/lib/adcash";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/watch")({
@@ -152,7 +150,6 @@ function WatchPage() {
   }, [allMovies, activeId]);
 
   function toggleFullscreen() {
-    triggerAdcashRefresh("aclib-slot-cinema-portrait-stage");
     setAdTriggerKey((prev) => prev + 1);
 
     const el = document.getElementById("cinema-stage-wrapper");
@@ -309,14 +306,6 @@ function WatchPage() {
               </button>
             </div>
           )}
-        </div>
-
-        {/* Dedicated Pure Adcash Ads placement container */}
-        <div className="mt-4 w-full">
-          <AdcashPlacement
-            slotId="cinema-portrait-stage"
-            className="w-full max-w-4xl mx-auto my-3"
-          />
         </div>
 
         {/* Dynamic Promotional Sponsor Ad Popup triggered on Full Screen Portrait toggle */}

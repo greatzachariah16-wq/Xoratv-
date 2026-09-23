@@ -13,7 +13,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
-import { initAdcashAutoTag } from "@/lib/adcash";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 
 function NotFoundComponent() {
@@ -119,20 +118,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-    scripts: [
-      {
-        id: "aclib-script",
-        src: "https://acscdn.com/script/aclib.js",
-        async: true,
-        crossOrigin: "anonymous",
-      },
-      {
-        id: "advexo-script",
-        src: "https://app.advexo.io/adtag.js",
-        "data-server": "https://app.advexo.io",
-        "data-pub": "pmudd1nzy42k",
-      },
-    ],
+    scripts: [],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -158,15 +144,11 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    initAdcashAutoTag();
-
     const handleGlobalError = (event: ErrorEvent) => {
       if (
         event.message === "Script error." ||
         event.message?.includes("Script error") ||
-        event.filename?.includes("aclib") ||
-        event.filename?.includes("advexo") ||
-        event.filename?.includes("untimely-hello") ||
+        event.filename?.includes("highrevenueformat") ||
         event.filename?.includes("monetag")
       ) {
         event.preventDefault();
@@ -183,14 +165,6 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {/* Global Advexo Ad Placement (Top of every page above content) */}
-        <div
-          className="flex w-full justify-center bg-background py-1.5 border-b border-border/30"
-          suppressHydrationWarning
-        >
-          <div className="advexo-slot" data-sizes="320x50" suppressHydrationWarning />
-        </div>
-
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" />

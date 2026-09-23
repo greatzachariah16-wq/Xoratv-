@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import {
   MessageCircle,
   Plus,
@@ -404,11 +403,6 @@ export default function ChatPage({
                             <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                           </div>
                         </div>
-                        {msg.type === "experience" && (
-                          <div className="w-full max-w-[85%]">
-                            <AdcashPlacement slotId={`chat-exp-${msg.id}`} compact />
-                          </div>
-                        )}
                         <span className="text-[10px] text-muted-foreground mt-1 mx-1">
                           {formatTime(msg.created_at)}
                         </span>

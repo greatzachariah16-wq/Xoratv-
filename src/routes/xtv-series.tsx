@@ -19,9 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
-import { AdcashPlacement } from "@/components/xora/AdcashPlacement";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
-import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/xtv-series")({
@@ -213,7 +211,6 @@ function XTvCard({
           ) : null}
         </div>
       </article>
-      <AdcashPlacement slotId={`xtv-${item.id}`} compact />
     </div>
   );
 }

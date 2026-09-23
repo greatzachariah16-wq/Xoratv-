@@ -6,7 +6,6 @@ import { getActiveDataSaverConfig } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
-import { triggerAdcashRefresh } from "@/lib/adcash";
 import type { FeedType } from "@/integrations/types";
 
 export interface ProviderEmbedPlayerProps {
@@ -327,7 +326,6 @@ export function ProviderEmbedPlayer({
       await document.exitFullscreen().catch(() => {});
       setIsFullscreen(false);
     } else if (container.requestFullscreen) {
-      triggerAdcashRefresh();
       await container.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
     }
