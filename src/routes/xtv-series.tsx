@@ -233,7 +233,7 @@ function XTvSeriesPage() {
 
   // Fetch all published titles
   const {
-    data: allItems = [],
+    data: rawAllItems = [],
     isFetching,
     refetch,
   } = useQuery({
@@ -241,6 +241,15 @@ function XTvSeriesPage() {
     queryFn: () => fetchXTvSeries("All"),
     staleTime: 30_000,
   });
+
+  const allItems = useMemo(() => {
+    const seen = new Set<string>();
+    return rawAllItems.filter((item) => {
+      if (!item || !item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [rawAllItems]);
 
   // Calculate categories dynamically from published items and defaults
   const availableCategories = useMemo(() => {
@@ -493,8 +502,8 @@ function XTvSeriesPage() {
 
           {shelves.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-4">
-              {shelves.map((item) => (
-                <XTvCard key={item.id} item={item} userId={user?.id} />
+              {shelves.map((item, index) => (
+                <XTvCard key={`${item.id}-${index}`} item={item} userId={user?.id} />
               ))}
             </div>
           ) : filtered.length > 0 ? (

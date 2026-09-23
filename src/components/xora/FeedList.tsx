@@ -30,7 +30,15 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     isFetchingNextPage,
   } = useInfiniteQuery(feedInfiniteQuery(feed, user?.id, mode));
 
-  const allPosts = useMemo(() => data?.pages.flatMap((page) => page) ?? [], [data?.pages]);
+  const allPosts = useMemo(() => {
+    const raw = data?.pages.flatMap((page) => page) ?? [];
+    const seen = new Set<string>();
+    return raw.filter((post) => {
+      if (!post || !post.id || seen.has(post.id)) return false;
+      seen.add(post.id);
+      return true;
+    });
+  }, [data?.pages]);
 
   // Bottom sentinel for infinite scrolling in batches of 10
   useEffect(() => {
@@ -158,7 +166,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
             const showInHouseAd = (index + 1) % 5 === 0;
             const showExoClickAd = (index + 1) % 3 === 0;
             return (
-              <div key={post.id}>
+              <div key={`${post.id}-${index}`}>
                 <div
                   ref={(el) => {
                     if (el) cardRefs.current.set(post.id, el);
