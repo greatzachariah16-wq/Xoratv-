@@ -99,7 +99,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "Xora" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "hilltopads-site-verification", content: "4b48232c4ffdb43fa729" },
+      { name: "hilltopads-site-verification", content: "920624" },
+      { name: "hilltopads-site-verification", content: "920624_4b48232c4ffdb43fa729" },
       { name: "4b48232c4ffdb43fa729", content: "4b48232c4ffdb43fa729" },
+      { name: "920624", content: "4b48232c4ffdb43fa729" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
