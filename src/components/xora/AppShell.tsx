@@ -21,7 +21,6 @@ import { usePresenceTracker } from "@/hooks/usePresenceTracker";
 import { notificationsQuery } from "@/lib/api";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
-import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
 import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
 
@@ -252,25 +251,10 @@ export function AppShell({
         </div>
       </header>
 
-      {/* Fixed Global Top HilltopAds Banner Bar — Always pinned at top */}
-      <div className="fixed top-14 left-0 right-0 z-40 border-b border-border/80 bg-background/95 px-3 py-1.5 shadow-md backdrop-blur-md transition-all lg:top-0 lg:left-[248px] xl:right-[320px]">
-        <div
-          className={cn(
-            "mx-auto flex items-center justify-center",
-            wide ? "max-w-5xl" : "max-w-[620px]",
-          )}
-        >
-          <HilltopBannerAd
-            slotId="global-top-sticky-banner"
-            className="my-0 w-full rounded-xl border border-border/60 bg-surface/80 shadow-xs"
-          />
-        </div>
-      </div>
-
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
           className={cn(
-            "mx-auto px-4 pb-48 pt-32 lg:px-8 lg:pb-28 lg:pt-20",
+            "mx-auto px-4 pb-48 pt-4 lg:px-8 lg:pb-28 lg:pt-8",
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >

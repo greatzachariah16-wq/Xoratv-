@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
+import { HilltopInPagePushAd } from "@/components/ads/HilltopInPagePushAd";
 
 function NotFoundComponent() {
   return (
@@ -118,7 +119,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-    scripts: [],
+    scripts: [
+      {
+        id: "hilltop-inpage-push-script",
+        src: "//untimely-hello.com/bIXqV.std/G/lf0qYuWKcK/-exmD9lupZ/UolXkrPmTzcv0/NQTHQ/0VMyTYMGtUN/z/Qy1uNaDCQ_xMNawR",
+        async: true,
+        referrerPolicy: "no-referrer-when-downgrade",
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -169,6 +177,7 @@ function RootComponent() {
         <Outlet />
         <Toaster position="top-center" />
         <LargeBannerPopupAd />
+        <HilltopInPagePushAd />
       </AuthProvider>
     </QueryClientProvider>
   );
