@@ -6,6 +6,7 @@ import { feedInfiniteQuery, type FeedType } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
+import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
 import { DataSaverBadge } from "./DataSaverBadge";
@@ -155,6 +156,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
           {allPosts.map((post, index) => {
             const isAutoPlay = feed === "shorts" || vertical ? activeShortId === post.id : false;
             const showInHouseAd = (index + 1) % 5 === 0;
+            const showExoClickAd = (index + 1) % 3 === 0;
             return (
               <div key={post.id}>
                 <div
@@ -166,6 +168,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
                 >
                   <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
                 </div>
+                {showExoClickAd && <ExoClickNativeAd className="my-3.5" />}
                 {showInHouseAd && (
                   <XoraInHouseAd placement="home_feed" variant="compact" className="my-3.5" />
                 )}
