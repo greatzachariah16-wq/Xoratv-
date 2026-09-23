@@ -258,16 +258,19 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
   const pathname = url.pathname;
 
   if (
+    pathname === "/4b48232c4ffdb43fa729a37bf8008b73b97009f5.txt" ||
+    pathname === "/4b48232c4ffdb43fa729a37bf8008b73b97009f5" ||
+    pathname === "/4b48232c4ffdb43fa729a37bf8008b73b97009f5.html" ||
     pathname === "/4b48232c4ffdb43fa729.txt" ||
     pathname === "/4b48232c4ffdb43fa729" ||
     pathname === "/4b48232c4ffdb43fa729.html"
   ) {
-    return new Response("4b48232c4ffdb43fa729", {
+    return new Response("4b48232c4ffdb43fa729a37bf8008b73b97009f5", {
       status: 200,
       headers: {
         ...CORS_HEADERS,
         "Content-Type": "text/plain",
-        "Content-Length": "20",
+        "Content-Length": "40",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Access-Control-Allow-Origin": "*",
       },
