@@ -4,6 +4,7 @@ import { FileQuestion } from "lucide-react";
 import { postQuery } from "@/lib/api";
 import { AppShell } from "@/components/xora/AppShell";
 import { PostCard } from "@/components/xora/PostCard";
+import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
 import { Comments } from "@/components/xora/Comments";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { PostCardSkeleton } from "@/components/xora/Skeletons";
@@ -45,6 +46,7 @@ function VideoPage() {
       ) : (
         <>
           <PostCard post={data} vertical={data.feed === "shorts"} />
+          <HilltopBannerAd slotId={data.id} className="my-3" />
           <Comments postId={data.id} />
         </>
       )}

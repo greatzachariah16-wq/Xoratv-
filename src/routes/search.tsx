@@ -5,6 +5,7 @@ import { Search as SearchIcon } from "lucide-react";
 import { searchQuery } from "@/lib/api";
 import { AppShell } from "@/components/xora/AppShell";
 import { PostCard } from "@/components/xora/PostCard";
+import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { FeedSkeleton } from "@/components/xora/Skeletons";
@@ -100,7 +101,10 @@ function SearchPage() {
               </h2>
               <div className="space-y-4">
                 {data.posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <div key={post.id}>
+                    <PostCard post={post} />
+                    <HilltopBannerAd slotId={post.id} className="my-2.5" />
+                  </div>
                 ))}
               </div>
             </section>
