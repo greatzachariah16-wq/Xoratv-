@@ -271,6 +271,12 @@ export function ProviderEmbedPlayer({
     } else if (!embedSrc.includes("autoplay=1")) {
       embedSrc += (embedSrc.includes("?") ? "&" : "?") + "autoplay=1";
     }
+  } else {
+    if (embedSrc.includes("autoplay=1")) {
+      embedSrc = embedSrc.replace("autoplay=1", "autoplay=0");
+    } else if (!embedSrc.includes("autoplay=0")) {
+      embedSrc += (embedSrc.includes("?") ? "&" : "?") + "autoplay=0";
+    }
   }
 
   const togglePlayState = useCallback(

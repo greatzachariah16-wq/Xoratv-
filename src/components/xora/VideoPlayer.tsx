@@ -704,14 +704,12 @@ export function VideoPlayer(props: Props) {
     props.source,
   );
 
-  const isExternal = Boolean(embedInfo);
-
   return embedInfo ? (
     <ProviderEmbedPlayer
       embedUrl={embedInfo.embedUrl}
       title={props.title || "Video"}
       vertical={props.vertical}
-      autoPlay={true}
+      autoPlay={props.autoPlay}
       className={props.className}
       postId={props.postId}
       authorId={props.authorId}
