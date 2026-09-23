@@ -22,6 +22,7 @@ import { notificationsQuery } from "@/lib/api";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
 import { HilltopBannerAd } from "@/components/ads/HilltopBannerAd";
+import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -194,7 +195,7 @@ export function AppShell({
         </div>
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md lg:hidden">
+      <header className="fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden">
         <Link to="/" className="press">
           <Logo />
         </Link>
@@ -251,19 +252,8 @@ export function AppShell({
         </div>
       </header>
 
-      <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
-        <div
-          className={cn(
-            "mx-auto px-4 pb-36 pt-4 lg:px-8 lg:pb-28 lg:pt-8",
-            wide ? "max-w-5xl" : "max-w-[620px]",
-          )}
-        >
-          {children}
-        </div>
-      </main>
-
-      {/* Fixed Global Bottom HilltopAds Banner Bar — Always displayed at bottom of screen */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all lg:left-[248px] xl:right-[320px]">
+      {/* Fixed Global Top HilltopAds Banner Bar — Always pinned at top */}
+      <div className="fixed top-14 left-0 right-0 z-40 border-b border-border/80 bg-background/95 px-3 py-1.5 shadow-md backdrop-blur-md transition-all lg:top-0 lg:left-[248px] xl:right-[320px]">
         <div
           className={cn(
             "mx-auto flex items-center justify-center",
@@ -271,8 +261,34 @@ export function AppShell({
           )}
         >
           <HilltopBannerAd
-            slotId="global-bottom-sticky-banner"
+            slotId="global-top-sticky-banner"
             className="my-0 w-full rounded-xl border border-border/60 bg-surface/80 shadow-xs"
+          />
+        </div>
+      </div>
+
+      <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
+        <div
+          className={cn(
+            "mx-auto px-4 pb-36 pt-32 lg:px-8 lg:pb-28 lg:pt-20",
+            wide ? "max-w-5xl" : "max-w-[620px]",
+          )}
+        >
+          {children}
+        </div>
+      </main>
+
+      {/* Fixed Global Bottom ExoClick Banner Bar — Always displayed at bottom of screen */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all lg:left-[248px] xl:right-[320px]">
+        <div
+          className={cn(
+            "mx-auto flex items-center justify-center",
+            wide ? "max-w-5xl" : "max-w-[620px]",
+          )}
+        >
+          <ExoClickNativeAd
+            zoneId="6037222"
+            className="my-0 w-full rounded-xl border border-border/60 bg-surface/80 shadow-xs max-h-[80px]"
           />
         </div>
       </div>

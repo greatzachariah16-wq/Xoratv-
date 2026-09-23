@@ -213,7 +213,6 @@ function XTvCard({
           ) : null}
         </div>
       </article>
-      <ExoClickNativeAd className="mt-2 mb-1" />
       <AdcashPlacement slotId={`xtv-${item.id}`} compact />
     </div>
   );
