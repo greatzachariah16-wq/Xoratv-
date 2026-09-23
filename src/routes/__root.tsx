@@ -43,7 +43,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+    if (error?.message === "Script error." || error?.message?.includes("Script error")) {
+      router.invalidate();
+      reset();
+    }
+  }, [error, reset, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -155,6 +159,25 @@ function RootComponent() {
 
   useEffect(() => {
     initAdcashAutoTag();
+
+    const handleGlobalError = (event: ErrorEvent) => {
+      if (
+        event.message === "Script error." ||
+        event.message?.includes("Script error") ||
+        event.filename?.includes("aclib") ||
+        event.filename?.includes("advexo") ||
+        event.filename?.includes("untimely-hello") ||
+        event.filename?.includes("monetag")
+      ) {
+        event.preventDefault();
+        return true;
+      }
+    };
+
+    window.addEventListener("error", handleGlobalError);
+    return () => {
+      window.removeEventListener("error", handleGlobalError);
+    };
   }, []);
 
   return (
