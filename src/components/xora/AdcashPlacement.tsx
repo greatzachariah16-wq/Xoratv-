@@ -37,12 +37,14 @@ export function AdcashPlacement({ slotId, className, compact = false }: AdcashPl
         className,
       )}
       aria-label="Advertisement placement"
+      suppressHydrationWarning
     >
       {/* Target injection anchor for Adcash in-feed / native / display units */}
       <div
         id={wrapperId}
         data-zone={ADCASH_ZONE_ID}
         className="adcash_auto_tag aclib_zone adcash-ad-slot flex w-full max-w-full items-center justify-center min-h-[1px] overflow-hidden"
+        suppressHydrationWarning
       />
     </div>
   );

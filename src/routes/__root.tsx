@@ -157,8 +157,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         {/* Global Advexo Ad Placement (Top of every page above content) */}
-        <div className="flex w-full justify-center bg-background py-1.5 border-b border-border/30">
-          <div className="advexo-slot" data-sizes="320x50" />
+        <div
+          className="flex w-full justify-center bg-background py-1.5 border-b border-border/30"
+          suppressHydrationWarning
+        >
+          <div className="advexo-slot" data-sizes="320x50" suppressHydrationWarning />
         </div>
 
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
