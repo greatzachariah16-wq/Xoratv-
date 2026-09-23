@@ -257,6 +257,18 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const pathname = url.pathname;
 
+  if (pathname === "/4b48232c4ffdb43fa729.txt") {
+    return new Response("4b48232c4ffdb43fa729", {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": "20",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
+    });
+  }
+
   // Only handle root-level files like /sw.js, /robots.txt, /manifest.webmanifest, etc.
   if (pathname.startsWith("/api/") || pathname.startsWith("/videos/")) return null;
 
