@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 
 interface AdsterraBannerAdProps {
   className?: string;
@@ -9,6 +9,7 @@ interface AdsterraBannerAdProps {
 
 /**
  * Adsterra Compliant Banner Ad Component
+ * - Uses declarative srcDoc iframe rendering to guarantee script execution
  * - Implements 30s initial refresh with randomized anonymous jitter (30s - 45s)
  * - Strict Viewport Awareness via IntersectionObserver
  * - Document Visibility & Focus tracking
@@ -27,62 +28,47 @@ export function AdsterraBannerAd({
   const lastRefreshTimeRef = useRef<number>(Date.now());
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load and render Adsterra iframe container safely
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    // Clear existing children
-    container.innerHTML = "";
-
-    const iframe = document.createElement("iframe");
-    iframe.style.width = `${width}px`;
-    iframe.style.height = `${height}px`;
-    iframe.style.border = "none";
-    iframe.style.overflow = "hidden";
-    iframe.style.margin = "0 auto";
-    iframe.scrolling = "no";
-    iframe.title = "Advertisement";
-
-    container.appendChild(iframe);
-
-    const iframeDoc = iframe.contentWindow?.document || iframe.contentDocument;
-    if (iframeDoc) {
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <style>
-              body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background: transparent; overflow: hidden; }
-            </style>
-          </head>
-          <body>
-            <script type="text/javascript">
-              atOptions = {
-                'key' : '${adKey}',
-                'format' : 'iframe',
-                'height' : ${height},
-                'width' : ${width},
-                'params' : {}
-              };
-            </script>
-            <script type="text/javascript" src="https://www.highrevenueformat.com/${adKey}/invoke.js"></script>
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-    }
-
-    lastRefreshTimeRef.current = Date.now();
-  }, [adKey, height, width, renderCount]);
+  // Generate self-contained HTML document string for srcDoc
+  const iframeSrcDoc = useMemo(() => {
+    return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: transparent;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="text/javascript">
+      atOptions = {
+        'key' : '${adKey}',
+        'format' : 'iframe',
+        'height' : ${height},
+        'width' : ${width},
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="https://www.highrevenueformat.com/${adKey}/invoke.js"></script>
+  </body>
+</html>`;
+  }, [adKey, height, width]);
 
   // Viewport Observer & Auto-Refresh Policy Logic
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
 
-    // Visibility observer
+    // Visibility observer (requires >= 50% visibility)
     const observer = new IntersectionObserver(
       ([entry]) => {
         isVisibleRef.current = entry.isIntersecting && entry.intersectionRatio >= 0.5;
@@ -117,6 +103,7 @@ export function AdsterraBannerAd({
           elapsedSinceLast >= MIN_COOLDOWN_MS;
 
         if (isFullyActive && renderCount < MAX_REFRESHES_PER_PAGE) {
+          lastRefreshTimeRef.current = Date.now();
           setRenderCount((prev) => prev + 1);
         } else {
           // Re-check shortly if conditions weren't met (e.g. user scrolled away or tab blurred)
@@ -138,8 +125,23 @@ export function AdsterraBannerAd({
     <div
       ref={containerRef}
       suppressHydrationWarning
-      className={`adsterra-banner-ad flex w-full flex-col items-center justify-center overflow-hidden transition-all ${className}`}
-      style={{ minHeight: `${height}px` }}
-    />
+      className={`adsterra-banner-ad flex min-h-[50px] w-full flex-col items-center justify-center overflow-hidden transition-all ${className}`}
+    >
+      <iframe
+        key={`adsterra-iframe-${renderCount}`}
+        srcDoc={iframeSrcDoc}
+        width={width}
+        height={height}
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          border: "none",
+          overflow: "hidden",
+          margin: "0 auto",
+        }}
+        scrolling="no"
+        title="Advertisement"
+      />
+    </div>
   );
 }
