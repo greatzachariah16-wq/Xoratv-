@@ -258,6 +258,24 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
   const pathname = url.pathname;
 
   if (
+    pathname === "/exoclick.txt" ||
+    pathname === "/89cfa11e5cd3529d8d2fee19321fc484.html" ||
+    pathname === "/89cfa11e5cd3529d8d2fee19321fc484.txt" ||
+    pathname === "/89cfa11e5cd3529d8d2fee19321fc484"
+  ) {
+    return new Response("89cfa11e5cd3529d8d2fee19321fc484", {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        "Content-Type": "text/plain",
+        "Content-Length": "32",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
+
+  if (
     pathname === "/4b48232c4ffdb43fa729a37bf8008b73b97009f5.txt" ||
     pathname === "/4b48232c4ffdb43fa729a37bf8008b73b97009f5" ||
     pathname === "/4b48232c4ffdb43fa729a37bf8008b73b97009f5.html" ||
