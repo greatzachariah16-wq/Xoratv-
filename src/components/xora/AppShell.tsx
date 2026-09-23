@@ -279,10 +279,10 @@ export function AppShell({
       </main>
 
       {/* Fixed Global Bottom Adsterra Banner Bar — Pinned at bottom of screen */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all lg:left-[248px] xl:right-[320px]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/80 bg-background/95 px-3 py-1.5 shadow-2xl backdrop-blur-md transition-all lg:left-[248px] xl:right-[320px]">
         <div
           className={cn(
-            "mx-auto flex items-center justify-center",
+            "mx-auto flex min-h-[50px] items-center justify-center",
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
@@ -290,7 +290,7 @@ export function AppShell({
             adKey="075ef17698a6be8914c3d3aaaf74c814"
             width={320}
             height={50}
-            className="my-0 w-full overflow-hidden rounded-xl border border-border/60 bg-surface/80 shadow-xs"
+            className="my-0 shadow-xs"
           />
         </div>
       </div>

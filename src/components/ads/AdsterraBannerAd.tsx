@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface AdsterraBannerAdProps {
   className?: string;
@@ -9,7 +9,7 @@ interface AdsterraBannerAdProps {
 
 /**
  * Adsterra Compliant Banner Ad Component
- * - Uses declarative srcDoc iframe rendering to guarantee script execution
+ * - Injects Adsterra script directly into main DOM container to guarantee zero-sandbox visibility
  * - Implements 30s initial refresh with randomized anonymous jitter (30s - 45s)
  * - Strict Viewport Awareness via IntersectionObserver
  * - Document Visibility & Focus tracking
@@ -28,40 +28,31 @@ export function AdsterraBannerAd({
   const lastRefreshTimeRef = useRef<number>(Date.now());
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Generate self-contained HTML document string for srcDoc
-  const iframeSrcDoc = useMemo(() => {
-    return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: transparent;
-        overflow: hidden;
-      }
-    </style>
-  </head>
-  <body>
-    <script type="text/javascript">
-      atOptions = {
-        'key' : '${adKey}',
-        'format' : 'iframe',
-        'height' : ${height},
-        'width' : ${width},
-        'params' : {}
-      };
-    </script>
-    <script type="text/javascript" src="https://www.highrevenueformat.com/${adKey}/invoke.js"></script>
-  </body>
-</html>`;
-  }, [adKey, height, width]);
+  // Load and inject Adsterra script directly into main DOM container
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Clear previous children
+    container.innerHTML = "";
+
+    // Set global atOptions
+    (window as any).atOptions = {
+      key: adKey,
+      format: "iframe",
+      height: height,
+      width: width,
+      params: {},
+    };
+
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = `https://www.highrevenueformat.com/${adKey}/invoke.js`;
+    script.async = true;
+
+    container.appendChild(script);
+    lastRefreshTimeRef.current = Date.now();
+  }, [adKey, height, width, renderCount]);
 
   // Viewport Observer & Auto-Refresh Policy Logic
   useEffect(() => {
@@ -124,24 +115,10 @@ export function AdsterraBannerAd({
   return (
     <div
       ref={containerRef}
+      id={`adsterra-banner-${adKey}`}
       suppressHydrationWarning
-      className={`adsterra-banner-ad flex min-h-[50px] w-full flex-col items-center justify-center overflow-hidden transition-all ${className}`}
-    >
-      <iframe
-        key={`adsterra-iframe-${renderCount}`}
-        srcDoc={iframeSrcDoc}
-        width={width}
-        height={height}
-        style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          border: "none",
-          overflow: "hidden",
-          margin: "0 auto",
-        }}
-        scrolling="no"
-        title="Advertisement"
-      />
-    </div>
+      className={`adsterra-banner-ad flex min-h-[50px] min-w-[320px] items-center justify-center overflow-hidden transition-all ${className}`}
+      style={{ width: `${width}px`, height: `${height}px` }}
+    />
   );
 }
