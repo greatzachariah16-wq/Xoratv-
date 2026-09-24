@@ -61,9 +61,30 @@ export function AdminRewardsManager() {
   const [maxRewardsPerUser, setMaxRewardsPerUser] = useState(1);
   const [minBalanceThreshold, setMinBalanceThreshold] = useState(200);
 
-  // Action state for manual approvals
+  // Action state for manual approvals & testing
   const [processingTxId, setProcessingTxId] = useState<string | null>(null);
   const [retryPlanOverrides, setRetryPlanOverrides] = useState<Record<string, string>>({});
+  const [retryPortedOverrides, setRetryPortedOverrides] = useState<Record<string, boolean>>({});
+  const [allowFailoverOverrides, setAllowFailoverOverrides] = useState<Record<string, boolean>>({});
+
+  // Rejection modal state
+  const [rejectModalTxId, setRejectModalTxId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("Carrier communication issue; manual admin review.");
+
+  // Test vending state
+  const [testPhone, setTestPhone] = useState("07046182538");
+  const [testSelectedPlanId, setTestSelectedPlanId] = useState("");
+  const [testPorted, setTestPorted] = useState(false);
+  const [isTestingVending, setIsTestingVending] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    status: string;
+    message: string;
+    ref?: string | null;
+    balanceAfter?: number;
+    chargedAmount?: number;
+    raw?: unknown;
+  } | null>(null);
 
   const fetchOverview = async (showToast = false) => {
     try {
@@ -214,7 +235,12 @@ export function AdminRewardsManager() {
     }
   };
 
-  const handleApproveTransaction = async (xoraTxId: string, customPlan?: VtusharePlan) => {
+  const handleApproveTransaction = async (
+    xoraTxId: string,
+    customPlan?: VtusharePlan,
+    forcePorted?: boolean,
+    allowFailover?: boolean,
+  ) => {
     setProcessingTxId(xoraTxId);
     try {
       const res = await fetch("/api/admin/rewards/approve", {
@@ -226,6 +252,8 @@ export function AdminRewardsManager() {
           bundle: customPlan?.bundle,
           type: customPlan?.type,
           planName: customPlan?.name,
+          forcePorted,
+          allowFailover,
         }),
       });
 
@@ -235,6 +263,7 @@ export function AdminRewardsManager() {
         await fetchOverview();
       } else {
         toast.error(json.error || json.message || "Failed to dispatch transaction.");
+        await fetchOverview();
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error dispatching transaction";
@@ -244,25 +273,21 @@ export function AdminRewardsManager() {
     }
   };
 
-  const handleRejectTransaction = async (xoraTxId: string) => {
-    const reason = window.prompt(
-      "Please enter a reason for rejecting this claim:",
-      "Does not meet view criteria.",
-    );
-    if (reason === null) return; // user cancelled
-
-    setProcessingTxId(xoraTxId);
+  const handleConfirmReject = async () => {
+    if (!rejectModalTxId) return;
+    setProcessingTxId(rejectModalTxId);
     try {
       const res = await fetch("/api/admin/rewards/reject", {
         method: "POST",
         headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
-        body: JSON.stringify({ xoraTxId, reason }),
+        body: JSON.stringify({ xoraTxId: rejectModalTxId, reason: rejectReason }),
       });
 
       const json = await res.json();
       if (res.ok && json.ok) {
-        toast.success("Transaction successfully rejected.");
+        toast.success("Transaction marked as rejected.");
+        setRejectModalTxId(null);
         await fetchOverview();
       } else {
         toast.error(json.error || json.message || "Failed to reject transaction.");
@@ -272,6 +297,78 @@ export function AdminRewardsManager() {
       toast.error(msg);
     } finally {
       setProcessingTxId(null);
+    }
+  };
+
+  const handleResetTransaction = async (xoraTxId: string) => {
+    setProcessingTxId(xoraTxId);
+    try {
+      const res = await fetch("/api/admin/rewards/reset-claim", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({ xoraTxId }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast.success("Claim reset to pending approval state.");
+        await fetchOverview();
+      } else {
+        toast.error(json.error || json.message || "Failed to reset claim.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error resetting claim";
+      toast.error(msg);
+    } finally {
+      setProcessingTxId(null);
+    }
+  };
+
+  const handleRunTestVending = async () => {
+    if (!testPhone.trim()) {
+      toast.error("Please enter a valid phone number to test.");
+      return;
+    }
+    setIsTestingVending(true);
+    setTestResult(null);
+    try {
+      const chosenPlan =
+        (data?.config.cachedPlans || []).find((p) => p.id === testSelectedPlanId) ||
+        data?.config.selectedPlan ||
+        (data?.config.cachedPlans || [])[0];
+
+      const res = await fetch("/api/admin/rewards/test-vending", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({
+          phone: testPhone,
+          bundle: chosenPlan?.bundle,
+          type: chosenPlan?.type,
+          planName: chosenPlan?.name,
+          forcePorted: testPorted,
+        }),
+      });
+
+      const json = await res.json();
+      setTestResult(json);
+      if (res.ok && json.ok) {
+        toast.success(`Test purchase success! Ref: ${json.ref || "vtu_ok"}`);
+        await fetchOverview();
+      } else {
+        toast.error(json.error || json.message || "Test purchase failed.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error during test purchase";
+      toast.error(msg);
+      setTestResult({
+        ok: false,
+        status: "failed",
+        message: msg,
+      });
+    } finally {
+      setIsTestingVending(false);
     }
   };
 
@@ -644,12 +741,12 @@ export function AdminRewardsManager() {
                         </div>
                       )}
 
-                      {/* Optional Plan Switch for this claim */}
-                      <div className="rounded-lg bg-secondary/40 p-2 border border-border/40">
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                          <span>Dispatch Plan:</span>
-                          <span className="font-semibold text-foreground">
-                            {plans.find((p) => p.id === (retryPlanOverrides[tx.xoraTxId] || selectedPlanId))?.name || tx.planName}
+                      {/* Optional Plan Switch & Ported Toggle for this claim */}
+                      <div className="rounded-xl bg-secondary/40 p-2.5 border border-border/50 space-y-2">
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span className="font-semibold text-foreground">Select Route & Plan:</span>
+                          <span className="text-[10px] text-primary font-mono">
+                            ₦{plans.find((p) => p.id === (retryPlanOverrides[tx.xoraTxId] || selectedPlanId))?.price ?? tx.expectedAmount}
                           </span>
                         </div>
                         <select
@@ -660,14 +757,54 @@ export function AdminRewardsManager() {
                               [tx.xoraTxId]: e.target.value,
                             }))
                           }
-                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-[10px] font-medium"
+                          className="w-full h-8 rounded-lg border border-border bg-background px-2 text-[11px] font-medium"
                         >
                           {plans.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name} — ₦{p.price} ({p.size})
+                              {p.name} — ₦{p.price} ({p.size}) [Type {p.type}]
                             </option>
                           ))}
                         </select>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[10px]">
+                          <label
+                            htmlFor={`ported-${tx.xoraTxId}`}
+                            className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              id={`ported-${tx.xoraTxId}`}
+                              checked={retryPortedOverrides[tx.xoraTxId] ?? false}
+                              onChange={(e) =>
+                                setRetryPortedOverrides((prev) => ({
+                                  ...prev,
+                                  [tx.xoraTxId]: e.target.checked,
+                                }))
+                              }
+                              className="size-3.5 rounded border-border text-primary focus:ring-primary/20 accent-primary"
+                            />
+                            <span>Ported Route (Visafone / Migrated Line)</span>
+                          </label>
+
+                          <label
+                            htmlFor={`failover-${tx.xoraTxId}`}
+                            className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              id={`failover-${tx.xoraTxId}`}
+                              checked={allowFailoverOverrides[tx.xoraTxId] ?? false}
+                              onChange={(e) =>
+                                setAllowFailoverOverrides((prev) => ({
+                                  ...prev,
+                                  [tx.xoraTxId]: e.target.checked,
+                                }))
+                              }
+                              className="size-3.5 rounded border-border text-primary focus:ring-primary/20 accent-primary"
+                            />
+                            <span>Auto-Failover</span>
+                          </label>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between border-t border-border/50 pt-2 text-[10px] text-muted-foreground">
@@ -694,7 +831,9 @@ export function AdminRewardsManager() {
                           onClick={() => {
                             const overrideId = retryPlanOverrides[tx.xoraTxId] || selectedPlanId;
                             const customPlan = plans.find((p) => p.id === overrideId);
-                            handleApproveTransaction(tx.xoraTxId, customPlan);
+                            const forcePorted = retryPortedOverrides[tx.xoraTxId];
+                            const allowFailover = allowFailoverOverrides[tx.xoraTxId];
+                            handleApproveTransaction(tx.xoraTxId, customPlan, forcePorted, allowFailover);
                           }}
                           className="h-8 flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[11px] gap-1 shadow-lift"
                         >
@@ -703,20 +842,28 @@ export function AdminRewardsManager() {
                           ) : (
                             <CheckCircle2 className="size-3" />
                           )}
-                          {tx.status === "failed" ? "Retry Dispatch" : "Approve"}
+                          {tx.status === "failed" ? "Retry Dispatch" : "Approve & Deliver"}
                         </Button>
+                        {tx.status === "failed" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={processingTxId !== null}
+                            onClick={() => handleResetTransaction(tx.xoraTxId)}
+                            className="h-8 rounded-lg border-border text-muted-foreground hover:bg-secondary text-[11px] gap-1 px-2.5"
+                            title="Reset claim to pending approval"
+                          >
+                            Reset
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={processingTxId !== null}
-                          onClick={() => handleRejectTransaction(tx.xoraTxId)}
-                          className="h-8 flex-1 rounded-lg border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 font-medium text-[11px] gap-1"
+                          onClick={() => setRejectModalTxId(tx.xoraTxId)}
+                          className="h-8 rounded-lg border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 font-medium text-[11px] gap-1 px-2.5"
                         >
-                          {processingTxId === tx.xoraTxId ? (
-                            <RefreshCw className="size-3 animate-spin" />
-                          ) : (
-                            <XCircle className="size-3" />
-                          )}
+                          <XCircle className="size-3" />
                           Reject
                         </Button>
                       </div>
@@ -741,6 +888,179 @@ export function AdminRewardsManager() {
           </div>
         </div>
       </div>
+
+      {/* Live Direct Vending Test & Diagnostics Sandbox */}
+      <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-card">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Smartphone className="size-4 text-primary" />
+              <h3 className="font-display text-base font-semibold">
+                Live Gateway Vending Sandbox & Carrier Diagnostics
+              </h3>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Directly dispatch a test data reward or test any phone number against VTUshare telco routes with real-time feedback.
+            </p>
+          </div>
+          <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+            Wallet Balance: ₦{data?.provider.cachedBalance?.toLocaleString() ?? "0"}
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div>
+            <Label htmlFor="sandbox-phone" className="text-xs font-semibold">
+              Recipient Phone Number
+            </Label>
+            <Input
+              id="sandbox-phone"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              placeholder="e.g., 07046182538"
+              className="mt-1.5 h-9 rounded-xl font-mono text-xs"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="sandbox-plan" className="text-xs font-semibold">
+              Data Plan & Category
+            </Label>
+            <select
+              id="sandbox-plan"
+              value={testSelectedPlanId || selectedPlanId}
+              onChange={(e) => setTestSelectedPlanId(e.target.value)}
+              className="mt-1.5 w-full h-9 rounded-xl border border-border bg-background px-3 text-xs"
+            >
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — ₦{p.price} (Bundle {p.bundle}, Type {p.type})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col justify-end">
+            <div className="flex items-center gap-3 mb-2">
+              <label
+                htmlFor="sandbox-ported"
+                className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id="sandbox-ported"
+                  checked={testPorted}
+                  onChange={(e) => setTestPorted(e.target.checked)}
+                  className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary"
+                />
+                <span>Ported Network Flag</span>
+              </label>
+            </div>
+            <Button
+              onClick={handleRunTestVending}
+              disabled={isTestingVending || !testPhone}
+              className="h-9 w-full rounded-xl bg-primary text-primary-foreground font-semibold text-xs gap-1.5 shadow-lift"
+            >
+              {isTestingVending ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin" />
+                  Vending via Telco Gateway...
+                </>
+              ) : (
+                <>
+                  <Send className="size-3.5" />
+                  Dispatch Test Vending
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {testResult && (
+          <div
+            className={`mt-4 rounded-2xl p-4 text-xs ${
+              testResult.ok
+                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-200"
+                : "bg-rose-500/10 border border-rose-500/30 text-rose-950 dark:text-rose-200"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <p className="font-semibold text-sm">
+                  {testResult.ok ? "Vending Succeeded" : "Vending Result / Gateway Notice"}
+                </p>
+                <p className="text-xs">{testResult.message}</p>
+                {testResult.ref && (
+                  <p className="font-mono text-[11px] opacity-80">Reference ID: {testResult.ref}</p>
+                )}
+                {typeof testResult.balanceAfter === "number" && (
+                  <p className="font-mono text-[11px] opacity-80">
+                    Wallet Balance After: ₦{testResult.balanceAfter.toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase font-mono ${
+                  testResult.ok ? "bg-emerald-500/20 text-emerald-600" : "bg-rose-500/20 text-rose-600"
+                }`}
+              >
+                {testResult.status}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Reject Claim Modal */}
+      {rejectModalTxId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <XCircle className="size-5" />
+                <h3 className="font-display font-bold text-base text-foreground">Reject Reward Claim</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectModalTxId(null)}
+                className="text-muted-foreground hover:text-foreground text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <p className="text-muted-foreground">
+                Provide a reason for rejecting claim <span className="font-mono font-bold text-foreground">{rejectModalTxId}</span>:
+              </p>
+              <Input
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Reason for rejection..."
+                className="h-9 rounded-xl text-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setRejectModalTxId(null)}
+                disabled={processingTxId !== null}
+                className="flex-1 rounded-full text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmReject}
+                disabled={processingTxId !== null}
+                className="flex-1 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold"
+              >
+                {processingTxId !== null ? "Rejecting..." : "Confirm Reject"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Plan Catalog Explorer */}
       <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-card">

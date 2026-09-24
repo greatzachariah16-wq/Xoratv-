@@ -543,6 +543,8 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
           bundle?: string;
           type?: string;
           planName?: string;
+          forcePorted?: boolean;
+          allowFailover?: boolean;
         } | null;
         if (!body?.xoraTxId) {
           return jsonReply({ ok: false, error: "Transaction ID (xoraTxId) is required." }, 400);
@@ -564,12 +566,14 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         const bundleToUse = body?.bundle || tx.bundle;
         const typeToUse = body?.type || tx.type;
 
-        // Run purchase
+        // Run purchase with explicit ported toggle if set
         const purchaseRes = await executeVtushareDataPurchase({
           phone: tx.phone,
           bundle: bundleToUse,
           type: typeToUse,
           network: "2", // MTN
+          forcePorted: body?.forcePorted,
+          allowFailover: body?.allowFailover,
         });
 
         tx.bundle = bundleToUse;
@@ -601,6 +605,49 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
       }
     }
 
+    // POST /api/admin/rewards/test-vending
+    if (pathname === "/api/admin/rewards/test-vending" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          phone?: string;
+          bundle?: string;
+          type?: string;
+          planName?: string;
+          forcePorted?: boolean;
+        } | null;
+
+        if (!body?.phone) {
+          return jsonReply({ ok: false, error: "Phone number is required." }, 400);
+        }
+
+        const phone = normalizeNigerianPhone(body.phone);
+        const bundle = body.bundle || "990";
+        const type = body.type || "25";
+
+        const purchaseRes = await executeVtushareDataPurchase({
+          phone,
+          bundle,
+          type,
+          network: "2",
+          forcePorted: body.forcePorted,
+          allowFailover: false,
+        });
+
+        return jsonReply({
+          ok: purchaseRes.ok,
+          status: purchaseRes.status,
+          message: purchaseRes.message,
+          ref: purchaseRes.ref,
+          chargedAmount: purchaseRes.chargedAmount,
+          balanceAfter: purchaseRes.balanceAfter,
+          raw: purchaseRes.raw,
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Test vending failed";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
     // POST /api/admin/rewards/reject
     if (pathname === "/api/admin/rewards/reject" && request.method === "POST") {
       try {
@@ -618,13 +665,6 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
           return jsonReply({ ok: false, error: "Transaction not found." }, 404);
         }
 
-        if (tx.status !== "pending_approval") {
-          return jsonReply(
-            { ok: false, error: `Transaction cannot be rejected from status: ${tx.status}` },
-            400,
-          );
-        }
-
         tx.status = "failed";
         tx.errorMessage = body.reason || "Rejected by administrator.";
         tx.updatedAt = new Date().toISOString();
@@ -634,10 +674,43 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         return jsonReply({
           ok: true,
           status: "failed",
-          message: "Transaction successfully rejected.",
+          message: "Transaction marked as rejected.",
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Rejection failed";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/rewards/reset-claim
+    if (pathname === "/api/admin/rewards/reset-claim" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          xoraTxId?: string;
+        } | null;
+        if (!body?.xoraTxId) {
+          return jsonReply({ ok: false, error: "Transaction ID (xoraTxId) is required." }, 400);
+        }
+
+        const txId = body.xoraTxId;
+        const tx = (await queryRtdb(`rewardTransactions/${txId}`)) as RewardTransaction | null;
+        if (!tx) {
+          return jsonReply({ ok: false, error: "Transaction not found." }, 404);
+        }
+
+        tx.status = "pending_approval";
+        tx.errorMessage = null;
+        tx.updatedAt = new Date().toISOString();
+
+        await saveRewardTransaction(tx);
+
+        return jsonReply({
+          ok: true,
+          status: "pending_approval",
+          message: "Claim reset to pending approval.",
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Reset failed";
         return jsonReply({ ok: false, error: msg }, 500);
       }
     }
