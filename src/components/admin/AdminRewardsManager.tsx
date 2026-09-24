@@ -63,6 +63,7 @@ export function AdminRewardsManager() {
 
   // Action state for manual approvals
   const [processingTxId, setProcessingTxId] = useState<string | null>(null);
+  const [retryPlanOverrides, setRetryPlanOverrides] = useState<Record<string, string>>({});
 
   const fetchOverview = async (showToast = false) => {
     try {
@@ -643,6 +644,32 @@ export function AdminRewardsManager() {
                         </div>
                       )}
 
+                      {/* Optional Plan Switch for this claim */}
+                      <div className="rounded-lg bg-secondary/40 p-2 border border-border/40">
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                          <span>Dispatch Plan:</span>
+                          <span className="font-semibold text-foreground">
+                            {plans.find((p) => p.id === (retryPlanOverrides[tx.xoraTxId] || selectedPlanId))?.name || tx.planName}
+                          </span>
+                        </div>
+                        <select
+                          value={retryPlanOverrides[tx.xoraTxId] || selectedPlanId || ""}
+                          onChange={(e) =>
+                            setRetryPlanOverrides((prev) => ({
+                              ...prev,
+                              [tx.xoraTxId]: e.target.value,
+                            }))
+                          }
+                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-[10px] font-medium"
+                        >
+                          {plans.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} — ₦{p.price} ({p.size})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <div className="flex items-center justify-between border-t border-border/50 pt-2 text-[10px] text-muted-foreground">
                         <div>
                           Trust Score:{" "}
@@ -664,7 +691,11 @@ export function AdminRewardsManager() {
                         <Button
                           size="sm"
                           disabled={processingTxId !== null}
-                          onClick={() => handleApproveTransaction(tx.xoraTxId)}
+                          onClick={() => {
+                            const overrideId = retryPlanOverrides[tx.xoraTxId] || selectedPlanId;
+                            const customPlan = plans.find((p) => p.id === overrideId);
+                            handleApproveTransaction(tx.xoraTxId, customPlan);
+                          }}
                           className="h-8 flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[11px] gap-1 shadow-lift"
                         >
                           {processingTxId === tx.xoraTxId ? (

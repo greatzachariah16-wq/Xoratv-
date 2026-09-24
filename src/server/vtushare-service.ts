@@ -429,16 +429,23 @@ export async function refreshVtusharePlans(): Promise<{
       if (livePlans.length > 0) {
         livePlans.sort((a, b) => a.price - b.price);
 
-        // Find best 1GB plan
+        // Find best lowest cost 1GB plan as default if none selected
         const best1gb =
           livePlans.find((p) => p.bundle === "990") ||
           livePlans.find((p) => p.size === "1GB" && p.type === "25") ||
           livePlans.find((p) => p.size === "1GB") ||
           livePlans[0];
 
+        const currentConfig = await getStoredRewardConfig();
+        const existingSelected = currentConfig.selectedPlan;
+        const matchingLive = existingSelected?.id
+          ? livePlans.find((p) => p.id === existingSelected.id || (p.bundle === existingSelected.bundle && p.type === existingSelected.type))
+          : null;
+        const planToKeep = matchingLive || existingSelected || best1gb;
+
         await updateStoredRewardConfig({
           cachedPlans: livePlans,
-          selectedPlan: best1gb,
+          selectedPlan: planToKeep,
           lastCatalogRefresh: new Date().toISOString(),
         });
 
