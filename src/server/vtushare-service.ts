@@ -33,6 +33,17 @@ let latestWalletBalance: number | null = null;
  */
 export const DEFAULT_MTN_PLANS: VtusharePlan[] = [
   {
+    id: "vtushare_752_12",
+    network: "MTN",
+    networkId: "2",
+    bundle: "752",
+    type: "12",
+    name: "MTN 1GB Direct",
+    size: "1GB",
+    price: 270,
+    validity: "30 days",
+  },
+  {
     id: "vtushare_990_25",
     network: "MTN",
     networkId: "2",
@@ -315,7 +326,7 @@ export async function fetchLiveVtushareBalance(): Promise<{
 }
 
 /**
- * Fetch and refresh plan catalog from VTUshare directly from active portal tables with API failover
+ * Fetch and refresh plan catalog from VTUshare using official POST /api/v1/getPlans with portal fallback
  */
 export async function refreshVtusharePlans(): Promise<{
   ok: boolean;
@@ -323,9 +334,109 @@ export async function refreshVtusharePlans(): Promise<{
   error?: string;
   source: "live" | "cached" | "fallback";
 }> {
-  const { username, password } = getVtushareCredentials();
+  const { email, password, username, isConfigured } = getVtushareCredentials();
 
-  // Primary Method: Ingest live active bundle options directly from VTUshare portal
+  // Primary Method: Official POST /api/v1/getPlans API
+  if (isConfigured) {
+    try {
+      const basicToken = Buffer.from(`${email}:${password}`).toString("base64");
+      const res = await fetch("https://vtushare.com.ng/api/v1/getPlans", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${basicToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+
+      const rawPlans = (await res.json().catch(() => null)) as Array<{
+        name?: string;
+        bundle_id?: string | number;
+        amount?: string | number;
+        type?: string | number;
+        network?: string | number;
+        provider?: string | number;
+      }> | null;
+
+      if (Array.isArray(rawPlans) && rawPlans.length > 0) {
+        const livePlans: VtusharePlan[] = rawPlans
+          .filter(
+            (p) =>
+              String(p.network) === "2" ||
+              String(p.provider) === "2" ||
+              (p.name && p.name.toUpperCase().includes("MTN")),
+          )
+          .map((p) => {
+            const price = parseFloat(String(p.amount || 0)) || 0;
+            const rawName = String(p.name || `MTN Bundle ${p.bundle_id}`).trim();
+            const sizeMatch = rawName.match(/(\d+(?:\.\d+)?\s*(?:MB|GB))/i);
+            const size = sizeMatch ? sizeMatch[1].replace(/\s+/g, "").toUpperCase() : "1GB";
+            const bundle = String(p.bundle_id);
+            const type = String(p.type);
+
+            const displayName = rawName.toUpperCase().startsWith("MTN")
+              ? rawName
+              : `MTN ${rawName}`;
+
+            return {
+              id: `vtushare_${bundle}_${type}`,
+              network: "MTN",
+              networkId: "2",
+              bundle,
+              type,
+              name: displayName,
+              size,
+              price,
+              validity: rawName.toLowerCase().includes("30")
+                ? "30 days"
+                : rawName.toLowerCase().includes("7") || rawName.toLowerCase().includes("week")
+                  ? "7 days"
+                  : "1 day",
+            };
+          })
+          .sort((a, b) => a.price - b.price);
+
+        if (livePlans.length > 0) {
+          // Find lowest cost 1GB plan (e.g. 752 @ ₦270 or 990 @ ₦280)
+          const best1gb =
+            livePlans.find((p) => p.bundle === "990") ||
+            livePlans.find((p) => p.size === "1GB" && p.type === "25") ||
+            livePlans.find((p) => p.bundle === "752") ||
+            livePlans.find((p) => p.size === "1GB") ||
+            livePlans[0];
+
+          const currentConfig = await getStoredRewardConfig();
+          const existingSelected = currentConfig.selectedPlan;
+          const matchingLive = existingSelected?.id
+            ? livePlans.find(
+                (p) =>
+                  p.id === existingSelected.id ||
+                  (p.bundle === existingSelected.bundle && p.type === existingSelected.type),
+              )
+            : null;
+          const planToKeep = matchingLive || existingSelected || best1gb;
+
+          await updateStoredRewardConfig({
+            cachedPlans: livePlans,
+            selectedPlan: planToKeep,
+            lastCatalogRefresh: new Date().toISOString(),
+          });
+
+          return {
+            ok: true,
+            plans: livePlans,
+            source: "live",
+          };
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[VTUshare] Official getPlans API error:", apiErr);
+    }
+  }
+
+  // Fallback Method: Ingest active bundle options directly from VTUshare portal
   try {
     const getRes = await fetch("https://vtushare.com.ng/login", {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
@@ -429,7 +540,6 @@ export async function refreshVtusharePlans(): Promise<{
       if (livePlans.length > 0) {
         livePlans.sort((a, b) => a.price - b.price);
 
-        // Find best lowest cost 1GB plan as default if none selected
         const best1gb =
           livePlans.find((p) => p.bundle === "990") ||
           livePlans.find((p) => p.size === "1GB" && p.type === "25") ||
@@ -439,7 +549,11 @@ export async function refreshVtusharePlans(): Promise<{
         const currentConfig = await getStoredRewardConfig();
         const existingSelected = currentConfig.selectedPlan;
         const matchingLive = existingSelected?.id
-          ? livePlans.find((p) => p.id === existingSelected.id || (p.bundle === existingSelected.bundle && p.type === existingSelected.type))
+          ? livePlans.find(
+              (p) =>
+                p.id === existingSelected.id ||
+                (p.bundle === existingSelected.bundle && p.type === existingSelected.type),
+            )
           : null;
         const planToKeep = matchingLive || existingSelected || best1gb;
 
@@ -460,145 +574,13 @@ export async function refreshVtusharePlans(): Promise<{
     console.warn("[VTUshare] Live portal bundle fetch warning:", webErr);
   }
 
-  // Fallback Method: Official API v1 endpoint
-  const authRes = await getVtushareAuthToken();
-  if (!authRes.ok || !authRes.token) {
-    const config = await getStoredRewardConfig();
-    return {
-      ok: true,
-      plans: config.cachedPlans?.length ? config.cachedPlans : DEFAULT_MTN_PLANS,
-      error: authRes.error,
-      source: "fallback",
-    };
-  }
-
-  try {
-    const res = await fetch("https://vtushare.com.ng/api/v1/getPlans", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Basic ${authRes.token}`,
-      },
-      signal: AbortSignal.timeout(12000),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.warn(`[VTUshare] getPlans HTTP ${res.status}:`, errText);
-      const config = await getStoredRewardConfig();
-      return {
-        ok: true,
-        plans: config.cachedPlans?.length ? config.cachedPlans : DEFAULT_MTN_PLANS,
-        error: `VTUshare getPlans responded with HTTP ${res.status}`,
-        source: "cached",
-      };
-    }
-
-    const payload = await res.json().catch(() => null);
-
-    if (payload?.status === "error") {
-      console.warn("[VTUshare] getPlans status error:", payload?.message);
-      const config = await getStoredRewardConfig();
-      return {
-        ok: true,
-        plans: config.cachedPlans?.length ? config.cachedPlans : DEFAULT_MTN_PLANS,
-        error: payload.message || "Failed to retrieve plans from provider",
-        source: "cached",
-      };
-    }
-
-    const parsedPlans: VtusharePlan[] = [];
-
-    // Parse VTUshare plan structure
-    const rawItems: unknown[] = Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : Array.isArray(payload?.plans)
-          ? payload.plans
-          : [];
-
-    if (rawItems.length > 0) {
-      for (const item of rawItems) {
-        if (!item || typeof item !== "object") continue;
-        const rec = item as Record<string, unknown>;
-        const networkRaw = String(
-          rec.network || rec.network_id || rec.network_name || "",
-        ).toUpperCase();
-        const nameRaw = String(rec.name || rec.plan_name || "");
-        const nameUpper = nameRaw.toUpperCase();
-
-        const isMtn =
-          networkRaw === "2" ||
-          networkRaw === "1" ||
-          networkRaw.includes("MTN") ||
-          nameUpper.includes("MTN") ||
-          nameUpper.includes("AWOOF") ||
-          nameUpper.includes("DATASHARE");
-
-        if (!isMtn) continue;
-
-        const bundle = String(rec.bundle_id || rec.bundle || rec.plan_id || rec.id || "");
-        if (!bundle || bundle === "undefined") continue;
-
-        const type = String(rec.type || rec.plan_type || "25");
-        const price = Number(rec.amount || rec.price || 0);
-        if (price <= 0) continue;
-
-        let size = "1GB";
-        const sizeMatch = nameRaw.match(/(\d+(?:\.\d+)?\s*(?:MB|GB))/i);
-        if (sizeMatch) {
-          size = sizeMatch[1].replace(/\s+/g, "").toUpperCase();
-        } else if (nameUpper.includes("500MB")) {
-          size = "500MB";
-        } else if (nameUpper.includes("2GB")) {
-          size = "2GB";
-        } else if (nameUpper.includes("3GB")) {
-          size = "3GB";
-        } else if (nameUpper.includes("5GB")) {
-          size = "5GB";
-        } else if (nameUpper.includes("10GB")) {
-          size = "10GB";
-        }
-
-        parsedPlans.push({
-          id: `vtushare_${bundle}_${type}`,
-          network: "MTN",
-          networkId: "2",
-          bundle,
-          type,
-          name: nameRaw || `MTN ${size} Data`,
-          size,
-          price,
-          validity: "30 days",
-        });
-      }
-    }
-
-    parsedPlans.sort((a, b) => a.price - b.price);
-    const finalPlans = parsedPlans.length > 0 ? parsedPlans : DEFAULT_MTN_PLANS;
-
-    await updateStoredRewardConfig({
-      cachedPlans: finalPlans,
-      lastCatalogRefresh: new Date().toISOString(),
-    });
-
-    return {
-      ok: true,
-      plans: finalPlans,
-      source: parsedPlans.length > 0 ? "live" : "fallback",
-    };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "VTUshare getPlans error";
-    const config = await getStoredRewardConfig();
-    return {
-      ok: true,
-      plans: config.cachedPlans?.length ? config.cachedPlans : DEFAULT_MTN_PLANS,
-      error: msg,
-      source: "cached",
-    };
-  }
+  // Safe fallback to stored or default plans
+  const config = await getStoredRewardConfig();
+  return {
+    ok: true,
+    plans: config.cachedPlans?.length ? config.cachedPlans : DEFAULT_MTN_PLANS,
+    source: config.cachedPlans?.length ? "cached" : "fallback",
+  };
 }
 
 /**
