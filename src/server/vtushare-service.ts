@@ -915,12 +915,92 @@ export async function executeVtushareDataPurchase(params: {
             failMsg.toLowerCase().includes("telco error");
 
           if (isServiceProviderError) {
+            console.log(
+              `[VTUshare] Upstream telco route error on bundle ${cleanBundle} (${failMsg}). Automatically dispatching via alternative 1GB MTN route...`,
+            );
+
+            const fallbackCandidates = [
+              { bundle: "988", type: "56", name: "MTN 1GB SME", price: 300 },
+              { bundle: "740", type: "11", name: "MTN 1GB DataShare", price: 450 },
+              { bundle: "916", type: "50", name: "MTN 1GB Gifting", price: 520 },
+            ].filter((c) => c.bundle !== String(cleanBundle));
+
+            for (const candidate of fallbackCandidates) {
+              try {
+                console.log(
+                  `[VTUshare] Attempting failover fulfillment via ${candidate.name} (bundle: ${candidate.bundle}, type: ${candidate.type})...`,
+                );
+                const altRes = await fetch("https://vtushare.com.ng/data", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Cookie: cookieHeader(),
+                    "X-CSRF-TOKEN": sessionCsrf,
+                    "X-Requested-With": "XMLHttpRequest",
+                    Referer: "https://vtushare.com.ng/data",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                  },
+                  body: JSON.stringify({
+                    network: "2",
+                    phone_number: normPhone,
+                    bundle: candidate.bundle,
+                    type: candidate.type,
+                    _token: sessionCsrf,
+                    Ported_number: isPortedCandidate,
+                  }),
+                  signal: AbortSignal.timeout(20000),
+                });
+
+                const altResult = (await altRes.json().catch(() => null)) as Record<
+                  string,
+                  unknown
+                > | null;
+
+                if (altResult) {
+                  const altStatus = String(
+                    altResult.Status || altResult.status || "",
+                  ).toLowerCase();
+                  const altBalAfter = Number(altResult.balance_after);
+                  if (!isNaN(altBalAfter)) {
+                    latestWalletBalance = altBalAfter;
+                    void updateStoredRewardConfig({ cachedBalance: altBalAfter }).catch(() => {});
+                  }
+
+                  const isAltSuccess =
+                    altStatus === "success" ||
+                    altStatus === "successful" ||
+                    altStatus === "pending" ||
+                    altStatus === "processing" ||
+                    altResult.status === true;
+
+                  if (isAltSuccess) {
+                    const finalStatus =
+                      altStatus.includes("proc") || altStatus.includes("pend")
+                        ? "pending"
+                        : "success";
+
+                    return {
+                      ok: true,
+                      status: finalStatus,
+                      ref: String(altResult.id || altResult.reference || `vtu_${Date.now()}`),
+                      message: `Data reward successfully delivered to MTN line via ${candidate.name}.`,
+                      chargedAmount: Number(altResult.paid_amount || candidate.price),
+                      balanceAfter: isNaN(altBalAfter) ? undefined : altBalAfter,
+                      raw: altResult,
+                    };
+                  }
+                }
+              } catch (altErr) {
+                console.warn(`[VTUshare] Failover attempt for ${candidate.name} error:`, altErr);
+              }
+            }
+
             return {
               ok: false,
               status: "failed",
               ref,
               message:
-                "VTUshare telco gateway reported a temporary upstream provider error for this plan. You can retry shortly, or switch to another data plan in Admin Settings.",
+                "VTUshare telco gateway reported a temporary upstream provider error across MTN 1GB routes. Please try again in a few moments.",
               raw: webResult,
             };
           }
