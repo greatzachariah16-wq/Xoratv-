@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 export interface EngagementStatus {
   ok: boolean;
@@ -81,6 +81,7 @@ export function EngagementAnalyticsCard({
   onEligibilityChange,
   onClaimClick,
 }: EngagementAnalyticsCardProps) {
+  const navigate = useNavigate();
   const [data, setData] = useState<EngagementStatus | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -202,11 +203,13 @@ export function EngagementAnalyticsCard({
   const handleClaimButtonClick = () => {
     if (onClaimClick) {
       onClaimClick();
+      return;
+    }
+    const el = document.getElementById("claim-reward-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
     } else {
-      const el = document.getElementById("claim-reward-section");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-      }
+      void navigate({ to: "/rewards" });
     }
   };
 
