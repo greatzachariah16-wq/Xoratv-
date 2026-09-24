@@ -9,11 +9,10 @@ interface AdsterraBannerAdProps {
 
 /**
  * Adsterra Compliant Banner Ad Component
- * - Injects Adsterra script directly into main DOM container to guarantee zero-sandbox visibility
- * - Implements 30s initial refresh with randomized anonymous jitter (30s - 45s)
- * - Strict Viewport Awareness via IntersectionObserver
- * - Document Visibility & Focus tracking
- * - Cooldown enforcement & max refresh guard
+ * - Renders ad inside an isolated iframe to guarantee visible DOM rendering (prevents document.write blocking)
+ * - Restores normal 30-second refresh interval
+ * - Clean document visibility tracking (pauses while backgrounded, resumes when user returns)
+ * - Safe unmount cleanup preventing memory leaks
  */
 export function AdsterraBannerAd({
   className = "",
@@ -22,95 +21,72 @@ export function AdsterraBannerAd({
   width = 320,
 }: AdsterraBannerAdProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [renderCount, setRenderCount] = useState<number>(0);
-  const isVisibleRef = useRef<boolean>(false);
-  const isTabActiveRef = useRef<boolean>(true);
-  const lastRefreshTimeRef = useRef<number>(Date.now());
-  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [refreshIndex, setRefreshIndex] = useState<number>(0);
+  const isVisibleRef = useRef<boolean>(true);
 
-  // Load and inject Adsterra script directly into main DOM container
+  // Mount guard for SSR to avoid hydration mismatch
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    setIsMounted(true);
+  }, []);
 
-    // Clear previous children
-    container.innerHTML = "";
-
-    // Set global atOptions
-    (window as any).atOptions = {
-      key: adKey,
-      format: "iframe",
-      height: height,
-      width: width,
-      params: {},
-    };
-
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = `https://www.highrevenueformat.com/${adKey}/invoke.js`;
-    script.async = true;
-
-    container.appendChild(script);
-    lastRefreshTimeRef.current = Date.now();
-  }, [adKey, height, width, renderCount]);
-
-  // Viewport Observer & Auto-Refresh Policy Logic
+  // Normal 30-second refresh timer
   useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
+    if (!isMounted) return;
 
-    // Visibility observer (requires >= 50% visibility)
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isVisibleRef.current = entry.isIntersecting && entry.intersectionRatio >= 0.5;
-      },
-      { threshold: [0.5] },
-    );
+    const REFRESH_INTERVAL_MS = 30000; // Normal 30s refresh
 
-    observer.observe(element);
-
-    // Track tab focus & visibility
     const handleVisibilityChange = () => {
-      isTabActiveRef.current = document.visibilityState === "visible";
+      isVisibleRef.current = document.visibilityState === "visible";
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Refresh interval function with policy safeguards
-    const scheduleNextRefresh = () => {
-      // Anonymous jitter: 30s base + random (0 to 15s) to avoid rigid bot-like refresh cycles
-      const jitterMs = renderCount === 0 ? 30000 : 30000 + Math.floor(Math.random() * 15000);
-
-      refreshTimerRef.current = setTimeout(() => {
-        const now = Date.now();
-        const elapsedSinceLast = now - lastRefreshTimeRef.current;
-        const MIN_COOLDOWN_MS = 25000; // Policy Cooldown: min 25s between refreshes
-        const MAX_REFRESHES_PER_PAGE = 20;
-
-        const isFullyActive =
-          isVisibleRef.current &&
-          isTabActiveRef.current &&
-          document.visibilityState === "visible" &&
-          elapsedSinceLast >= MIN_COOLDOWN_MS;
-
-        if (isFullyActive && renderCount < MAX_REFRESHES_PER_PAGE) {
-          lastRefreshTimeRef.current = Date.now();
-          setRenderCount((prev) => prev + 1);
-        } else {
-          // Re-check shortly if conditions weren't met (e.g. user scrolled away or tab blurred)
-          scheduleNextRefresh();
-        }
-      }, jitterMs);
-    };
-
-    scheduleNextRefresh();
+    const timer = setInterval(() => {
+      // Only refresh if tab is active and visible
+      if (document.visibilityState === "visible" && isVisibleRef.current) {
+        setRefreshIndex((prev) => prev + 1);
+      }
+    }, REFRESH_INTERVAL_MS);
 
     return () => {
-      observer.disconnect();
+      clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
-  }, [renderCount]);
+  }, [isMounted]);
+
+  // Construct srcdoc HTML payload with explicit atOptions and invoke.js
+  const adHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=${width}, initial-scale=1">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <script type="text/javascript">
+    atOptions = {
+      'key': '${adKey}',
+      'format': 'iframe',
+      'height': ${height},
+      'width': ${width},
+      'params': {}
+    };
+  </script>
+  <script type="text/javascript" src="https://www.highrevenueformat.com/${adKey}/invoke.js"></script>
+</body>
+</html>`;
 
   return (
     <div
@@ -119,6 +95,26 @@ export function AdsterraBannerAd({
       suppressHydrationWarning
       className={`adsterra-banner-ad flex min-h-[50px] min-w-[320px] items-center justify-center overflow-hidden transition-all ${className}`}
       style={{ width: `${width}px`, height: `${height}px` }}
-    />
+    >
+      {isMounted && (
+        <iframe
+          key={`adsterra-iframe-${adKey}-${refreshIndex}`}
+          srcDoc={adHtml}
+          title="Advertisement"
+          width={width}
+          height={height}
+          frameBorder="0"
+          scrolling="no"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+          style={{
+            border: 0,
+            width: `${width}px`,
+            height: `${height}px`,
+            overflow: "hidden",
+            display: "block",
+          }}
+        />
+      )}
+    </div>
   );
 }

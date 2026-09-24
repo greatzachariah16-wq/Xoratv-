@@ -99,6 +99,40 @@ export function AdminRewardsManager() {
     void fetchOverview();
   }, []);
 
+  const handleQuickSwitchPlan = async (plan: VtusharePlan) => {
+    if (!data) return;
+    setIsSaving(true);
+    try {
+      setSelectedPlanId(plan.id);
+      setRewardDataSize(plan.size || "1GB");
+      const res = await fetch("/api/admin/rewards/config", {
+        method: "POST",
+        headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({
+          enabled,
+          rewardDataSize: plan.size || "1GB",
+          selectedPlan: plan,
+          maxDailyBudget: Number(maxDailyBudget),
+          maxRewardsPerUser: Number(maxRewardsPerUser),
+          minBalanceThreshold: Number(minBalanceThreshold),
+        }),
+      });
+
+      const json = await res.json();
+      if (json.ok) {
+        toast.success(`Active plan switched to ${plan.name} (₦${plan.price})!`);
+        await fetchOverview();
+      } else {
+        toast.error(json.error || "Failed to switch plan.");
+      }
+    } catch {
+      toast.error("Network error while switching plan.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveConfig = async () => {
     if (!data) return;
     setIsSaving(true);
@@ -113,7 +147,7 @@ export function AdminRewardsManager() {
         credentials: "include",
         body: JSON.stringify({
           enabled,
-          rewardDataSize,
+          rewardDataSize: planToSelect?.size || rewardDataSize,
           selectedPlan: planToSelect,
           maxDailyBudget: Number(maxDailyBudget),
           maxRewardsPerUser: Number(maxRewardsPerUser),
@@ -179,25 +213,30 @@ export function AdminRewardsManager() {
     }
   };
 
-  const handleApproveTransaction = async (xoraTxId: string) => {
+  const handleApproveTransaction = async (xoraTxId: string, customPlan?: VtusharePlan) => {
     setProcessingTxId(xoraTxId);
     try {
       const res = await fetch("/api/admin/rewards/approve", {
         method: "POST",
         headers: getAdminAuthHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
-        body: JSON.stringify({ xoraTxId }),
+        body: JSON.stringify({
+          xoraTxId,
+          bundle: customPlan?.bundle,
+          type: customPlan?.type,
+          planName: customPlan?.name,
+        }),
       });
 
       const json = await res.json();
       if (res.ok && json.ok) {
-        toast.success(`Reward successfully approved and dispatched! VTU ref: ${json.status}`);
+        toast.success(`Reward successfully dispatched! VTU status: ${json.status}`);
         await fetchOverview();
       } else {
-        toast.error(json.error || json.message || "Failed to approve transaction.");
+        toast.error(json.error || json.message || "Failed to dispatch transaction.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error approving transaction";
+      const msg = err instanceof Error ? err.message : "Error dispatching transaction";
       toast.error(msg);
     } finally {
       setProcessingTxId(null);
@@ -427,21 +466,57 @@ export function AdminRewardsManager() {
             </div>
 
             <div>
-              <Label htmlFor="plan-selector" className="text-xs font-semibold">
-                Selected MTN Telco Plan
-              </Label>
-              <select
-                id="plan-selector"
-                value={selectedPlanId}
-                onChange={(e) => setSelectedPlanId(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — ₦{p.price} (Bundle: {p.bundle}, Type: {p.type.toUpperCase()})
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="plan-selector" className="text-xs font-semibold">
+                  Selected MTN Telco Plan
+                </Label>
+                {selectedPlanId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const chosen = plans.find((p) => p.id === selectedPlanId);
+                      if (chosen) handleQuickSwitchPlan(chosen);
+                    }}
+                    disabled={isSaving}
+                    className="text-[11px] font-semibold text-primary hover:underline disabled:opacity-50"
+                  >
+                    Quick Activate
+                  </button>
+                )}
+              </div>
+              <div className="mt-1.5 flex gap-2">
+                <select
+                  id="plan-selector"
+                  value={selectedPlanId}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedPlanId(newId);
+                    const matched = plans.find((p) => p.id === newId);
+                    if (matched) {
+                      setRewardDataSize(matched.size);
+                    }
+                  }}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {plans.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — ₦{p.price} (Bundle: {p.bundle}, Type: {p.type.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    const chosen = plans.find((p) => p.id === selectedPlanId);
+                    if (chosen) handleQuickSwitchPlan(chosen);
+                  }}
+                  disabled={isSaving || !selectedPlanId}
+                  className="shrink-0 h-[36px] rounded-xl text-xs font-semibold px-3"
+                >
+                  Activate
+                </Button>
+              </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Determines the exact bundle ID and type sent to VTUshare for fulfillment.
               </p>
@@ -502,32 +577,37 @@ export function AdminRewardsManager() {
           </div>
         </div>
 
-        {/* Pending Claims Approval Queue Card */}
+        {/* Pending & Failed Claims Dispatch Queue Card */}
         <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-card flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-border pb-4">
               <div className="flex items-center gap-2">
                 <Clock className="size-4 text-amber-500" />
                 <h3 className="font-display text-base font-semibold">
-                  Pending Claims Approval Queue
+                  Claims Fulfillment & Approval Queue
                 </h3>
               </div>
               <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                {(data?.transactions || []).filter((t) => t.status === "pending_approval").length}{" "}
-                Pending
+                {
+                  (data?.transactions || []).filter(
+                    (t) => t.status === "pending_approval" || t.status === "failed",
+                  ).length
+                }{" "}
+                Action Required
               </span>
             </div>
 
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              Verify and manually authorize genuine MTN data reward claims before executing real
-              telco gateway disbursements.
+              Review and dispatch viewer MTN reward claims, or re-dispatch claims that hit carrier
+              provider glitches.
             </p>
 
             <div className="mt-4 space-y-3 max-h-[340px] overflow-y-auto pr-1">
-              {(data?.transactions || []).filter((t) => t.status === "pending_approval").length >
-              0 ? (
+              {(data?.transactions || []).filter(
+                (t) => t.status === "pending_approval" || t.status === "failed",
+              ).length > 0 ? (
                 data?.transactions
-                  .filter((t) => t.status === "pending_approval")
+                  .filter((t) => t.status === "pending_approval" || t.status === "failed")
                   .map((tx) => (
                     <div
                       key={tx.xoraTxId}
@@ -545,10 +625,23 @@ export function AdminRewardsManager() {
                             User: {tx.userId}
                           </p>
                         </div>
-                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
-                          {tx.planName}
-                        </span>
+                        <div className="text-right">
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase block">
+                            {tx.planName}
+                          </span>
+                          {tx.status === "failed" && (
+                            <span className="mt-1 inline-block text-[10px] text-rose-500 font-semibold">
+                              Carrier Glitch
+                            </span>
+                          )}
+                        </div>
                       </div>
+
+                      {tx.errorMessage && (
+                        <div className="rounded-lg bg-rose-500/10 p-2 text-[10px] text-rose-600 dark:text-rose-400">
+                          {tx.errorMessage}
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between border-t border-border/50 pt-2 text-[10px] text-muted-foreground">
                         <div>
@@ -558,8 +651,12 @@ export function AdminRewardsManager() {
                           </span>
                         </div>
                         <div>
-                          Fraud Tier:{" "}
-                          <span className="font-bold text-foreground">{tx.fraudTier ?? 0}</span>
+                          Status:{" "}
+                          <span
+                            className={`font-bold uppercase ${tx.status === "failed" ? "text-rose-500" : "text-amber-500"}`}
+                          >
+                            {tx.status}
+                          </span>
                         </div>
                       </div>
 
@@ -575,7 +672,7 @@ export function AdminRewardsManager() {
                           ) : (
                             <CheckCircle2 className="size-3" />
                           )}
-                          Approve
+                          {tx.status === "failed" ? "Retry Dispatch" : "Approve"}
                         </Button>
                         <Button
                           size="sm"
@@ -680,15 +777,13 @@ export function AdminRewardsManager() {
                         </span>
                       ) : (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setSelectedPlanId(p.id);
-                            toast.info(`Selected ${p.name}. Click "Apply" above to save.`);
-                          }}
-                          className="h-6 rounded-full px-2 text-[10px]"
+                          disabled={isSaving}
+                          onClick={() => handleQuickSwitchPlan(p)}
+                          className="h-6 rounded-full px-2.5 text-[10px] border-primary/30 text-primary hover:bg-primary/10"
                         >
-                          Select
+                          Activate Plan
                         </Button>
                       )}
                     </td>

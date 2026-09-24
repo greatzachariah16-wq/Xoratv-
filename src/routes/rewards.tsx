@@ -6,16 +6,19 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Flame,
   Gift,
   Heart,
   HelpCircle,
+  History,
   Info,
   Lock,
   RefreshCw,
-  ShieldAlert,
+  RotateCcw,
   ShieldCheck,
   Smartphone,
   Sparkles,
+  TrendingUp,
   UserPlus,
   Wifi,
   XCircle,
@@ -78,6 +81,8 @@ interface UserRewardStatus {
   } | null;
 }
 
+type MobileSection = "claim" | "requirements" | "history";
+
 function RewardsPage() {
   const { user, profile, loading: authLoading } = useAuth();
   const [statusData, setStatusData] = useState<UserRewardStatus | null>(null);
@@ -87,6 +92,7 @@ function RewardsPage() {
   const [activeTxId, setActiveTxId] = useState<string | null>(null);
   const [engagementEligible, setEngagementEligible] = useState(false);
   const [engagementStatus, setEngagementStatus] = useState<EngagementStatus | null>(null);
+  const [activeMobileTab, setActiveMobileTab] = useState<MobileSection>("claim");
 
   // Validation states
   const normalizedPhone = normalizeNigerianPhone(phoneInput);
@@ -143,7 +149,7 @@ function RewardsPage() {
                 toast.success("Your data reward has been delivered!");
               } else {
                 toast.error(
-                  "We couldn't deliver your reward. Your claim will be reviewed automatically.",
+                  "We couldn't deliver your reward. You can retry with our verified MTN SME route.",
                 );
               }
             }
@@ -192,7 +198,7 @@ function RewardsPage() {
       const json = await res.json();
 
       if (json.ok) {
-        toast.success(json.message || "Reward claim received! Processing delivery...");
+        toast.success(json.message || "Reward claim received! Dispatched to MTN gateway...");
         setPhoneInput("");
         if (json.txId) {
           setActiveTxId(json.txId);
@@ -205,6 +211,14 @@ function RewardsPage() {
       toast.error("Network error while submitting reward claim. Please check your connection.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const scrollToSection = (id: string, tab: MobileSection) => {
+    setActiveMobileTab(tab);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -221,69 +235,117 @@ function RewardsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+        {/* Mobile Sticky Quick-Navigation Bar */}
+        <div className="sticky top-14 z-30 -mx-3 mb-4 flex items-center justify-between border-y border-border/80 bg-background/95 px-3 py-2 backdrop-blur-md lg:hidden">
+          <div className="flex w-full items-center justify-around gap-1">
+            <button
+              onClick={() => scrollToSection("claim-reward-section", "claim")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-semibold transition-all ${
+                activeMobileTab === "claim"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              }`}
+            >
+              <Gift className="size-3.5" />
+              <span>Claim</span>
+            </button>
+            <button
+              onClick={() => scrollToSection("requirements-section", "requirements")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-semibold transition-all ${
+                activeMobileTab === "requirements"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              }`}
+            >
+              <TrendingUp className="size-3.5" />
+              <span>Progress</span>
+            </button>
+            <button
+              onClick={() => scrollToSection("history-section", "history")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-semibold transition-all ${
+                activeMobileTab === "history"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              }`}
+            >
+              <History className="size-3.5" />
+              <span>History</span>
+            </button>
+          </div>
+        </div>
+
         {/* Header Badge */}
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
-            <Gift className="size-4" />
+          <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary sm:size-8 sm:rounded-xl">
+            <Gift className="size-3.5 sm:size-4" />
           </span>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:text-[11px]">
             Viewer Appreciation
           </span>
         </div>
 
-        {/* Hero Banner */}
-        <div className="mt-3 relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/15 via-background to-secondary/30 border border-primary/20 p-6 sm:p-10 shadow-card">
+        {/* Hero Banner — Mobile Optimized */}
+        <div className="mt-2.5 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-background to-secondary/30 border border-primary/20 p-4 sm:rounded-3xl sm:p-8 shadow-card">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <Sparkles className="size-3.5" />
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary sm:px-3 sm:py-1 sm:text-xs">
+              <Sparkles className="size-3 sm:size-3.5" />
               <span>Promotional Reward</span>
             </div>
 
-            <h1 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-5xl">
-              1GB MTN Mobile Data Reward
+            <h1 className="mt-2.5 font-display text-2xl font-bold tracking-tight sm:mt-4 sm:text-4xl lg:text-5xl">
+              {statusData?.planName || "MTN Mobile Data Reward"}
             </h1>
 
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:mt-3 sm:text-sm sm:leading-relaxed">
               Stream genuine horror and indie cinema on XoraTV and get rewarded with automated
               mobile data directly delivered to your Nigerian MTN line.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2.5 py-1.5 border border-border">
-                <Wifi className="size-3.5 text-primary" /> MTN Nigeria Lines
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground sm:mt-6 sm:text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2 py-1 border border-border sm:px-2.5 sm:py-1.5">
+                <Wifi className="size-3 text-primary sm:size-3.5" /> MTN Nigeria Lines
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2.5 py-1.5 border border-border">
-                <ShieldCheck className="size-3.5 text-emerald-500" /> Automated Telco Fulfillment
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2 py-1 border border-border sm:px-2.5 sm:py-1.5">
+                <ShieldCheck className="size-3 text-emerald-500 sm:size-3.5" /> Verified Telco
+                Gateway
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2.5 py-1.5 border border-border">
-                <Clock className="size-3.5 text-amber-500" /> 30-Day Validity
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-background/80 px-2 py-1 border border-border sm:px-2.5 sm:py-1.5">
+                <Clock className="size-3 text-amber-500 sm:size-3.5" /> 30-Day Validity
               </span>
             </div>
 
-            <div className="mt-6 flex items-center gap-3">
+            <div className="mt-4 flex items-center gap-2.5 sm:mt-6">
               <RewardPopup
                 trigger={
-                  <Button className="rounded-full px-5 text-xs font-semibold shadow-lift">
+                  <Button className="h-9 rounded-full px-4 text-xs font-semibold shadow-lift sm:h-10 sm:px-5">
                     <Gift className="size-3.5 mr-1.5" /> Open Quick Claim Popup
                   </Button>
                 }
               />
+              <button
+                onClick={() => scrollToSection("claim-reward-section", "claim")}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline sm:hidden"
+              >
+                Jump to Form <ArrowRight className="size-3" />
+              </button>
             </div>
           </div>
         </div>
 
         {/* Auth Gate if Guest */}
         {!user && !authLoading && (
-          <div className="mt-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card">
-            <Lock className="mx-auto size-10 text-primary" />
-            <h2 className="mt-4 font-display text-xl font-bold">Sign In to Claim Rewards</h2>
-            <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">
+          <div className="mt-6 rounded-2xl border border-border bg-card p-6 text-center sm:rounded-3xl sm:p-8 shadow-card">
+            <Lock className="mx-auto size-8 text-primary sm:size-10" />
+            <h2 className="mt-3 font-display text-lg font-bold sm:mt-4 sm:text-xl">
+              Sign In to Claim Rewards
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground leading-relaxed">
               Mobile data rewards are exclusively allocated to registered Xora viewers. Create a
               free account or sign in to verify your streaming activity.
             </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <Button asChild className="rounded-full px-6">
+            <div className="mt-5 flex justify-center gap-3 sm:mt-6">
+              <Button asChild className="h-10 rounded-full px-6 text-xs font-semibold">
                 <Link to="/auth">Sign In / Register</Link>
               </Button>
             </div>
@@ -292,26 +354,29 @@ function RewardsPage() {
 
         {/* Authenticated Claim Experience */}
         {user && (
-          <div className="mt-8 grid gap-8 lg:grid-cols-12">
+          <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-12 lg:gap-8">
             {/* Left Column: Claim Action Form */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-5 sm:space-y-6">
               {/* Delivery Celebration Card */}
               {isDelivered && (
-                <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 sm:p-7 text-emerald-950 dark:text-emerald-100 shadow-card">
-                  <div className="flex items-start gap-4">
-                    <div className="grid size-10 place-items-center rounded-2xl bg-emerald-500 text-white shrink-0">
-                      <CheckCircle2 className="size-6" />
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 sm:rounded-3xl sm:p-7 text-emerald-950 dark:text-emerald-100 shadow-card">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="grid size-9 place-items-center rounded-xl bg-emerald-500 text-white shrink-0 sm:size-10 sm:rounded-2xl">
+                      <CheckCircle2 className="size-5 sm:size-6" />
                     </div>
                     <div>
-                      <h2 className="font-display text-lg font-bold">Reward Delivered!</h2>
+                      <h2 className="font-display text-base font-bold sm:text-lg">
+                        Reward Delivered!
+                      </h2>
                       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                        Your 1GB MTN data reward has been successfully dispatched to{" "}
+                        Your {statusData?.rewardDataSize || "MTN"} data reward has been successfully
+                        dispatched to{" "}
                         <strong className="text-foreground">{latestClaim.phoneMasked}</strong>.
                         Check your MTN balance by dialing{" "}
                         <code className="font-mono bg-background px-1 py-0.5 rounded text-[11px]">
                           *310#
                         </code>{" "}
-                        or via MyMTN.
+                        or via MyMTN app.
                       </p>
                       {latestClaim.completedAt && (
                         <p className="mt-2 text-[10px] text-muted-foreground">
@@ -325,13 +390,13 @@ function RewardsPage() {
 
               {/* In-Flight Processing Card */}
               {isProcessing && (
-                <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 sm:p-7 shadow-card">
-                  <div className="flex items-start gap-4">
-                    <div className="grid size-10 place-items-center rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 sm:rounded-3xl sm:p-7 shadow-card">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="grid size-9 place-items-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 sm:size-10 sm:rounded-2xl">
                       <RefreshCw className="size-5 animate-spin" />
                     </div>
                     <div>
-                      <h2 className="font-display text-lg font-bold text-amber-950 dark:text-amber-100">
+                      <h2 className="font-display text-base font-bold text-amber-950 dark:text-amber-100 sm:text-lg">
                         Fulfillment in Progress
                       </h2>
                       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
@@ -339,12 +404,12 @@ function RewardsPage() {
                         <strong className="text-foreground">
                           {latestClaim?.phoneMasked || maskPhone(phoneInput)}
                         </strong>
-                        . Deliveries typically conclude within 30 to 120 seconds.
+                        . Telco dispatches typically conclude within 30 to 120 seconds.
                       </p>
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className="mt-2.5 flex items-center gap-2">
                         <span className="size-2 rounded-full bg-amber-500 animate-ping" />
                         <span className="text-[11px] font-mono text-muted-foreground">
-                          Listening for telco webhook confirmation...
+                          Listening for telco gateway delivery confirmation...
                         </span>
                       </div>
                     </div>
@@ -352,16 +417,20 @@ function RewardsPage() {
                 </div>
               )}
 
-              {/* Review / Failed State Card */}
-              {isFailed && !canClaim && (
-                <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-6 text-rose-950 dark:text-rose-100 shadow-card">
-                  <div className="flex items-start gap-4">
-                    <AlertCircle className="size-6 text-rose-500 shrink-0 mt-0.5" />
-                    <div>
-                      <h2 className="font-display text-base font-bold">Claim Under Review</h2>
-                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                        We couldn't deliver your reward. Your claim will be reviewed automatically
-                        by our platform operations team.
+              {/* Telco Route Recovery Notice (If previous attempt hit upstream glitch) */}
+              {isFailed && !isProcessing && (
+                <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:rounded-3xl sm:p-6 shadow-card">
+                  <div className="flex items-start gap-3">
+                    <RotateCcw className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h2 className="font-display text-xs font-bold text-foreground sm:text-sm">
+                        Previous Delivery Attempt Glitch
+                      </h2>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed sm:text-xs">
+                        {latestClaim?.errorMessage ||
+                          "The previous attempt encountered a temporary carrier gateway glitch."}{" "}
+                        Your reward allocation was not deducted. You can submit your MTN number
+                        below to retry.
                       </p>
                     </div>
                   </div>
@@ -371,16 +440,17 @@ function RewardsPage() {
               {/* Claim Card */}
               <div
                 id="claim-reward-section"
-                className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card scroll-mt-20"
+                className="rounded-2xl border border-border bg-card p-4 sm:rounded-3xl sm:p-7 lg:p-8 shadow-card scroll-mt-28"
               >
-                <div className="flex items-center justify-between border-b border-border pb-4">
+                <div className="flex items-center justify-between border-b border-border pb-3.5 sm:pb-4">
                   <div>
-                    <h2 className="font-display text-lg font-bold">Claim Your Data</h2>
+                    <h2 className="font-display text-base font-bold sm:text-lg">Claim Your Data</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Input your Nigerian MTN phone number to receive your data reward.
+                      Input your Nigerian MTN number to receive{" "}
+                      {statusData?.rewardDataSize || "1GB"} mobile data.
                     </p>
                   </div>
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary sm:px-3 sm:py-1 sm:text-xs">
                     {statusData?.rewardDataSize || "1GB"} Allocation
                   </span>
                 </div>
@@ -406,15 +476,15 @@ function RewardsPage() {
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleClaim} className="mt-5 space-y-4">
+                  <form onSubmit={handleClaim} className="mt-4 space-y-4 sm:mt-5">
                     {/* Live Criteria Progress Checklist inside Claim Section */}
-                    <div className="rounded-2xl border border-border bg-secondary/30 p-3.5 space-y-2">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3 sm:rounded-2xl sm:p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-foreground">
-                          Claim Qualification Status
+                        <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                          <Flame className="size-3.5 text-primary" /> Claim Qualification
                         </span>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase sm:text-[10px] ${
                             canClaim
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                               : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
@@ -424,7 +494,8 @@ function RewardsPage() {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 pt-1 text-[11px]">
+                      {/* Responsive Grid for Criteria */}
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                         {/* Watch Time Status */}
                         {(() => {
                           const watchSeconds =
@@ -436,25 +507,30 @@ function RewardsPage() {
                           const met = watchSeconds >= reqSeconds;
                           return (
                             <div
-                              className={`rounded-xl border p-2 ${
+                              className={`rounded-lg border p-2 sm:rounded-xl sm:p-2.5 ${
                                 met
                                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
                                   : "border-border/80 bg-background/50"
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-[10px] flex items-center gap-1">
-                                  <Clock className="size-3 text-primary" /> Watch
+                                <span className="font-semibold text-[11px] flex items-center gap-1">
+                                  <Clock className="size-3 text-primary" /> Watch Time
                                 </span>
                                 {met ? (
-                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                  <CheckCircle2 className="size-3.5 text-emerald-500" />
                                 ) : (
-                                  <XCircle className="size-3 text-muted-foreground" />
+                                  <XCircle className="size-3.5 text-muted-foreground" />
                                 )}
                               </div>
-                              <span className="block font-mono text-[10px] mt-0.5">
-                                {watchMins}m / {reqMins}m
-                              </span>
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="font-mono text-[11px]">
+                                  {watchMins}m / {reqMins}m
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {met ? "Complete" : `${Math.max(0, reqMins - watchMins)}m left`}
+                                </span>
+                              </div>
                             </div>
                           );
                         })()}
@@ -468,25 +544,30 @@ function RewardsPage() {
                           const met = likes >= 1;
                           return (
                             <div
-                              className={`rounded-xl border p-2 ${
+                              className={`rounded-lg border p-2 sm:rounded-xl sm:p-2.5 ${
                                 met
                                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
                                   : "border-border/80 bg-background/50"
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-[10px] flex items-center gap-1">
-                                  <Heart className="size-3 text-rose-500" /> Like 1
+                                <span className="font-semibold text-[11px] flex items-center gap-1">
+                                  <Heart className="size-3 text-rose-500" /> Video Like
                                 </span>
                                 {met ? (
-                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                  <CheckCircle2 className="size-3.5 text-emerald-500" />
                                 ) : (
-                                  <XCircle className="size-3 text-muted-foreground" />
+                                  <XCircle className="size-3.5 text-muted-foreground" />
                                 )}
                               </div>
-                              <span className="block font-mono text-[10px] mt-0.5">
-                                {likes >= 1 ? "1 / 1" : "0 / 1"}
-                              </span>
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="font-mono text-[11px]">
+                                  {likes >= 1 ? "1 / 1" : "0 / 1"}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {met ? "Complete" : "1 needed"}
+                                </span>
+                              </div>
                             </div>
                           );
                         })()}
@@ -500,61 +581,66 @@ function RewardsPage() {
                           const met = follows >= 1;
                           return (
                             <div
-                              className={`rounded-xl border p-2 ${
+                              className={`rounded-lg border p-2 sm:rounded-xl sm:p-2.5 ${
                                 met
                                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
                                   : "border-border/80 bg-background/50"
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-[10px] flex items-center gap-1">
-                                  <UserPlus className="size-3 text-indigo-500" /> Follow 1
+                                <span className="font-semibold text-[11px] flex items-center gap-1">
+                                  <UserPlus className="size-3 text-indigo-500" /> Follow Creator
                                 </span>
                                 {met ? (
-                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                  <CheckCircle2 className="size-3.5 text-emerald-500" />
                                 ) : (
-                                  <XCircle className="size-3 text-muted-foreground" />
+                                  <XCircle className="size-3.5 text-muted-foreground" />
                                 )}
                               </div>
-                              <span className="block font-mono text-[10px] mt-0.5">
-                                {follows >= 1 ? "1 / 1" : "0 / 1"}
-                              </span>
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="font-mono text-[11px]">
+                                  {follows >= 1 ? "1 / 1" : "0 / 1"}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {met ? "Complete" : "1 needed"}
+                                </span>
+                              </div>
                             </div>
                           );
                         })()}
                       </div>
 
-                      {/* Explicit Warning when Requirements are not met */}
+                      {/* Explicit Warning & Direct Action Links when Requirements are not met */}
                       {!canClaim && (
-                        <div className="pt-1">
-                          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium leading-relaxed">
+                        <div className="pt-1.5 space-y-2">
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium leading-relaxed">
                             {engagementStatus?.eligibility?.ineligibilityReason ||
-                              "Reward cannot be disbursed without reaching all 3 requirements: 60m watch time, at least 1 video liked, and at least 1 creator followed."}
+                              "Please complete all 3 requirements to claim: 60m watch time, at least 1 video liked, and at least 1 creator followed."}
                           </p>
-                          <div className="flex flex-wrap gap-2 mt-2">
+                          <div className="grid grid-cols-3 gap-2">
                             <Button
                               asChild
                               variant="outline"
                               size="sm"
-                              className="h-7 text-[10px] rounded-lg"
+                              className="h-8 text-[11px] rounded-lg border-primary/30 hover:bg-primary/10"
                             >
-                              <Link to="/watch">Stream Cinema</Link>
+                              <Link to="/">Stream Video</Link>
                             </Button>
                             <Button
                               asChild
                               variant="outline"
                               size="sm"
-                              className="h-7 text-[10px] rounded-lg"
+                              className="h-8 text-[11px] rounded-lg border-primary/30 hover:bg-primary/10"
                             >
-                              <Link to="/browse">Like a Video</Link>
+                              <Link to="/shorts">Like Video</Link>
                             </Button>
                             <Button
                               asChild
                               variant="outline"
                               size="sm"
-                              className="h-7 text-[10px] rounded-lg"
+                              className="h-8 text-[11px] rounded-lg border-primary/30 hover:bg-primary/10"
                             >
-                              <Link to="/browse">Follow a Creator</Link>
+                              <Link to="/learn">Follow Creator</Link>
                             </Button>
                           </div>
                         </div>
@@ -570,10 +656,11 @@ function RewardsPage() {
                         <Input
                           id="claim-phone"
                           type="tel"
+                          inputMode="tel"
                           placeholder="e.g. 08031234567 or 08141234567"
                           value={phoneInput}
                           onChange={(e) => setPhoneInput(e.target.value)}
-                          className="h-11 pl-10 rounded-2xl text-sm font-mono tracking-wider"
+                          className="h-11 pl-10 rounded-xl sm:rounded-2xl text-sm font-mono tracking-wider"
                           autoComplete="tel"
                           required
                           disabled={!canClaim}
@@ -593,7 +680,7 @@ function RewardsPage() {
                               ) : (
                                 <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
                                   <AlertCircle className="size-3.5" /> This does not appear to be an
-                                  MTN number. Promo is currently MTN-only.
+                                  MTN number. Promotional data is currently MTN-only.
                                 </span>
                               )
                             ) : (
@@ -607,12 +694,14 @@ function RewardsPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl bg-secondary/50 p-3.5 text-xs text-muted-foreground space-y-1">
-                      <p className="font-semibold text-foreground">Important Delivery Notes:</p>
-                      <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                        <li>Only genuine normal viewer accounts are eligible.</li>
-                        <li>Do Not Disturb (DND) status on your line will not block this data.</li>
-                        <li>Single reward allocation per viewer for this promotional phase.</li>
+                    <div className="rounded-xl bg-secondary/50 p-3 sm:rounded-2xl sm:p-3.5 text-xs text-muted-foreground space-y-1">
+                      <p className="font-semibold text-foreground text-[11px] sm:text-xs">
+                        Delivery Information:
+                      </p>
+                      <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-[11px]">
+                        <li>Delivered directly to your MTN balance via verified telco gateway.</li>
+                        <li>Do Not Disturb (DND) status will not block this data reward.</li>
+                        <li>One claim per viewer account for this promotional phase.</li>
                       </ul>
                     </div>
 
@@ -620,19 +709,22 @@ function RewardsPage() {
                     <Button
                       type="submit"
                       disabled={!canClaim || isSubmitting || !isValidPhone || !isMtn}
-                      className={`w-full h-11 rounded-full font-semibold text-xs shadow-lift ${
+                      className={`w-full h-11 sm:h-12 rounded-full font-semibold text-xs sm:text-sm shadow-lift ${
                         !canClaim ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                     >
                       {isSubmitting ? (
-                        "Submitting to Telco..."
+                        <span className="flex items-center gap-2">
+                          <RefreshCw className="size-4 animate-spin" /> Submitting to Telco
+                          Gateway...
+                        </span>
                       ) : !canClaim ? (
                         <>
                           <Lock className="size-3.5 mr-1.5" />
                           Claim Reward (Requirements Pending)
                         </>
                       ) : (
-                        "Claim 1GB MTN Data Now"
+                        `Claim ${statusData?.rewardDataSize || "1GB"} MTN Data Now`
                       )}
                     </Button>
                   </form>
@@ -641,26 +733,28 @@ function RewardsPage() {
             </div>
 
             {/* Right Column: Policy & Claims History */}
-            <div className="lg:col-span-5 space-y-6">
+            <div className="lg:col-span-5 space-y-5 sm:space-y-6">
               {/* Real-time Engagement Analytics & Reward Integrity Component */}
-              <EngagementAnalyticsCard
-                userId={user.id}
-                onEligibilityChange={(eligible, status) => {
-                  setEngagementEligible(eligible);
-                  if (status) setEngagementStatus(status);
-                }}
-                onClaimClick={() => {
-                  const el = document.getElementById("claim-reward-section");
-                  if (el) {
-                    el.scrollIntoView({ behavior: "smooth" });
-                  }
-                }}
-              />
+              <div id="requirements-section" className="scroll-mt-28">
+                <EngagementAnalyticsCard
+                  userId={user.id}
+                  onEligibilityChange={(eligible, status) => {
+                    setEngagementEligible(eligible);
+                    if (status) setEngagementStatus(status);
+                  }}
+                  onClaimClick={() => scrollToSection("claim-reward-section", "claim")}
+                />
+              </div>
 
               {/* Previous Claims History */}
-              <div className="rounded-3xl border border-border bg-card p-6 shadow-card">
+              <div
+                id="history-section"
+                className="rounded-2xl border border-border bg-card p-4 sm:rounded-3xl sm:p-6 shadow-card scroll-mt-28"
+              >
                 <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                  <h2 className="font-display text-sm font-bold">Your Claim History</h2>
+                  <h2 className="font-display text-sm font-bold flex items-center gap-1.5">
+                    <History className="size-4 text-primary" /> Your Claim History
+                  </h2>
                   <span className="text-[11px] text-muted-foreground font-mono">
                     {statusData?.transactions.length ?? 0} total
                   </span>
@@ -671,9 +765,9 @@ function RewardsPage() {
                     statusData.transactions.map((tx) => (
                       <div key={tx.xoraTxId} className="py-2.5 text-xs">
                         <div className="flex items-center justify-between font-medium">
-                          <span>{tx.planName}</span>
+                          <span className="truncate pr-2">{tx.planName}</span>
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase shrink-0 ${
                               tx.status === "success"
                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : tx.status === "failed"
@@ -681,7 +775,7 @@ function RewardsPage() {
                                   : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                             }`}
                           >
-                            {tx.status}
+                            {tx.status === "failed" ? "retryable" : tx.status}
                           </span>
                         </div>
                         <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
@@ -712,14 +806,14 @@ function RewardsPage() {
               </div>
 
               {/* Policy Disclaimer */}
-              <div className="rounded-3xl border border-border/70 bg-secondary/30 p-5 text-xs text-muted-foreground space-y-2">
+              <div className="rounded-2xl border border-border/70 bg-secondary/30 p-4 sm:rounded-3xl sm:p-5 text-xs text-muted-foreground space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-foreground">
                   <HelpCircle className="size-3.5 text-primary" />
                   <span>Promotional Reward Policy</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  The 1GB data reward is a promotional benefit subject to telco network uptime,
-                  platform integrity verification, and daily budget limits. It is not an
+                  The 1GB data reward is a promotional viewer benefit subject to telco network
+                  uptime, platform integrity verification, and daily budget limits. It is not an
                   unconditional guarantee.
                 </p>
                 <div className="pt-1">

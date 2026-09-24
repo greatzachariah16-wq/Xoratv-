@@ -179,7 +179,7 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
 
       const json = await res.json();
       if (json.ok) {
-        toast.success(json.message || "Reward claim received! Dispathing to MTN telco gateway...");
+        toast.success(json.message || "Reward claim received! Dispatching to MTN telco gateway...");
         setPhoneInput("");
         if (json.txId) {
           setActiveTxId(json.txId);
@@ -242,7 +242,7 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
           </div>
 
           <DialogTitle className="mt-2.5 font-display text-2xl font-bold tracking-tight text-white">
-            1GB MTN Data Reward
+            {statusData?.planName || "MTN Data Reward"}
           </DialogTitle>
           <DialogDescription className="mt-1 text-xs text-muted-foreground leading-relaxed">
             Exclusive streaming promotion for active XoraTV viewers. Delivered straight to your
@@ -275,7 +275,9 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="size-5 text-emerald-400 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-emerald-200">1GB Data Delivered!</h4>
+                      <h4 className="font-semibold text-emerald-200">
+                        {statusData?.rewardDataSize || "MTN"} Data Delivered!
+                      </h4>
                       <p className="mt-0.5 text-muted-foreground">
                         Sent to{" "}
                         <strong className="text-foreground">{latestClaim.phoneMasked}</strong>. Dial
@@ -386,6 +388,7 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
                       <Input
                         id="popup-phone"
                         type="tel"
+                        inputMode="tel"
                         placeholder="0803XXXXXXX"
                         value={phoneInput}
                         onChange={(e) => setPhoneInput(e.target.value)}
@@ -435,7 +438,7 @@ export function RewardPopup({ open, onOpenChange, trigger }: RewardPopupProps) {
                         Claim Reward (Requirements Pending)
                       </>
                     ) : (
-                      "Claim 1GB MTN Data Now"
+                      `Claim ${statusData?.rewardDataSize || "1GB"} MTN Data Now`
                     )}
                   </Button>
 

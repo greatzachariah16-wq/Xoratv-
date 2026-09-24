@@ -538,7 +538,12 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
     // POST /api/admin/rewards/approve
     if (pathname === "/api/admin/rewards/approve" && request.method === "POST") {
       try {
-        const body = (await request.json().catch(() => null)) as { xoraTxId?: string } | null;
+        const body = (await request.json().catch(() => null)) as {
+          xoraTxId?: string;
+          bundle?: string;
+          type?: string;
+          planName?: string;
+        } | null;
         if (!body?.xoraTxId) {
           return jsonReply({ ok: false, error: "Transaction ID (xoraTxId) is required." }, 400);
         }
@@ -549,20 +554,27 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
           return jsonReply({ ok: false, error: "Transaction not found." }, 404);
         }
 
-        if (tx.status !== "pending_approval") {
+        if (tx.status !== "pending_approval" && tx.status !== "failed") {
           return jsonReply(
-            { ok: false, error: `Transaction cannot be approved from status: ${tx.status}` },
+            { ok: false, error: `Transaction cannot be dispatched from status: ${tx.status}` },
             400,
           );
         }
 
+        const bundleToUse = body?.bundle || tx.bundle;
+        const typeToUse = body?.type || tx.type;
+
         // Run purchase
         const purchaseRes = await executeVtushareDataPurchase({
           phone: tx.phone,
-          bundle: tx.bundle,
-          type: tx.type,
+          bundle: bundleToUse,
+          type: typeToUse,
           network: "2", // MTN
         });
+
+        tx.bundle = bundleToUse;
+        tx.type = typeToUse;
+        if (body?.planName) tx.planName = body.planName;
 
         tx.vtushareRef = purchaseRes.ref;
         tx.status = purchaseRes.status;

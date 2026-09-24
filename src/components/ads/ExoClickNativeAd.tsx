@@ -16,8 +16,10 @@ export function ExoClickNativeAd({ className = "", zoneId = "6037222" }: ExoClic
 
   useEffect(() => {
     // Dynamically load magsrv ad-provider script if not already present
-    let script = document.querySelector<HTMLScriptElement>('script[src="https://a.magsrv.com/ad-provider.js"]');
-    
+    let script = document.querySelector<HTMLScriptElement>(
+      'script[src="https://a.magsrv.com/ad-provider.js"]',
+    );
+
     if (!script) {
       script = document.createElement("script");
       script.src = "https://a.magsrv.com/ad-provider.js";
