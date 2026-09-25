@@ -52,6 +52,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "operations",
     description: "Core platform health, content review counts, and real-time totals.",
     icon: LayoutGrid,
+    href: "/admin",
     accentColor: "text-primary",
   },
   {
@@ -60,6 +61,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "operations",
     description: "Real-time 2s heartbeat viewer presence and active session logs.",
     icon: Radio,
+    href: "/admin/tracker",
     accentColor: "text-emerald-500",
     badge: "Live 2s",
   },
@@ -69,6 +71,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "operations",
     description: "Bot detection, hardware fingerprint collisions, and 4-tier enforcement.",
     icon: ShieldAlert,
+    href: "/admin/fraud",
     accentColor: "text-rose-500",
   },
 
@@ -79,6 +82,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "users",
     description: "Verified human account registrations, emails, and profile lookup.",
     icon: Users,
+    href: "/admin/users",
     accentColor: "text-blue-500",
   },
   {
@@ -87,6 +91,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "users",
     description: "Community inquiries, user feedback tickets, and admin replies.",
     icon: MessageSquareText,
+    href: "/admin/support",
     accentColor: "text-amber-500",
   },
 
@@ -97,6 +102,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "growth",
     description: "VTUshare wallet automation, 1GB data plan fulfillment, and vending logs.",
     icon: Wifi,
+    href: "/admin/rewards",
     accentColor: "text-amber-400",
     badge: "VTUshare",
   },
@@ -106,6 +112,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "growth",
     description: "Sponsor campaign videos, targeting, and impressions tracking.",
     icon: Megaphone,
+    href: "/admin/campaigns",
     accentColor: "text-purple-500",
   },
 
@@ -117,7 +124,6 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     description: "Source crawler, TV series seasons, episodes, and video streaming catalog.",
     icon: Tv,
     href: "/admin/xseris",
-    isExternalRoute: true,
     accentColor: "text-primary",
     badge: "Catalog",
   },
@@ -127,6 +133,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "content",
     description: "Automated ingestion pipeline for YouTube, Vimeo, FAOTV, and RSS sources.",
     icon: Compass,
+    href: "/admin/discovery",
     accentColor: "text-cyan-500",
   },
   {
@@ -135,6 +142,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     category: "content",
     description: "Review queue, feed status toggles, and recent video publishing controls.",
     icon: FileVideo,
+    href: "/admin/moderation",
     accentColor: "text-indigo-500",
   },
 ];
@@ -205,7 +213,7 @@ export function AdminNavigationMenu({
 
   const handleJump = (item: AdminSectionItem) => {
     setOpen(false);
-    if (item.isExternalRoute && item.href) {
+    if (item.href) {
       void navigate({ to: item.href });
       return;
     }
@@ -213,18 +221,6 @@ export function AdminNavigationMenu({
     if (onSectionClick) {
       onSectionClick(item.id);
     }
-
-    // Smooth scroll to target element
-    setTimeout(() => {
-      const el = document.getElementById(item.id);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        el.classList.add("ring-2", "ring-primary/40", "transition-all", "duration-500");
-        setTimeout(() => {
-          el.classList.remove("ring-2", "ring-primary/40");
-        }, 1800);
-      }
-    }, 100);
   };
 
   return (

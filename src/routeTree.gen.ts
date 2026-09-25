@@ -25,6 +25,14 @@ import { Route as ShortsRouteImport } from './routes/shorts'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as XtvSeriesRouteImport } from './routes/xtv-series'
+import { Route as AdminCampaignsRouteImport } from './routes/admin.campaigns'
+import { Route as AdminDiscoveryRouteImport } from './routes/admin.discovery'
+import { Route as AdminFraudRouteImport } from './routes/admin.fraud'
+import { Route as AdminModerationRouteImport } from './routes/admin.moderation'
+import { Route as AdminRewardsRouteImport } from './routes/admin.rewards'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
+import { Route as AdminTrackerRouteImport } from './routes/admin.tracker'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminXseriesRouteImport } from './routes/admin.xseries'
 import { Route as AdminXserisRouteImport } from './routes/admin.xseris'
 import { Route as ChatRoomIdRouteImport } from './routes/chat.$roomId'
@@ -111,6 +119,46 @@ const XtvSeriesRoute = XtvSeriesRouteImport.update({
   path: '/xtv-series',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCampaignsRoute = AdminCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDiscoveryRoute = AdminDiscoveryRouteImport.update({
+  id: '/discovery',
+  path: '/discovery',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFraudRoute = AdminFraudRouteImport.update({
+  id: '/fraud',
+  path: '/fraud',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminModerationRoute = AdminModerationRouteImport.update({
+  id: '/moderation',
+  path: '/moderation',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRewardsRoute = AdminRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTrackerRoute = AdminTrackerRouteImport.update({
+  id: '/tracker',
+  path: '/tracker',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminXseriesRoute = AdminXseriesRouteImport.update({
   id: '/xseries',
   path: '/xseries',
@@ -154,6 +202,14 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/admin/campaigns': typeof AdminCampaignsRoute
+  '/admin/discovery': typeof AdminDiscoveryRoute
+  '/admin/fraud': typeof AdminFraudRoute
+  '/admin/moderation': typeof AdminModerationRoute
+  '/admin/rewards': typeof AdminRewardsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/tracker': typeof AdminTrackerRoute
+  '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
@@ -177,6 +233,14 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/admin/campaigns': typeof AdminCampaignsRoute
+  '/admin/discovery': typeof AdminDiscoveryRoute
+  '/admin/fraud': typeof AdminFraudRoute
+  '/admin/moderation': typeof AdminModerationRoute
+  '/admin/rewards': typeof AdminRewardsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/tracker': typeof AdminTrackerRoute
+  '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
@@ -201,6 +265,14 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/admin/campaigns': typeof AdminCampaignsRoute
+  '/admin/discovery': typeof AdminDiscoveryRoute
+  '/admin/fraud': typeof AdminFraudRoute
+  '/admin/moderation': typeof AdminModerationRoute
+  '/admin/rewards': typeof AdminRewardsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/tracker': typeof AdminTrackerRoute
+  '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
@@ -226,6 +298,14 @@ export interface FileRouteTypes {
     | '/support'
     | '/watch'
     | '/xtv-series'
+    | '/admin/campaigns'
+    | '/admin/discovery'
+    | '/admin/fraud'
+    | '/admin/moderation'
+    | '/admin/rewards'
+    | '/admin/support'
+    | '/admin/tracker'
+    | '/admin/users'
     | '/admin/xseries'
     | '/admin/xseris'
     | '/chat/$roomId'
@@ -249,6 +329,14 @@ export interface FileRouteTypes {
     | '/support'
     | '/watch'
     | '/xtv-series'
+    | '/admin/campaigns'
+    | '/admin/discovery'
+    | '/admin/fraud'
+    | '/admin/moderation'
+    | '/admin/rewards'
+    | '/admin/support'
+    | '/admin/tracker'
+    | '/admin/users'
     | '/admin/xseries'
     | '/admin/xseris'
     | '/chat/$roomId'
@@ -272,6 +360,14 @@ export interface FileRouteTypes {
     | '/support'
     | '/watch'
     | '/xtv-series'
+    | '/admin/campaigns'
+    | '/admin/discovery'
+    | '/admin/fraud'
+    | '/admin/moderation'
+    | '/admin/rewards'
+    | '/admin/support'
+    | '/admin/tracker'
+    | '/admin/users'
     | '/admin/xseries'
     | '/admin/xseris'
     | '/chat/$roomId'
@@ -414,6 +510,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof XtvSeriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/campaigns': {
+      id: '/admin/campaigns'
+      path: '/campaigns'
+      fullPath: '/admin/campaigns'
+      preLoaderRoute: typeof AdminCampaignsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/discovery': {
+      id: '/admin/discovery'
+      path: '/discovery'
+      fullPath: '/admin/discovery'
+      preLoaderRoute: typeof AdminDiscoveryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/fraud': {
+      id: '/admin/fraud'
+      path: '/fraud'
+      fullPath: '/admin/fraud'
+      preLoaderRoute: typeof AdminFraudRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/moderation': {
+      id: '/admin/moderation'
+      path: '/moderation'
+      fullPath: '/admin/moderation'
+      preLoaderRoute: typeof AdminModerationRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/rewards': {
+      id: '/admin/rewards'
+      path: '/rewards'
+      fullPath: '/admin/rewards'
+      preLoaderRoute: typeof AdminRewardsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tracker': {
+      id: '/admin/tracker'
+      path: '/tracker'
+      fullPath: '/admin/tracker'
+      preLoaderRoute: typeof AdminTrackerRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/xseries': {
       id: '/admin/xseries'
       path: '/xseries'
@@ -453,11 +605,27 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminCampaignsRoute: typeof AdminCampaignsRoute
+  AdminDiscoveryRoute: typeof AdminDiscoveryRoute
+  AdminFraudRoute: typeof AdminFraudRoute
+  AdminModerationRoute: typeof AdminModerationRoute
+  AdminRewardsRoute: typeof AdminRewardsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
+  AdminTrackerRoute: typeof AdminTrackerRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   AdminXseriesRoute: typeof AdminXseriesRoute
   AdminXserisRoute: typeof AdminXserisRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCampaignsRoute: AdminCampaignsRoute,
+  AdminDiscoveryRoute: AdminDiscoveryRoute,
+  AdminFraudRoute: AdminFraudRoute,
+  AdminModerationRoute: AdminModerationRoute,
+  AdminRewardsRoute: AdminRewardsRoute,
+  AdminSupportRoute: AdminSupportRoute,
+  AdminTrackerRoute: AdminTrackerRoute,
+  AdminUsersRoute: AdminUsersRoute,
   AdminXseriesRoute: AdminXseriesRoute,
   AdminXserisRoute: AdminXserisRoute,
 }

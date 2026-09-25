@@ -1,22 +1,6 @@
 import { createFileRoute, Link, Outlet, useChildMatches } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { adminPostsQuery, adminStatsQuery, updateLocalPostStatus } from "@/lib/api";
-import { AppShell } from "@/components/xora/AppShell";
-import { RowSkeleton } from "@/components/xora/Skeletons";
-import { ProviderDiscoveryPanel } from "@/components/xora/ProviderDiscoveryPanel";
-import { timeAgo } from "@/lib/format";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { AdminLoginGate } from "@/components/admin/AdminLoginGate";
-import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
-import { AdminLiveUsersTracker } from "@/components/admin/AdminLiveUsersTracker";
-import { AdminSupportInbox } from "@/components/admin/AdminSupportInbox";
-import { AdminUsersDirectory } from "@/components/admin/AdminUsersDirectory";
-import { AdminFraudShieldDashboard } from "@/components/admin/AdminFraudShieldDashboard";
-import { AdminRewardsManager } from "@/components/admin/AdminRewardsManager";
-import { AdminCampaignManager } from "@/components/admin/AdminCampaignManager";
-import { AdminNavigationMenu } from "@/components/admin/AdminNavigationMenu";
-import { Button } from "@/components/ui/button";
 import {
   Activity,
   ArrowRight,
@@ -24,19 +8,37 @@ import {
   FileVideo,
   MessageSquareText,
   Radio,
+  ShieldAlert,
   ShieldCheck,
   Users,
+  Wifi,
+  Megaphone,
+  Tv,
+  Compass,
+  ArrowUpRight,
+  Sparkles,
+  Layers,
+  ChevronRight,
+  Zap,
 } from "lucide-react";
+import { adminPostsQuery, adminStatsQuery, updateLocalPostStatus } from "@/lib/api";
+import { timeAgo } from "@/lib/format";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { AppShell } from "@/components/xora/AppShell";
+import { AdminLoginGate } from "@/components/admin/AdminLoginGate";
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
+import { AdminNavigationMenu } from "@/components/admin/AdminNavigationMenu";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin — Xora" },
-      { name: "description", content: "Moderation and platform stats for Xora administrators." },
+      { title: "Admin Executive Dashboard — Xora" },
+      { name: "description", content: "Executive control center and platform stats for Xora administrators." },
       { property: "og:title", content: "Admin — Xora" },
-      { property: "og:description", content: "Xora moderation dashboard." },
+      { property: "og:description", content: "Xora executive moderation dashboard." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -90,7 +92,7 @@ function AdminPage() {
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <p className="text-xs text-muted-foreground font-mono">
+            <p className="text-xs font-mono text-muted-foreground">
               Verifying sovereign administrator authorization...
             </p>
           </div>
@@ -118,174 +120,119 @@ function AdminPage() {
     );
   }
 
+  // If viewing a child route (e.g. /admin/rewards, /admin/xseris), render the outlet
   if (isChildActive) {
     return <Outlet />;
   }
 
   const publishedPosts = posts?.filter((post) => post.status === "published").length ?? 0;
   const reviewPosts = posts?.filter((post) => post.status !== "published").length ?? 0;
-  const latestPost = posts?.[0];
+  const recentPosts = (posts || []).slice(0, 5);
+
+  const MODULE_CARDS = [
+    {
+      title: "Live Viewer Tracker",
+      description: "Real-time 2s heartbeat presence and active viewer session logs.",
+      href: "/admin/tracker",
+      icon: Radio,
+      badge: "Live 2s",
+      badgeColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+      accent: "text-emerald-500",
+      metric: "Active Viewers",
+    },
+    {
+      title: "Automated MTN Rewards",
+      description: "VTUshare wallet automation, ₦280 1GB fulfillment, and claim vending.",
+      href: "/admin/rewards",
+      icon: Wifi,
+      badge: "VTUshare",
+      badgeColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      accent: "text-amber-500",
+      metric: "Data Rewards",
+    },
+    {
+      title: "Fraud Shield & Guard",
+      description: "Bot telemetry, device fingerprint collisions, and 4-tier enforcement.",
+      href: "/admin/fraud",
+      icon: ShieldAlert,
+      badge: "Bot Guard",
+      badgeColor: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+      accent: "text-rose-500",
+      metric: "Security",
+    },
+    {
+      title: "Users Directory",
+      description: "Verified human account sign-ups, lookup profiles, and user telemetry.",
+      href: "/admin/users",
+      icon: Users,
+      badge: `${stats?.users ?? 0} Users`,
+      badgeColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      accent: "text-blue-500",
+      metric: "Accounts",
+    },
+    {
+      title: "Customer Support Inbox",
+      description: "Read community support inquiries, send in-app replies and resolve tickets.",
+      href: "/admin/support",
+      icon: MessageSquareText,
+      badge: "Inbox",
+      badgeColor: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+      accent: "text-indigo-500",
+      metric: "Support",
+    },
+    {
+      title: "Xseris Media Controller",
+      description: "Ingest media links, manage TV series seasons, episodes, and catalog metadata.",
+      href: "/admin/xseris",
+      icon: Tv,
+      badge: "Xseris Hub",
+      badgeColor: "bg-primary/10 text-primary border-primary/20",
+      accent: "text-primary",
+      metric: "Catalog",
+    },
+    {
+      title: "In-House Video Ads",
+      description: "Sponsor campaign video insertion, targeting rules, and click analytics.",
+      href: "/admin/campaigns",
+      icon: Megaphone,
+      badge: "Campaigns",
+      badgeColor: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+      accent: "text-purple-500",
+      metric: "Monetization",
+    },
+    {
+      title: "Provider Discovery Engine",
+      description: "Automated ingestion pipeline for YouTube, Vimeo, FAOTV, and RSS sources.",
+      href: "/admin/discovery",
+      icon: Compass,
+      badge: "Discovery",
+      badgeColor: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+      accent: "text-cyan-500",
+      metric: "Pipeline",
+    },
+    {
+      title: "Content & Moderation",
+      description: "Feed publishing queue, status toggles, and recent video moderation.",
+      href: "/admin/moderation",
+      icon: FileVideo,
+      badge: `${reviewPosts} in queue`,
+      badgeColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      accent: "text-amber-500",
+      metric: "Moderation",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/70 bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1480px] items-center justify-between px-4 py-4 sm:px-8 lg:px-10">
-          <Link to="/" className="press flex items-center gap-3" aria-label="Return to XoraTV">
-            <span className="grid size-9 place-items-center rounded-lg bg-primary font-display text-lg font-bold text-primary-foreground shadow-card">
-              X
-            </span>
-            <span className="leading-none">
-              <span className="block font-display text-[15px] font-semibold">XoraTV</span>
-              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Admin studio
-              </span>
-            </span>
-          </Link>
-
-          <nav
-            aria-label="Admin quick sections"
-            className="hidden items-center gap-5 text-[13px] font-medium text-muted-foreground md:flex"
-          >
-            <Link to="/admin" hash="overview" className="transition-colors hover:text-foreground">
-              Overview
-            </Link>
-            <Link to="/admin" hash="presence" className="transition-colors hover:text-foreground">
-              Live Tracker
-            </Link>
-            <Link
-              to="/admin"
-              hash="data-rewards"
-              className="transition-colors hover:text-foreground"
-            >
-              Data Rewards
-            </Link>
-            <Link
-              to="/admin"
-              hash="fraud-guard"
-              className="transition-colors hover:text-foreground"
-            >
-              Fraud Shield
-            </Link>
-            <Link to="/admin/xseris" className="transition-colors hover:text-foreground">
-              Xseris
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-2.5">
-            <AdminNavigationMenu variant="header" />
-
-            <Link
-              to="/admin/xseris"
-              className="hidden sm:inline-flex h-9 items-center rounded-full bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors shadow-none"
-            >
-              Xseris Studio
-            </Link>
-
-            <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground lg:flex">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> Secure session
-            </span>
-
-            <span className="grid size-9 place-items-center rounded-full bg-secondary text-xs font-bold border border-border/70">
-              XA
-            </span>
-          </div>
-        </div>
-      </header>
+      <AdminHeader
+        title="Executive Overview"
+        currentSectionId="overview"
+        showBackToDashboard={false}
+      />
 
       <main id="main" className="mx-auto max-w-[1480px] px-4 pb-24 pt-5 sm:px-8 lg:px-10">
-        <section
-          id="overview"
-          className="relative overflow-hidden rounded-3xl bg-ink px-5 py-9 text-primary-foreground shadow-lift sm:px-10 sm:py-12 lg:px-12 lg:py-16"
-        >
-          <div className="relative z-10 max-w-3xl">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage">
-              <Radio className="size-3.5" /> Platform operations
-            </div>
-            <h1 className="mt-5 bg-gradient-to-r from-primary via-primary to-sage bg-clip-text font-display text-5xl font-bold leading-[0.92] text-transparent sm:text-6xl lg:text-8xl">
-              Content command center
-            </h1>
-            <p className="mt-6 max-w-xl text-sm leading-relaxed text-primary-foreground/60 sm:text-[15px]">
-              Review platform health, discover new programming, and keep every XoraTV feed ready for
-              viewers.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Button asChild className="h-11 rounded-full px-5 shadow-none">
-                <a href="#discovery">
-                  Open discovery <ArrowRight />
-                </a>
-              </Button>
-              <span className="text-xs text-primary-foreground/45">
-                {latestPost
-                  ? `Latest post ${timeAgo(latestPost.created_at)}`
-                  : "Awaiting first post"}
-              </span>
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-8 grid gap-3 sm:grid-cols-2 lg:absolute lg:right-10 lg:top-12 lg:mt-0 lg:w-60 lg:grid-cols-1">
-            <div className="rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 px-5 py-4 backdrop-blur-sm">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/45">
-                Published
-              </span>
-              <span className="mt-1 block font-display text-2xl font-semibold">
-                {publishedPosts}
-              </span>
-              <span className="text-xs text-sage">Ready across all feeds</span>
-            </div>
-            <div className="rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 px-5 py-4 backdrop-blur-sm">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/45">
-                Needs attention
-              </span>
-              <span className="mt-1 block font-display text-2xl font-semibold">{reviewPosts}</span>
-              <span className="text-xs text-primary-foreground/45">Items outside live status</span>
-            </div>
-          </div>
-        </section>
-
-        <section
-          aria-label="Platform totals"
-          className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4"
-        >
-          {[
-            {
-              label: "Registered Users",
-              value: stats?.users ?? 0,
-              detail: "Active accounts on XoraTV",
-              icon: Users,
-            },
-            {
-              label: "Content",
-              value: stats?.posts ?? 0,
-              detail: "Posts in library",
-              icon: FileVideo,
-            },
-            {
-              label: "Conversations",
-              value: stats?.comments ?? 0,
-              detail: "Community comments",
-              icon: MessageSquareText,
-            },
-            {
-              label: "Review queue",
-              value: stats?.flagged ?? 0,
-              detail: "Not currently live",
-              icon: Activity,
-            },
-          ].map(({ label, value, detail, icon: Icon }) => (
-            <article key={label} className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-xs font-medium text-muted-foreground">{label}</span>
-                <Icon className="size-4 text-primary" aria-hidden="true" />
-              </div>
-              <strong className="mt-2 block font-display text-3xl font-semibold tabular-nums">
-                {value}
-              </strong>
-              <span className="mt-1 block text-[11px] text-muted-foreground">{detail}</span>
-            </article>
-          ))}
-        </section>
-
-        <div className="mt-6">
+        {/* Security bar */}
+        <div className="mb-6">
           <AdminSecurityBar
             sessionInfo={sessionInfo}
             onLogout={logout}
@@ -293,96 +240,219 @@ function AdminPage() {
           />
         </div>
 
-        <div className="mt-8 space-y-8">
-          <AdminLiveUsersTracker />
-          <AdminUsersDirectory />
-          <AdminSupportInbox />
-          <AdminFraudShieldDashboard />
-          <AdminRewardsManager />
-          <AdminCampaignManager />
-        </div>
-
-        <Link
-          to="/admin/xseris"
-          className="group mt-5 block rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-card transition duration-200 hover:border-primary/40 hover:bg-primary/10 sm:p-5"
-          aria-label="Open Xseris source and catalog controller"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-card transition-transform group-hover:scale-105">
-                <Radio className="size-5" />
-              </span>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  Xseris
-                </p>
-                <h2 className="mt-1 font-display text-lg font-semibold group-hover:text-primary">
-                  Source & catalog controller
-                </h2>
-                <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
-                  Process source links, review metadata, manage categories, and publish approved
-                  titles.
-                </p>
+        {/* Executive Hero Banner */}
+        <section className="relative overflow-hidden rounded-3xl bg-ink px-6 py-8 text-primary-foreground shadow-lift sm:px-10 sm:py-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage">
+                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                Sovereign Operations Console
               </div>
+              <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Executive Command Dashboard
+              </h1>
+              <p className="mt-2 text-xs text-primary-foreground/70 sm:text-sm leading-relaxed">
+                Central management portal for XoraTV platform telemetry, monetization, community, and content operations.
+              </p>
             </div>
-            <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-card transition group-hover:bg-primary/90 sm:w-auto">
-              Open Xseris{" "}
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </div>
-        </Link>
 
-        <section id="discovery" className="scroll-mt-6">
-          <ProviderDiscoveryPanel />
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild variant="secondary" className="rounded-full text-xs font-semibold h-9 px-4">
+                <Link to="/admin/rewards">
+                  <Wifi className="size-3.5 mr-1.5 text-amber-500" /> MTN Rewards
+                </Link>
+              </Button>
+              <Button asChild className="rounded-full text-xs font-semibold h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Link to="/admin/xseris">
+                  <Tv className="size-3.5 mr-1.5" /> Xseris Controller
+                </Link>
+              </Button>
+            </div>
+          </div>
         </section>
 
-        <section id="content" className="mt-10 scroll-mt-6">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                Moderation
-              </p>
-              <h2 className="mt-1 font-display text-xl font-semibold">Recent content</h2>
+        {/* Executive KPI Summary */}
+        <section
+          aria-label="Platform Executive Totals"
+          className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4"
+        >
+          <Link
+            to="/admin/users"
+            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">Registered Users</span>
+              <Users className="size-4 text-primary group-hover:scale-110 transition-transform" />
             </div>
-            <span className="text-xs text-muted-foreground">{posts?.length ?? 0} items</span>
+            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
+              {stats?.users ?? 0}
+            </strong>
+            <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
+              Manage accounts <ArrowRight className="size-3 ml-1" />
+            </span>
+          </Link>
+
+          <Link
+            to="/admin/moderation"
+            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">Published Media</span>
+              <FileVideo className="size-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
+              {publishedPosts}
+            </strong>
+            <span className="mt-1 flex items-center text-[11px] text-emerald-600 dark:text-emerald-400">
+              Live in feeds · {reviewPosts} queued
+            </span>
+          </Link>
+
+          <Link
+            to="/admin/tracker"
+            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">Active Heartbeats</span>
+              <Radio className="size-4 text-success animate-pulse" />
+            </div>
+            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
+              Live Presence
+            </strong>
+            <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
+              Real-time monitor <ArrowRight className="size-3 ml-1" />
+            </span>
+          </Link>
+
+          <Link
+            to="/admin/rewards"
+            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">MTN Rewards Engine</span>
+              <Wifi className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
+              VTUshare
+            </strong>
+            <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
+              1GB ₦280 automation <ArrowRight className="size-3 ml-1" />
+            </span>
+          </Link>
+        </section>
+
+        {/* Dedicated Admin Modules Grid */}
+        <section className="mt-8 space-y-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                Management Consoles
+              </p>
+              <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                Dedicated Control Hubs
+              </h2>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {MODULE_CARDS.length} standalone modules
+            </span>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-            {isPending ? (
-              <div className="space-y-2 p-4">
-                <RowSkeleton key="admin-skeleton-one" />
-                <RowSkeleton key="admin-skeleton-two" />
-              </div>
-            ) : posts?.length ? (
-              <div className="divide-y divide-border">
-                {posts.map((post, index) => (
-                  <article
-                    key={post.id || `admin-post-${index}`}
-                    className="flex flex-col gap-3 p-4 transition-colors hover:bg-secondary/45 sm:flex-row sm:items-center"
-                  >
-                    <span
-                      className={`size-2 shrink-0 rounded-full ${post.status === "published" ? "bg-success" : "bg-primary"}`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {post.title || post.caption || "Untitled"}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        @{post.author?.username} · {post.feed} · {post.status} ·{" "}
-                        {timeAgo(post.created_at)}
-                      </p>
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+            {MODULE_CARDS.map((module) => {
+              const Icon = module.icon;
+              return (
+                <Link
+                  key={module.href}
+                  to={module.href}
+                  className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lift"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`grid size-10 place-items-center rounded-xl border border-border/70 bg-surface shadow-sm transition-transform group-hover:scale-105 ${module.accent}`}
+                      >
+                        <Icon className="size-5" />
+                      </span>
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${module.badgeColor}`}
+                      >
+                        {module.badge}
+                      </span>
                     </div>
+
+                    <h3 className="mt-4 font-display text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                      {module.title}
+                    </h3>
+                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                      {module.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-3 text-xs font-semibold text-primary">
+                    <span>Open Console</span>
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Recent Moderation Quick Snapshot */}
+        <section className="mt-10 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                Activity Stream
+              </p>
+              <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+                Recent Media Uploads
+              </h2>
+            </div>
+            <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold h-8">
+              <Link to="/admin/moderation">
+                View All Queue <ArrowRight className="size-3 ml-1" />
+              </Link>
+            </Button>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+            {isPending ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">Loading recent media...</div>
+            ) : recentPosts.length ? (
+              <div className="divide-y divide-border">
+                {recentPosts.map((post, idx) => (
+                  <article
+                    key={post.id || `recent-post-${idx}`}
+                    className="flex flex-col gap-3 p-4 transition-colors hover:bg-secondary/40 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`size-2 shrink-0 rounded-full ${
+                          post.status === "published" ? "bg-emerald-500" : "bg-amber-500"
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-foreground">
+                          {post.title || post.caption || "Untitled Content"}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          @{post.author?.username || "creator"} · {timeAgo(post.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <Button asChild variant="secondary" size="sm" className="rounded-full">
+                      <Button asChild variant="secondary" size="sm" className="h-7 text-[11px] rounded-full px-2.5">
                         <Link to="/video/$postId" params={{ postId: post.id }}>
-                          <Eye /> View
+                          <Eye className="size-3 mr-1" /> Preview
                         </Link>
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="rounded-full"
+                        className="h-7 text-[11px] rounded-full px-2.5"
                         disabled={setStatus.isPending}
                         onClick={() =>
                           setStatus.mutate({
@@ -391,27 +461,24 @@ function AdminPage() {
                           })
                         }
                       >
-                        {post.status === "published" ? "Remove" : "Restore"}
+                        {post.status === "published" ? "Remove" : "Publish"}
                       </Button>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <div className="px-6 py-14 text-center">
-                <ShieldCheck className="mx-auto size-7 text-sage" />
-                <p className="mt-3 text-sm font-semibold">The content queue is clear</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  New posts will appear here for review.
-                </p>
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                <ShieldCheck className="mx-auto size-6 text-primary mb-2" />
+                No pending media items in moderation queue.
               </div>
             )}
           </div>
         </section>
       </main>
 
-      {/* Quick Navigation Floating Menu Launcher */}
-      <AdminNavigationMenu variant="floating" />
+      {/* Floating Menu Launcher */}
+      <AdminNavigationMenu activeSectionId="overview" variant="floating" />
     </div>
   );
 }
