@@ -28,6 +28,9 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
 // Track latest observed VTUshare wallet balance in memory (and RTDB)
 let latestWalletBalance: number | null = null;
 
+// In-memory stored credentials (populated from env, local file, or RTDB)
+let inMemoryCredentials: { email: string; password: string; username: string } | null = null;
+
 /**
  * Standard default fallback MTN plans (calibrated directly to live active VTUshare records)
  */
@@ -126,7 +129,91 @@ export const DEFAULT_REWARD_CONFIG: RewardConfig = {
 };
 
 /**
- * Retrieve server-side VTUshare credentials from server environment
+ * Load credentials from RTDB if present
+ */
+export async function loadCredentialsFromRtdb(): Promise<{
+  email: string;
+  password: string;
+  username: string;
+  isConfigured: boolean;
+}> {
+  try {
+    const creds = (await queryRtdb("rewardConfig/credentials")) as {
+      email?: string;
+      password?: string;
+      username?: string;
+    } | null;
+
+    if (creds?.email && creds?.password) {
+      inMemoryCredentials = {
+        email: creds.email.trim(),
+        password: creds.password.trim(),
+        username: (creds.username || "zachariah").trim(),
+      };
+      return {
+        ...inMemoryCredentials,
+        isConfigured: true,
+      };
+    }
+  } catch (err) {
+    console.warn("[VTUshare Service] Error loading credentials from RTDB:", err);
+  }
+
+  return getVtushareCredentials();
+}
+
+/**
+ * Save credentials to RTDB
+ */
+export async function saveCredentialsToRtdb(creds: {
+  email: string;
+  password: string;
+  username?: string;
+}): Promise<boolean> {
+  try {
+    const email = creds.email.trim();
+    const password = creds.password.trim();
+    const username = (creds.username || "zachariah").trim();
+
+    inMemoryCredentials = { email, password, username };
+    cachedToken = null; // reset cached auth token
+
+    await queryRtdb("rewardConfig/credentials", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        username,
+        updatedAt: new Date().toISOString(),
+      }),
+    });
+
+    return true;
+  } catch (err) {
+    console.warn("[VTUshare Service] Error saving credentials to RTDB:", err);
+    return false;
+  }
+}
+
+/**
+ * Ensure credentials are loaded (sync fallback + async RTDB hydration)
+ */
+export async function ensureVtushareCredentials(): Promise<{
+  email: string;
+  password: string;
+  username: string;
+  isConfigured: boolean;
+}> {
+  const sync = getVtushareCredentials();
+  if (sync.isConfigured) {
+    return sync;
+  }
+  return await loadCredentialsFromRtdb();
+}
+
+/**
+ * Retrieve server-side VTUshare credentials from memory, env, or local file
  */
 export function getVtushareCredentials(): {
   email: string;
@@ -137,6 +224,11 @@ export function getVtushareCredentials(): {
   let email = (process.env.VTUSHARE_EMAIL || "").trim();
   let password = (process.env.VTUSHARE_PASSWORD || "").trim();
   let username = (process.env.VTUSHARE_USERNAME || "").trim();
+
+  // Check in-memory store (from RTDB or admin session)
+  if (!email && inMemoryCredentials?.email) email = inMemoryCredentials.email;
+  if (!password && inMemoryCredentials?.password) password = inMemoryCredentials.password;
+  if (!username && inMemoryCredentials?.username) username = inMemoryCredentials.username;
 
   // Also check dev json file if available
   if (!email || !password || !username) {
@@ -191,7 +283,7 @@ export async function getVtushareAuthToken(): Promise<{
   token?: string;
   error?: string;
 }> {
-  const { email, password, isConfigured } = getVtushareCredentials();
+  const { email, password, isConfigured } = await ensureVtushareCredentials();
   if (!isConfigured) {
     return {
       ok: false,
@@ -249,8 +341,8 @@ export async function fetchLiveVtushareBalance(): Promise<{
   balance: number | null;
   error?: string;
 }> {
-  const { email, password, username } = getVtushareCredentials();
-  if (!password) {
+  const { email, password, username, isConfigured } = await ensureVtushareCredentials();
+  if (!password || !isConfigured) {
     return { ok: false, balance: null, error: "Credentials not configured" };
   }
 
@@ -349,7 +441,7 @@ export async function refreshVtusharePlans(): Promise<{
   error?: string;
   source: "live" | "cached" | "fallback";
 }> {
-  const { email, password, username, isConfigured } = getVtushareCredentials();
+  const { email, password, username, isConfigured } = await ensureVtushareCredentials();
 
   // Primary Method: Official POST /api/v1/getPlans API
   if (isConfigured) {
@@ -619,7 +711,7 @@ export async function executeVtushareDataPurchase(params: {
 }> {
   const { phone, bundle, type, network = "2", forcePorted, allowFailover = false } = params;
   const normPhone = normalizeNigerianPhone(phone);
-  const { email, password, username, isConfigured } = getVtushareCredentials();
+  const { email, password, username, isConfigured } = await ensureVtushareCredentials();
 
   let cleanBundle = String(bundle || "990");
   let cleanType = String(type || "25");

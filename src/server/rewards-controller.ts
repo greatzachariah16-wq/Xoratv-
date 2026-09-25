@@ -7,6 +7,9 @@ import {
   getStoredRewardConfig,
   getUserRewardTransactions,
   getVtushareCredentials,
+  ensureVtushareCredentials,
+  loadCredentialsFromRtdb,
+  saveCredentialsToRtdb,
   maskPhone,
   normalizeNigerianPhone,
   processVtushareWebhook,
@@ -446,7 +449,7 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
     if (pathname === "/api/admin/rewards/overview" && request.method === "GET") {
       try {
         let config = await getStoredRewardConfig();
-        const credentials = getVtushareCredentials();
+        const credentials = await ensureVtushareCredentials();
         const transactions = await getAllRewardTransactions(100);
 
         // If balance has never been fetched, fetch live balance
@@ -497,6 +500,41 @@ export async function handleRewardsRoute(request: Request, url: URL): Promise<Re
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Admin rewards overview error";
+        return jsonReply({ ok: false, error: msg }, 500);
+      }
+    }
+
+    // POST /api/admin/rewards/credentials
+    if (pathname === "/api/admin/rewards/credentials" && request.method === "POST") {
+      try {
+        const body = (await request.json().catch(() => null)) as {
+          email?: string;
+          password?: string;
+          username?: string;
+        } | null;
+
+        if (!body?.email || !body?.password) {
+          return jsonReply({ ok: false, error: "VTUshare email and password are required." }, 400);
+        }
+
+        await saveCredentialsToRtdb({
+          email: body.email,
+          password: body.password,
+          username: body.username || "zachariah",
+        });
+
+        // Test connection & fetch live balance + catalog
+        const balRes = await fetchLiveVtushareBalance();
+        const plansRes = await refreshVtusharePlans();
+
+        return jsonReply({
+          ok: true,
+          message: "VTUshare credentials verified and securely saved.",
+          balance: balRes.balance,
+          plansCount: plansRes.plans?.length || 0,
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Credential save error";
         return jsonReply({ ok: false, error: msg }, 500);
       }
     }

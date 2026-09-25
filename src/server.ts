@@ -9,6 +9,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleRewardsRoute } from "./server/rewards-controller";
+import { loadCredentialsFromRtdb } from "./server/vtushare-service";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
@@ -20,6 +21,9 @@ import { executeVimeoApiSearch } from "./integrations/providers/vimeo";
 import { xseriesDbRead } from "./server/xseries-service-account";
 import type { XserisMediaItem } from "./lib/xseris/types";
 import type { XTvSeriesItem } from "./integrations/firebase/rtdb";
+
+// Warm up VTUshare credentials from RTDB on startup
+void loadCredentialsFromRtdb().catch(() => {});
 
 // Initialize discovery background scheduler on server startup
 try {
