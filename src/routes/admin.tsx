@@ -15,6 +15,7 @@ import { AdminUsersDirectory } from "@/components/admin/AdminUsersDirectory";
 import { AdminFraudShieldDashboard } from "@/components/admin/AdminFraudShieldDashboard";
 import { AdminRewardsManager } from "@/components/admin/AdminRewardsManager";
 import { AdminCampaignManager } from "@/components/admin/AdminCampaignManager";
+import { AdminNavigationMenu } from "@/components/admin/AdminNavigationMenu";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
@@ -142,27 +143,14 @@ function AdminPage() {
           </Link>
 
           <nav
-            aria-label="Admin sections"
-            className="hidden items-center gap-6 text-[13px] font-medium text-muted-foreground md:flex"
+            aria-label="Admin quick sections"
+            className="hidden items-center gap-5 text-[13px] font-medium text-muted-foreground md:flex"
           >
-            <Link to="/admin" hash="overview" className="text-foreground">
+            <Link to="/admin" hash="overview" className="transition-colors hover:text-foreground">
               Overview
             </Link>
             <Link to="/admin" hash="presence" className="transition-colors hover:text-foreground">
               Live Tracker
-            </Link>
-            <Link to="/admin" hash="users" className="transition-colors hover:text-foreground">
-              Users
-            </Link>
-            <Link to="/admin" hash="support" className="transition-colors hover:text-foreground">
-              Support
-            </Link>
-            <Link
-              to="/admin"
-              hash="fraud-guard"
-              className="transition-colors hover:text-foreground"
-            >
-              Fraud Shield
             </Link>
             <Link
               to="/admin"
@@ -171,38 +159,40 @@ function AdminPage() {
             >
               Data Rewards
             </Link>
-            <Link to="/admin" hash="campaigns" className="transition-colors hover:text-foreground">
-              In-House Ads
-            </Link>
-            <Link to="/admin" hash="discovery" className="transition-colors hover:text-foreground">
-              Discovery
-            </Link>
-            <Link to="/admin" hash="content" className="transition-colors hover:text-foreground">
-              Content
+            <Link
+              to="/admin"
+              hash="fraud-guard"
+              className="transition-colors hover:text-foreground"
+            >
+              Fraud Shield
             </Link>
             <Link to="/admin/xseris" className="transition-colors hover:text-foreground">
               Xseris
             </Link>
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <AdminNavigationMenu variant="header" />
+
             <Link
               to="/admin/xseris"
-              className="inline-flex h-9 items-center rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-card md:hidden"
+              className="hidden sm:inline-flex h-9 items-center rounded-full bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors shadow-none"
             >
-              Xseris
+              Xseris Studio
             </Link>
-            <span className="hidden items-center gap-2 text-xs font-medium text-muted-foreground sm:flex">
-              <span className="size-2 rounded-full bg-success" /> Secure session
+
+            <span className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground lg:flex">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> Secure session
             </span>
-            <span className="grid size-9 place-items-center rounded-full bg-secondary text-xs font-bold">
+
+            <span className="grid size-9 place-items-center rounded-full bg-secondary text-xs font-bold border border-border/70">
               XA
             </span>
           </div>
         </div>
       </header>
 
-      <main id="main" className="mx-auto max-w-[1480px] px-4 pb-16 pt-5 sm:px-8 lg:px-10">
+      <main id="main" className="mx-auto max-w-[1480px] px-4 pb-24 pt-5 sm:px-8 lg:px-10">
         <section
           id="overview"
           className="relative overflow-hidden rounded-3xl bg-ink px-5 py-9 text-primary-foreground shadow-lift sm:px-10 sm:py-12 lg:px-12 lg:py-16"
@@ -419,6 +409,9 @@ function AdminPage() {
           </div>
         </section>
       </main>
+
+      {/* Quick Navigation Floating Menu Launcher */}
+      <AdminNavigationMenu variant="floating" />
     </div>
   );
 }
