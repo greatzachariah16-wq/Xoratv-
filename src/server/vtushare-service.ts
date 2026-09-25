@@ -140,18 +140,38 @@ export function getVtushareCredentials(): {
 
   // Also check dev json file if available
   if (!email || !password || !username) {
-    try {
-      const devEnvPath = "/app/.dev.env.json";
-      if (fs.existsSync(devEnvPath)) {
-        const devEnv = JSON.parse(fs.readFileSync(devEnvPath, "utf-8"));
-        if (!email && devEnv.VTUSHARE_EMAIL) email = String(devEnv.VTUSHARE_EMAIL).trim();
-        if (!password && devEnv.VTUSHARE_PASSWORD)
-          password = String(devEnv.VTUSHARE_PASSWORD).trim();
-        if (!username && devEnv.VTUSHARE_USERNAME)
-          username = String(devEnv.VTUSHARE_USERNAME).trim();
+    const candidatePaths = [
+      "/app/.dev.env.json",
+      "/.dev.env.json",
+      `${process.cwd()}/.dev.env.json`,
+      `${process.cwd()}/.env`,
+    ];
+    for (const devPath of candidatePaths) {
+      try {
+        if (fs.existsSync(devPath)) {
+          if (devPath.endsWith(".json")) {
+            const devEnv = JSON.parse(fs.readFileSync(devPath, "utf-8"));
+            if (!email && devEnv.VTUSHARE_EMAIL) email = String(devEnv.VTUSHARE_EMAIL).trim();
+            if (!password && devEnv.VTUSHARE_PASSWORD)
+              password = String(devEnv.VTUSHARE_PASSWORD).trim();
+            if (!username && devEnv.VTUSHARE_USERNAME)
+              username = String(devEnv.VTUSHARE_USERNAME).trim();
+          } else if (devPath.endsWith(".env")) {
+            const envContent = fs.readFileSync(devPath, "utf-8");
+            for (const line of envContent.split("\n")) {
+              const [k, ...rest] = line.split("=");
+              if (!k || k.startsWith("#")) continue;
+              const val = rest.join("=").trim().replace(/^["']|["']$/g, "");
+              if (!email && k.trim() === "VTUSHARE_EMAIL") email = val;
+              if (!password && k.trim() === "VTUSHARE_PASSWORD") password = val;
+              if (!username && k.trim() === "VTUSHARE_USERNAME") username = val;
+            }
+          }
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+      if (email && password) break;
     }
   }
 

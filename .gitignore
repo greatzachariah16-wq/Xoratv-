@@ -22,6 +22,8 @@ media/
 # Environment Variables & Secrets
 .env
 *.env
+.env.local
+.dev.env.json
 !.env.example
 
 # Binaries & Large Tools
