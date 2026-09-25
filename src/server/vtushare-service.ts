@@ -126,7 +126,7 @@ export const DEFAULT_REWARD_CONFIG: RewardConfig = {
 };
 
 /**
- * Retrieve server-side VTUshare credentials
+ * Retrieve server-side VTUshare credentials from server environment
  */
 export function getVtushareCredentials(): {
   email: string;
@@ -154,11 +154,6 @@ export function getVtushareCredentials(): {
       // ignore
     }
   }
-
-  // Known fallback configured for this project
-  if (!email) email = "ericgreat668@gmail.com";
-  if (!password) password = "Princess@081";
-  if (!username) username = "zachariah";
 
   return {
     email,
@@ -637,7 +632,85 @@ export async function executeVtushareDataPurchase(params: {
     };
   }
 
-  // Web Session Portal Dispatch with Robust Cookie Jar
+  // Primary Path: Official API v1 Endpoint (POST /api/v1/buydata)
+  const basicToken = Buffer.from(`${email}:${password}`).toString("base64");
+  const requestId = `xora_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  const initialPorted = typeof forcePorted === "boolean" ? forcePorted : false;
+
+  try {
+    console.log(
+      `[VTUshare Vending API] Dispatching purchase for ${normPhone} via official API | Bundle: ${cleanBundle} | Type: ${cleanType} | Ported: ${initialPorted}`,
+    );
+
+    const apiRes = await fetch("https://vtushare.com.ng/api/v1/buydata", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      },
+      body: JSON.stringify({
+        network: cleanNetwork,
+        phone: normPhone,
+        phone_number: normPhone,
+        bundle: isNaN(Number(cleanBundle)) ? cleanBundle : Number(cleanBundle),
+        type: isNaN(Number(cleanType)) ? cleanType : Number(cleanType),
+        Ported_number: initialPorted,
+        request_id: requestId,
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+
+    const apiData = (await apiRes.json().catch(() => null)) as Record<string, unknown> | null;
+
+    if (apiRes.ok && apiData) {
+      const rawStatus = String(apiData.status || apiData.Status || "").toLowerCase();
+      const ref = String(apiData.ref || apiData.reference || apiData.id || requestId);
+      const msg = String(apiData.message || apiData.Msg || apiData.msg || "");
+      const charged =
+        Number(apiData.charged_amount || apiData.amount || apiData.paid_amount || 0) || undefined;
+      const balAfter = Number(apiData.balance_after);
+
+      if (!isNaN(balAfter)) {
+        latestWalletBalance = balAfter;
+        void updateStoredRewardConfig({ cachedBalance: balAfter }).catch(() => {});
+      }
+
+      if (
+        rawStatus === "success" ||
+        rawStatus === "successful" ||
+        apiData.status === true ||
+        (apiData.ref && rawStatus !== "failed" && rawStatus !== "error")
+      ) {
+        return {
+          ok: true,
+          status: "success",
+          ref,
+          message: msg || "Data reward successfully delivered to MTN line.",
+          chargedAmount: charged,
+          balanceAfter: isNaN(balAfter) ? undefined : balAfter,
+          raw: apiData,
+        };
+      }
+
+      if (rawStatus === "pending" || rawStatus === "processing") {
+        return {
+          ok: true,
+          status: "pending",
+          ref,
+          message: msg || "Data delivery request submitted to telco gateway.",
+          chargedAmount: charged,
+          balanceAfter: isNaN(balAfter) ? undefined : balAfter,
+          raw: apiData,
+        };
+      }
+    }
+  } catch (apiErr) {
+    console.warn("[VTUshare Vending API] Primary API call failed, falling back to web portal session:", apiErr);
+  }
+
+  // Fallback Path: Web Session Portal Dispatch (Handles cases where API v1 has gateway modems routing via portal)
   try {
     const cookieJar = new Map<string, string>();
 
