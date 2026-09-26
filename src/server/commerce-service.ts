@@ -260,14 +260,15 @@ export async function recordCommission(params: {
 }
 
 export async function getAdminCommerceOverview() {
-  const [creators, courses, dataOrders, commissions, payouts] = await Promise.all([
-    queryRtdb("commerce/creators"), queryRtdb("commerce/courses"), queryRtdb("commerce/dataOrders"),
+  const [creators, courses, dataOrders, courseOrders, commissions, payouts] = await Promise.all([
+    queryRtdb("commerce/creators"), queryRtdb("commerce/courses"), queryRtdb("commerce/dataOrders"), queryRtdb("commerce/courseOrders"),
     queryRtdb("commerce/commissions"), queryRtdb("commerce/payoutDetails"),
   ]);
   return {
     creators: Object.values((creators || {}) as Record<string, unknown>),
     courses: Object.values((courses || {}) as Record<string, unknown>),
     dataOrders: Object.values((dataOrders || {}) as Record<string, unknown>),
+    courseOrders: Object.values((courseOrders || {}) as Record<string, unknown>),
     commissions: Object.values((commissions || {}) as Record<string, unknown>),
     payoutDetails: Object.values((payouts || {}) as Record<string, unknown>),
   };
