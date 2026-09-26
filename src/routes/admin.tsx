@@ -1,155 +1,4 @@
-import { createFileRoute, Link, Outlet, useChildMatches } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import {
-  Activity,
-  ArrowRight,
-  Eye,
-  FileVideo,
-  MessageSquareText,
-  Radio,
-  ShieldAlert,
-  ShieldCheck,
-  Users,
-  Wifi,
-  Megaphone,
-  Tv,
-  Compass,
-  ArrowUpRight,
-  Sparkles,
-  Layers,
-  ChevronRight,
-  Zap,
-} from "lucide-react";
-import { adminPostsQuery, adminStatsQuery, updateLocalPostStatus } from "@/lib/api";
-import { timeAgo } from "@/lib/format";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { AppShell } from "@/components/xora/AppShell";
-import { AdminLoginGate } from "@/components/admin/AdminLoginGate";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
-import { AdminNavigationMenu } from "@/components/admin/AdminNavigationMenu";
-import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/admin")({
-  head: () => ({
-    meta: [
-      { title: "Admin Executive Dashboard — Xora" },
-      { name: "description", content: "Executive control center and platform stats for Xora administrators." },
-      { property: "og:title", content: "Admin — Xora" },
-      { property: "og:description", content: "Xora executive moderation dashboard." },
-      { property: "og:type", content: "website" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: AdminPage,
-});
-
-function AdminPage() {
-  const {
-    isAuthenticated: isAdmin,
-    checkingSession,
-    sessionInfo,
-    loginStep,
-    setLoginStep,
-    isSubmitting,
-    errorMessage,
-    remainingAttempts,
-    isLocked,
-    retryAfter,
-    verifyPhrases,
-    verifyMfa,
-    resetLockout,
-    logout,
-    refreshSession,
-  } = useAdminAuth();
-
-  const childMatches = useChildMatches();
-  const isChildActive = childMatches.length > 0;
-
-  const queryClient = useQueryClient();
-  const { data: stats } = useQuery({ ...adminStatsQuery(), enabled: isAdmin && !isChildActive });
-  const { data: posts, isPending } = useQuery({
-    ...adminPostsQuery(),
-    enabled: isAdmin && !isChildActive,
-  });
-
-  const setStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "published" | "removed" }) => {
-      updateLocalPostStatus(id, status);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
-      toast.success("Post updated");
-    },
-    onError: () => toast.error("Couldn't update that post"),
-  });
-
-  if (checkingSession) {
-    return (
-      <AppShell wide>
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <p className="text-xs font-mono text-muted-foreground">
-              Verifying sovereign administrator authorization...
-            </p>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <AppShell wide>
-        <AdminLoginGate
-          loginStep={loginStep}
-          isSubmitting={isSubmitting}
-          errorMessage={errorMessage}
-          remainingAttempts={remainingAttempts}
-          isLocked={isLocked}
-          retryAfter={retryAfter}
-          onVerifyPhrases={verifyPhrases}
-          onVerifyMfa={verifyMfa}
-          onResetLockout={resetLockout}
-          onBackToPhrases={() => setLoginStep("phrases")}
-        />
-      </AppShell>
-    );
-  }
-
-  // If viewing a child route (e.g. /admin/rewards, /admin/xseris), render the outlet
-  if (isChildActive) {
-    return <Outlet />;
-  }
-
-  const publishedPosts = posts?.filter((post) => post.status === "published").length ?? 0;
-  const reviewPosts = posts?.filter((post) => post.status !== "published").length ?? 0;
-  const recentPosts = (posts || []).slice(0, 5);
-
-  const MODULE_CARDS = [
-    {
-      title: "Live Viewer Tracker",
-      description: "Real-time 2s heartbeat presence and active viewer session logs.",
-      href: "/admin/tracker",
-      icon: Radio,
-      badge: "Live 2s",
-      badgeColor: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      accent: "text-emerald-500",
-      metric: "Active Viewers",
-    },
-    {
-      title: "Automated MTN Rewards",
-      description: "VTUshare wallet automation, ₦280 1GB fulfillment, and claim vending.",
-      href: "/admin/rewards",
-      icon: Wifi,
-      badge: "VTUshare",
-      badgeColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-      accent: "text-amber-500",
-      metric: "Data Rewards",
-    },
     {
       title: "Fraud Shield & Guard",
       description: "Bot telemetry, device fingerprint collisions, and 4-tier enforcement.",
@@ -258,9 +107,7 @@ function AdminPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button asChild variant="secondary" className="rounded-full text-xs font-semibold h-9 px-4">
-                <Link to="/admin/rewards">
-                  <Wifi className="size-3.5 mr-1.5 text-amber-500" /> MTN Rewards
-                </Link>
+                
               </Button>
               <Button asChild className="rounded-full text-xs font-semibold h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
                 <Link to="/admin/xseris">
@@ -324,12 +171,7 @@ function AdminPage() {
             </span>
           </Link>
 
-          <Link
-            to="/admin/rewards"
-            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
-          >
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span className="font-medium">MTN Rewards Engine</span>
+          
               <Wifi className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
             </div>
             <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
