@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   CircleHelp,
-  Gift,
   GraduationCap,
   Home,
   Plus,
@@ -15,6 +14,8 @@ import {
   Tv,
   User,
   MessageCircle,
+  Smartphone,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -29,8 +30,9 @@ const NAV = [
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
+  { to: "/data", label: "Buy Data", icon: Smartphone },
+  { to: "/creator-studio", label: "Creator Studio", icon: Sparkles },
   { to: "/chat", label: "Chat", icon: MessageCircle },
-  { to: "/rewards", label: "Rewards", icon: Gift },
   { to: "/notifications", label: "Alerts", icon: Bell },
 ] as const;
 
