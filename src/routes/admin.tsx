@@ -120,7 +120,7 @@ function AdminPage() {
     );
   }
 
-  // If viewing a child route (e.g. /admin/rewards, /admin/xseris), render the outlet
+  // If viewing a child route, render the outlet
   if (isChildActive) {
     return <Outlet />;
   }
@@ -319,22 +319,6 @@ function AdminPage() {
             </strong>
             <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
               Real-time monitor <ArrowRight className="size-3 ml-1" />
-            </span>
-          </Link>
-
-          <Link
-            to="/admin/rewards"
-            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
-          >
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span className="font-medium">MTN Rewards Engine</span>
-              <Wifi className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
-              VTUshare
-            </strong>
-            <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
-              1GB ₦280 automation <ArrowRight className="size-3 ml-1" />
             </span>
           </Link>
         </section>
