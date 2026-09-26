@@ -59,6 +59,24 @@ async function meleFetch(path: string, init?: RequestInit) {
   });
 }
 
+function extractMelePlans(body: any): unknown[] {
+  if (Array.isArray(body?.plans)) return body.plans;
+  if (Array.isArray(body?.data)) return body.data;
+  return [];
+}
+
+function normalizeMelePlan(p: any): MelePlan {
+  return {
+    plan_id: Number(p.plan_id ?? p.planId ?? p.id),
+    plan_code: String(p.plan_code ?? p.planCode ?? p.code ?? ""),
+    network: String(p.network ?? p.network_name ?? p.networkName ?? "").toUpperCase() as MelePlan["network"],
+    plan_name: String(p.plan_name ?? p.planName ?? p.name ?? ""),
+    data_size: String(p.data_size ?? p.dataSize ?? p.size ?? ""),
+    validity: String(p.validity ?? p.duration ?? ""),
+    price: Number(p.price ?? p.amount ?? p.api_price ?? 0),
+  };
+}
+
 export async function getMelePlans(force = false): Promise<MelePlan[]> {
   if (!force) {
     const cached = (await queryRtdb("commerce/dataPlans")) as MelePlan[] | Record<string, MelePlan> | null;
@@ -68,16 +86,14 @@ export async function getMelePlans(force = false): Promise<MelePlan[]> {
     }
   }
   const res = await meleFetch("/data/plans");
-  const body = (await res.json().catch(() => null)) as { plans?: MelePlan[] } | null;
-  if (!res.ok || !Array.isArray(body?.plans)) {
-    throw new Error((body as { message?: string } | null)?.message || "Unable to load MELE DATA plans.");
+  const body = await res.json().catch(() => null);
+  const rawPlans = extractMelePlans(body);
+  if (!res.ok || !rawPlans.length) {
+    throw new Error(body?.message || "Unable to load MELE DATA plans.");
   }
-  const plans = body.plans.map((p) => ({
-    ...p,
-    plan_id: Number(p.plan_id),
-    network: String(p.network || "").toUpperCase(),
-    price: Number(p.price) || 0,
-  })) as MelePlan[];
+  const plans = rawPlans
+    .map(normalizeMelePlan)
+    .filter((p) => Number.isFinite(p.plan_id) && Boolean(p.network));
   // The live MELE catalogue is the source of truth. A Firebase cache write
   // must never make an otherwise successful MELE request look like a failure.
   try {
@@ -109,8 +125,13 @@ export async function getMeleHealth() {
     const walletBody = await walletResponse.json().catch(() => null);
     const plansBody = await plansResponse.json().catch(() => null);
     const walletData = walletBody?.data ?? walletBody ?? null;
-    const plans = Array.isArray(plansBody?.plans) ? plansBody.plans : [];
-    const upstreamOk = walletResponse.ok && plansResponse.ok && Array.isArray(plansBody?.plans);
+    const plans = extractMelePlans(plansBody);
+    const walletSuccess = walletBody?.success ?? walletBody?.status;
+    const upstreamOk =
+      walletResponse.ok &&
+      plansResponse.ok &&
+      walletSuccess !== false &&
+      plans.length > 0;
     if (!upstreamOk) {
       const message =
         walletBody?.message ||
