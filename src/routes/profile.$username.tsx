@@ -10,7 +10,6 @@ import { PostCard } from "@/components/xora/PostCard";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { FeedSkeleton } from "@/components/xora/Skeletons";
-import { EngagementAnalyticsCard } from "@/components/rewards/EngagementAnalyticsCard";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/profile/$username")({
