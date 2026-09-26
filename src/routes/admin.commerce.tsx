@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2 } from "lucide-react";
+import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { adminCommerceQuery, commerceFetch, melePlansQuery, type MelePlan } from "@/lib/commerce";
+import { adminCommerceQuery, commerceFetch, meleHealthQuery, melePlansQuery, type MelePlan } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerce });
 
 function AdminCommerce() {
   const { data, isPending, error } = useQuery(adminCommerceQuery());
+  const healthQuery = useQuery(meleHealthQuery());
   const { data: planData } = useQuery(melePlansQuery(true));
   const [network, setNetwork] = useState<MelePlan["network"]>("MTN");
   const [planId, setPlanId] = useState("");
@@ -38,6 +39,41 @@ function AdminCommerce() {
 
   return <AppShell wide><div className="space-y-5">
     <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Admin</p><h1 className="mt-2 font-display text-3xl font-semibold">Commerce monitor</h1><p className="mt-1 text-sm text-muted-foreground">Creators, courses, data orders, commissions and payout records from the live Firebase-backed commerce layer.</p></header>
+    <section className="rounded-3xl border border-border bg-surface p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">MELE connection</p>
+          <h2 className="mt-1 font-display text-xl font-semibold">Live API health</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Checks your server-side MELE token, wallet access and live plan catalogue without exposing the secret.</p>
+        </div>
+        <button type="button" onClick={() => void healthQuery.refetch()} disabled={healthQuery.isFetching} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
+          <RefreshCw className={healthQuery.isFetching ? "size-4 animate-spin" : "size-4"} /> Refresh
+        </button>
+      </div>
+      {healthQuery.isPending ? (
+        <div className="mt-4 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">Checking MELE…</div>
+      ) : healthQuery.error ? (
+        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">Health check request failed: {healthQuery.error instanceof Error ? healthQuery.error.message : "Unknown error"}</div>
+      ) : healthQuery.data?.health.connected ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"><CircleCheck className="size-5 text-emerald-600"/><p className="mt-2 text-xs text-muted-foreground">Connection</p><p className="font-semibold">Connected</p></div>
+          <div className="rounded-2xl border border-border p-4"><p className="text-xs text-muted-foreground">Mode</p><p className="mt-1 font-semibold">{healthQuery.data.health.mode}</p></div>
+          <div className="rounded-2xl border border-border p-4"><p className="text-xs text-muted-foreground">Wallet</p><p className="mt-1 font-semibold">{healthQuery.data.health.display || "₦" + Number(healthQuery.data.health.balance || 0).toLocaleString()}</p></div>
+          <div className="rounded-2xl border border-border p-4"><p className="text-xs text-muted-foreground">Live plans</p><p className="mt-1 font-semibold">{healthQuery.data.health.plansCount}</p></div>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+          <div className="flex items-center gap-2 font-semibold"><CircleX className="size-5 text-amber-600"/> MELE connection needs attention</div>
+          <p className="mt-1 text-muted-foreground">{healthQuery.data?.health.error || "The server could not verify the MELE account."}</p>
+        </div>
+      )}
+      <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-4">
+        <div className="flex items-center gap-2"><Webhook className="size-4 text-primary"/><p className="text-sm font-semibold">Webhook endpoint</p></div>
+        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">https://xoratv-x.onrender.com/api/webhooks/mele</p>
+        <p className="mt-2 text-xs text-muted-foreground">Keep the webhook secret in Render as <code>MELE_WEBHOOK_SECRET</code>. The endpoint is ready to receive signed/secret-authenticated MELE events; we will match transaction references to Xora orders.</p>
+      </div>
+    </section>
+
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[[Users,"Creators",o?.creators?.length||0],[BookOpen,"Courses",o?.courses?.length||0],[Smartphone,"Data orders",o?.dataOrders?.length||0],[Wallet,"Commissions",o?.commissions?.length||0]].map(([I,l,v])=><div className="rounded-2xl border border-border bg-surface p-4" key={String(l)}><I className="size-5 text-primary"/><p className="mt-3 text-xs text-muted-foreground">{l}</p><p className="text-2xl font-semibold">{v}</p></div>)}</div>
 
     <section className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5">
