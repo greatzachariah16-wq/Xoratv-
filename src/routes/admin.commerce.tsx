@@ -7,22 +7,43 @@ import { adminCommerceQuery, commerceFetch, meleHealthQuery, melePlansQuery, typ
 
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerce });
 
+function normalizeNetwork(value: unknown): MelePlan["network"] | null {
+  const normalized = String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (normalized === "MTN") return "MTN";
+  if (normalized === "GLO") return "GLO";
+  if (normalized === "AIRTEL") return "AIRTEL";
+  if (normalized === "9MOBILE" || normalized === "9MOBIL") return "9MOBILE";
+  return null;
+}
+
 function AdminCommerce() {
   const { data, isPending, error } = useQuery(adminCommerceQuery());
   const healthQuery = useQuery(meleHealthQuery());
-  const { data: planData } = useQuery(melePlansQuery(true));
+  const planQuery = useQuery(melePlansQuery(true));
   const [network, setNetwork] = useState<MelePlan["network"]>("MTN");
   const [planId, setPlanId] = useState("");
   const [phone, setPhone] = useState("");
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const o = data?.overview;
-  const plans = useMemo(() => (planData?.plans || []).filter((p) => p.network === network), [planData, network]);
+
+  const allPlans = useMemo(() => {
+    const raw = planQuery.data?.plans ?? [];
+    return raw
+      .map((p) => ({ ...p, plan_id: Number(p.plan_id), network: normalizeNetwork(p.network) }))
+      .filter((p): p is MelePlan => Number.isFinite(p.plan_id) && Boolean(p.network));
+  }, [planQuery.data]);
+
+  const plans = useMemo(
+    () => allPlans.filter((p) => p.network === network),
+    [allPlans, network],
+  );
 
   async function runTest() {
     if (!planId || phone.replace(/\D/g, "").length !== 11) return;
     if (!window.confirm("This is a LIVE MELE purchase test. It can debit the Xora MELE wallet and send real data to the number entered. Continue?")) return;
-    setTesting(true); setResult(null);
+    setTesting(true);
+    setResult(null);
     try {
       const r = await commerceFetch<any>("/api/admin/commerce/mele-test-purchase", {
         method: "POST",
@@ -31,7 +52,9 @@ function AdminCommerce() {
       setResult(`Success: ${r.test.response?.message || "MELE accepted the purchase"} · ref ${r.test.reference}`);
     } catch (e) {
       setResult(e instanceof Error ? `Failed: ${e.message}` : "MELE purchase test failed.");
-    } finally { setTesting(false); }
+    } finally {
+      setTesting(false);
+    }
   }
 
   if (isPending) return <AppShell wide><div className="p-8 text-sm text-muted-foreground">Loading commerce monitor…</div></AppShell>;
@@ -39,6 +62,7 @@ function AdminCommerce() {
 
   return <AppShell wide><div className="space-y-5">
     <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Admin</p><h1 className="mt-2 font-display text-3xl font-semibold">Commerce monitor</h1><p className="mt-1 text-sm text-muted-foreground">Creators, courses, data orders, commissions and payout records from the live Firebase-backed commerce layer.</p></header>
+
     <section className="rounded-3xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -46,10 +70,11 @@ function AdminCommerce() {
           <h2 className="mt-1 font-display text-xl font-semibold">Live API health</h2>
           <p className="mt-1 text-sm text-muted-foreground">Checks your server-side MELE token, wallet access and live plan catalogue without exposing the secret.</p>
         </div>
-        <button type="button" onClick={() => void healthQuery.refetch()} disabled={healthQuery.isFetching} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
-          <RefreshCw className={healthQuery.isFetching ? "size-4 animate-spin" : "size-4"} /> Refresh
+        <button type="button" onClick={() => { void healthQuery.refetch(); void planQuery.refetch(); }} disabled={healthQuery.isFetching || planQuery.isFetching} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
+          <RefreshCw className={healthQuery.isFetching || planQuery.isFetching ? "size-4 animate-spin" : "size-4"} /> Refresh
         </button>
       </div>
+
       {healthQuery.isPending ? (
         <div className="mt-4 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">Checking MELE…</div>
       ) : healthQuery.error ? (
@@ -67,15 +92,14 @@ function AdminCommerce() {
           <p className="mt-1 text-muted-foreground">{healthQuery.data?.health.error || "The server could not verify the MELE account."}</p>
         </div>
       )}
+
       <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-4">
         <div className="flex items-center gap-2"><Webhook className="size-4 text-primary"/><p className="text-sm font-semibold">Webhook endpoint</p></div>
         <p className="mt-1 break-all font-mono text-xs text-muted-foreground">https://xoratv-x.onrender.com/api/webhooks/mele</p>
         <p className="mt-2 text-xs text-muted-foreground">Set <code>MELE_WEBHOOK_SECRET</code> in Render and use the same secret in MELE if its webhook settings provide one. Xora will match incoming transaction references to Firebase-backed orders.</p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full border border-border bg-background px-3 py-1.5">Endpoint: online</span>
-          <span className={healthQuery.data?.health.webhookConfigured ? "rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-emerald-700" : "rounded-full border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-amber-700"}>
-            Secret: {healthQuery.data?.health.webhookConfigured ? "configured" : "not configured"}
-          </span>
+          <span className={healthQuery.data?.health.webhookConfigured ? "rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-emerald-700" : "rounded-full border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-amber-700"}>Secret: {healthQuery.data?.health.webhookConfigured ? "configured" : "not configured"}</span>
         </div>
       </div>
     </section>
@@ -85,10 +109,15 @@ function AdminCommerce() {
     <section className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5">
       <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 size-5 text-amber-600"/><div><h2 className="font-display text-xl font-semibold">Live MELE purchase test</h2><p className="mt-1 text-sm text-muted-foreground">Use this only when you intentionally want to make a real purchase. It uses the server-side MELE API key and can debit the live wallet.</p></div></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <select value={network} onChange={(e)=>{setNetwork(e.target.value as MelePlan["network"]);setPlanId("")}} className="rounded-xl border border-input bg-background px-3 py-3 text-sm"><option>MTN</option><option>GLO</option><option>AIRTEL</option><option>9MOBILE</option></select>
-        <select value={planId} onChange={(e)=>setPlanId(e.target.value)} className="rounded-xl border border-input bg-background px-3 py-3 text-sm"><option value="">Select live plan</option>{plans.map((p)=><option key={p.plan_id} value={p.plan_id}>{p.data_size} · ₦{p.price.toLocaleString()} · {p.validity}</option>)}</select>
+        <select value={network} onChange={(e)=>{setNetwork(e.target.value as MelePlan["network"]);setPlanId("")}} className="rounded-xl border border-input bg-background px-3 py-3 text-sm"><option value="MTN">MTN</option><option value="GLO">GLO</option><option value="AIRTEL">AIRTEL</option><option value="9MOBILE">9MOBILE</option></select>
+        <select value={planId} onChange={(e)=>setPlanId(e.target.value)} disabled={planQuery.isPending || planQuery.isFetching || !plans.length} className="rounded-xl border border-input bg-background px-3 py-3 text-sm disabled:opacity-60">
+          <option value="">{planQuery.isPending || planQuery.isFetching ? "Loading live plans…" : planQuery.error ? "Could not load plans" : plans.length ? "Select live plan" : "No plans for this network"}</option>
+          {plans.map((p)=><option key={`${p.network}-${p.plan_id}`} value={p.plan_id}>{p.data_size} · ₦{p.price.toLocaleString()} · {p.validity}</option>)}
+        </select>
         <input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="08012345678" className="rounded-xl border border-input bg-background px-3 py-3 text-sm"/>
       </div>
+      {planQuery.error ? <p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">Plan catalogue error: {planQuery.error instanceof Error ? planQuery.error.message : "Unable to load plans."}</p> : null}
+      {!planQuery.isPending && !planQuery.isFetching && !planQuery.error && !allPlans.length ? <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700">MELE responded successfully, but Xora received no usable plan records. The next step is to inspect the provider response shape rather than changing the pricing system.</p> : null}
       <button type="button" disabled={testing||!planId||phone.replace(/\D/g,"").length!==11} onClick={()=>void runTest()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{testing?<Loader2 className="size-4 animate-spin"/>:null}{testing?"Sending live test…":"Run live purchase test"}</button>
       {result?<p className="mt-3 rounded-xl border border-border bg-background p-3 text-sm">{result}</p>:null}
     </section>
