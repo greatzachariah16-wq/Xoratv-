@@ -137,6 +137,122 @@ export async function getMelePlans(force = false): Promise<MelePlan[]> {
   return plans;
 }
 
+export type VtusharePlan = {
+  bundleId: number;
+  networkId: number;
+  network: string;
+  amount: number;
+  dataSize: string;
+  typeId: number;
+  typeName: string;
+};
+
+function vtushareAuth() {
+  const email = process.env.VTUSHARE_EMAIL?.trim() || "";
+  const password = process.env.VTUSHARE_PASSWORD || "";
+  if (!email || !password) throw new Error("VTUSHARE_EMAIL and VTUSHARE_PASSWORD are not configured on the server.");
+  return Buffer.from(email + ":" + password).toString("base64");
+}
+
+async function vtushareFetch(path: string, init?: RequestInit) {
+  const auth = vtushareAuth();
+  return fetch("https://vtushare.com.ng" + path, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: "Basic " + auth,
+      ...(init?.headers || {}),
+    },
+    signal: init?.signal || AbortSignal.timeout(15000),
+  });
+}
+
+function extractVtusharePlans(body: any): unknown[] {
+  if (Array.isArray(body)) return body;
+  const candidates = [body?.plans, body?.data, body?.result, body?.data?.plans, body?.result?.plans];
+  for (const candidate of candidates) if (Array.isArray(candidate)) return candidate;
+  return [];
+}
+
+function normalizeVtusharePlan(p: any): VtusharePlan {
+  return {
+    bundleId: Number(p.id ?? p.bundle ?? p.bundle_id),
+    networkId: Number(p.network_id ?? p.networkId ?? p.network),
+    network: String(p.network_name ?? p.networkName ?? p.network ?? "").toUpperCase(),
+    amount: Number(p.amount ?? p.price ?? p.charged_amount ?? 0),
+    dataSize: String(p.data_size ?? p.dataSize ?? p.name ?? ""),
+    typeId: Number(p.type_id ?? p.typeId ?? p.type),
+    typeName: String(p.type_name ?? p.typeName ?? ""),
+  };
+}
+
+export async function getVtusharePlans(force = false): Promise<VtusharePlan[]> {
+  if (!force) {
+    const cached = (await queryRtdb("commerce/vtusharePlans")) as VtusharePlan[] | Record<string, VtusharePlan> | null;
+    if (cached) {
+      const plans = Array.isArray(cached) ? cached : Object.values(cached);
+      if (plans.length) return plans;
+    }
+  }
+  const res = await vtushareFetch("/api/v1/getPlans", { method: "POST", body: "{}" });
+  const body = await res.json().catch(() => null);
+  const rawPlans = extractVtusharePlans(body);
+  if (!res.ok || !rawPlans.length) throw new Error(body?.message || "Unable to load VTUshare plans.");
+  const plans = rawPlans.map(normalizeVtusharePlan).filter(
+    (p) => Number.isFinite(p.bundleId) && Number.isFinite(p.networkId) && Number.isFinite(p.typeId) && p.network,
+  );
+  try {
+    await queryRtdb("commerce/vtusharePlans", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(plans),
+    });
+  } catch {}
+  return plans;
+}
+
+export async function getVtushareAccount() {
+  const res = await vtushareFetch("/api/user");
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.message || "Unable to read VTUshare account.");
+  return body;
+}
+
+export async function getVtushareHealth() {
+  const checkedAt = new Date().toISOString();
+  try {
+    const [plansResponse, accountResponse] = await Promise.all([
+      vtushareFetch("/api/v1/getPlans", { method: "POST", body: "{}" }),
+      vtushareFetch("/api/user"),
+    ]);
+    const plansBody = await plansResponse.json().catch(() => null);
+    const accountBody = await accountResponse.json().catch(() => null);
+    const plans = extractVtusharePlans(plansBody);
+    if (!plansResponse.ok || !accountResponse.ok || !plans.length) {
+      throw new Error(
+        plansBody?.message ||
+        accountBody?.message ||
+        "VTUshare connection check failed.",
+      );
+    }
+    return {
+      connected: true,
+      checkedAt,
+      plansCount: plans.length,
+      account: accountBody,
+      credentialsConfigured: true,
+    };
+  } catch (error) {
+    return {
+      connected: false,
+      checkedAt,
+      credentialsConfigured: Boolean(process.env.VTUSHARE_EMAIL?.trim() && process.env.VTUSHARE_PASSWORD),
+      error: error instanceof Error ? error.message : "VTUshare connection check failed.",
+    };
+  }
+}
+
 export async function getMeleWallet() {
   const res = await meleFetch("/wallet/");
   const body = await res.json().catch(() => null);
