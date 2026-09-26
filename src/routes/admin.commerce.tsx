@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { adminCommerceQuery, commerceFetch, meleHealthQuery, melePlansQuery, type MelePlan } from "@/lib/commerce";
+import { adminCommerceQuery, commerceFetch, meleHealthQuery, melePlansQuery, vtushareHealthQuery, vtusharePlansQuery, type MelePlan, type VtusharePlan } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerce });
 
@@ -20,6 +20,14 @@ function AdminCommerce() {
   const { data, isPending, error } = useQuery(adminCommerceQuery());
   const healthQuery = useQuery(meleHealthQuery());
   const planQuery = useQuery(melePlansQuery(true));
+  const vtHealthQuery = useQuery(vtushareHealthQuery());
+  const vtPlanQuery = useQuery(vtusharePlansQuery(true));
+  const [vtNetworkId, setVtNetworkId] = useState("");
+  const [vtBundleId, setVtBundleId] = useState("");
+  const [vtTypeId, setVtTypeId] = useState("");
+  const [vtPhone, setVtPhone] = useState("");
+  const [vtTesting, setVtTesting] = useState(false);
+  const [vtResult, setVtResult] = useState<string | null>(null);
   const [network, setNetwork] = useState<MelePlan["network"]>("MTN");
   const [planId, setPlanId] = useState("");
   const [phone, setPhone] = useState("");
@@ -101,6 +109,52 @@ function AdminCommerce() {
           <span className="rounded-full border border-border bg-background px-3 py-1.5">Endpoint: online</span>
           <span className={healthQuery.data?.health.webhookConfigured ? "rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-emerald-700" : "rounded-full border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-amber-700"}>Secret: {healthQuery.data?.health.webhookConfigured ? "configured" : "not configured"}</span>
         </div>
+      </div>
+    </section>
+
+    <section className="rounded-3xl border border-border bg-surface p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Second provider</p>
+          <h2 className="mt-1 font-display text-xl font-semibold">VTUshare connection</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Server-side credentials only. Xora reads the live VTUshare catalogue; it does not hardcode plan IDs or prices.</p>
+        </div>
+        <button type="button" onClick={() => { void vtHealthQuery.refetch(); void vtPlanQuery.refetch(); }} disabled={vtHealthQuery.isFetching || vtPlanQuery.isFetching} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
+          <RefreshCw className={(vtHealthQuery.isFetching || vtPlanQuery.isFetching) ? "size-4 animate-spin" : "size-4"} /> Refresh
+        </button>
+      </div>
+      <div className="mt-4">
+        {vtHealthQuery.isPending ? <p className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Checking VTUshare…</p> :
+          vtHealthQuery.data?.health.connected ? <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"><CircleCheck className="size-5 text-emerald-600"/><p className="mt-2 text-xs text-muted-foreground">Connection</p><p className="font-semibold">Connected</p></div>
+            <div className="rounded-2xl border border-border p-4"><p className="text-xs text-muted-foreground">Live catalogue</p><p className="mt-1 font-semibold">{vtHealthQuery.data.health.plansCount} plans</p></div>
+            <div className="rounded-2xl border border-border p-4"><p className="text-xs text-muted-foreground">Live test</p><p className="mt-1 font-semibold">{vtHealthQuery.data.health.livePurchasesEnabled ? "Enabled" : "Disabled"}</p></div>
+          </div> :
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm"><div className="flex items-center gap-2 font-semibold"><CircleX className="size-5 text-amber-600"/> VTUshare needs configuration</div><p className="mt-1 text-muted-foreground">{vtHealthQuery.data?.health.error || "Add the VTUshare account credentials in Render."}</p></div>}
+      </div>
+      <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-4">
+        <p className="text-sm font-semibold">Webhook endpoint</p>
+        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">https://xoratv-x.onrender.com/api/webhooks/vtushare</p>
+        <p className="mt-2 text-xs text-muted-foreground">The endpoint records provider callbacks and matches their transaction reference. Keep the webhook secret server-side.</p>
+      </div>
+      <div className="mt-4 rounded-2xl border border-border p-4">
+        <p className="text-sm font-semibold">Live catalogue inspection</p>
+        <p className="mt-1 text-xs text-muted-foreground">These values come from VTUshare's current API response. No purchase is made by loading this list.</p>
+        <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-border">
+          <table className="w-full text-left text-xs"><thead className="sticky top-0 bg-background"><tr className="border-b border-border"><th className="p-2">Network</th><th className="p-2">Data</th><th className="p-2">Price</th><th className="p-2">Bundle</th><th className="p-2">Type</th></tr></thead>
+          <tbody>{(vtPlanQuery.data?.plans || []).slice(0, 50).map((p: VtusharePlan) => <tr key={`${p.networkId}-${p.bundleId}-${p.typeId}`} className="border-b border-border/60"><td className="p-2">{p.network}</td><td className="p-2">{p.dataSize}</td><td className="p-2">₦{p.amount.toLocaleString()}</td><td className="p-2">{p.bundleId}</td><td className="p-2">{p.typeId} {p.typeName ? `· ${p.typeName}` : ""}</td></tr>)}</tbody></table>
+        </div>
+      </div>
+      <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 size-5 text-amber-600"/><div><p className="font-semibold">Controlled VTUshare purchase test</p><p className="mt-1 text-xs text-muted-foreground">Disabled by default. We will not debit the VTUshare wallet until the server flag is explicitly enabled.</p></div></div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-4">
+          <input value={vtNetworkId} onChange={e=>setVtNetworkId(e.target.value)} inputMode="numeric" placeholder="Network ID" className="rounded-xl border border-input bg-background px-3 py-3 text-sm"/>
+          <input value={vtBundleId} onChange={e=>setVtBundleId(e.target.value)} inputMode="numeric" placeholder="Bundle ID" className="rounded-xl border border-input bg-background px-3 py-3 text-sm"/>
+          <input value={vtTypeId} onChange={e=>setVtTypeId(e.target.value)} inputMode="numeric" placeholder="Type ID" className="rounded-xl border border-input bg-background px-3 py-3 text-sm"/>
+          <input value={vtPhone} onChange={e=>setVtPhone(e.target.value)} inputMode="tel" placeholder="08012345678" className="rounded-xl border border-input bg-background px-3 py-3 text-sm"/>
+        </div>
+        <button type="button" disabled={vtTesting || !vtNetworkId || !vtBundleId || !vtTypeId || vtPhone.replace(/\D/g,"").length!==11} onClick={async()=>{ if(!window.confirm("This will make a REAL VTUshare purchase and debit the VTUshare wallet. Continue?")) return; setVtTesting(true); setVtResult(null); try { const r=await commerceFetch<any>("/api/admin/commerce/vtushare-test-purchase",{method:"POST",body:JSON.stringify({networkId:Number(vtNetworkId),bundleId:Number(vtBundleId),typeId:Number(vtTypeId),phoneNumber:vtPhone})}); setVtResult(`Success: ${r.test.response?.message || "VTUshare accepted the purchase"} · ref ${r.test.response?.ref || "returned"}`); } catch(e){ setVtResult(e instanceof Error ? `Failed: ${e.message}` : "VTUshare purchase test failed."); } finally { setVtTesting(false); } }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{vtTesting?<Loader2 className="size-4 animate-spin"/>:null}{vtTesting?"Sending live test…":"Run VTUshare live test"}</button>
+        {vtResult ? <p className="mt-3 rounded-xl border border-border bg-background p-3 text-sm">{vtResult}</p> : null}
       </div>
     </section>
 
