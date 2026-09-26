@@ -119,12 +119,6 @@ function ProfilePage() {
         </div>
       </header>
 
-      {isMe && user && (
-        <div className="mt-6">
-          <EngagementAnalyticsCard userId={user.id} />
-        </div>
-      )}
-
       <div className="mt-6 space-y-4">
         {postsPending || isPending ? (
           <FeedSkeleton count={2} />
