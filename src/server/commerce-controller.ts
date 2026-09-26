@@ -1,7 +1,7 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
-  getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, handleMeleWebhook, testMelePurchase, getPayoutDetails, getPublishedCourses,
+  getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, testMelePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
 
@@ -36,6 +36,30 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json(result, result.status);
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "MELE webhook error." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/vtushare/plans" && request.method === "GET") {
+    try {
+      return json({ ok: true, plans: await getVtusharePlans(url.searchParams.get("refresh") === "1") });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare plan catalog error." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/vtushare-health" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    return json({ ok: true, health: await getVtushareHealth() });
+  }
+
+  if (path === "/api/admin/commerce/vtushare-account" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, account: await getVtushareAccount() });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare account error." }, 500);
     }
   }
 
