@@ -1,7 +1,7 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
-  getCreatorDashboard, getMelePlans, getMeleWallet, getPayoutDetails, getPublishedCourses,
+  getCreatorDashboard, getMelePlans, getMeleWallet, testMelePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
 
@@ -115,6 +115,25 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, wallet: await getMeleWallet() });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "MELE wallet error." }, 500);
+    }
+  }
+
+
+  if (path === "/api/admin/commerce/mele-test-purchase" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.network || !body.planId || !body.phoneNumber) {
+        return json({ ok: false, error: "Network, planId and phoneNumber are required." }, 400);
+      }
+      return json({ ok: true, test: await testMelePurchase({
+        network: body.network,
+        planId: Number(body.planId),
+        phoneNumber: body.phoneNumber,
+      }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "MELE purchase test failed." }, 500);
     }
   }
 

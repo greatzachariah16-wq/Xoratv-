@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Smartphone, Check, Loader2, ArrowRight } from "lucide-react";
+import { Smartphone, Check, Loader2, ArrowRight, RefreshCw, Radio } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { melePlansQuery, commerceFetch, type MelePlan } from "@/lib/commerce";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,7 @@ function BuyDataPage() {
   const [phone, setPhone] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data, isPending, error, refetch } = useQuery(melePlansQuery());
+  const { data, isPending, error, refetch, isFetching } = useQuery(melePlansQuery(true));
   const ref = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null;
   const plans = useMemo(() => (data?.plans || []).filter((p) => p.network === network), [data, network]);
   const selected = plans.find((p) => p.plan_id === selectedId) || plans[0];
@@ -36,7 +36,7 @@ function BuyDataPage() {
   return <AppShell wide>
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[28px] border border-border bg-surface p-6 shadow-card">
-        <div className="flex items-center gap-2 text-primary"><Smartphone className="size-5"/><span className="text-sm font-semibold">Xora Data</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 text-primary"><Smartphone className="size-5"/><span className="text-sm font-semibold">Xora Data</span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-600"><Radio className="size-3"/>Live MELE catalog</span></div><button type="button" onClick={()=>void refetch()} disabled={isFetching} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold">{isFetching?<Loader2 className="size-3 animate-spin"/>:<RefreshCw className="size-3"/>}{isFetching?"Refreshing…":"Refresh live plans"}</button></div>
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">Buy data without the clutter.</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Choose a live MELE DATA plan, enter the recipient number, and review your order.</p>
         <div className="mt-5 flex flex-wrap gap-2">
@@ -56,7 +56,7 @@ function BuyDataPage() {
           <input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="08012345678" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"/>
           {selected ? <div className="mt-4 rounded-2xl border border-border bg-background p-4"><div className="flex justify-between text-sm"><span>{selected.network} {selected.data_size}</span><span className="font-semibold">₦{selected.price.toLocaleString()}</span></div><div className="mt-1 text-xs text-muted-foreground">{selected.validity}</div></div>:null}
           <button disabled={busy || !selected || phone.replace(/\D/g,"").length!==11} onClick={()=>void beginOrder()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy?<Loader2 className="size-4 animate-spin"/>:<ArrowRight className="size-4"/>}{busy?"Creating order…":"Continue"}</button>
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Your selected plan is read from the live MELE DATA catalog. Xora does not hardcode carrier prices.</p>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Plans are fetched from your server-side MELE DATA account at page load. Xora does not hardcode carrier prices. A successful live refresh confirms that the configured MELE API key can authenticate and read the catalog; actual purchases are only sent after the customer payment flow is connected.</p>
         </div>
       </section>
     </div>
