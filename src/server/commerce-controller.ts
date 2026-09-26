@@ -17,7 +17,18 @@ const json = (body: unknown, status = 200) =>
 
 export async function handleCommerceRoute(request: Request, url: URL): Promise<Response | null> {
   const path = url.pathname;
-  if (request.method === "OPTIONS" && path.startsWith("/api/commerce")) return new Response(null, { status: 204, headers });
+  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele"))) {
+    return new Response(null, { status: 204, headers });
+  }
+
+  if (path === "/api/webhooks/mele" && request.method === "GET") {
+    return json({
+      ok: true,
+      service: "mele-webhook",
+      ready: Boolean(process.env.MELE_WEBHOOK_SECRET?.trim()),
+      endpoint: "/api/webhooks/mele",
+    });
+  }
 
   if (path === "/api/webhooks/mele" && request.method === "POST") {
     try {
