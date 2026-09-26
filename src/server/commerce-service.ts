@@ -72,8 +72,23 @@ export async function getMelePlans(force = false): Promise<MelePlan[]> {
   if (!res.ok || !Array.isArray(body?.plans)) {
     throw new Error((body as { message?: string } | null)?.message || "Unable to load MELE DATA plans.");
   }
-  const plans = body.plans.map((p) => ({ ...p, price: Number(p.price) || 0 }));
-  await queryRtdb("commerce/dataPlans", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(plans) });
+  const plans = body.plans.map((p) => ({
+    ...p,
+    plan_id: Number(p.plan_id),
+    network: String(p.network || "").toUpperCase(),
+    price: Number(p.price) || 0,
+  })) as MelePlan[];
+  // The live MELE catalogue is the source of truth. A Firebase cache write
+  // must never make an otherwise successful MELE request look like a failure.
+  try {
+    await queryRtdb("commerce/dataPlans", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(plans),
+    });
+  } catch {
+    // Keep serving the live catalogue even if the optional cache is unavailable.
+  }
   return plans;
 }
 
