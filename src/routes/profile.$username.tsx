@@ -45,7 +45,10 @@ function ProfilePage() {
             <div className="-mt-10 flex flex-wrap items-end justify-between gap-4">
               <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={82} />
               {isMe ? (
-                <button type="button" onClick={() => void signOut()} className="press rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-secondary">Sign out</button>
+                <div className="flex gap-2">
+                  <Link to="/creator-studio" className="press rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Creator Studio</Link>
+                  <button type="button" onClick={() => void signOut()} className="press rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-secondary">Sign out</button>
+                </div>
               ) : profile ? (
                 <button type="button" onClick={() => follows.toggle(profile.id)} disabled={follows.pending} className={cn("press rounded-xl px-5 py-2 text-sm font-semibold disabled:opacity-60", follows.isFollowing(profile.id) ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground")}>{follows.isFollowing(profile.id) ? "Following" : "Follow"}</button>
               ) : null}
