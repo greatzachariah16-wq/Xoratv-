@@ -93,8 +93,8 @@ export async function createDataOrder(params: {
   const plans = await getMelePlans();
   const plan = plans.find((p) => Number(p.plan_id) === Number(params.plan.plan_id));
   if (!plan) throw new Error("The selected MELE DATA plan is no longer available.");
-  const phoneNumber = String(params.phoneNumber).replace(/\\D/g, "");
-  if (!/^0\\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
+  const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
+  if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const orderId = id("data");
   const referralCreatorId = params.referralCode && params.referralCode.endsWith("_data") ? params.referralCode.slice(0, -5) : null;
   const record = {
@@ -116,6 +116,26 @@ export async function createDataOrder(params: {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
   });
   return record;
+}
+
+export async function testMelePurchase(params: {
+  network: MelePlan["network"];
+  planId: number;
+  phoneNumber: string;
+}) {
+  const plans = await getMelePlans(true);
+  const plan = plans.find((p) => Number(p.plan_id) === Number(params.planId) && p.network === params.network);
+  if (!plan) throw new Error("That plan is not in the current live MELE catalog.");
+  const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
+  if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
+  const reference = id("mele_test").slice(0, 75);
+  const res = await meleFetch("/data/purchase", {
+    method: "POST",
+    body: JSON.stringify({ network: plan.network, phone_number: phoneNumber, plan_id: plan.plan_id, reference }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${res.status}).`);
+  return { reference, plan, phoneNumber, response: body };
 }
 
 export async function createCreatorProfile(params: {
