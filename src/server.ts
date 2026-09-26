@@ -389,7 +389,7 @@ export default {
     }
 
     // MELE DATA + creator/course commerce APIs
-    if (url.pathname.startsWith("/api/commerce") || url.pathname.startsWith("/api/admin/commerce")) {
+    if (url.pathname.startsWith("/api/commerce") || url.pathname.startsWith("/api/admin/commerce") || url.pathname === "/api/webhooks/mele") {
       const commerceRes = await handleCommerceRoute(request, url);
       if (commerceRes) return commerceRes;
     }
