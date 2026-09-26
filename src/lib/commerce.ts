@@ -24,6 +24,12 @@ export function coursesMarketQuery() {
 export function creatorDashboardQuery(userId?: string) {
   return queryOptions({ queryKey: ["commerce","creator-dashboard",userId], enabled: Boolean(userId), queryFn: () => commerceFetch<{ok:true;dashboard:any}>(`/api/commerce/creator/dashboard?userId=${encodeURIComponent(userId || "")}`) });
 }
+export function meleHealthQuery() {
+  return queryOptions({
+    queryKey: ["admin", "mele-health"],
+    queryFn: () => commerceFetch<{ ok: true; health: any }>("/api/admin/commerce/mele-health"),
+  });
+}
 export function adminCommerceQuery() {
   return queryOptions({ queryKey: ["admin","commerce"], queryFn: () => commerceFetch<{ok:true;overview:any}>("/api/admin/commerce/overview") });
 }
