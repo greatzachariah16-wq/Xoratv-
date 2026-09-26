@@ -91,6 +91,7 @@ export async function createDataOrder(params: {
   referralCode?: string | null;
 }) {
   const orderId = id("data");
+  const referralCreatorId = params.referralCode && params.referralCode.endsWith("_data") ? params.referralCode.slice(0, -5) : null;
   const record = {
     id: orderId,
     userId: params.userId,
@@ -102,6 +103,7 @@ export async function createDataOrder(params: {
     providerCost: params.plan.price,
     customerPrice: params.plan.price,
     referralCode: params.referralCode || null,
+    referralCreatorId,
     status: "awaiting_payment",
     createdAt: new Date().toISOString(),
   };
@@ -174,6 +176,29 @@ export async function saveCourse(params: {
   return course;
 }
 
+export async function createCourseOrder(params: { userId: string; courseId: string; referralCode?: string | null }) {
+  const courses = await getCreatorCourses();
+  const course = courses.find((c) => c.id === params.courseId && c.status === "published");
+  if (!course) throw new Error("Course is unavailable.");
+  const orderId = id("course_order");
+  const referralCreatorId = params.referralCode ? params.referralCode.split("_course_")[0] : null;
+  const record = {
+    id: orderId,
+    userId: params.userId,
+    courseId: course.id,
+    creatorId: course.creatorId,
+    customerPrice: course.price,
+    referralCode: params.referralCode || null,
+    referralCreatorId,
+    status: "awaiting_payment",
+    createdAt: new Date().toISOString(),
+  };
+  await queryRtdb("commerce/courseOrders/" + orderId, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+  });
+  return record;
+}
+
 export async function savePayoutDetails(userId: string, details: {
   accountName: string; accountNumber: string; bankName: string;
 }) {
@@ -194,23 +219,28 @@ export async function getPayoutDetails(userId: string) {
 }
 
 export async function getCreatorDashboard(userId: string) {
-  const [creator, coursesRaw, ordersRaw, commissionsRaw, payout] = await Promise.all([
+  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout] = await Promise.all([
     getCreator(userId),
     queryRtdb("commerce/courses"),
     queryRtdb("commerce/dataOrders"),
+    queryRtdb("commerce/courseOrders"),
     queryRtdb("commerce/commissions"),
     getPayoutDetails(userId),
   ]);
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
-  const orders = ordersRaw ? Object.values(ordersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
-  const commissions = commissionsRaw ? Object.values(commissionsRaw as Record<string, any>).filter((c) => c.creatorId === userId) : [];
-  const totalSales = courses.reduce((n, c) => n, 0) + orders.filter((o) => o.status === "success" || o.status === "paid").reduce((n, o) => n + Number(o.customerPrice || 0), 0);
-  const dataSales = orders.filter((o) => o.status === "success" || o.status === "paid").reduce((n, o) => n + Number(o.customerPrice || 0), 0);
+  const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
+  const courseOrders = courseOrdersRaw ? Object.values(courseOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
+  const commissions = commissionsRaw ? Object.values(commissionsRaw as Record<string, any>).filter((c) => c.creatorId === userId && c.status !== "reversed") : [];
+  const successful = (o: any) => o.status === "success" || o.status === "paid" || o.status === "delivered";
+  const totalSales = dataOrders.concat(courseOrders).filter(successful).reduce((n, o) => n + Number(o.customerPrice || 0), 0);
+  const dataSales = dataOrders.filter(successful).reduce((n, o) => n + Number(o.customerPrice || 0), 0);
   const commission = commissions.reduce((n, c) => n + Number(c.amount || 0), 0);
   return {
     creator,
     stats: { balance: commission, totalSales, dataSales, commission },
     courses,
+    dataOrders,
+    courseOrders,
     payout,
     links: [
       ...courses.map((c) => ({ service: "course", label: c.title, code: `${userId}_${c.id}`, path: `/learn?course=${c.id}&ref=${userId}` })),
