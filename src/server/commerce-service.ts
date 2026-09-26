@@ -60,18 +60,38 @@ async function meleFetch(path: string, init?: RequestInit) {
 }
 
 function extractMelePlans(body: any): unknown[] {
-  // MELE documents { plans: [...] }, but the live endpoint may wrap the
-  // catalogue inside a data/result envelope. Accept the documented shape
-  // plus these common envelope variants without trusting arbitrary fields.
-  const candidates = [
-    body?.plans,
-    body?.data?.plans,
-    body?.result?.plans,
-    body?.data?.data,
-    body?.result?.data,
-    body?.data,
-  ];
-  return candidates.find((value) => Array.isArray(value)) || [];
+  // MELE's documented response is { plans: [...] }, but the live service can
+  // wrap the catalogue in success/data/result envelopes. Walk the response
+  // safely so the dashboard keeps working when that envelope changes.
+  const seen = new Set<any>();
+  const visit = (value: any, depth = 0): unknown[] => {
+    if (depth > 5 || value == null || seen.has(value)) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value !== "object") return [];
+    seen.add(value);
+
+    const preferred = [
+      value.plans,
+      value.data?.plans,
+      value.result?.plans,
+      value.data?.data,
+      value.result?.data,
+      value.data,
+      value.result,
+    ];
+    for (const candidate of preferred) {
+      if (Array.isArray(candidate)) return candidate;
+      const nested = visit(candidate, depth + 1);
+      if (nested.length) return nested;
+    }
+
+    for (const candidate of Object.values(value)) {
+      const nested = visit(candidate, depth + 1);
+      if (nested.length) return nested;
+    }
+    return [];
+  };
+  return visit(body);
 }
 
 function normalizeMelePlan(p: any): MelePlan {
