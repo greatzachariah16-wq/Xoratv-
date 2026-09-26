@@ -84,6 +84,120 @@ export async function getMeleWallet() {
   return body;
 }
 
+export async function getMeleHealth() {
+  const checkedAt = new Date().toISOString();
+  try {
+    const [walletResponse, plansResponse] = await Promise.all([
+      meleFetch("/wallet/"),
+      meleFetch("/data/plans"),
+    ]);
+    const walletBody = await walletResponse.json().catch(() => null);
+    const plansBody = await plansResponse.json().catch(() => null);
+    const walletData = walletBody?.data ?? walletBody ?? null;
+    const plans = Array.isArray(plansBody?.plans) ? plansBody.plans : [];
+    const upstreamOk = walletResponse.ok && plansResponse.ok && Array.isArray(plansBody?.plans);
+    if (!upstreamOk) {
+      const message =
+        walletBody?.message ||
+        plansBody?.message ||
+        `MELE connection check failed (wallet HTTP ${walletResponse.status}, plans HTTP ${plansResponse.status}).`;
+      throw new Error(message);
+    }
+    return {
+      connected: true,
+      checkedAt,
+      mode: walletData?.mode ?? (walletData?.livemode ? "live" : "test"),
+      livemode: Boolean(walletData?.livemode),
+      balance: typeof walletData?.balance === "number" ? walletData.balance : Number(walletData?.balance || 0),
+      display: walletData?.display ?? null,
+      currency: walletData?.currency ?? "NGN",
+      plansCount: plans.length,
+    };
+  } catch (error) {
+    return {
+      connected: false,
+      checkedAt,
+      error: error instanceof Error ? error.message : "MELE connection check failed.",
+    };
+  }
+}
+
+function webhookSecretIsValid(request: Request) {
+  const expected = process.env.MELE_WEBHOOK_SECRET?.trim();
+  if (!expected) return false;
+  const supplied =
+    request.headers.get("x-mele-webhook-secret") ||
+    request.headers.get("x-webhook-secret") ||
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ||
+    "";
+  return supplied === expected;
+}
+
+export async function handleMeleWebhook(request: Request) {
+  if (!webhookSecretIsValid(request)) {
+    return { ok: false as const, status: 401, error: "Invalid webhook secret." };
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return { ok: false as const, status: 400, error: "Invalid webhook payload." };
+  }
+
+  const payload = body as Record<string, any>;
+  const data = payload.data && typeof payload.data === "object" ? payload.data : payload;
+  const reference = String(data.reference || payload.reference || data.ref || payload.ref || "").trim();
+  const providerStatus = String(data.status || payload.status || "").trim().toLowerCase();
+
+  if (!reference) {
+    return { ok: false as const, status: 400, error: "Webhook payload is missing a transaction reference." };
+  }
+
+  const webhookId = id("mele_webhook");
+  await queryRtdb(`commerce/meleWebhooks/${webhookId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: webhookId,
+      reference,
+      providerStatus,
+      payload,
+      receivedAt: new Date().toISOString(),
+    }),
+  });
+
+  const orders = (await queryRtdb("commerce/dataOrders")) as Record<string, any> | null;
+  const matched = Object.values(orders || {}).find(
+    (order) => order?.meleReference === reference || order?.reference === reference,
+  );
+
+  if (matched?.id) {
+    const normalizedStatus =
+      providerStatus === "delivered" || providerStatus === "success"
+        ? "success"
+        : providerStatus === "failed"
+          ? "failed"
+          : "processing";
+    await queryRtdb(`commerce/dataOrders/${matched.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: normalizedStatus,
+        providerStatus,
+        webhookReceivedAt: new Date().toISOString(),
+        meleWebhookId: webhookId,
+      }),
+    });
+  }
+
+  return {
+    ok: true as const,
+    status: 200,
+    reference,
+    providerStatus,
+    matchedOrderId: matched?.id || null,
+  };
+}
+
 export async function createDataOrder(params: {
   userId: string;
   plan: MelePlan;
