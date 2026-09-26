@@ -231,6 +231,9 @@ export function AppShell({
           >
             <Search className="size-5" aria-hidden="true" />
           </Link>
+          <Link to="/data" aria-label="Buy Data" className="press grid size-9 place-items-center rounded-full hover:bg-secondary">
+            <Smartphone className="size-5" aria-hidden="true" />
+          </Link>
           <Link
             to="/notifications"
             aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
