@@ -3,8 +3,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
+  BarChart3,
   CircleHelp,
-  Gift,
   GraduationCap,
   Home,
   Plus,
@@ -15,6 +15,8 @@ import {
   Tv,
   User,
   MessageCircle,
+  Smartphone,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -29,8 +31,9 @@ const NAV = [
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
+  { to: "/data", label: "Buy Data", icon: Smartphone },
+  { to: "/creator-studio", label: "Creator Studio", icon: Sparkles },
   { to: "/chat", label: "Chat", icon: MessageCircle },
-  { to: "/rewards", label: "Rewards", icon: Gift },
   { to: "/notifications", label: "Alerts", icon: Bell },
 ] as const;
 
@@ -147,12 +150,20 @@ export function AppShell({
             </Link>
           )}
           {isAdmin ? (
-            <Link
-              to="/admin"
-              className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              <Shield className="size-4.5" aria-hidden="true" /> Admin
-            </Link>
+            <>
+              <Link
+                to="/admin"
+                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <Shield className="size-4.5" aria-hidden="true" /> Admin
+              </Link>
+              <Link
+                to="/admin/commerce"
+                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <BarChart3 className="size-4.5" aria-hidden="true" /> Commerce
+              </Link>
+            </>
           ) : null}
         </nav>
 
@@ -219,6 +230,9 @@ export function AppShell({
             className="press grid size-9 place-items-center rounded-full hover:bg-secondary"
           >
             <Search className="size-5" aria-hidden="true" />
+          </Link>
+          <Link to="/data" aria-label="Buy Data" className="press grid size-9 place-items-center rounded-full hover:bg-secondary">
+            <Smartphone className="size-5" aria-hidden="true" />
           </Link>
           <Link
             to="/notifications"

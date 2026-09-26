@@ -8,8 +8,7 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
-import { handleRewardsRoute } from "./server/rewards-controller";
-import { loadCredentialsFromRtdb } from "./server/vtushare-service";
+import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
@@ -21,9 +20,6 @@ import { executeVimeoApiSearch } from "./integrations/providers/vimeo";
 import { xseriesDbRead } from "./server/xseries-service-account";
 import type { XserisMediaItem } from "./lib/xseris/types";
 import type { XTvSeriesItem } from "./integrations/firebase/rtdb";
-
-// Warm up VTUshare credentials from RTDB on startup
-void loadCredentialsFromRtdb().catch(() => {});
 
 // Initialize discovery background scheduler on server startup
 try {
@@ -392,16 +388,10 @@ export default {
       if (xseriesRes) return xseriesRes;
     }
 
-    // Automated VTUshare MTN Data Rewards & Engagement Endpoints (User & Admin)
-    if (
-      url.pathname.startsWith("/api/rewards") ||
-      url.pathname.startsWith("/api/admin/rewards") ||
-      url.pathname.startsWith("/api/engagement") ||
-      url.pathname.startsWith("/api/admin/engagement") ||
-      url.pathname.startsWith("/api/admin/fraud")
-    ) {
-      const rewardsRes = await handleRewardsRoute(request, url);
-      if (rewardsRes) return rewardsRes;
+    // MELE DATA + creator/course commerce APIs
+    if (url.pathname.startsWith("/api/commerce") || url.pathname.startsWith("/api/admin/commerce")) {
+      const commerceRes = await handleCommerceRoute(request, url);
+      if (commerceRes) return commerceRes;
     }
 
     // In-House Ads & Promotional Campaigns (User & Admin)

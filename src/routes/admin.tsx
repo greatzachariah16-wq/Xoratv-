@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Activity,
   ArrowRight,
+  BarChart3,
   Eye,
   FileVideo,
   MessageSquareText,
@@ -11,7 +12,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   Users,
-  Wifi,
   Megaphone,
   Tv,
   Compass,
@@ -120,7 +120,7 @@ function AdminPage() {
     );
   }
 
-  // If viewing a child route (e.g. /admin/rewards, /admin/xseris), render the outlet
+  // If viewing a child route, render the outlet
   if (isChildActive) {
     return <Outlet />;
   }
@@ -131,6 +131,16 @@ function AdminPage() {
 
   const MODULE_CARDS = [
     {
+      title: "Commerce Monitor",
+      description: "Creators, courses, MELE DATA orders, commissions and payout records.",
+      href: "/admin/commerce",
+      icon: BarChart3,
+      badge: "Commerce",
+      badgeColor: "bg-primary/10 text-primary border-primary/20",
+      accent: "text-primary",
+      metric: "Creator Commerce",
+    },
+    {
       title: "Live Viewer Tracker",
       description: "Real-time 2s heartbeat presence and active viewer session logs.",
       href: "/admin/tracker",
@@ -140,16 +150,7 @@ function AdminPage() {
       accent: "text-emerald-500",
       metric: "Active Viewers",
     },
-    {
-      title: "Automated MTN Rewards",
-      description: "VTUshare wallet automation, ₦280 1GB fulfillment, and claim vending.",
-      href: "/admin/rewards",
-      icon: Wifi,
-      badge: "VTUshare",
-      badgeColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-      accent: "text-amber-500",
-      metric: "Data Rewards",
-    },
+
     {
       title: "Fraud Shield & Guard",
       description: "Bot telemetry, device fingerprint collisions, and 4-tier enforcement.",
@@ -258,9 +259,6 @@ function AdminPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button asChild variant="secondary" className="rounded-full text-xs font-semibold h-9 px-4">
-                <Link to="/admin/rewards">
-                  <Wifi className="size-3.5 mr-1.5 text-amber-500" /> MTN Rewards
-                </Link>
               </Button>
               <Button asChild className="rounded-full text-xs font-semibold h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
                 <Link to="/admin/xseris">
@@ -321,22 +319,6 @@ function AdminPage() {
             </strong>
             <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
               Real-time monitor <ArrowRight className="size-3 ml-1" />
-            </span>
-          </Link>
-
-          <Link
-            to="/admin/rewards"
-            className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
-          >
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span className="font-medium">MTN Rewards Engine</span>
-              <Wifi className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
-              VTUshare
-            </strong>
-            <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
-              1GB ₦280 automation <ArrowRight className="size-3 ml-1" />
             </span>
           </Link>
         </section>
