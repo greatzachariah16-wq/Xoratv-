@@ -60,9 +60,18 @@ async function meleFetch(path: string, init?: RequestInit) {
 }
 
 function extractMelePlans(body: any): unknown[] {
-  if (Array.isArray(body?.plans)) return body.plans;
-  if (Array.isArray(body?.data)) return body.data;
-  return [];
+  // MELE documents { plans: [...] }, but the live endpoint may wrap the
+  // catalogue inside a data/result envelope. Accept the documented shape
+  // plus these common envelope variants without trusting arbitrary fields.
+  const candidates = [
+    body?.plans,
+    body?.data?.plans,
+    body?.result?.plans,
+    body?.data?.data,
+    body?.result?.data,
+    body?.data,
+  ];
+  return candidates.find((value) => Array.isArray(value)) || [];
 }
 
 function normalizeMelePlan(p: any): MelePlan {
