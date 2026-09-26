@@ -70,7 +70,13 @@ function AdminCommerce() {
       <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-4">
         <div className="flex items-center gap-2"><Webhook className="size-4 text-primary"/><p className="text-sm font-semibold">Webhook endpoint</p></div>
         <p className="mt-1 break-all font-mono text-xs text-muted-foreground">https://xoratv-x.onrender.com/api/webhooks/mele</p>
-        <p className="mt-2 text-xs text-muted-foreground">Keep the webhook secret in Render as <code>MELE_WEBHOOK_SECRET</code>. The endpoint is ready to receive signed/secret-authenticated MELE events; we will match transaction references to Xora orders.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Set <code>MELE_WEBHOOK_SECRET</code> in Render and use the same secret in MELE if its webhook settings provide one. Xora will match incoming transaction references to Firebase-backed orders.</p>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full border border-border bg-background px-3 py-1.5">Endpoint: online</span>
+          <span className={healthQuery.data?.health.webhookConfigured ? "rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-emerald-700" : "rounded-full border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-amber-700"}>
+            Secret: {healthQuery.data?.health.webhookConfigured ? "configured" : "not configured"}
+          </span>
+        </div>
       </div>
     </section>
 
