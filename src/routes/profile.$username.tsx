@@ -37,87 +37,29 @@ function ProfilePage() {
 
   if (!isPending && !profile) {
     return (
-      <AppShell>
-        <EmptyState
-          icon={UserX}
-          title="Profile not found"
-          description={`No one on Xora goes by @${username}.`}
-          action={
-            <Link
-              to="/"
-              className="press inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-            >
-              Back to feed
-            </Link>
-          }
-        />
-      </AppShell>
-    );
-  }
-
-  const isMe = Boolean(user && profile && user.id === profile.id);
-
-  return (
-    <AppShell>
-      <header className="rise rounded-2xl border border-border bg-surface p-5 shadow-card">
-        <div className="flex items-start gap-4">
-          <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={72} />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate font-display text-xl font-semibold tracking-tight">
-              {profile?.display_name || username}
-            </h1>
-            <p className="text-sm text-muted-foreground">@{username}</p>
-            {profile?.bio ? (
-              <p className="mt-2 text-sm leading-relaxed text-pretty">{profile.bio}</p>
-            ) : null}
+    <AppShell wide>
+      <div className="space-y-5">
+        <header className="relative overflow-hidden rounded-[30px] border border-border bg-surface shadow-card">
+          <div className="h-28 bg-gradient-to-br from-primary/20 via-background to-secondary/70" />
+          <div className="relative px-5 pb-5 sm:px-7">
+            <div className="-mt-10 flex flex-wrap items-end justify-between gap-4">
+              <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={82} />
+              {isMe ? (
+                <button type="button" onClick={() => void signOut()} className="press rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-secondary">Sign out</button>
+              ) : profile ? (
+                <button type="button" onClick={() => follows.toggle(profile.id)} disabled={follows.pending} className={cn("press rounded-xl px-5 py-2 text-sm font-semibold disabled:opacity-60", follows.isFollowing(profile.id) ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground")}>{follows.isFollowing(profile.id) ? "Following" : "Follow"}</button>
+              ) : null}
+            </div>
+            <div className="mt-4">
+              <h1 className="font-display text-2xl font-semibold tracking-tight">{profile?.display_name || username}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">@{username}</p>
+              {profile?.bio ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-pretty">{profile.bio}</p> : null}
+            </div>
+            <dl className="mt-5 grid grid-cols-3 overflow-hidden rounded-2xl border border-border bg-background/70">
+              {[["Posts", posts?.length ?? 0],["Followers", profile?.follower_count ?? 0],["Following", profile?.following_count ?? 0]].map(([label,value])=><div key={String(label)} className="px-3 py-4 text-center"><dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt><dd className="mt-1 font-display text-lg font-semibold tabular-nums">{compactNumber(Number(value))}</dd></div>)}
+            </dl>
           </div>
-        </div>
-
-        <dl className="mt-4 flex gap-6 text-sm">
-          <div>
-            <dt className="text-xs text-muted-foreground">Posts</dt>
-            <dd className="font-semibold tabular-nums">{compactNumber(posts?.length ?? 0)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Followers</dt>
-            <dd className="font-semibold tabular-nums">
-              {compactNumber(profile?.follower_count ?? 0)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Following</dt>
-            <dd className="font-semibold tabular-nums">
-              {compactNumber(profile?.following_count ?? 0)}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-4 flex gap-2">
-          {isMe ? (
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="press rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
-            >
-              Sign out
-            </button>
-          ) : profile ? (
-            <button
-              type="button"
-              onClick={() => follows.toggle(profile.id)}
-              disabled={follows.pending}
-              className={cn(
-                "press rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-60",
-                follows.isFollowing(profile.id)
-                  ? "bg-secondary text-secondary-foreground"
-                  : "bg-primary text-primary-foreground",
-              )}
-            >
-              {follows.isFollowing(profile.id) ? "Following" : "Follow"}
-            </button>
-          ) : null}
-        </div>
-      </header>
+        </header>
 
       <div className="mt-6 space-y-4">
         {postsPending || isPending ? (
