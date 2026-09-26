@@ -1,6 +1,6 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
-  createCreatorProfile, createDataOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
+  createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
   getCreatorDashboard, getMelePlans, getMeleWallet, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
@@ -40,6 +40,16 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/courses" && request.method === "GET") {
     return json({ ok: true, courses: await getPublishedCourses() });
+  }
+
+  if (path === "/api/commerce/course/order" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (!body.userId || !body.courseId) return json({ ok: false, error: "Missing course order details." }, 400);
+      return json({ ok: true, order: await createCourseOrder(body) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create course order." }, 500);
+    }
   }
 
   if (path === "/api/commerce/creator/courses" && request.method === "GET") {
