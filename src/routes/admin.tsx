@@ -171,16 +171,6 @@
             </span>
           </Link>
 
-          
-              <Wifi className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <strong className="mt-2 block font-display text-2xl sm:text-3xl font-bold tabular-nums text-foreground">
-              VTUshare
-            </strong>
-            <span className="mt-1 flex items-center text-[11px] text-muted-foreground group-hover:text-primary transition-colors">
-              1GB ₦280 automation <ArrowRight className="size-3 ml-1" />
-            </span>
-          </Link>
         </section>
 
         {/* Dedicated Admin Modules Grid */}
