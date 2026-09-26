@@ -1,7 +1,7 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
-  getCreatorDashboard, getMelePlans, getMeleWallet, testMelePurchase, getPayoutDetails, getPublishedCourses,
+  getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, handleMeleWebhook, testMelePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
 
@@ -18,6 +18,15 @@ const json = (body: unknown, status = 200) =>
 export async function handleCommerceRoute(request: Request, url: URL): Promise<Response | null> {
   const path = url.pathname;
   if (request.method === "OPTIONS" && path.startsWith("/api/commerce")) return new Response(null, { status: 204, headers });
+
+  if (path === "/api/webhooks/mele" && request.method === "POST") {
+    try {
+      const result = await handleMeleWebhook(request);
+      return json(result, result.status);
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "MELE webhook error." }, 500);
+    }
+  }
 
   if (path === "/api/commerce/data/plans" && request.method === "GET") {
     try {
@@ -106,6 +115,13 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     const session = verifyAdminSession(request);
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
     return json({ ok: true, overview: await getAdminCommerceOverview() });
+  }
+
+  if (path === "/api/admin/commerce/mele-health" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    const health = await getMeleHealth();
+    return json({ ok: true, health });
   }
 
   if (path === "/api/admin/commerce/mele-wallet" && request.method === "GET") {
