@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
+  BarChart3,
   CircleHelp,
   GraduationCap,
   Home,
@@ -149,12 +150,20 @@ export function AppShell({
             </Link>
           )}
           {isAdmin ? (
-            <Link
-              to="/admin"
-              className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              <Shield className="size-4.5" aria-hidden="true" /> Admin
-            </Link>
+            <>
+              <Link
+                to="/admin"
+                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <Shield className="size-4.5" aria-hidden="true" /> Admin
+              </Link>
+              <Link
+                to="/admin/commerce"
+                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <BarChart3 className="size-4.5" aria-hidden="true" /> Commerce
+              </Link>
+            </>
           ) : null}
         </nav>
 
