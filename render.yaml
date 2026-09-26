@@ -43,5 +43,9 @@ services:
         sync: false
       - key: MELE_DATA_API_KEY
         sync: false
+      - key: VTUSHARE_EMAIL
+        sync: false
+      - key: VTUSHARE_PASSWORD
+        sync: false
       - key: MELE_WEBHOOK_SECRET
         sync: false
