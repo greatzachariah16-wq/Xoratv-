@@ -112,11 +112,15 @@ export async function getMeleHealth() {
       display: walletData?.display ?? null,
       currency: walletData?.currency ?? "NGN",
       plansCount: plans.length,
+      webhookConfigured: Boolean(process.env.MELE_WEBHOOK_SECRET?.trim()),
+      walletHttpStatus: walletResponse.status,
+      plansHttpStatus: plansResponse.status,
     };
   } catch (error) {
     return {
       connected: false,
       checkedAt,
+      webhookConfigured: Boolean(process.env.MELE_WEBHOOK_SECRET?.trim()),
       error: error instanceof Error ? error.message : "MELE connection check failed.",
     };
   }
