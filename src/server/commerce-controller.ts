@@ -1,7 +1,7 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
-  getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, testMelePurchase, getPayoutDetails, getPublishedCourses,
+  getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
 
@@ -17,7 +17,7 @@ const json = (body: unknown, status = 200) =>
 
 export async function handleCommerceRoute(request: Request, url: URL): Promise<Response | null> {
   const path = url.pathname;
-  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele"))) {
+  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare"))) {
     return new Response(null, { status: 204, headers });
   }
 
@@ -39,6 +39,25 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     }
   }
 
+  if (path === "/api/webhooks/vtushare" && request.method === "GET") {
+    return json({
+      ok: true,
+      service: "vtushare-webhook",
+      ready: true,
+      secretConfigured: Boolean(process.env.VTUSHARE_WEBHOOK_SECRET?.trim()),
+      endpoint: "/api/webhooks/vtushare",
+    });
+  }
+
+  if (path === "/api/webhooks/vtushare" && request.method === "POST") {
+    try {
+      const result = await handleVtushareWebhook(request);
+      return json(result, result.status);
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare webhook error." }, 500);
+    }
+  }
+
   if (path === "/api/commerce/vtushare/plans" && request.method === "GET") {
     try {
       return json({ ok: true, plans: await getVtusharePlans(url.searchParams.get("refresh") === "1") });
@@ -51,6 +70,28 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     const session = verifyAdminSession(request);
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
     return json({ ok: true, health: await getVtushareHealth() });
+  }
+
+  if (path === "/api/admin/commerce/vtushare-test-purchase" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.bundleId || !body.networkId || !body.typeId || !body.phoneNumber) {
+        return json({ ok: false, error: "bundleId, networkId, typeId and phoneNumber are required." }, 400);
+      }
+      return json({
+        ok: true,
+        test: await testVtusharePurchase({
+          bundleId: Number(body.bundleId),
+          networkId: Number(body.networkId),
+          typeId: Number(body.typeId),
+          phoneNumber: body.phoneNumber,
+        }),
+      });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare purchase test failed." }, 500);
+    }
   }
 
   if (path === "/api/admin/commerce/vtushare-account" && request.method === "GET") {
