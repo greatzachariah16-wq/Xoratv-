@@ -41,3 +41,5 @@ services:
         value: https://xora-tv-default-rtdb.firebaseio.com
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
+      - key: MELE_DATA_API_KEY
+        sync: false
