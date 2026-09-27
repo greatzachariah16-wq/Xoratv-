@@ -147,6 +147,69 @@ export type VtusharePlan = {
   typeName: string;
 };
 
+export type PublicDataPlan = {
+  catalogId: string;
+  network: "MTN" | "GLO" | "AIRTEL" | "9MOBILE";
+  data_size: string;
+  plan_name: string;
+  validity: string;
+  price: number;
+};
+
+function publicCatalogId(provider: "mele" | "vtushare", parts: Array<string | number>) {
+  return crypto.createHash("sha256").update([provider, ...parts].join("|")).digest("hex").slice(0, 24);
+}
+
+function toPublicMelePlan(plan: MelePlan): PublicDataPlan {
+  return {
+    catalogId: publicCatalogId("mele", [plan.plan_id, plan.plan_code]),
+    network: plan.network,
+    data_size: plan.data_size,
+    plan_name: plan.plan_name || plan.data_size,
+    validity: plan.validity,
+    price: plan.price,
+  };
+}
+
+function toPublicVtusharePlan(plan: VtusharePlan): PublicDataPlan | null {
+  const network = plan.network as PublicDataPlan["network"];
+  if (!["MTN", "GLO", "AIRTEL", "9MOBILE"].includes(network)) return null;
+  return {
+    catalogId: publicCatalogId("vtushare", [plan.bundleId, plan.networkId, plan.typeId]),
+    network,
+    data_size: plan.dataSize,
+    plan_name: plan.typeName || plan.dataSize,
+    validity: "",
+    price: plan.amount,
+  };
+}
+
+export async function getPublicDataPlans(force = false): Promise<PublicDataPlan[]> {
+  const [meleResult, vtushareResult] = await Promise.allSettled([
+    getMelePlans(force),
+    getVtusharePlans(force),
+  ]);
+  const mele = meleResult.status === "fulfilled" ? meleResult.value.map(toPublicMelePlan) : [];
+  const vtushare = vtushareResult.status === "fulfilled"
+    ? vtushareResult.value.map(toPublicVtusharePlan).filter((p): p is PublicDataPlan => Boolean(p))
+    : [];
+  const merged = [...mele, ...vtushare].filter((p) => Number.isFinite(p.price) && p.price > 0 && p.data_size);
+  if (!merged.length) {
+    const firstError = meleResult.status === "rejected" ? meleResult.reason : vtushareResult.status === "rejected" ? vtushareResult.reason : null;
+    throw new Error(firstError instanceof Error ? firstError.message : "No data plans are currently available.");
+  }
+
+  // When two suppliers expose the same network/data/validity combination,
+  // present the lower customer price without exposing supplier identity.
+  const cheapest = new Map<string, PublicDataPlan>();
+  for (const plan of merged) {
+    const key = [plan.network, plan.data_size.trim().toLowerCase(), plan.validity.trim().toLowerCase()].join("|");
+    const current = cheapest.get(key);
+    if (!current || plan.price < current.price) cheapest.set(key, plan);
+  }
+  return [...cheapest.values()].sort((a, b) => a.price - b.price);
+}
+
 function vtushareAuth() {
   const email = process.env.VTUSHARE_EMAIL?.trim() || "";
   const password = process.env.VTUSHARE_PASSWORD?.trim() || "";
@@ -450,13 +513,39 @@ export async function handleMeleWebhook(request: Request) {
 
 export async function createDataOrder(params: {
   userId: string;
-  plan: MelePlan;
+  catalogId: string;
   phoneNumber: string;
   referralCode?: string | null;
 }) {
-  const plans = await getMelePlans();
-  const plan = plans.find((p) => Number(p.plan_id) === Number(params.plan.plan_id));
-  if (!plan) throw new Error("The selected MELE DATA plan is no longer available.");
+  const [melePlans, vtusharePlans] = await Promise.all([
+    getMelePlans(),
+    getVtusharePlans(),
+  ]);
+  const mele = melePlans.map((plan) => ({
+    catalogId: publicCatalogId("mele", [plan.plan_id, plan.plan_code]),
+    provider: "mele" as const,
+    providerPlan: plan,
+    network: plan.network,
+    dataSize: plan.data_size,
+    planCode: plan.plan_code,
+    providerCost: plan.price,
+    customerPrice: plan.price,
+  })).find((p) => p.catalogId === String(params.catalogId));
+
+  const vtushare = vtusharePlans.map((plan) => ({
+    catalogId: publicCatalogId("vtushare", [plan.bundleId, plan.networkId, plan.typeId]),
+    provider: "vtushare" as const,
+    providerPlan: plan,
+    network: plan.network as PublicDataPlan["network"],
+    dataSize: plan.dataSize,
+    planCode: String(plan.bundleId),
+    providerCost: plan.amount,
+    customerPrice: plan.amount,
+  })).find((p) => p.catalogId === String(params.catalogId));
+
+  const selected = mele || vtushare;
+  if (!selected) throw new Error("The selected data plan is no longer available.");
+
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const orderId = id("data");
@@ -464,13 +553,15 @@ export async function createDataOrder(params: {
   const record = {
     id: orderId,
     userId: params.userId,
-    planId: plan.plan_id,
-    planCode: plan.plan_code,
-    network: plan.network,
-    dataSize: plan.data_size,
+    planId: selected.provider === "mele" ? selected.providerPlan.plan_id : selected.providerPlan.bundleId,
+    planCode: selected.planCode,
+    network: selected.network,
+    dataSize: selected.dataSize,
     phoneNumber,
-    providerCost: plan.price,
-    customerPrice: plan.price,
+    provider: selected.provider,
+    providerPlan: selected.providerPlan,
+    providerCost: selected.providerCost,
+    customerPrice: selected.customerPrice,
     referralCode: params.referralCode || null,
     referralCreatorId,
     status: "awaiting_payment",
