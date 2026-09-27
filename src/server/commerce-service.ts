@@ -435,7 +435,7 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     typeId: Number(p.type_id ?? p.typeId ?? p.type_id_value ?? p.type),
     typeName,
     validity,
-  };  };
+  };
 }
 
 export async function getVtusharePlans(force = false): Promise<VtusharePlan[]> {
