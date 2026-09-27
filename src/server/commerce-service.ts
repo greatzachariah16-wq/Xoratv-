@@ -274,9 +274,15 @@ export async function syncDataCatalog(): Promise<{ records: DataCatalogRecord[];
 
 export async function getAdminDataCatalog(refresh = false): Promise<DataCatalogRecord[]> {
   let records = await readDataCatalog();
-  if (refresh || !records.length) {
+  if (!records.length) {
     const synced = await syncDataCatalog();
-    records = synced.records;
+    // One-time migration: preserve the currently live catalogue so customers do not
+    // see an unexpected empty page. From this point onward, new plans arrive as drafts.
+    const now = new Date().toISOString();
+    records = synced.records.map((record) => ({ ...record, status: "published" as const, updatedAt: now }));
+    await writeCatalog(records);
+  } else if (refresh) {
+    records = (await syncDataCatalog()).records;
   }
   return records;
 }
