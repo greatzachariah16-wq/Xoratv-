@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook } from "lucide-react";
+import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook, Save, Send, Ban, FileEdit } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { adminCommerceQuery, commerceFetch, meleHealthQuery, melePlansQuery, vtushareHealthQuery, vtusharePlansQuery, type MelePlan, type VtusharePlan } from "@/lib/commerce";
+import { adminCommerceQuery, adminDataCatalogQuery, commerceFetch, meleHealthQuery, melePlansQuery, vtushareHealthQuery, vtusharePlansQuery, type MelePlan, type VtusharePlan, type DataCatalogRecord } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerce });
 
@@ -18,6 +18,10 @@ function normalizeNetwork(value: unknown): MelePlan["network"] | null {
 
 function AdminCommerce() {
   const { data, isPending, error } = useQuery(adminCommerceQuery());
+  const catalogQuery = useQuery(adminDataCatalogQuery(false));
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [catalogBusy, setCatalogBusy] = useState<string | null>(null);
+  const [catalogMessage, setCatalogMessage] = useState<string | null>(null);
   const healthQuery = useQuery(meleHealthQuery());
   const planQuery = useQuery(melePlansQuery(true));
   const vtHealthQuery = useQuery(vtushareHealthQuery());
@@ -156,6 +160,46 @@ function AdminCommerce() {
         <button type="button" disabled={vtTesting || !vtNetworkId || !vtBundleId || !vtTypeId || vtPhone.replace(/\D/g,"").length!==11} onClick={async()=>{ if(!window.confirm("This will make a REAL VTUshare purchase and debit the VTUshare wallet. Continue?")) return; setVtTesting(true); setVtResult(null); try { const r=await commerceFetch<any>("/api/admin/commerce/vtushare-test-purchase",{method:"POST",body:JSON.stringify({networkId:Number(vtNetworkId),bundleId:Number(vtBundleId),typeId:Number(vtTypeId),phoneNumber:vtPhone})}); setVtResult(`Success: ${r.test.response?.message || "VTUshare accepted the purchase"} · ref ${r.test.response?.ref || "returned"}`); } catch(e){ setVtResult(e instanceof Error ? `Failed: ${e.message}` : "VTUshare purchase test failed."); } finally { setVtTesting(false); } }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{vtTesting?<Loader2 className="size-4 animate-spin"/>:null}{vtTesting?"Sending live test…":"Run VTUshare live test"}</button>
         {vtResult ? <p className="mt-3 rounded-xl border border-border bg-background p-3 text-sm">{vtResult}</p> : null}
       </div>
+    </section>
+
+    <section className="rounded-3xl border border-border bg-surface p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Xora pricing control</p>
+          <h2 className="mt-1 font-display text-xl font-semibold">Data catalogue & publishing</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Provider prices are treated as your wholesale cost. Only plans you publish here appear to customers, and the customer price is controlled by Xora.</p>
+        </div>
+        <button type="button" onClick={async()=>{setCatalogBusy("sync");setCatalogMessage(null);try{const r=await commerceFetch<any>("/api/admin/commerce/data-catalog/sync",{method:"POST"});await catalogQuery.refetch();setCatalogMessage(`Synced catalogue · ${r.result.added} new · ${r.result.updated} updated.`)}catch(e){setCatalogMessage(e instanceof Error?e.message:"Catalogue sync failed.")}finally{setCatalogBusy(null)}}} disabled={catalogBusy!==null} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
+          <RefreshCw className={catalogBusy==="sync" ? "size-4 animate-spin" : "size-4"} /> Refresh provider prices
+        </button>
+      </div>
+      {catalogMessage ? <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-3 text-sm">{catalogMessage}</div> : null}
+      {catalogQuery.isPending ? <div className="mt-4 rounded-2xl border border-border p-4 text-sm text-muted-foreground">Loading Xora pricing catalogue…</div> :
+       catalogQuery.error ? <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{catalogQuery.error instanceof Error ? catalogQuery.error.message : "Could not load catalogue."}</div> :
+       <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
+        <table className="w-full min-w-[900px] text-left text-sm">
+          <thead className="bg-muted/30 text-xs text-muted-foreground"><tr className="border-b border-border">
+            <th className="p-3">Plan</th><th className="p-3">Source cost</th><th className="p-3">Xora price</th><th className="p-3">Margin</th><th className="p-3">Status</th><th className="p-3">Action</th>
+          </tr></thead>
+          <tbody>{(catalogQuery.data?.catalog || []).map((p: DataCatalogRecord) => {
+            const draft = priceDrafts[p.catalogId] ?? String(p.customerPrice);
+            const margin = Number(draft) - p.providerCost;
+            const busy = catalogBusy === p.catalogId;
+            return <tr key={p.catalogId} className="border-b border-border/60 align-middle">
+              <td className="p-3"><div className="font-semibold">{p.network} · {p.data_size}</div><div className="text-xs text-muted-foreground">{p.plan_name}{p.validity ? ` · ${p.validity}` : ""} · {p.provider}</div></td>
+              <td className="p-3 font-medium">₦{p.providerCost.toLocaleString()}</td>
+              <td className="p-3"><div className="flex items-center gap-2"><span className="text-muted-foreground">₦</span><input value={draft} onChange={e=>setPriceDrafts(v=>({...v,[p.catalogId]:e.target.value}))} inputMode="decimal" className="w-28 rounded-lg border border-input bg-background px-2 py-2 font-semibold outline-none focus:ring-2 focus:ring-primary/20"/></div></td>
+              <td className={margin < 0 ? "p-3 font-semibold text-destructive" : "p-3 font-semibold text-emerald-600"}>₦{Number.isFinite(margin) ? margin.toLocaleString() : "—"}</td>
+              <td className="p-3"><span className={p.status==="published" ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700" : p.status==="draft" ? "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700" : "rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"}>{p.status}</span></td>
+              <td className="p-3"><div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={async()=>{setCatalogBusy(p.catalogId);setCatalogMessage(null);try{await commerceFetch("/api/admin/commerce/data-catalog/price",{method:"POST",body:JSON.stringify({catalogId:p.catalogId,customerPrice:Number(draft)})});await catalogQuery.refetch();setCatalogMessage(`${p.network} ${p.data_size} price saved.`)}catch(e){setCatalogMessage(e instanceof Error?e.message:"Could not save price.")}finally{setCatalogBusy(null)}}} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs font-semibold disabled:opacity-50"><Save className="size-3.5"/> Save price</button>
+                {p.status !== "published" ? <button type="button" disabled={busy} onClick={async()=>{setCatalogBusy(p.catalogId);setCatalogMessage(null);try{await commerceFetch("/api/admin/commerce/data-catalog/status",{method:"POST",body:JSON.stringify({catalogId:p.catalogId,status:"published"})});await catalogQuery.refetch();setCatalogMessage(`${p.network} ${p.data_size} published.`)}catch(e){setCatalogMessage(e instanceof Error?e.message:"Could not publish plan.")}finally{setCatalogBusy(null)}}} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"><Send className="size-3.5"/> Publish</button> :
+                <button type="button" disabled={busy} onClick={async()=>{setCatalogBusy(p.catalogId);try{await commerceFetch("/api/admin/commerce/data-catalog/status",{method:"POST",body:JSON.stringify({catalogId:p.catalogId,status:"disabled"})});await catalogQuery.refetch()}catch(e){setCatalogMessage(e instanceof Error?e.message:"Could not disable plan.")}finally{setCatalogBusy(null)}}} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs font-semibold disabled:opacity-50"><Ban className="size-3.5"/> Unpublish</button>}
+              </div></td>
+            </tr>;
+          })}</tbody>
+        </table>
+       </div>}
     </section>
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[[Users,"Creators",o?.creators?.length||0],[BookOpen,"Courses",o?.courses?.length||0],[Smartphone,"Data orders",o?.dataOrders?.length||0],[Wallet,"Commissions",o?.commissions?.length||0]].map(([I,l,v])=><div className="rounded-2xl border border-border bg-surface p-4" key={String(l)}><I className="size-5 text-primary"/><p className="mt-3 text-xs text-muted-foreground">{l}</p><p className="text-2xl font-semibold">{v}</p></div>)}</div>
