@@ -4,6 +4,10 @@ export type MelePlan = {
   plan_id: number; plan_code: string; network: "MTN" | "GLO" | "AIRTEL" | "9MOBILE";
   plan_name: string; data_size: string; validity: string; price: number;
 };
+export type PublicDataPlan = {
+  catalogId: string; network: "MTN" | "GLO" | "AIRTEL" | "9MOBILE";
+  data_size: string; plan_name: string; validity: string; price: number;
+};
 export type VtusharePlan = {
   bundleId: number; networkId: number; network: string; amount: number;
   dataSize: string; typeId: number; typeName: string;
@@ -19,9 +23,10 @@ export async function commerceFetch<T>(path: string, init?: RequestInit): Promis
   if (!res.ok || body?.ok === false) throw new Error(body?.error || "Request failed");
   return body as T;
 }
-export function melePlansQuery(refresh = false) {
-  return queryOptions({ queryKey: ["commerce","mele-plans",refresh], queryFn: () => commerceFetch<{ok:true;plans:MelePlan[]}>(`/api/commerce/data/plans${refresh ? "?refresh=1" : ""}`) });
+export function dataPlansQuery(refresh = false) {
+  return queryOptions({ queryKey: ["commerce","data-plans",refresh], queryFn: () => commerceFetch<{ok:true;plans:PublicDataPlan[]}>(`/api/commerce/data/plans${refresh ? "?refresh=1" : ""}`) });
 }
+export const melePlansQuery = dataPlansQuery;
 export function vtusharePlansQuery(refresh = false) {
   return queryOptions({
     queryKey: ["commerce", "vtushare-plans", refresh],
