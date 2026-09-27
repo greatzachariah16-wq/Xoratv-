@@ -116,7 +116,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   if (path === "/api/commerce/data/order" && request.method === "POST") {
     try {
       const body = await request.json();
-      if (!body.userId || !body.plan || !body.phoneNumber) return json({ ok: false, error: "Missing purchase details." }, 400);
+      if (!body.userId || !body.catalogId || !body.phoneNumber) return json({ ok: false, error: "Missing purchase details." }, 400);
       const order = await createDataOrder(body);
       return json({ ok: true, order });
     } catch (e) {
