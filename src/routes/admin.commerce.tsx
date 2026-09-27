@@ -22,6 +22,7 @@ function AdminCommerce() {
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [catalogBusy, setCatalogBusy] = useState<string | null>(null);
   const [catalogMessage, setCatalogMessage] = useState<string | null>(null);
+  const [catalogProvider, setCatalogProvider] = useState<"all" | "mele" | "vtushare">("all");
   const healthQuery = useQuery(meleHealthQuery());
   const planQuery = useQuery(melePlansQuery(true));
   const vtHealthQuery = useQuery(vtushareHealthQuery());
@@ -167,7 +168,7 @@ function AdminCommerce() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Xora pricing control</p>
           <h2 className="mt-1 font-display text-xl font-semibold">Data catalogue & publishing</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Provider prices are treated as your wholesale cost. Only plans you publish here appear to customers, and the customer price is controlled by Xora.</p>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">MELE and VTUshare are separate provider catalogues. Set the Xora selling price and explicitly publish each plan you want customers to see. New provider plans remain drafts until approved.</p>
         </div>
         <button type="button" onClick={async()=>{setCatalogBusy("sync");setCatalogMessage(null);try{const r=await commerceFetch<any>("/api/admin/commerce/data-catalog/sync",{method:"POST"});await catalogQuery.refetch();setCatalogMessage(`Synced catalogue · ${r.result.added} new · ${r.result.updated} updated.`)}catch(e){setCatalogMessage(e instanceof Error?e.message:"Catalogue sync failed.")}finally{setCatalogBusy(null)}}} disabled={catalogBusy!==null} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-50">
           <RefreshCw className={catalogBusy==="sync" ? "size-4 animate-spin" : "size-4"} /> Refresh provider prices
@@ -176,17 +177,27 @@ function AdminCommerce() {
       {catalogMessage ? <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-3 text-sm">{catalogMessage}</div> : null}
       {catalogQuery.isPending ? <div className="mt-4 rounded-2xl border border-border p-4 text-sm text-muted-foreground">Loading Xora pricing catalogue…</div> :
        catalogQuery.error ? <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{catalogQuery.error instanceof Error ? catalogQuery.error.message : "Could not load catalogue."}</div> :
-       <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
-        <table className="w-full min-w-[900px] text-left text-sm">
+       <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Provider</span>
+        {(["all", "mele", "vtushare"] as const).map((value) => (
+          <button key={value} type="button" onClick={() => setCatalogProvider(value)} className={catalogProvider === value ? "rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground" : "rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold"}>
+            {value === "all" ? "All" : value === "mele" ? "MELE" : "VTUshare"}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">Only <strong>Published</strong> plans are visible to customers.</span>
+      </div>
+      <div className="mt-3 overflow-x-auto rounded-2xl border border-border">
+        <table className="w-full min-w-[1050px] text-left text-sm">
           <thead className="bg-muted/30 text-xs text-muted-foreground"><tr className="border-b border-border">
-            <th className="p-3">Plan</th><th className="p-3">Source cost</th><th className="p-3">Xora price</th><th className="p-3">Margin</th><th className="p-3">Status</th><th className="p-3">Action</th>
+            <th className="p-3">Provider</th><th className="p-3">Plan</th><th className="p-3">Source cost</th><th className="p-3">Xora price</th><th className="p-3">Margin</th><th className="p-3">Status</th><th className="p-3">Action</th>
           </tr></thead>
-          <tbody>{(catalogQuery.data?.catalog || []).map((p: DataCatalogRecord) => {
+          <tbody>{(catalogQuery.data?.catalog || []).filter((p: DataCatalogRecord) => catalogProvider === "all" || p.provider === catalogProvider).map((p: DataCatalogRecord) => {
             const draft = priceDrafts[p.catalogId] ?? String(p.customerPrice);
             const margin = Number(draft) - p.providerCost;
             const busy = catalogBusy === p.catalogId;
             return <tr key={p.catalogId} className="border-b border-border/60 align-middle">
-              <td className="p-3"><div className="font-semibold">{p.network} · {p.data_size}</div><div className="text-xs text-muted-foreground">{p.plan_name}{p.validity ? ` · ${p.validity}` : ""} · {p.provider}</div></td>
+              <td className="p-3"><span className={p.provider === "mele" ? "rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary" : "rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-700"}>{p.provider === "mele" ? "MELE" : "VTUshare"}</span></td>
+              <td className="p-3"><div className="font-semibold">{p.network} · {p.data_size}</div><div className="text-xs text-muted-foreground">{p.plan_name}{p.validity ? ` · ${p.validity}` : ""}</div></td>
               <td className="p-3 font-medium">₦{p.providerCost.toLocaleString()}</td>
               <td className="p-3"><div className="flex items-center gap-2"><span className="text-muted-foreground">₦</span><input value={draft} onChange={e=>setPriceDrafts(v=>({...v,[p.catalogId]:e.target.value}))} inputMode="decimal" className="w-28 rounded-lg border border-input bg-background px-2 py-2 font-semibold outline-none focus:ring-2 focus:ring-primary/20"/></div></td>
               <td className={margin < 0 ? "p-3 font-semibold text-destructive" : "p-3 font-semibold text-emerald-600"}>₦{Number.isFinite(margin) ? margin.toLocaleString() : "—"}</td>
