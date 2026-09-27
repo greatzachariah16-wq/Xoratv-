@@ -2,7 +2,7 @@ import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
   getPublicDataPlans,
-  getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
+  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
 
@@ -185,6 +185,50 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, payout: await savePayoutDetails(body.userId, body) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Payout details could not be saved." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/data-catalog" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, catalog: await getAdminDataCatalog(url.searchParams.get("refresh") === "1") });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Data catalogue error." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/data-catalog/sync" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, result: await syncDataCatalog() });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Data catalogue sync failed." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/data-catalog/price" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.catalogId || body.customerPrice === undefined) return json({ ok: false, error: "catalogId and customerPrice are required." }, 400);
+      return json({ ok: true, plan: await updateDataCatalogPrice(body.catalogId, Number(body.customerPrice)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not update data price." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/data-catalog/status" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.catalogId || !body.status) return json({ ok: false, error: "catalogId and status are required." }, 400);
+      return json({ ok: true, plan: await updateDataCatalogStatus(body.catalogId, body.status) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not update catalogue status." }, 500);
     }
   }
 
