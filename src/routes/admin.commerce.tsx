@@ -177,6 +177,7 @@ function AdminCommerce() {
       {catalogMessage ? <div className="mt-4 rounded-2xl border border-border bg-muted/20 p-3 text-sm">{catalogMessage}</div> : null}
       {catalogQuery.isPending ? <div className="mt-4 rounded-2xl border border-border p-4 text-sm text-muted-foreground">Loading Xora pricing catalogue…</div> :
        catalogQuery.error ? <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{catalogQuery.error instanceof Error ? catalogQuery.error.message : "Could not load catalogue."}</div> :
+       <>
        <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Provider</span>
         {(["all", "mele", "vtushare"] as const).map((value) => (
@@ -210,7 +211,8 @@ function AdminCommerce() {
             </tr>;
           })}</tbody>
         </table>
-       </div>}
+       </div>
+       </>}
     </section>
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[[Users,"Creators",o?.creators?.length||0],[BookOpen,"Courses",o?.courses?.length||0],[Smartphone,"Data orders",o?.dataOrders?.length||0],[Wallet,"Commissions",o?.commissions?.length||0]].map(([I,l,v])=><div className="rounded-2xl border border-border bg-surface p-4" key={String(l)}><I className="size-5 text-primary"/><p className="mt-3 text-xs text-muted-foreground">{l}</p><p className="text-2xl font-semibold">{v}</p></div>)}</div>
