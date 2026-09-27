@@ -4,6 +4,10 @@ export type MelePlan = {
   plan_id: number; plan_code: string; network: "MTN" | "GLO" | "AIRTEL" | "9MOBILE";
   plan_name: string; data_size: string; validity: string; price: number;
 };
+export type VtusharePlan = {
+  bundleId: number; networkId: number; network: string; amount: number;
+  dataSize: string; typeId: number; typeName: string;
+};
 export type Course = {
   id: string; creatorId: string; title: string; description: string; price: number;
   thumbnailUrl?: string | null; contentPostId?: string | null; status: string; createdAt: string; updatedAt: string;
@@ -17,6 +21,18 @@ export async function commerceFetch<T>(path: string, init?: RequestInit): Promis
 }
 export function melePlansQuery(refresh = false) {
   return queryOptions({ queryKey: ["commerce","mele-plans",refresh], queryFn: () => commerceFetch<{ok:true;plans:MelePlan[]}>(`/api/commerce/data/plans${refresh ? "?refresh=1" : ""}`) });
+}
+export function vtusharePlansQuery(refresh = false) {
+  return queryOptions({
+    queryKey: ["commerce", "vtushare-plans", refresh],
+    queryFn: () => commerceFetch<{ok:true;plans:VtusharePlan[]}>(`/api/commerce/vtushare/plans${refresh ? "?refresh=1" : ""}`),
+  });
+}
+export function vtushareHealthQuery() {
+  return queryOptions({
+    queryKey: ["admin", "vtushare-health"],
+    queryFn: () => commerceFetch<{ok:true;health:any}>("/api/admin/commerce/vtushare-health"),
+  });
 }
 export function coursesMarketQuery() {
   return queryOptions({ queryKey: ["commerce","courses"], queryFn: () => commerceFetch<{ok:true;courses:Course[]}>("/api/commerce/courses") });
