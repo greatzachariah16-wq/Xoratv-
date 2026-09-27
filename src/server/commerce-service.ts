@@ -220,6 +220,9 @@ function toCatalogRecord(provider: "mele" | "vtushare", plan: MelePlan | Vtushar
     plan_name: publicPlan.plan_name,
     validity: publicPlan.validity,
     providerCost,
+    // Newly discovered plans always require explicit admin approval.
+    // Existing status is preserved so an approved/disabled plan is never
+    // silently republished by a provider catalogue refresh.
     customerPrice: existing?.customerPrice ?? providerCost,
     status: existing?.status ?? "draft",
     createdAt: existing?.createdAt ?? now,
@@ -276,10 +279,9 @@ export async function getAdminDataCatalog(refresh = false): Promise<DataCatalogR
   let records = await readDataCatalog();
   if (!records.length) {
     const synced = await syncDataCatalog();
-    // One-time migration: preserve the currently live catalogue so customers do not
-    // see an unexpected empty page. From this point onward, new plans arrive as drafts.
-    const now = new Date().toISOString();
-    records = synced.records.map((record) => ({ ...record, status: "published" as const, updatedAt: now }));
+    // First initialization is intentionally safe: provider plans are drafts until
+    // an admin explicitly sets a Xora price and publishes them.
+    records = synced.records;
     await writeCatalog(records);
   } else if (refresh) {
     records = (await syncDataCatalog()).records;
@@ -317,7 +319,10 @@ export async function getPublicDataPlans(force = false): Promise<PublicDataPlan[
     const synced = await syncDataCatalog();
     catalog = synced.records;
   }
-  const published = catalog
+  // The public catalogue is an allow-list: only explicitly published records
+  // are exposed. Do not auto-select the cheapest provider or merge providers,
+  // because admin approval is the source of truth for what Xora sells.
+  return catalog
     .filter((record) => record.status === "published")
     .map((record) => ({
       catalogId: record.catalogId,
@@ -326,14 +331,8 @@ export async function getPublicDataPlans(force = false): Promise<PublicDataPlan[
       plan_name: record.plan_name,
       validity: record.validity,
       price: record.customerPrice,
-    }));
-  const cheapest = new Map<string, PublicDataPlan>();
-  for (const plan of published) {
-    const key = [plan.network, plan.data_size.trim().toLowerCase(), plan.validity.trim().toLowerCase()].join("|");
-    const current = cheapest.get(key);
-    if (!current || plan.price < current.price) cheapest.set(key, plan);
-  }
-  return [...cheapest.values()].sort((a, b) => a.price - b.price);
+    }))
+    .sort((a, b) => a.network.localeCompare(b.network) || a.price - b.price);
 }
 
 function vtushareAuth() {
