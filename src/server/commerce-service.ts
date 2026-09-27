@@ -414,7 +414,7 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     "",
   ).trim();
 
-  const sizeMatch = bundleText.match(/\\b(\\d+(?:\\.\\d+)?(?:GB|MB))\\b/i);
+  const sizeMatch = bundleText.match(/\b(\d+(?:\.\d+)?(?:GB|MB))\b/i);
   const dataSize = sizeMatch?.[1]
     ? sizeMatch[1].toUpperCase()
     : bundleText
