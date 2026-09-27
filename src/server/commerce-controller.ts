@@ -1,6 +1,7 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
+  getPublicDataPlans,
   getCreatorDashboard, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails,
 } from "./commerce-service";
@@ -106,7 +107,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/data/plans" && request.method === "GET") {
     try {
-      return json({ ok: true, plans: await getMelePlans(url.searchParams.get("refresh") === "1") });
+      return json({ ok: true, plans: await getPublicDataPlans(url.searchParams.get("refresh") === "1") });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Plan catalog error" }, 500);
     }
