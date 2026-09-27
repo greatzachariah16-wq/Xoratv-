@@ -405,32 +405,26 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     p.planName ??
     "",
   ).trim();
-  const typeName = String(
-    p.type_name ??
-    p.typeName ??
-    p.type_name_display ??
-    p.typeNameDisplay ??
-    p.type ??
-    "",
+  const rawTypeName = String(
+    p.type_name ?? p.typeName ?? p.type_name_display ?? p.typeNameDisplay ?? ""
   ).trim();
 
   const sizeMatch = bundleText.match(/\b(\d+(?:\.\d+)?(?:GB|MB))\b/i);
   const dataSize = sizeMatch?.[1]
     ? sizeMatch[1].toUpperCase()
-    : bundleText
-        .replace(/[_-](?:AWOOF|SME|CG|DATA.?SHARE|DIRECT.?GIFTING).*$/i, "")
-        .trim();
+    : bundleText.replace(/[_-](?:AWOOF|SME|CG|DATA.?SHARE|DIRECT.?GIFTING).*$/i, "").trim();
 
+  const bundleValidityMatch = bundleText.match(/(?:[_-]|\s)(\d+)\s*(?:D|DAYS?|DAY)\b/i);
   const validity = String(
-    p.validity ??
-    p.duration ??
-    p.validity_days ??
-    p.validityDays ??
-    p.days ??
-    p.duration_days ??
-    p.durationDays ??
-    "",
+    p.validity ?? p.duration ?? p.validity_days ?? p.validityDays ?? p.days ??
+    p.duration_days ?? p.durationDays ??
+    (bundleValidityMatch?.[1] ? bundleValidityMatch[1] + " days" : "")
   ).trim();
+
+  const familyMatch = bundleText.match(/(?:^|[_-\s])(AWOOF|SME|GIFTING|CG|DATA.?SHARE|DIRECT.?GIFTING|CORPORATE)(?:[_-\s]|$)/i);
+  const typeName = rawTypeName && !/^\d+$/.test(rawTypeName)
+    ? rawTypeName
+    : familyMatch?.[1]?.replace(/_/g, " ").toUpperCase() || bundleText;
 
   return {
     bundleId: Number(p.id ?? p.bundle_id ?? p.bundleId ?? p.bundle),
@@ -439,9 +433,9 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     amount: Number(p.amount ?? p.price ?? p.api_price ?? p.reseller_price ?? p.charged_amount ?? 0),
     dataSize: dataSize || bundleText,
     typeId: Number(p.type_id ?? p.typeId ?? p.type_id_value ?? p.type),
-    typeName: typeName || bundleText,
+    typeName,
     validity,
-  };
+  };  };
 }
 
 export async function getVtusharePlans(force = false): Promise<VtusharePlan[]> {
