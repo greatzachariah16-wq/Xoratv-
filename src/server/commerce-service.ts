@@ -145,6 +145,7 @@ export type VtusharePlan = {
   dataSize: string;
   typeId: number;
   typeName: string;
+  validity?: string;
 };
 
 export type PublicDataPlan = {
@@ -174,12 +175,16 @@ function toPublicMelePlan(plan: MelePlan): PublicDataPlan {
 function toPublicVtusharePlan(plan: VtusharePlan): PublicDataPlan | null {
   const network = plan.network as PublicDataPlan["network"];
   if (!["MTN", "GLO", "AIRTEL", "9MOBILE"].includes(network)) return null;
+
+  // Keep the same presentation contract as MELE:
+  // data_size = the actual bundle size, plan_name = the provider plan family,
+  // validity = the provider's supplied duration. Never invent a duration.
   return {
     catalogId: publicCatalogId("vtushare", [plan.bundleId, plan.networkId, plan.typeId]),
     network,
     data_size: plan.dataSize,
     plan_name: plan.typeName || plan.dataSize,
-    validity: "",
+    validity: String((plan as any).validity ?? "").trim(),
     price: plan.amount,
   };
 }
@@ -383,14 +388,59 @@ function extractVtusharePlans(body: any): unknown[] {
 }
 
 function normalizeVtusharePlan(p: any): VtusharePlan {
+  // VTUshare's catalogue is not shaped like MELE's catalogue. Normalize the
+  // provider-specific fields into the same Xora model before anything reaches
+  // the admin/customer UI. In particular, "type" is the service family
+  // (AWOOF/SME/etc.), while the bundle/name field carries the actual data size.
+  const bundleText = String(
+    p.data_size ??
+    p.dataSize ??
+    p.bundle_name ??
+    p.bundleName ??
+    p.bundle_code ??
+    p.bundleCode ??
+    p.name ??
+    p.bundle ??
+    p.plan_name ??
+    p.planName ??
+    "",
+  ).trim();
+  const typeName = String(
+    p.type_name ??
+    p.typeName ??
+    p.type_name_display ??
+    p.typeNameDisplay ??
+    p.type ??
+    "",
+  ).trim();
+
+  const sizeMatch = bundleText.match(/\\b(\\d+(?:\\.\\d+)?(?:GB|MB))\\b/i);
+  const dataSize = sizeMatch?.[1]
+    ? sizeMatch[1].toUpperCase()
+    : bundleText
+        .replace(/[_-](?:AWOOF|SME|CG|DATA.?SHARE|DIRECT.?GIFTING).*$/i, "")
+        .trim();
+
+  const validity = String(
+    p.validity ??
+    p.duration ??
+    p.validity_days ??
+    p.validityDays ??
+    p.days ??
+    p.duration_days ??
+    p.durationDays ??
+    "",
+  ).trim();
+
   return {
-    bundleId: Number(p.id ?? p.bundle ?? p.bundle_id),
-    networkId: Number(p.network_id ?? p.networkId ?? p.network),
-    network: String(p.network_name ?? p.networkName ?? p.network ?? "").toUpperCase(),
-    amount: Number(p.amount ?? p.price ?? p.charged_amount ?? 0),
-    dataSize: String(p.data_size ?? p.dataSize ?? p.name ?? ""),
-    typeId: Number(p.type_id ?? p.typeId ?? p.type),
-    typeName: String(p.type_name ?? p.typeName ?? ""),
+    bundleId: Number(p.id ?? p.bundle_id ?? p.bundleId ?? p.bundle),
+    networkId: Number(p.network_id ?? p.networkId ?? p.network_id_value),
+    network: String(p.network_name ?? p.networkName ?? p.network ?? p.network_label ?? "").toUpperCase(),
+    amount: Number(p.amount ?? p.price ?? p.api_price ?? p.reseller_price ?? p.charged_amount ?? 0),
+    dataSize: dataSize || bundleText,
+    typeId: Number(p.type_id ?? p.typeId ?? p.type_id_value ?? p.type),
+    typeName: typeName || bundleText,
+    validity,
   };
 }
 
