@@ -286,6 +286,25 @@ export async function getAdminDataCatalog(refresh = false): Promise<DataCatalogR
   } else if (refresh) {
     records = (await syncDataCatalog()).records;
   }
+
+  // One-time migration from the previous pricing behaviour. The old catalogue
+  // automatically published every discovered plan; the new model requires
+  // explicit approval, so convert those legacy publications to drafts once.
+  const approvalMigration = await queryRtdb("commerce/dataCatalogApprovalV2");
+  if (!approvalMigration) {
+    const now = new Date().toISOString();
+    const migrated = records.map((record) =>
+      record.status === "published" ? { ...record, status: "draft" as const, updatedAt: now } : record,
+    );
+    await writeCatalog(migrated);
+    await queryRtdb("commerce/dataCatalogApprovalV2", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ migratedAt: now }),
+    });
+    records = migrated;
+  }
+
   return records;
 }
 
