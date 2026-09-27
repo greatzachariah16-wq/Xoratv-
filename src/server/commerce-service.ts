@@ -149,7 +149,7 @@ export type VtusharePlan = {
 
 function vtushareAuth() {
   const email = process.env.VTUSHARE_EMAIL?.trim() || "";
-  const password = process.env.VTUSHARE_PASSWORD || "";
+  const password = process.env.VTUSHARE_PASSWORD?.trim() || "";
   if (!email || !password) throw new Error("VTUSHARE_EMAIL and VTUSHARE_PASSWORD are not configured on the server.");
   return Buffer.from(email + ":" + password).toString("base64");
 }
