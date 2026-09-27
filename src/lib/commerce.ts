@@ -51,6 +51,30 @@ export function meleHealthQuery() {
     queryFn: () => commerceFetch<{ ok: true; health: any }>("/api/admin/commerce/mele-health"),
   });
 }
+export type DataCatalogRecord = {
+  catalogId: string;
+  provider: "mele" | "vtushare";
+  providerPlan: unknown;
+  network: "MTN" | "GLO" | "AIRTEL" | "9MOBILE";
+  data_size: string;
+  plan_name: string;
+  validity: string;
+  providerCost: number;
+  customerPrice: number;
+  status: "draft" | "published" | "disabled";
+  createdAt: string;
+  updatedAt: string;
+  lastProviderSyncAt: string;
+  priceUpdatedAt: string;
+};
+
+export function adminDataCatalogQuery(refresh = false) {
+  return queryOptions({
+    queryKey: ["admin", "data-catalog", refresh],
+    queryFn: () => commerceFetch<{ok:true;catalog:DataCatalogRecord[]}>(`/api/admin/commerce/data-catalog${refresh ? "?refresh=1" : ""}`),
+  });
+}
+
 export function adminCommerceQuery() {
   return queryOptions({ queryKey: ["admin","commerce"], queryFn: () => commerceFetch<{ok:true;overview:any}>("/api/admin/commerce/overview") });
 }

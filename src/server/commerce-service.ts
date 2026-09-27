@@ -184,25 +184,151 @@ function toPublicVtusharePlan(plan: VtusharePlan): PublicDataPlan | null {
   };
 }
 
-export async function getPublicDataPlans(force = false): Promise<PublicDataPlan[]> {
-  const [meleResult, vtushareResult] = await Promise.allSettled([
-    getMelePlans(force),
-    getVtusharePlans(force),
-  ]);
-  const mele = meleResult.status === "fulfilled" ? meleResult.value.map(toPublicMelePlan) : [];
-  const vtushare = vtushareResult.status === "fulfilled"
-    ? vtushareResult.value.map(toPublicVtusharePlan).filter((p): p is PublicDataPlan => Boolean(p))
-    : [];
-  const merged = [...mele, ...vtushare].filter((p) => Number.isFinite(p.price) && p.price > 0 && p.data_size);
-  if (!merged.length) {
-    const firstError = meleResult.status === "rejected" ? meleResult.reason : vtushareResult.status === "rejected" ? vtushareResult.reason : null;
-    throw new Error(firstError instanceof Error ? firstError.message : "No data plans are currently available.");
+export type DataCatalogStatus = "draft" | "published" | "disabled";
+export type DataCatalogRecord = {
+  catalogId: string;
+  provider: "mele" | "vtushare";
+  providerPlan: MelePlan | VtusharePlan;
+  network: PublicDataPlan["network"];
+  data_size: string;
+  plan_name: string;
+  validity: string;
+  providerCost: number;
+  customerPrice: number;
+  status: DataCatalogStatus;
+  createdAt: string;
+  updatedAt: string;
+  lastProviderSyncAt: string;
+  priceUpdatedAt: string;
+};
+
+function catalogPath() { return "commerce/dataCatalog"; }
+
+function toCatalogRecord(provider: "mele" | "vtushare", plan: MelePlan | VtusharePlan, existing?: DataCatalogRecord): DataCatalogRecord | null {
+  const publicPlan = provider === "mele"
+    ? toPublicMelePlan(plan as MelePlan)
+    : toPublicVtusharePlan(plan as VtusharePlan);
+  if (!publicPlan) return null;
+  const now = new Date().toISOString();
+  const providerCost = publicPlan.price;
+  return {
+    catalogId: publicPlan.catalogId,
+    provider,
+    providerPlan: plan,
+    network: publicPlan.network,
+    data_size: publicPlan.data_size,
+    plan_name: publicPlan.plan_name,
+    validity: publicPlan.validity,
+    providerCost,
+    customerPrice: existing?.customerPrice ?? providerCost,
+    status: existing?.status ?? "draft",
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    lastProviderSyncAt: now,
+    priceUpdatedAt: existing?.priceUpdatedAt ?? now,
+  };
+}
+
+async function readDataCatalog(): Promise<DataCatalogRecord[]> {
+  const raw = (await queryRtdb(catalogPath())) as Record<string, DataCatalogRecord> | DataCatalogRecord[] | null;
+  if (!raw) return [];
+  return (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
+}
+
+async function writeCatalog(records: DataCatalogRecord[]) {
+  await queryRtdb(catalogPath(), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(records.reduce<Record<string, DataCatalogRecord>>((acc, record) => {
+      acc[record.catalogId] = record;
+      return acc;
+    }, {})),
+  });
+}
+
+export async function syncDataCatalog(): Promise<{ records: DataCatalogRecord[]; added: number; updated: number }> {
+  const [melePlans, vtusharePlans] = await Promise.all([getMelePlans(true), getVtusharePlans(true)]);
+  const current = await readDataCatalog();
+  const byId = new Map(current.map((record) => [record.catalogId, record]));
+  let added = 0;
+  let updated = 0;
+
+  for (const [provider, plans] of [["mele", melePlans] as const, ["vtushare", vtusharePlans] as const]) {
+    for (const plan of plans) {
+      const publicPlan = provider === "mele" ? toPublicMelePlan(plan as MelePlan) : toPublicVtusharePlan(plan as VtusharePlan);
+      if (!publicPlan) continue;
+      const record = toCatalogRecord(provider, plan, byId.get(publicPlan.catalogId));
+      if (!record) continue;
+      if (byId.has(record.catalogId)) updated++; else added++;
+      byId.set(record.catalogId, record);
+    }
   }
 
-  // When two suppliers expose the same network/data/validity combination,
-  // present the lower customer price without exposing supplier identity.
+  const records = [...byId.values()].sort((a, b) => {
+    if (a.network !== b.network) return a.network.localeCompare(b.network);
+    return a.providerCost - b.providerCost;
+  });
+  await writeCatalog(records);
+  return { records, added, updated };
+}
+
+export async function getAdminDataCatalog(refresh = false): Promise<DataCatalogRecord[]> {
+  let records = await readDataCatalog();
+  if (!records.length) {
+    const synced = await syncDataCatalog();
+    // One-time migration: preserve the currently live catalogue so customers do not
+    // see an unexpected empty page. From this point onward, new plans arrive as drafts.
+    const now = new Date().toISOString();
+    records = synced.records.map((record) => ({ ...record, status: "published" as const, updatedAt: now }));
+    await writeCatalog(records);
+  } else if (refresh) {
+    records = (await syncDataCatalog()).records;
+  }
+  return records;
+}
+
+export async function updateDataCatalogPrice(catalogId: string, customerPrice: number): Promise<DataCatalogRecord> {
+  const price = Number(customerPrice);
+  if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid Xora selling price.");
+  const records = await readDataCatalog();
+  const record = records.find((item) => item.catalogId === String(catalogId));
+  if (!record) throw new Error("That data plan is not in the Xora catalogue.");
+  const now = new Date().toISOString();
+  const updated = { ...record, customerPrice: Math.round(price * 100) / 100, updatedAt: now, priceUpdatedAt: now };
+  await writeCatalog(records.map((item) => item.catalogId === updated.catalogId ? updated : item));
+  return updated;
+}
+
+export async function updateDataCatalogStatus(catalogId: string, status: DataCatalogStatus): Promise<DataCatalogRecord> {
+  if (!["draft", "published", "disabled"].includes(status)) throw new Error("Invalid catalogue status.");
+  const records = await readDataCatalog();
+  const record = records.find((item) => item.catalogId === String(catalogId));
+  if (!record) throw new Error("That data plan is not in the Xora catalogue.");
+  const updated = { ...record, status, updatedAt: new Date().toISOString() };
+  await writeCatalog(records.map((item) => item.catalogId === updated.catalogId ? updated : item));
+  return updated;
+}
+
+export async function getPublicDataPlans(force = false): Promise<PublicDataPlan[]> {
+  let catalog = await getAdminDataCatalog(false);
+  // Existing live plans are published once when the pricing layer is first introduced,
+  // preserving the existing customer catalogue while moving all future changes behind admin control.
+  if (!catalog.length || force) {
+    const synced = await syncDataCatalog();
+    catalog = synced.records;
+  }
+  const published = catalog
+    .filter((record) => record.status === "published")
+    .map((record) => ({
+      catalogId: record.catalogId,
+      network: record.network,
+      data_size: record.data_size,
+      plan_name: record.plan_name,
+      validity: record.validity,
+      price: record.customerPrice,
+    }));
   const cheapest = new Map<string, PublicDataPlan>();
-  for (const plan of merged) {
+  for (const plan of published) {
     const key = [plan.network, plan.data_size.trim().toLowerCase(), plan.validity.trim().toLowerCase()].join("|");
     const current = cheapest.get(key);
     if (!current || plan.price < current.price) cheapest.set(key, plan);
@@ -517,34 +643,9 @@ export async function createDataOrder(params: {
   phoneNumber: string;
   referralCode?: string | null;
 }) {
-  const [melePlans, vtusharePlans] = await Promise.all([
-    getMelePlans(),
-    getVtusharePlans(),
-  ]);
-  const mele = melePlans.map((plan) => ({
-    catalogId: publicCatalogId("mele", [plan.plan_id, plan.plan_code]),
-    provider: "mele" as const,
-    providerPlan: plan,
-    network: plan.network,
-    dataSize: plan.data_size,
-    planCode: plan.plan_code,
-    providerCost: plan.price,
-    customerPrice: plan.price,
-  })).find((p) => p.catalogId === String(params.catalogId));
-
-  const vtushare = vtusharePlans.map((plan) => ({
-    catalogId: publicCatalogId("vtushare", [plan.bundleId, plan.networkId, plan.typeId]),
-    provider: "vtushare" as const,
-    providerPlan: plan,
-    network: plan.network as PublicDataPlan["network"],
-    dataSize: plan.dataSize,
-    planCode: String(plan.bundleId),
-    providerCost: plan.amount,
-    customerPrice: plan.amount,
-  })).find((p) => p.catalogId === String(params.catalogId));
-
-  const selected = mele || vtushare;
-  if (!selected) throw new Error("The selected data plan is no longer available.");
+  const catalog = await getAdminDataCatalog(false);
+  const selected = catalog.find((record) => record.catalogId === String(params.catalogId) && record.status === "published");
+  if (!selected) throw new Error("The selected data plan is not currently available.");
 
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
@@ -553,10 +654,10 @@ export async function createDataOrder(params: {
   const record = {
     id: orderId,
     userId: params.userId,
-    planId: selected.provider === "mele" ? selected.providerPlan.plan_id : selected.providerPlan.bundleId,
-    planCode: selected.planCode,
+    planId: selected.provider === "mele" ? (selected.providerPlan as MelePlan).plan_id : (selected.providerPlan as VtusharePlan).bundleId,
+    planCode: selected.provider === "mele" ? (selected.providerPlan as MelePlan).plan_code : String((selected.providerPlan as VtusharePlan).bundleId),
     network: selected.network,
-    dataSize: selected.dataSize,
+    dataSize: selected.data_size,
     phoneNumber,
     provider: selected.provider,
     providerPlan: selected.providerPlan,
@@ -572,7 +673,6 @@ export async function createDataOrder(params: {
   });
   return record;
 }
-
 export async function testMelePurchase(params: {
   network: MelePlan["network"];
   planId: number;
