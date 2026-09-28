@@ -532,7 +532,9 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
 
   return {
     bundleId: vtushareNumber(p.id, p.bundle_id, p.bundleId, p.bundle),
-    networkId: vtushareNumber(p.network_id, p.networkId, p.network_id_value, p.network?.id),
+    networkId: Number.isFinite(rawNetworkId)
+      ? rawNetworkId
+      : vtushareNumber(p.network_id, p.networkId, p.network_id_value, p.network?.id),
     network,
     amount: vtushareNumber(p.amount, p.price, p.api_price, p.reseller_price, p.charged_amount),
     dataSize: dataSize || bundleText,
