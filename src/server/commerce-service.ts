@@ -386,8 +386,17 @@ async function vtushareFetch(path: string, init?: RequestInit) {
 function extractVtusharePlans(body: any): unknown[] {
   if (Array.isArray(body)) return body;
 
+  const isPlanLike = (value: any) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const hasId = ["id", "bundle_id", "bundleId", "bundle", "plan_id", "planId"].some((key) => value[key] != null);
+    const hasPrice = ["amount", "price", "api_price", "reseller_price", "charged_amount"].some((key) => value[key] != null);
+    const hasNetwork = ["network", "network_name", "networkName", "network_label"].some((key) => value[key] != null);
+    return hasId && (hasPrice || hasNetwork);
+  };
+
   const visited = new Set<any>();
   const queue: any[] = [body];
+  let fallback: unknown[] = [];
 
   while (queue.length) {
     const current = queue.shift();
@@ -395,43 +404,56 @@ function extractVtusharePlans(body: any): unknown[] {
     visited.add(current);
 
     if (Array.isArray(current)) {
-      if (current.length) return current;
+      if (current.length && current.every((item) => isPlanLike(item))) return current;
+      if (!fallback.length && current.length && current.every((item) => item && typeof item === "object")) fallback = current;
       continue;
     }
 
-    for (const [key, value] of Object.entries(current)) {
+    const entries = Object.entries(current);
+    for (const [key, value] of entries) {
       if (Array.isArray(value)) {
-        if (value.length && value.every((item) => item && typeof item === "object")) return value;
-        continue;
+        if (value.length && value.every((item) => isPlanLike(item))) return value;
+        if (/plans?|bundles?|catalog|packages?/i.test(key) && value.length) queue.unshift(value);
+        else if (!fallback.length && value.length && value.every((item) => item && typeof item === "object")) fallback = value;
+      } else if (value && typeof value === "object") {
+        queue.push(value);
       }
-      if (value && typeof value === "object") queue.push(value);
     }
   }
 
-  return [];
+  return fallback;
+}
+
+function vtushareScalar(value: any): string {
+  if (value == null) return "";
+  if (typeof value === "object") {
+    return String(value.name ?? value.label ?? value.title ?? value.code ?? value.value ?? "").trim();
+  }
+  return String(value).trim();
+}
+
+function vtushareNumber(...values: any[]): number {
+  for (const value of values) {
+    const n = typeof value === "object" && value != null
+      ? Number(value.id ?? value.value ?? value.code)
+      : Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return Number.NaN;
 }
 
 function normalizeVtusharePlan(p: any): VtusharePlan {
   // VTUshare's catalogue is not shaped like MELE's catalogue. Normalize the
   // provider-specific fields into the same Xora model before anything reaches
-  // the admin/customer UI. In particular, "type" is the service family
-  // (AWOOF/SME/etc.), while the bundle/name field carries the actual data size.
-  const bundleText = String(
-    p.data_size ??
-    p.dataSize ??
-    p.bundle_name ??
-    p.bundleName ??
-    p.bundle_code ??
-    p.bundleCode ??
-    p.name ??
-    p.bundle ??
-    p.plan_name ??
-    p.planName ??
-    "",
-  ).trim();
-  const rawTypeName = String(
-    p.type_name ?? p.typeName ?? p.type_name_display ?? p.typeNameDisplay ?? ""
-  ).trim();
+  // the admin/customer UI. Nested network/type objects are accepted as well.
+  const bundleText = [
+    p.data_size, p.dataSize, p.bundle_name, p.bundleName, p.bundle_code,
+    p.bundleCode, p.name, p.bundle, p.plan_name, p.planName,
+  ].map(vtushareScalar).find(Boolean) || "";
+  const rawTypeName = [
+    p.type_name, p.typeName, p.type_name_display, p.typeNameDisplay,
+    p.type?.name, p.type?.label,
+  ].map(vtushareScalar).find((value) => value && !/^\d+$/.test(value)) || "";
 
   const sizeMatch = bundleText.match(/\b(\d+(?:\.\d+)?(?:GB|MB))\b/i);
   const dataSize = sizeMatch?.[1]
@@ -439,24 +461,27 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     : bundleText.replace(/[_-](?:AWOOF|SME|CG|DATA.?SHARE|DIRECT.?GIFTING).*$/i, "").trim();
 
   const bundleValidityMatch = bundleText.match(/(?:[_-]|\s)(\d+)\s*(?:D|DAYS?|DAY)\b/i);
-  const validity = String(
-    p.validity ?? p.duration ?? p.validity_days ?? p.validityDays ?? p.days ??
-    p.duration_days ?? p.durationDays ??
-    (bundleValidityMatch?.[1] ? bundleValidityMatch[1] + " days" : "")
-  ).trim();
+  const validity = [
+    p.validity, p.duration, p.validity_days, p.validityDays, p.days,
+    p.duration_days, p.durationDays,
+  ].map(vtushareScalar).find(Boolean) ||
+    (bundleValidityMatch?.[1] ? bundleValidityMatch[1] + " days" : "");
 
   const familyMatch = bundleText.match(/(?:^|[_-\s])(AWOOF|SME|GIFTING|CG|DATA.?SHARE|DIRECT.?GIFTING|CORPORATE)(?:[_-\s]|$)/i);
-  const typeName = rawTypeName && !/^\d+$/.test(rawTypeName)
-    ? rawTypeName
-    : familyMatch?.[1]?.replace(/_/g, " ").toUpperCase() || bundleText;
+  const typeName = rawTypeName ||
+    familyMatch?.[1]?.replace(/_/g, " ").toUpperCase() ||
+    bundleText;
 
   return {
-    bundleId: Number(p.id ?? p.bundle_id ?? p.bundleId ?? p.bundle),
-    networkId: Number(p.network_id ?? p.networkId ?? p.network_id_value),
-    network: String(p.network_name ?? p.networkName ?? p.network ?? p.network_label ?? "").toUpperCase(),
-    amount: Number(p.amount ?? p.price ?? p.api_price ?? p.reseller_price ?? p.charged_amount ?? 0),
+    bundleId: vtushareNumber(p.id, p.bundle_id, p.bundleId, p.bundle),
+    networkId: vtushareNumber(p.network_id, p.networkId, p.network_id_value, p.network?.id),
+    network: [
+      p.network_name, p.networkName, p.network_label, p.network?.name,
+      p.operator?.name, p.network,
+    ].map(vtushareScalar).find((value) => /MTN|GLO|AIRTEL|9MOBILE|9MOBILE/i.test(value))?.toUpperCase() || "",
+    amount: vtushareNumber(p.amount, p.price, p.api_price, p.reseller_price, p.charged_amount),
     dataSize: dataSize || bundleText,
-    typeId: Number(p.type_id ?? p.typeId ?? p.type_id_value ?? p.type),
+    typeId: vtushareNumber(p.type_id, p.typeId, p.type_id_value, p.type?.id, p.type),
     typeName,
     validity,
   };
