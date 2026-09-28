@@ -497,30 +497,38 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     familyMatch?.[1]?.replace(/_/g, " ").toUpperCase() ||
     bundleText;
 
-  // VTUshare can return network as a numeric provider ID. The live
-  // catalogue observed by Xora uses 2 for MTN; keep the provider ID intact
-  // in networkId because the purchase API expects that numeric value.
-  // The remaining IDs follow VTUshare's network catalogue ordering:
-  // 1 = GLO, 2 = MTN, 3 = 9MOBILE, 4 = AIRTEL.
-  const rawNetworkId = vtushareNumber(
-    p.network_id,
-    p.networkId,
-    p.network_id_value,
-    p.network?.id,
-    p.network,
-  );
+  // VTUshare can expose both a carrier/network value and a separate
+  // network_id used by the purchase endpoint. They are not necessarily the
+  // same field, so resolve the carrier from the network value first while
+  // preserving the actual purchase networkId separately.
+  const rawNetworkValue =
+    p.network?.id ??
+    p.network ??
+    p.network_code ??
+    p.networkCode ??
+    p.network_name ??
+    p.networkName ??
+    p.network_label ??
+    p.operator?.id ??
+    p.operator?.name ??
+    "";
+
   const numericNetworkMap: Record<number, VtusharePlan["network"]> = {
     1: "GLO",
     2: "MTN",
     3: "9MOBILE",
     4: "AIRTEL",
   };
+
+  const numericNetworkValue = vtushareNumber(rawNetworkValue);
   const networkText = [
     p.network_name, p.networkName, p.network_label, p.network?.name,
-    p.operator?.name,
+    p.operator?.name, rawNetworkValue,
   ].map(vtushareScalar).find(Boolean) || "";
-  const network = numericNetworkMap[rawNetworkId] ||
-    (/9\\s*MOBILE|ETISALAT/i.test(networkText)
+
+  const network = Number.isFinite(numericNetworkValue)
+    ? (numericNetworkMap[numericNetworkValue] || "")
+    : (/9\\s*MOBILE|ETISALAT/i.test(networkText)
       ? "9MOBILE"
       : /AIRTEL/i.test(networkText)
         ? "AIRTEL"
@@ -530,11 +538,17 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
             ? "MTN"
             : "");
 
+  const purchaseNetworkId = vtushareNumber(
+    p.network_id,
+    p.networkId,
+    p.network_id_value,
+    p.network?.id,
+    p.network,
+  );
+
   return {
     bundleId: vtushareNumber(p.id, p.bundle_id, p.bundleId, p.bundle),
-    networkId: Number.isFinite(rawNetworkId)
-      ? rawNetworkId
-      : vtushareNumber(p.network_id, p.networkId, p.network_id_value, p.network?.id),
+    networkId: purchaseNetworkId,
     network,
     amount: vtushareNumber(p.amount, p.price, p.api_price, p.reseller_price, p.charged_amount),
     dataSize: dataSize || bundleText,
