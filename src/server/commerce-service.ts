@@ -497,23 +497,45 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     familyMatch?.[1]?.replace(/_/g, " ").toUpperCase() ||
     bundleText;
 
+  // VTUshare may expose the network as either a human-readable name
+  // (for example "MTN") or as a numeric network ID / numeric string.
+  // Resolve numeric IDs first, while retaining the existing name-based
+  // matching as a fallback.
+  const rawNetworkId = vtushareNumber(
+    p.network_id,
+    p.networkId,
+    p.network_id_value,
+    p.network?.id,
+    p.network,
+  );
+  const numericNetworkNames: Record<number, VtusharePlan["network"]> = {
+    1: "MTN",
+    2: "GLO",
+    3: "AIRTEL",
+    4: "9MOBILE",
+  };
+  const networkFromId = Number.isFinite(rawNetworkId)
+    ? numericNetworkNames[rawNetworkId]
+    : undefined;
+
   const networkText = [
     p.network_name, p.networkName, p.network_label, p.network?.name,
     p.operator?.name, p.network,
   ].map(vtushareScalar).find(Boolean) || "";
-  const network = /9\\s*MOBILE|ETISALAT/i.test(networkText)
-    ? "9MOBILE"
-    : /AIRTEL/i.test(networkText)
-      ? "AIRTEL"
-      : /GLO/i.test(networkText)
-        ? "GLO"
-        : /MTN/i.test(networkText)
-          ? "MTN"
-          : "";
+  const network = networkFromId ||
+    (/9\\s*MOBILE|ETISALAT/i.test(networkText)
+      ? "9MOBILE"
+      : /AIRTEL/i.test(networkText)
+        ? "AIRTEL"
+        : /GLO/i.test(networkText)
+          ? "GLO"
+          : /MTN/i.test(networkText)
+            ? "MTN"
+            : "");
 
   return {
     bundleId: vtushareNumber(p.id, p.bundle_id, p.bundleId, p.bundle),
-    networkId: vtushareNumber(p.network_id, p.networkId, p.network_id_value, p.network?.id),
+    networkId: rawNetworkId,
     network,
     amount: vtushareNumber(p.amount, p.price, p.api_price, p.reseller_price, p.charged_amount),
     dataSize: dataSize || bundleText,
