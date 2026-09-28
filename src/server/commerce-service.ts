@@ -288,7 +288,10 @@ export async function getAdminDataCatalog(refresh = false): Promise<DataCatalogR
     // an admin explicitly sets a Xora price and publishes them.
     records = synced.records;
     await writeCatalog(records);
-  } else if (refresh) {
+  } else if (refresh || !records.some((record) => record.provider === "mele") || !records.some((record) => record.provider === "vtushare")) {
+    // A catalogue can predate the second provider. In that case, simply opening
+    // the pricing page must hydrate the missing provider instead of showing an
+    // empty provider tab until the admin happens to press Refresh.
     records = (await syncDataCatalog()).records;
   }
 
