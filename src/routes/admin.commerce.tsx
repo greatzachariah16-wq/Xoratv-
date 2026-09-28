@@ -145,10 +145,18 @@ function AdminCommerce() {
       <div className="mt-4 rounded-2xl border border-border p-4">
         <p className="text-sm font-semibold">Live catalogue inspection</p>
         <p className="mt-1 text-xs text-muted-foreground">These values come from VTUshare's current API response. No purchase is made by loading this list.</p>
+        {vtPlanQuery.isPending ? (
+          <div className="mt-3 rounded-xl border border-border bg-muted/20 p-4 text-sm text-muted-foreground">Loading VTUshare plans…</div>
+        ) : vtPlanQuery.error ? (
+          <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            VTUshare catalogue request failed: {vtPlanQuery.error instanceof Error ? vtPlanQuery.error.message : "Unknown error"}
+          </div>
+        ) : (
         <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-border">
           <table className="w-full text-left text-xs"><thead className="sticky top-0 bg-background"><tr className="border-b border-border"><th className="p-2">Network</th><th className="p-2">Data</th><th className="p-2">Price</th><th className="p-2">Bundle</th><th className="p-2">Type</th></tr></thead>
           <tbody>{(vtPlanQuery.data?.plans || []).slice(0, 50).map((p: VtusharePlan) => <tr key={`${p.networkId}-${p.bundleId}-${p.typeId}`} className="border-b border-border/60"><td className="p-2">{p.network}</td><td className="p-2">{p.dataSize}</td><td className="p-2">₦{p.amount.toLocaleString()}</td><td className="p-2">{p.bundleId}</td><td className="p-2">{p.typeId} {p.typeName ? `· ${p.typeName}` : ""}</td></tr>)}</tbody></table>
         </div>
+        )}
       </div>
       <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
         <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 size-5 text-amber-600"/><div><p className="font-semibold">Controlled VTUshare purchase test</p><p className="mt-1 text-xs text-muted-foreground">Disabled by default. We will not debit the VTUshare wallet until the server flag is explicitly enabled.</p></div></div>
