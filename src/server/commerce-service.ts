@@ -382,8 +382,29 @@ async function vtushareFetch(path: string, init?: RequestInit) {
 
 function extractVtusharePlans(body: any): unknown[] {
   if (Array.isArray(body)) return body;
-  const candidates = [body?.plans, body?.data, body?.result, body?.data?.plans, body?.result?.plans];
-  for (const candidate of candidates) if (Array.isArray(candidate)) return candidate;
+
+  const visited = new Set<any>();
+  const queue: any[] = [body];
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object" || visited.has(current)) continue;
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      if (current.length) return current;
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(current)) {
+      if (Array.isArray(value)) {
+        if (value.length && value.every((item) => item && typeof item === "object")) return value;
+        continue;
+      }
+      if (value && typeof value === "object") queue.push(value);
+    }
+  }
+
   return [];
 }
 
