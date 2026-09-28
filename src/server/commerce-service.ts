@@ -255,15 +255,39 @@ async function writeCatalog(records: DataCatalogRecord[]) {
 }
 
 export async function syncDataCatalog(): Promise<{ records: DataCatalogRecord[]; added: number; updated: number }> {
-  const [melePlans, vtusharePlans] = await Promise.all([getMelePlans(true), getVtusharePlans(true)]);
+  // Keep provider syncs independent. One provider being temporarily unavailable
+  // must never prevent the other provider's live catalogue from reaching Xora's
+  // admin pricing layer.
+  const [meleResult, vtushareResult] = await Promise.allSettled([
+    getMelePlans(true),
+    getVtusharePlans(true),
+  ]);
   const current = await readDataCatalog();
   const byId = new Map(current.map((record) => [record.catalogId, record]));
   let added = 0;
   let updated = 0;
+  const providerPlans: Array<["mele" | "vtushare", Array<MelePlan | VtusharePlan>]> = [];
 
-  for (const [provider, plans] of [["mele", melePlans] as const, ["vtushare", vtusharePlans] as const]) {
+  if (meleResult.status === "fulfilled") {
+    providerPlans.push(["mele", meleResult.value]);
+  }
+  if (vtushareResult.status === "fulfilled") {
+    providerPlans.push(["vtushare", vtushareResult.value]);
+  }
+
+  if (!providerPlans.length) {
+    const errors = [meleResult, vtushareResult]
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason))
+      .filter(Boolean);
+    throw new Error(errors.join(" · ") || "Unable to load either data provider catalogue.");
+  }
+
+  for (const [provider, plans] of providerPlans) {
     for (const plan of plans) {
-      const publicPlan = provider === "mele" ? toPublicMelePlan(plan as MelePlan) : toPublicVtusharePlan(plan as VtusharePlan);
+      const publicPlan = provider === "mele"
+        ? toPublicMelePlan(plan as MelePlan)
+        : toPublicVtusharePlan(plan as VtusharePlan);
       if (!publicPlan) continue;
       const record = toCatalogRecord(provider, plan, byId.get(publicPlan.catalogId));
       if (!record) continue;
@@ -273,6 +297,7 @@ export async function syncDataCatalog(): Promise<{ records: DataCatalogRecord[];
   }
 
   const records = [...byId.values()].sort((a, b) => {
+    if (a.provider !== b.provider) return a.provider.localeCompare(b.provider);
     if (a.network !== b.network) return a.network.localeCompare(b.network);
     return a.providerCost - b.providerCost;
   });
@@ -472,13 +497,24 @@ function normalizeVtusharePlan(p: any): VtusharePlan {
     familyMatch?.[1]?.replace(/_/g, " ").toUpperCase() ||
     bundleText;
 
+  const networkText = [
+    p.network_name, p.networkName, p.network_label, p.network?.name,
+    p.operator?.name, p.network,
+  ].map(vtushareScalar).find(Boolean) || "";
+  const network = /9\\s*MOBILE|ETISALAT/i.test(networkText)
+    ? "9MOBILE"
+    : /AIRTEL/i.test(networkText)
+      ? "AIRTEL"
+      : /GLO/i.test(networkText)
+        ? "GLO"
+        : /MTN/i.test(networkText)
+          ? "MTN"
+          : "";
+
   return {
     bundleId: vtushareNumber(p.id, p.bundle_id, p.bundleId, p.bundle),
     networkId: vtushareNumber(p.network_id, p.networkId, p.network_id_value, p.network?.id),
-    network: [
-      p.network_name, p.networkName, p.network_label, p.network?.name,
-      p.operator?.name, p.network,
-    ].map(vtushareScalar).find((value) => /MTN|GLO|AIRTEL|9MOBILE|9MOBILE/i.test(value))?.toUpperCase() || "",
+    network,
     amount: vtushareNumber(p.amount, p.price, p.api_price, p.reseller_price, p.charged_amount),
     dataSize: dataSize || bundleText,
     typeId: vtushareNumber(p.type_id, p.typeId, p.type_id_value, p.type?.id, p.type),
