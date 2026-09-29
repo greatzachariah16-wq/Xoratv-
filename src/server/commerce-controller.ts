@@ -6,7 +6,7 @@ import {
   saveCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
-import { getWallet, createWalletDeposit, getWalletDepositStatus, handleFlutterwaveWalletWebhook } from "./wallet-service";
+import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +27,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!promotion) return new Response("Promotion link not found.", { status: 404, headers });
     return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
   }
-  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa") || path.startsWith("/api/webhooks/flutterwave"))) {
+  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
     return new Response(null, { status: 204, headers });
   }
 
@@ -111,6 +111,33 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, account: await getVtushareAccount() });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare account error." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/wallet" && request.method === "GET") {
+    const userId = url.searchParams.get("userId");
+    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
+    return json({ ok: true, wallet: await getWallet(userId) });
+  }
+
+  if (path === "/api/commerce/wallet/deposit" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (!body.userId || body.amount === undefined) return json({ ok: false, error: "User and amount are required." }, 400);
+      return json({ ok: true, deposit: await createWalletDeposit({ userId: String(body.userId), amount: Number(body.amount) }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create wallet funding request." }, 400);
+    }
+  }
+
+  if (path === "/api/commerce/wallet/deposit/status" && request.method === "GET") {
+    const userId = url.searchParams.get("userId");
+    const reference = url.searchParams.get("reference");
+    if (!userId || !reference) return json({ ok: false, error: "User and deposit reference are required." }, 400);
+    try {
+      return json({ ok: true, deposit: await getWalletDepositStatus(reference, userId) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not read wallet funding status." }, 404);
     }
   }
 
