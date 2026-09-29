@@ -44,6 +44,13 @@ export function vtushareHealthQuery() {
 export function coursesMarketQuery() {
   return queryOptions({ queryKey: ["commerce","courses"], queryFn: () => commerceFetch<{ok:true;courses:Course[]}>("/api/commerce/courses") });
 }
+export function purchasedCoursesQuery(userId?: string) {
+  return queryOptions({
+    queryKey: ["commerce", "purchased-courses", userId],
+    enabled: Boolean(userId),
+    queryFn: () => commerceFetch<{ok:true;courseIds:string[]}>(`/api/commerce/courses/purchased?userId=${encodeURIComponent(userId || "")}`),
+  });
+}
 export function creatorDashboardQuery(userId?: string) {
   return queryOptions({ queryKey: ["commerce","creator-dashboard",userId], enabled: Boolean(userId), queryFn: () => commerceFetch<{ok:true;dashboard:any}>(`/api/commerce/creator/dashboard?userId=${encodeURIComponent(userId || "")}`) });
 }
