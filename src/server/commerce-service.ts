@@ -1193,12 +1193,16 @@ export async function createDiscountCampaign(params: {
   const offerId = String(params.cpaOfferId || "").trim();
   const contentLockUrl = String(params.cpaContentLockUrl || "").trim();
   const value = Number(params.discountValue);
+  const maxRedemptions = params.maxRedemptions == null || params.maxRedemptions === ""
+    ? null
+    : Number(params.maxRedemptions);
 
   if (!name) throw new Error("Campaign name is required.");
   if (!["percentage", "fixed"].includes(params.discountType)) throw new Error("Invalid discount type.");
   if (!["data", "course", "both"].includes(params.appliesTo)) throw new Error("Invalid campaign target.");
   if (!Number.isFinite(value) || value <= 0) throw new Error("Discount value must be greater than zero.");
   if (params.discountType === "percentage" && value > 100) throw new Error("Percentage discount cannot exceed 100%.");
+  if (maxRedemptions !== null && (!Number.isFinite(maxRedemptions) || maxRedemptions < 1)) throw new Error("Maximum redemptions must be a positive number.");
   if (!provider || !offerId || !contentLockUrl) {
     throw new Error("A CPA provider, offer ID and content-lock URL are required.");
   }
@@ -1222,7 +1226,7 @@ export async function createDiscountCampaign(params: {
     productIds: Array.isArray(params.productIds) ? params.productIds.map(String).filter(Boolean) : [],
     startAt: params.startAt || null,
     endAt: params.endAt || null,
-    maxRedemptions: params.maxRedemptions == null || params.maxRedemptions === "" ? null : Math.max(1, Math.floor(Number(params.maxRedemptions))),
+    maxRedemptions: maxRedemptions === null ? null : Math.floor(maxRedemptions),
     status: "draft",
     cpaRequired: true,
     cpa: {
