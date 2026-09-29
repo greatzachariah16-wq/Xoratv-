@@ -819,6 +819,82 @@ export async function handleMeleWebhook(request: Request) {
   };
 }
 
+export type CreatorPromotionLink = {
+  token: string;
+  creatorId: string;
+  service: "data" | "course";
+  courseId?: string | null;
+  label: string;
+  targetPath: string;
+  clicks: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function promotionLinkPath(token: string) { return "commerce/promotionLinks/" + token; }
+function promotionToken() { return crypto.randomBytes(9).toString("base64url"); }
+
+async function readPromotionLinks(): Promise<CreatorPromotionLink[]> {
+  const raw = (await queryRtdb("commerce/promotionLinks")) as Record<string, CreatorPromotionLink> | CreatorPromotionLink[] | null;
+  if (!raw) return [];
+  return (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
+}
+
+export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course"; courseId?: string | null; }): Promise<CreatorPromotionLink> {
+  const creator = await getCreator(params.creatorId);
+  if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
+  let label = "Xora Data Plans";
+  let targetPath = "/data";
+  let courseId: string | null = null;
+  if (params.service === "course") {
+    courseId = String(params.courseId || "").trim();
+    if (!courseId) throw new Error("A course is required for a course promotion link.");
+    const course = (await getCreatorCourses(params.creatorId)).find((item) => item.id === courseId && item.status === "published");
+    if (!course) throw new Error("That course is not available for this creator.");
+    label = course.title;
+    targetPath = "/learn?course=" + encodeURIComponent(course.id);
+  }
+  let token = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = promotionToken();
+    if (!(await queryRtdb(promotionLinkPath(candidate)))) { token = candidate; break; }
+  }
+  if (!token) throw new Error("Could not generate a unique promotion link. Please try again.");
+  const now = new Date().toISOString();
+  const record: CreatorPromotionLink = { token, creatorId: params.creatorId, service: params.service, courseId, label, targetPath, clicks: 0, createdAt: now, updatedAt: now };
+  await queryRtdb(promotionLinkPath(token), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
+  return record;
+}
+
+export async function getCreatorPromotionLinks(creatorId: string): Promise<CreatorPromotionLink[]> {
+  return (await readPromotionLinks()).filter((link) => link.creatorId === creatorId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+async function getPromotionLink(token: string): Promise<CreatorPromotionLink | null> {
+  if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return null;
+  return (await queryRtdb(promotionLinkPath(token))) as CreatorPromotionLink | null;
+}
+
+export async function resolvePromotionLink(token: string) {
+  const link = await getPromotionLink(token);
+  if (!link) return null;
+  const now = new Date().toISOString();
+  await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
+  const target = new URL(link.targetPath, "https://xoratv.local");
+  target.searchParams.set("promo", link.token);
+  return { ...link, targetPath: target.pathname + target.search };
+}
+
+async function resolveCreatorAttribution(code: string | null | undefined, service: "data" | "course", courseId?: string) {
+  const token = String(code || "").trim();
+  if (/^[A-Za-z0-9_-]{10,40}$/.test(token)) {
+    const promotion = await getPromotionLink(token);
+    if (promotion && promotion.service === service && (!courseId || promotion.courseId === courseId)) return promotion.creatorId;
+  }
+  if (service === "data" && token.endsWith("_data")) return token.slice(0, -5);
+  if (service === "course" && token.includes("_course_")) return token.split("_course_")[0];
+  return null;
+}
 export async function createDataOrder(params: {
   userId: string;
   catalogId: string;
@@ -832,7 +908,7 @@ export async function createDataOrder(params: {
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const orderId = id("data");
-  const referralCreatorId = params.referralCode && params.referralCode.endsWith("_data") ? params.referralCode.slice(0, -5) : null;
+  const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "data");
   const record = {
     id: orderId,
     userId: params.userId,
@@ -943,7 +1019,7 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
   const course = courses.find((c) => c.id === params.courseId && c.status === "published");
   if (!course) throw new Error("Course is unavailable.");
   const orderId = id("course_order");
-  const referralCreatorId = params.referralCode ? params.referralCode.split("_course_")[0] : null;
+  const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "course", course.id);
   const record = {
     id: orderId,
     userId: params.userId,
@@ -1004,10 +1080,7 @@ export async function getCreatorDashboard(userId: string) {
     dataOrders,
     courseOrders,
     payout,
-    links: [
-      ...courses.map((c) => ({ service: "course", label: c.title, code: `${userId}_${c.id}`, path: `/learn?course=${c.id}&ref=${userId}` })),
-      { service: "data", label: "Xora Data Plans", code: `${userId}_data`, path: `/data?ref=${userId}` },
-    ],
+    links: await getCreatorPromotionLinks(userId),
   };
 }
 
