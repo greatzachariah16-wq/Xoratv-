@@ -15,7 +15,7 @@ function BuyDataPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { data, isPending, error, refetch, isFetching } = useQuery(dataPlansQuery(true));
-  const ref = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null;
+  const ref = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("promo") || new URLSearchParams(window.location.search).get("ref")) : null;
   const plans = useMemo(() => (data?.plans || []).filter((p) => p.network === network), [data, network]);
   const selected = plans.find((p) => p.catalogId === selectedId) || plans[0];
 
