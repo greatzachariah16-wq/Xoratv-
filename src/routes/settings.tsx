@@ -4,6 +4,14 @@ import {
   CircleHelp,
   FileText,
   Settings as SettingsIcon,
+  Wallet,
+  Smartphone,
+  Sparkles,
+  BookOpen,
+  Tv,
+  MessageCircle,
+  Bell,
+  Search,
   ShieldCheck,
   ChevronRight,
   Gauge,
@@ -26,6 +34,17 @@ export const Route = createFileRoute("/settings")({
   }),
   component: SettingsPage,
 });
+
+const APP_NAV_LINKS = [
+  { href: "/wallet", label: "Xora Wallet", description: "Fund your wallet and use the same balance for data and course purchases.", icon: Wallet },
+  { href: "/data", label: "Buy Data", description: "Browse Xora-approved mobile data plans and purchase from your wallet.", icon: Smartphone },
+  { href: "/creator-studio", label: "Creator Studio", description: "Manage creator sales, courses, promotions, links and payouts.", icon: Sparkles },
+  { href: "/learn", label: "Learn", description: "Explore video courses and create your own video course.", icon: BookOpen },
+  { href: "/xtv-series", label: "X Series", description: "Browse Xora's video and series catalogue.", icon: Tv },
+  { href: "/chat", label: "Chat", description: "Open your Xora conversations and community chat.", icon: MessageCircle },
+  { href: "/notifications", label: "Alerts", description: "View notifications, activity and important account updates.", icon: Bell },
+  { href: "/search", label: "Search", description: "Search Xora content, creators and videos.", icon: Search },
+] as const;
 
 const SETTINGS_LINKS = [
   {
@@ -97,8 +116,8 @@ function SettingsPage() {
 
   return (
     <AppShell wide>
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-8">
+      <div className="mx-auto min-w-0 max-w-3xl">
+        <div className="mb-6 sm:mb-8">
           <Link
             to="/"
             className="press inline-flex items-center gap-2 rounded-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -201,6 +220,28 @@ function SettingsPage() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        <section className="mb-6 overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+          <div className="border-b border-border px-5 py-4 sm:px-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Xora</p>
+            <h2 className="mt-1 font-display text-lg font-semibold">Explore & manage</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">All secondary destinations are kept here so the mobile shell stays clean and easy to reach.</p>
+          </div>
+          <div className="grid gap-px bg-border sm:grid-cols-2">
+            {APP_NAV_LINKS.map(({ href, label, description, icon: Icon }) => (
+              <Link key={label} to={href as any} className="press flex min-h-20 items-center gap-3 bg-surface px-4 py-4 transition-colors hover:bg-secondary/60 sm:px-5">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground">
+                  <Icon className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-foreground">{label}</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{description}</span>
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
           </div>
         </section>
 
