@@ -16,6 +16,7 @@ import {
   User,
   MessageCircle,
   Smartphone,
+  WalletCards,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +33,7 @@ const NAV = [
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/data", label: "Buy Data", icon: Smartphone },
+  { to: "/wallet", label: "Wallet", icon: WalletCards },
   { to: "/creator-studio", label: "Creator Studio", icon: Sparkles },
   { to: "/chat", label: "Chat", icon: MessageCircle },
   { to: "/notifications", label: "Alerts", icon: Bell },
