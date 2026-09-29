@@ -15,7 +15,7 @@ export type VtusharePlan = {
 export type Course = {
   id: string; creatorId: string; title: string; description: string; price: number;
   thumbnailUrl?: string | null; videoUrl?: string | null; contentPostId?: string | null;
-  contentLockEnabled?: false; contentLockCampaignId?: string | null;
+  contentLockEnabled?: boolean; contentLockCampaignId?: string | null;
   status: string; createdAt: string; updatedAt: string;
 };
 
