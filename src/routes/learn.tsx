@@ -19,7 +19,7 @@ function Learn() {
   const [price, setPrice] = useState("500");
   const [busy, setBusy] = useState(false);
   const { data, refetch } = useQuery(coursesMarketQuery());
-  const ref = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null;
+  const ref = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("promo") || new URLSearchParams(window.location.search).get("ref")) : null;
 
   async function createCourse() {
     if (!user) { window.location.href = "/auth"; return; }
