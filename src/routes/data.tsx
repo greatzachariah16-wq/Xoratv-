@@ -34,16 +34,16 @@ function BuyDataPage() {
   }
 
   return <AppShell wide>
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-border bg-surface p-6 shadow-card">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
+      <section className="overflow-hidden rounded-[24px] border border-border bg-surface p-4 shadow-card sm:rounded-[28px] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 text-primary"><Smartphone className="size-5"/><span className="text-sm font-semibold">Xora Data</span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-600"><Radio className="size-3"/>Live data plans</span></div><button type="button" onClick={()=>void refetch()} disabled={isFetching} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold">{isFetching?<Loader2 className="size-3 animate-spin"/>:<RefreshCw className="size-3"/>}{isFetching?"Refreshing…":"Refresh live plans"}</button></div>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">Buy data without the clutter.</h1>
+        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Buy data without the clutter.</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Choose a live data plan, enter the recipient number, and pay directly from your Xora Wallet.</p>
         <div className="mt-5 flex flex-wrap gap-2">
           {(["MTN","GLO","AIRTEL","9MOBILE"] as const).map(n => <button key={n} onClick={()=>{setNetwork(n);setSelectedId(null)}} className={`rounded-full px-4 py-2 text-sm font-semibold ${network===n?"bg-primary text-primary-foreground":"border border-border bg-background"}`}>{n}</button>)}
         </div>
       </section>
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid min-w-0 gap-4 md:grid-cols-2">
         <div className="rounded-3xl border border-border bg-background p-5">
           <h2 className="font-display text-lg font-semibold">Select a plan</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
