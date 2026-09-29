@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   ChevronRight,
   Gauge,
-  Smartphone,
   Check,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
