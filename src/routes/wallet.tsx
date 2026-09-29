@@ -96,7 +96,7 @@ function WalletPage() {
               </div>
               <div>
                 <h2 className="font-display text-xl font-semibold">Deposit funds</h2>
-                <p className="text-sm text-muted-foreground">The wallet ledger is ready; the external funding rail is not connected yet.</p>
+                <p className="text-sm text-muted-foreground">Fund your Xora balance, then use it for mobile data and paid courses.</p>
               </div>
             </div>
 
@@ -115,10 +115,10 @@ function WalletPage() {
 
             <button onClick={() => void requestFunding()} disabled={busy} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">
               {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowDownToLine className="size-4" />}
-              {busy ? "Creating request…" : "Create funding request"}
+              {busy ? "Preparing deposit…" : "Prepare deposit"}
             </button>
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              No payment provider is being connected or called by this page. When you choose the funding provider later, it can be attached to this existing wallet-deposit flow.
+              The wallet ledger and deposit flow are ready. No external payment provider has been connected yet, so preparing a deposit does not credit the balance.
             </p>
           </div>
 
