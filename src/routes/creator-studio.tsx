@@ -66,12 +66,12 @@ function CreatorStudio() {
   if (isPending) return <AppShell><div className="p-8 text-sm text-muted-foreground">Loading your studio…</div></AppShell>;
 
   return <AppShell wide>
-    <div className="space-y-6">
-      <header className="rounded-[30px] border border-border bg-surface p-6 shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Creator Studio</p><h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">Your audience. Your storefront.</h1><p className="mt-2 text-sm text-muted-foreground">Manage courses, Xora data promotions, commissions and payouts from one place.</p></div><div className="rounded-2xl bg-primary/10 px-4 py-3 text-right"><p className="text-xs text-muted-foreground">Available balance</p><p className="text-2xl font-semibold">₦{Number(dashboard?.stats?.balance || 0).toLocaleString()}</p></div></div>
+    <div className="min-w-0 space-y-5 sm:space-y-6">
+      <header className="rounded-[24px] border border-border bg-surface p-4 shadow-card sm:rounded-[30px] sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Creator Studio</p><h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your audience. Your storefront.</h1><p className="mt-2 text-sm text-muted-foreground">Manage courses, Xora data promotions, commissions and payouts from one place.</p></div><div className="rounded-2xl bg-primary/10 px-4 py-3 text-right"><p className="text-xs text-muted-foreground">Available balance</p><p className="text-2xl font-semibold">₦{Number(dashboard?.stats?.balance || 0).toLocaleString()}</p></div></div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[[BarChart3,"Total sales",dashboard?.stats?.totalSales||0],[Smartphone,"Data sales",dashboard?.stats?.dataSales||0],[Wallet,"Commission",dashboard?.stats?.commission||0],[BookOpen,"Courses",dashboard?.courses?.length||0]].map(([Icon,label,value])=><div key={String(label)} className="rounded-2xl border border-border bg-surface p-4"><Icon className="size-5 text-primary"/><p className="mt-4 text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{label === "Courses" ? value : "₦" + Number(value).toLocaleString()}</p></div>)}
       </section>
 
