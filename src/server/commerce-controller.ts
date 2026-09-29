@@ -3,7 +3,7 @@ import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
-  saveCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
+  saveCourse, deleteCreatorCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
@@ -226,6 +226,18 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, course: await saveCourse(body) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Course creation failed." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/creator/course" && request.method === "DELETE") {
+    try {
+      const body = await request.json();
+      if (!body.creatorId || !body.courseId) return json({ ok: false, error: "Creator and course are required." }, 400);
+      const creator = await getCreator(String(body.creatorId));
+      if (!creator || creator.status !== "active") return json({ ok: false, error: "Creator account is not active." }, 403);
+      return json({ ok: true, result: await deleteCreatorCourse(String(body.courseId), String(body.creatorId)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not delete course." }, 400);
     }
   }
 
