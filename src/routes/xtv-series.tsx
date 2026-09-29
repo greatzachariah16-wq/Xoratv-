@@ -22,7 +22,7 @@ import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/xtv-series")({
+import { ContentLockGate } from "@/components/commerce/ContentLockGate";\n\nexport const Route = createFileRoute("/xtv-series")({
   head: () => ({
     meta: [
       { title: "X Series — Movies, Series & Cinema | Xora" },
