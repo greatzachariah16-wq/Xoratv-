@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook, Save, Send, Ban, Plus, Tag, LockKeyhole } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
+import { AdminDiscountCampaigns } from "@/components/admin/AdminDiscountCampaigns";
 import { adminCommerceQuery, adminDataCatalogQuery, adminDiscountCampaignsQuery, commerceFetch, meleHealthQuery, melePlansQuery, vtushareHealthQuery, vtusharePlansQuery, type MelePlan, type VtusharePlan, type DataCatalogRecord, type DiscountCampaign } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerce });
@@ -238,6 +239,8 @@ function AdminCommerce() {
        </div>
        </>}
     </section>
+
+    <AdminDiscountCampaigns />
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[[Users,"Creators",o?.creators?.length||0],[BookOpen,"Courses",o?.courses?.length||0],[Smartphone,"Data orders",o?.dataOrders?.length||0],[Wallet,"Commissions",o?.commissions?.length||0]].map(([I,l,v])=><div className="rounded-2xl border border-border bg-surface p-4" key={String(l)}><I className="size-5 text-primary"/><p className="mt-3 text-xs text-muted-foreground">{l}</p><p className="text-2xl font-semibold">{v}</p></div>)}</div>
 
