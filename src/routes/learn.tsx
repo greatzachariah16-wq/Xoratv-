@@ -120,15 +120,15 @@ function Learn() {
 
   return (
     <AppShell rail={<TrendingRail />} wide>
-      <div className="space-y-6">
-        <header className="rounded-[30px] border border-border bg-surface p-6 shadow-card">
+      <div className="min-w-0 space-y-5 sm:space-y-6">
+        <header className="rounded-[24px] border border-border bg-surface p-4 shadow-card sm:rounded-[30px] sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-primary">
                 <Sparkles className="size-5" />
                 <span className="text-sm font-semibold">Xora Learn</span>
               </div>
-              <h1 className="mt-2 font-display text-3xl font-semibold">Learn something useful.</h1>
+              <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Learn something useful.</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Video courses from Xora creators. Paid courses are handled through your Xora Wallet.
               </p>
@@ -156,7 +156,7 @@ function Learn() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
               <label className="rounded-2xl border border-dashed border-border bg-background p-5 cursor-pointer">
                 <input
                   type="file"
