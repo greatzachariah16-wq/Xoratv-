@@ -1080,7 +1080,7 @@ export async function getCreatorDashboard(userId: string) {
     dataOrders,
     courseOrders,
     payout,
-    links: await getCreatorPromotionLinks(userId),
+    links: (await getCreatorPromotionLinks(userId)).map((link) => ({ ...link, path: "/s/" + link.token })),
   };
 }
 
