@@ -26,7 +26,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!promotion) return new Response("Promotion link not found.", { status: 404, headers });
     return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
   }
-  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare"))) {
+  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
     return new Response(null, { status: 204, headers });
   }
 
@@ -262,6 +262,12 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
 
   if (path === "/api/webhooks/discount-cpa" && request.method === "POST") {
+    const configuredSecret = process.env.XORA_CPA_POSTBACK_SECRET?.trim();
+    if (!configuredSecret) {
+      return json({ ok: false, error: "CPA postback integration is not configured yet." }, 503);
+    }
+    const suppliedSecret = request.headers.get("x-cpa-postback-secret") || request.headers.get("x-webhook-secret") || "";
+    if (suppliedSecret !== configuredSecret) return json({ ok: false, error: "Invalid CPA postback secret." }, 401);
     try {
       const body = await request.json();
       if (!body.campaignId || !body.transactionId || !body.status) {
