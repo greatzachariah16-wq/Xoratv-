@@ -6,6 +6,7 @@ import {
   saveCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
+import { getWallet, createWalletDeposit, getWalletDepositStatus, handleFlutterwaveWalletWebhook } from "./wallet-service";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +27,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!promotion) return new Response("Promotion link not found.", { status: 404, headers });
     return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
   }
-  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
+  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa") || path.startsWith("/api/webhooks/flutterwave"))) {
     return new Response(null, { status: 204, headers });
   }
 
