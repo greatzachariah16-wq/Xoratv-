@@ -13,6 +13,7 @@ function CreatorStudio() {
   const [registered, setRegistered] = useState(false);
   const [busy, setBusy] = useState(false);
   const [payoutBusy, setPayoutBusy] = useState(false);
+  const [linkBusy, setLinkBusy] = useState<string | null>(null);
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [bankName, setBankName] = useState("");
@@ -39,9 +40,25 @@ function CreatorStudio() {
     } catch (e) { alert(e instanceof Error ? e.message : "Could not save payout details."); } finally { setPayoutBusy(false); }
   }
 
+  async function createPromotion(service: "data" | "course", courseId?: string) {
+    const key = service === "course" ? "course:" + courseId : "data";
+    setLinkBusy(key);
+    try {
+      await commerceFetch("/api/commerce/creator/promotion-link", {
+        method: "POST",
+        body: JSON.stringify({ creatorId: user.id, service, courseId }),
+      });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not create promotion link.");
+    } finally {
+      setLinkBusy(null);
+    }
+  }
+
   async function copy(value: string) {
     await navigator.clipboard?.writeText(window.location.origin + value);
-    alert("Creator link copied.");
+    alert("Promotion link copied.");
   }
 
   if (!creator && !registered) return <AppShell wide><div className="mx-auto max-w-2xl rounded-[30px] border border-border bg-surface p-7 shadow-card"><div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><BarChart3 className="size-6"/></div><h1 className="mt-5 font-display text-3xl font-semibold">Creator Studio</h1><p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">Turn your knowledge and audience into income. Register once so Xora can identify your creator account, sales, commissions and payout profile.</p><button onClick={() => void register()} disabled={busy} className="mt-6 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Setting up…" : "Become a creator"}</button></div></AppShell>;
@@ -59,8 +76,39 @@ function CreatorStudio() {
       </section>
 
       <section className="rounded-3xl border border-border bg-surface p-5">
-        <div className="flex items-center justify-between gap-3"><div><h2 className="font-display text-xl font-semibold">Promotional links</h2><p className="mt-1 text-sm text-muted-foreground">Each service gets its own creator referral link.</p></div><Link2 className="size-5 text-primary"/></div>
-        <div className="mt-4 space-y-3">{(dashboard?.links||[]).map((link:any)=><div key={link.code} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-background p-4"><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{link.label}</p><p className="mt-1 truncate text-xs text-muted-foreground">{window.location.origin + link.path}</p></div><button onClick={()=>void copy(link.path)} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Copy className="size-3.5"/> Copy</button></div>)}</div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h2 className="font-display text-xl font-semibold">Promotion links</h2><p className="mt-1 text-sm text-muted-foreground">Generate private-looking share links for data or individual courses. The link itself does not expose your creator ID.</p></div>
+          <Link2 className="size-5 text-primary"/>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <button onClick={() => void createPromotion("data")} disabled={Boolean(linkBusy)} className="rounded-2xl border border-border bg-background p-4 text-left hover:bg-secondary disabled:opacity-50">
+            <p className="text-sm font-semibold">Promote Xora Data</p>
+            <p className="mt-1 text-xs text-muted-foreground">Create a unique opaque link to the data marketplace.</p>
+            <span className="mt-3 inline-flex rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">{linkBusy === "data" ? "Generating…" : "Generate link"}</span>
+          </button>
+          <div className="rounded-2xl border border-border bg-background p-4">
+            <p className="text-sm font-semibold">Promote a course</p>
+            <p className="mt-1 text-xs text-muted-foreground">Each course gets its own share link.</p>
+            <div className="mt-3 space-y-2">
+              {(dashboard?.courses || []).map((course:any) => {
+                const key = "course:" + course.id;
+                return <button key={course.id} onClick={() => void createPromotion("course", course.id)} disabled={Boolean(linkBusy)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left text-xs hover:bg-secondary disabled:opacity-50"><span className="truncate font-semibold">{course.title}</span><span className="shrink-0 text-primary">{linkBusy === key ? "Generating…" : "Generate"}</span></button>;
+              })}
+              {!(dashboard?.courses || []).length ? <p className="text-xs text-muted-foreground">Publish a course first.</p> : null}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 space-y-3">
+          {(dashboard?.links || []).map((link:any) => <div key={link.token} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-background p-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{link.label}</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{window.location.origin + link.path}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{link.service === "data" ? "Data promotion" : "Course promotion"} · {Number(link.clicks || 0).toLocaleString()} clicks</p>
+            </div>
+            <button onClick={() => void copy(link.path)} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Copy className="size-3.5"/> Copy</button>
+          </div>)}
+          {!(dashboard?.links || []).length ? <p className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">No promotion links yet. Generate one above to start sharing.</p> : null}
+        </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
