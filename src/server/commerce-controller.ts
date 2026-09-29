@@ -4,6 +4,7 @@ import {
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
   saveCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
+  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
 
 const headers = {
@@ -207,6 +208,79 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, payout: await savePayoutDetails(body.userId, body) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Payout details could not be saved." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/discount-campaigns" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, campaigns: await getDiscountCampaigns() });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Discount campaign error." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/discount-campaigns" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      return json({
+        ok: true,
+        campaign: await createDiscountCampaign({
+          name: body.name,
+          description: body.description,
+          discountType: body.discountType,
+          discountValue: Number(body.discountValue),
+          appliesTo: body.appliesTo,
+          productIds: body.productIds,
+          startAt: body.startAt,
+          endAt: body.endAt,
+          maxRedemptions: body.maxRedemptions,
+          cpaProvider: body.cpaProvider,
+          cpaOfferId: body.cpaOfferId,
+          cpaContentLockUrl: body.cpaContentLockUrl,
+          cpaClickIdParameter: body.cpaClickIdParameter,
+        }),
+      });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create discount campaign." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/discount-campaigns/status" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.id || !body.status) return json({ ok: false, error: "Campaign id and status are required." }, 400);
+      return json({ ok: true, campaign: await updateDiscountCampaignStatus(String(body.id), body.status) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not update campaign status." }, 400);
+    }
+  }
+
+  if (path === "/api/webhooks/discount-cpa" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (!body.campaignId || !body.transactionId || !body.status) {
+        return json({ ok: false, error: "campaignId, transactionId and status are required." }, 400);
+      }
+      const allowed = ["approved", "reversed", "pending", "rejected"];
+      if (!allowed.includes(body.status)) return json({ ok: false, error: "Invalid conversion status." }, 400);
+      const result = await recordDiscountPostback({
+        campaignId: String(body.campaignId),
+        transactionId: String(body.transactionId),
+        clickId: body.clickId ?? body.subid ?? null,
+        userId: body.userId ?? null,
+        offerId: body.offerId ?? null,
+        status: body.status,
+        payload: body,
+      });
+      return json({ ok: true, ...result });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "CPA postback error." }, 400);
     }
   }
 
