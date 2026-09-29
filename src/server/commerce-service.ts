@@ -1073,6 +1073,15 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
   return record;
 }
 
+export async function getUserPurchasedCourseIds(userId: string): Promise<string[]> {
+  const raw = await queryRtdb("commerce/courseOrders") as Record<string, any> | any[] | null;
+  const orders = raw ? (Array.isArray(raw) ? raw : Object.values(raw)) : [];
+  return orders
+    .filter((order: any) => order?.userId === userId && ["paid", "success", "delivered"].includes(String(order?.status)))
+    .map((order: any) => String(order.courseId))
+    .filter(Boolean);
+}
+
 export async function savePayoutDetails(userId: string, details: {
   accountName: string; accountNumber: string; bankName: string;
 }) {
