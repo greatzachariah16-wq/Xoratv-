@@ -2,7 +2,7 @@ import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
   getPublicDataPlans,
-  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
+  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
@@ -172,6 +172,12 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create course order." }, 500);
     }
+  }
+
+  if (path === "/api/commerce/courses/purchased" && request.method === "GET") {
+    const userId = url.searchParams.get("userId");
+    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
+    return json({ ok: true, courseIds: await getUserPurchasedCourseIds(userId) });
   }
 
   if (path === "/api/commerce/creator/courses" && request.method === "GET") {
