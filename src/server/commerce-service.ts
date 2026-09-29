@@ -843,6 +843,13 @@ async function readPromotionLinks(): Promise<CreatorPromotionLink[]> {
 export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course"; courseId?: string | null; }): Promise<CreatorPromotionLink> {
   const creator = await getCreator(params.creatorId);
   if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
+  const existingLinks = await getCreatorPromotionLinks(params.creatorId);
+  const existing = existingLinks.find((link) =>
+    link.service === params.service &&
+    (params.service === "data" || link.courseId === String(params.courseId || "").trim()),
+  );
+  if (existing) return existing;
+
   let label = "Xora Data Plans";
   let targetPath = "/data";
   let courseId: string | null = null;
