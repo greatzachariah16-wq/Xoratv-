@@ -3,7 +3,7 @@ import {
   createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses,
-  saveCourse, savePayoutDetails,
+  saveCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
 } from "./commerce-service";
 
 const headers = {
@@ -18,6 +18,13 @@ const json = (body: unknown, status = 200) =>
 
 export async function handleCommerceRoute(request: Request, url: URL): Promise<Response | null> {
   const path = url.pathname;
+
+  if (path.startsWith("/s/") && request.method === "GET") {
+    const token = path.slice(3).split("/")[0];
+    const promotion = await resolvePromotionLink(token);
+    if (!promotion) return new Response("Promotion link not found.", { status: 404, headers });
+    return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
+  }
   if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare"))) {
     return new Response(null, { status: 204, headers });
   }
@@ -158,6 +165,21 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     const userId = url.searchParams.get("userId");
     if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
     return json({ ok: true, dashboard: await getCreatorDashboard(userId) });
+  }
+
+  if (path === "/api/commerce/creator/promotion-link" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (!body.creatorId || !body.service) return json({ ok: false, error: "Creator and promotion type are required." }, 400);
+      if (body.service !== "data" && body.service !== "course") return json({ ok: false, error: "Invalid promotion type." }, 400);
+      return json({ ok: true, link: await createCreatorPromotionLink({
+        creatorId: String(body.creatorId),
+        service: body.service,
+        courseId: body.courseId ? String(body.courseId) : null,
+      }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create promotion link." }, 500);
+    }
   }
 
   if (path === "/api/commerce/creator/course" && request.method === "POST") {
