@@ -1001,6 +1001,36 @@ export async function getPublishedCourses(): Promise<Course[]> {
   return (await getCreatorCourses()).filter((c) => c.status === "published");
 }
 
+export async function deleteCreatorCourse(courseId: string, creatorId: string): Promise<{ id: string; status: "archived" }> {
+  const course = await queryRtdb(`commerce/courses/${courseId}`) as Course | null;
+  if (!course) throw new Error("Course not found.");
+  if (course.creatorId !== creatorId) throw new Error("You can only delete your own courses.");
+  if (course.status === "archived") return { id: course.id, status: "archived" };
+
+  // Keep the course record as an archived tombstone so historical purchases,
+  // commissions and promotion attribution are not broken by a hard delete.
+  const now = new Date().toISOString();
+  await queryRtdb(`commerce/courses/${courseId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "archived", updatedAt: now }),
+  });
+
+  // Disable promotion links for the deleted course so an old shared link
+  // cannot continue sending customers to an unavailable product.
+  const links = await readPromotionLinks();
+  const matching = links.filter((link) => link.creatorId === creatorId && link.service === "course" && link.courseId === courseId);
+  if (matching.length) {
+    await writePromotionLinks(links.map((link) =>
+      matching.some((item) => item.token === link.token)
+        ? { ...link, status: "disabled", updatedAt: now }
+        : link,
+    ));
+  }
+
+  return { id: course.id, status: "archived" };
+}
+
 export async function saveCourse(params: {
   creatorId: string;
   title: string;
