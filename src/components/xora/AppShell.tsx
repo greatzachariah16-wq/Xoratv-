@@ -16,7 +16,7 @@ import {
   User,
   MessageCircle,
   Smartphone,
-  WalletCards,
+  Wallet,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,11 +32,6 @@ const NAV = [
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
-  { to: "/data", label: "Buy Data", icon: Smartphone },
-  { to: "/wallet", label: "Wallet", icon: WalletCards },
-  { to: "/creator-studio", label: "Creator Studio", icon: Sparkles },
-  { to: "/chat", label: "Chat", icon: MessageCircle },
-  { to: "/notifications", label: "Alerts", icon: Bell },
 ] as const;
 
 function useUnreadCount() {
@@ -77,7 +72,7 @@ export function AppShell({
       : null);
 
   return (
-    <div className="min-h-screen bg-background max-w-full overflow-x-hidden">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -207,63 +202,31 @@ export function AppShell({
         </div>
       </aside>
 
-      <header className="fixed top-0 inset-x-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur-md sm:px-4 lg:hidden">
         <Link to="/" className="press">
           <Logo />
         </Link>
-        <div className="flex items-center gap-1">
-          <Link
-            to="/settings"
-            aria-label="Settings"
-            className="press grid size-9 place-items-center rounded-full hover:bg-secondary"
-          >
-            <Settings className="size-5" aria-hidden="true" />
-          </Link>
-          <Link
-            to="/support"
-            aria-label="Help & Support"
-            className="press grid size-9 place-items-center rounded-full hover:bg-secondary"
-          >
-            <CircleHelp className="size-5" aria-hidden="true" />
-          </Link>
-          <Link
-            to="/search"
-            aria-label="Search"
-            className="press grid size-9 place-items-center rounded-full hover:bg-secondary"
-          >
+        <div className="flex items-center gap-0.5 sm:gap-1">
+          <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
             <Search className="size-5" aria-hidden="true" />
-          </Link>
-          <Link to="/data" aria-label="Buy Data" className="press grid size-9 place-items-center rounded-full hover:bg-secondary">
-            <Smartphone className="size-5" aria-hidden="true" />
-          </Link>
-          <Link to="/wallet" aria-label="Wallet" className="press grid size-9 place-items-center rounded-full hover:bg-secondary">
-            <WalletCards className="size-5" aria-hidden="true" />
           </Link>
           <Link
             to="/notifications"
             aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-            className="press relative grid size-9 place-items-center rounded-full hover:bg-secondary"
+            className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary"
           >
             <Bell className="size-5" aria-hidden="true" />
-            {unread > 0 ? (
-              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
-            ) : null}
+            {unread > 0 ? <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
+          </Link>
+          <Link to="/settings" aria-label="Settings" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
+            <Settings className="size-5" aria-hidden="true" />
           </Link>
           {currentProfile ? (
-            <Link
-              to="/profile/$username"
-              params={{ username: currentProfile.username }}
-              aria-label="Your profile"
-              className="press ml-1"
-            >
-              <UserAvatar
-                path={currentProfile.avatar_url}
-                name={currentProfile.display_name}
-                size={32}
-              />
+            <Link to="/profile/$username" params={{ username: currentProfile.username }} aria-label="Your profile" className="press ml-0.5 grid size-11 place-items-center">
+              <UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={32} />
             </Link>
           ) : (
-            <Link to="/auth" aria-label="Sign in" className="press ml-1">
+            <Link to="/auth" aria-label="Sign in" className="press ml-0.5 grid size-11 place-items-center">
               <UserAvatar size={32} />
             </Link>
           )}
@@ -306,7 +269,7 @@ export function AppShell({
 
       <nav
         aria-label="Primary"
-        className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-2 pt-2 backdrop-blur-md lg:hidden"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-1.5 pt-2 backdrop-blur-md lg:hidden"
         style={{ ["--safe-extra" as string]: "0.5rem" }}
       >
         <ul className="grid grid-cols-5">
