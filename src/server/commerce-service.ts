@@ -1115,3 +1115,194 @@ export async function getAdminCommerceOverview() {
     payoutDetails: Object.values((payouts || {}) as Record<string, unknown>),
   };
 }
+
+
+export type DiscountCampaignStatus = "draft" | "active" | "paused" | "expired";
+export type DiscountType = "percentage" | "fixed";
+
+export type DiscountCampaign = {
+  id: string;
+  name: string;
+  description?: string;
+  discountType: DiscountType;
+  discountValue: number;
+  appliesTo: "data" | "course" | "both";
+  productIds: string[];
+  startAt: string | null;
+  endAt: string | null;
+  maxRedemptions: number | null;
+  status: DiscountCampaignStatus;
+  cpaRequired: true;
+  cpa: {
+    provider: string;
+    offerId: string;
+    contentLockUrl: string;
+    clickIdParameter: string;
+    postbackStatus: "not_configured" | "ready";
+  };
+  redemptions: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DiscountConversion = {
+  id: string;
+  campaignId: string;
+  clickId: string | null;
+  userId: string | null;
+  transactionId: string;
+  offerId: string | null;
+  status: "approved" | "reversed" | "pending" | "rejected";
+  payload: Record<string, unknown>;
+  receivedAt: string;
+};
+
+function discountCampaignPath(idValue: string) {
+  return `commerce/discountCampaigns/${idValue}`;
+}
+
+function discountConversionPath(idValue: string) {
+  return `commerce/discountConversions/${idValue}`;
+}
+
+export async function getDiscountCampaigns(): Promise<DiscountCampaign[]> {
+  const raw = await queryRtdb("commerce/discountCampaigns") as Record<string, DiscountCampaign> | DiscountCampaign[] | null;
+  if (!raw) return [];
+  return (Array.isArray(raw) ? raw : Object.values(raw))
+    .filter(Boolean)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function createDiscountCampaign(params: {
+  name: string;
+  description?: string;
+  discountType: DiscountType;
+  discountValue: number;
+  appliesTo: "data" | "course" | "both";
+  productIds?: string[];
+  startAt?: string | null;
+  endAt?: string | null;
+  maxRedemptions?: number | null;
+  cpaProvider: string;
+  cpaOfferId: string;
+  cpaContentLockUrl: string;
+  cpaClickIdParameter?: string;
+}): Promise<DiscountCampaign> {
+  const name = String(params.name || "").trim();
+  const provider = String(params.cpaProvider || "").trim();
+  const offerId = String(params.cpaOfferId || "").trim();
+  const contentLockUrl = String(params.cpaContentLockUrl || "").trim();
+  const value = Number(params.discountValue);
+
+  if (!name) throw new Error("Campaign name is required.");
+  if (!["percentage", "fixed"].includes(params.discountType)) throw new Error("Invalid discount type.");
+  if (!["data", "course", "both"].includes(params.appliesTo)) throw new Error("Invalid campaign target.");
+  if (!Number.isFinite(value) || value <= 0) throw new Error("Discount value must be greater than zero.");
+  if (params.discountType === "percentage" && value > 100) throw new Error("Percentage discount cannot exceed 100%.");
+  if (!provider || !offerId || !contentLockUrl) {
+    throw new Error("A CPA provider, offer ID and content-lock URL are required.");
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(contentLockUrl);
+    if (parsedUrl.protocol !== "https:") throw new Error();
+  } catch {
+    throw new Error("CPA content-lock URL must be a valid HTTPS URL.");
+  }
+
+  const now = new Date().toISOString();
+  const campaign: DiscountCampaign = {
+    id: id("discount_campaign"),
+    name,
+    description: String(params.description || "").trim() || undefined,
+    discountType: params.discountType,
+    discountValue: Math.round(value * 100) / 100,
+    appliesTo: params.appliesTo,
+    productIds: Array.isArray(params.productIds) ? params.productIds.map(String).filter(Boolean) : [],
+    startAt: params.startAt || null,
+    endAt: params.endAt || null,
+    maxRedemptions: params.maxRedemptions == null || params.maxRedemptions === "" ? null : Math.max(1, Math.floor(Number(params.maxRedemptions))),
+    status: "draft",
+    cpaRequired: true,
+    cpa: {
+      provider,
+      offerId,
+      contentLockUrl: parsedUrl.toString(),
+      clickIdParameter: String(params.cpaClickIdParameter || "subid").trim() || "subid",
+      postbackStatus: "not_configured",
+    },
+    redemptions: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await queryRtdb(discountCampaignPath(campaign.id), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(campaign),
+  });
+  return campaign;
+}
+
+export async function updateDiscountCampaignStatus(idValue: string, status: DiscountCampaignStatus) {
+  if (!["draft", "active", "paused", "expired"].includes(status)) throw new Error("Invalid campaign status.");
+  const campaign = await queryRtdb(discountCampaignPath(idValue)) as DiscountCampaign | null;
+  if (!campaign) throw new Error("Discount campaign not found.");
+  if (status === "active" && (!campaign.cpa.provider || !campaign.cpa.offerId || !campaign.cpa.contentLockUrl)) {
+    throw new Error("A complete CPA offer is required before activating this discount.");
+  }
+  const updated = { ...campaign, status, updatedAt: new Date().toISOString() };
+  await queryRtdb(discountCampaignPath(idValue), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, updatedAt: updated.updatedAt }),
+  });
+  return updated;
+}
+
+export async function recordDiscountPostback(params: {
+  campaignId: string;
+  transactionId: string;
+  clickId?: string | null;
+  userId?: string | null;
+  offerId?: string | null;
+  status: "approved" | "reversed" | "pending" | "rejected";
+  payload: Record<string, unknown>;
+}) {
+  const transactionId = String(params.transactionId || "").trim();
+  if (!transactionId) throw new Error("Postback transaction ID is required.");
+  const campaign = await queryRtdb(discountCampaignPath(params.campaignId)) as DiscountCampaign | null;
+  if (!campaign) throw new Error("Discount campaign not found.");
+
+  const existing = await queryRtdb(discountConversionPath(transactionId)) as DiscountConversion | null;
+  if (existing) return { duplicate: true, conversion: existing };
+
+  const conversion: DiscountConversion = {
+    id: transactionId,
+    campaignId: campaign.id,
+    clickId: params.clickId ? String(params.clickId) : null,
+    userId: params.userId ? String(params.userId) : null,
+    transactionId,
+    offerId: params.offerId ? String(params.offerId) : null,
+    status: params.status,
+    payload: params.payload,
+    receivedAt: new Date().toISOString(),
+  };
+
+  await queryRtdb(discountConversionPath(transactionId), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(conversion),
+  });
+
+  if (params.status === "approved") {
+    await queryRtdb(discountCampaignPath(campaign.id), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updatedAt: new Date().toISOString() }),
+    });
+  }
+
+  return { duplicate: false, conversion };
+}
