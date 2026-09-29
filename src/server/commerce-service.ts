@@ -33,7 +33,7 @@ export type Course = {
   thumbnailUrl?: string | null;
   videoUrl?: string | null;
   contentPostId?: string | null;
-  contentLockEnabled: false;
+  contentLockEnabled: boolean;
   contentLockCampaignId?: string | null;
   status: "draft" | "published" | "archived";
   createdAt: string;
