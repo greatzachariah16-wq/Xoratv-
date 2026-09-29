@@ -388,8 +388,13 @@ export default {
       if (xseriesRes) return xseriesRes;
     }
 
-    // MELE DATA + creator/course commerce APIs
-    if (url.pathname.startsWith("/api/commerce") || url.pathname.startsWith("/api/admin/commerce") || url.pathname === "/api/webhooks/mele") {
+    // Creator promotion links + MELE/VTUshare + creator/course commerce APIs
+    if (
+      url.pathname.startsWith("/s/") ||
+      url.pathname.startsWith("/api/commerce") ||
+      url.pathname.startsWith("/api/admin/commerce") ||
+      url.pathname === "/api/webhooks/mele"
+    ) {
       const commerceRes = await handleCommerceRoute(request, url);
       if (commerceRes) return commerceRes;
     }
