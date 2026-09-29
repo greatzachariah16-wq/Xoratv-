@@ -13,10 +13,12 @@ import {
   Clapperboard,
   Tv,
   User,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
 import { notificationsQuery } from "@/lib/api";
+import { walletQuery } from "@/lib/commerce";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
 import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
@@ -48,6 +50,7 @@ export function AppShell({
   const { user, profile, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const unread = useUnreadCount();
+  const { data: walletData } = useQuery(walletQuery(user?.id));
 
   const currentProfile =
     profile ||
@@ -114,6 +117,18 @@ export function AppShell({
           >
             <Search className="size-4.5" aria-hidden="true" />
             Search
+          </Link>
+          <Link
+            to="/wallet"
+            className={cn(
+              "press flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+              pathname.startsWith("/wallet")
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+          >
+            <span className="flex items-center gap-3"><Wallet className="size-4.5" aria-hidden="true" /> Xora Wallet</span>
+            {user ? <span className="text-xs font-semibold">₦{Number(walletData?.wallet?.balance || 0).toLocaleString()}</span> : null}
           </Link>
           {currentProfile ? (
             <Link
@@ -204,6 +219,10 @@ export function AppShell({
         <div className="flex items-center gap-0.5 sm:gap-1">
           <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
             <Search className="size-5" aria-hidden="true" />
+          </Link>
+          <Link to="/wallet" aria-label={`Xora Wallet${user ? `, ₦${Number(walletData?.wallet?.balance || 0).toLocaleString()}` : ""}`} className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
+            <Wallet className="size-5" aria-hidden="true" />
+            {user && Number(walletData?.wallet?.balance || 0) > 0 ? <span className="absolute right-1 top-1 min-w-2 rounded-full bg-primary px-1 text-[8px] font-bold leading-3 text-primary-foreground">{Number(walletData?.wallet?.balance || 0) >= 1000 ? "₦+" : "₦"}</span> : null}
           </Link>
           <Link
             to="/notifications"
