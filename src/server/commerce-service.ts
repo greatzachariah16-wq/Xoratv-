@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
+import { debitWallet, creditWallet } from "./wallet-service";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
 
@@ -30,7 +31,10 @@ export type Course = {
   description: string;
   price: number;
   thumbnailUrl?: string | null;
+  videoUrl?: string | null;
   contentPostId?: string | null;
+  contentLockEnabled: false;
+  contentLockCampaignId?: string | null;
   status: "draft" | "published" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -916,6 +920,7 @@ export async function createDataOrder(params: {
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const orderId = id("data");
   const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "data");
+  const debit = await debitWallet({ userId: params.userId, amount: selected.customerPrice, reference: orderId, description: `Data purchase: ${selected.data_size} ${selected.network}` });
   const record = {
     id: orderId,
     userId: params.userId,
@@ -930,7 +935,9 @@ export async function createDataOrder(params: {
     customerPrice: selected.customerPrice,
     referralCode: params.referralCode || null,
     referralCreatorId,
-    status: "awaiting_payment",
+    status: "paid",
+    paymentMethod: "xora_wallet",
+    walletTransactionId: debit.transaction.id,
     createdAt: new Date().toISOString(),
   };
   await queryRtdb(`commerce/dataOrders/${orderId}`, {
@@ -1000,6 +1007,7 @@ export async function saveCourse(params: {
   description: string;
   price: number;
   thumbnailUrl?: string | null;
+  videoUrl?: string | null;
   contentPostId?: string | null;
 }) {
   const now = new Date().toISOString();
@@ -1010,7 +1018,10 @@ export async function saveCourse(params: {
     description: params.description.trim(),
     price: Math.max(0, Number(params.price) || 0),
     thumbnailUrl: params.thumbnailUrl || null,
+    videoUrl: params.videoUrl || null,
     contentPostId: params.contentPostId || null,
+    contentLockEnabled: false,
+    contentLockCampaignId: null,
     status: "published",
     createdAt: now,
     updatedAt: now,
@@ -1027,6 +1038,12 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
   if (!course) throw new Error("Course is unavailable.");
   const orderId = id("course_order");
   const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "course", course.id);
+  const debit = await debitWallet({
+    userId: params.userId,
+    amount: course.price,
+    reference: orderId,
+    description: `Course purchase: ${course.title}`,
+  });
   const record = {
     id: orderId,
     userId: params.userId,
@@ -1035,12 +1052,24 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
     customerPrice: course.price,
     referralCode: params.referralCode || null,
     referralCreatorId,
-    status: "awaiting_payment",
+    status: "paid",
+    paymentMethod: "xora_wallet",
+    walletTransactionId: debit.transaction.id,
     createdAt: new Date().toISOString(),
   };
-  await queryRtdb("commerce/courseOrders/" + orderId, {
-    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
-  });
+  try {
+    await queryRtdb("commerce/courseOrders/" + orderId, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+    });
+  } catch (error) {
+    await creditWallet({
+      userId: params.userId,
+      amount: course.price,
+      reference: `refund-${orderId}`,
+      description: `Refund for failed course order: ${course.title}`,
+    }).catch(() => undefined);
+    throw error;
+  }
   return record;
 }
 
