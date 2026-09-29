@@ -78,3 +78,36 @@ export function adminDataCatalogQuery(refresh = false) {
 export function adminCommerceQuery() {
   return queryOptions({ queryKey: ["admin","commerce"], queryFn: () => commerceFetch<{ok:true;overview:any}>("/api/admin/commerce/overview") });
 }
+
+
+export type DiscountCampaign = {
+  id: string;
+  name: string;
+  description?: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  appliesTo: "data" | "course" | "both";
+  productIds: string[];
+  startAt: string | null;
+  endAt: string | null;
+  maxRedemptions: number | null;
+  status: "draft" | "active" | "paused" | "expired";
+  cpaRequired: true;
+  cpa: {
+    provider: string;
+    offerId: string;
+    contentLockUrl: string;
+    clickIdParameter: string;
+    postbackStatus: "not_configured" | "ready";
+  };
+  redemptions: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function adminDiscountCampaignsQuery() {
+  return queryOptions({
+    queryKey: ["admin", "discount-campaigns"],
+    queryFn: () => commerceFetch<{ok:true;campaigns:DiscountCampaign[]}>("/api/admin/commerce/discount-campaigns"),
+  });
+}
