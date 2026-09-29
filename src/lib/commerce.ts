@@ -14,7 +14,9 @@ export type VtusharePlan = {
 };
 export type Course = {
   id: string; creatorId: string; title: string; description: string; price: number;
-  thumbnailUrl?: string | null; contentPostId?: string | null; status: string; createdAt: string; updatedAt: string;
+  thumbnailUrl?: string | null; videoUrl?: string | null; contentPostId?: string | null;
+  contentLockEnabled?: false; contentLockCampaignId?: string | null;
+  status: string; createdAt: string; updatedAt: string;
 };
 
 export async function commerceFetch<T>(path: string, init?: RequestInit): Promise<T> {
