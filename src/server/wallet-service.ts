@@ -1,21 +1,252 @@
 import crypto from "node:crypto";
-import { queryRtdb } from "./xseries-service-account";
+import { getCleanDbUrl, getFirebaseAccessToken, queryRtdb } from "./xseries-service-account";
 
-const FLW_BASE = "https://api.flutterwave.com/v3";
-export type WalletTransaction = { id:string; type:"deposit"|"purchase"|"refund"|"adjustment"; status:"pending"|"successful"|"failed"|"reversed"; amount:number; currency:"NGN"; reference:string; description:string; createdAt:string; completedAt?:string|null; providerReference?:string|null };
-type WalletDeposit = WalletTransaction & { userId:string; expectedAmount:number; providerTransactionId?:string|null; creditedAt?:string|null };
+export type WalletTransaction = {
+  id: string;
+  type: "deposit" | "purchase" | "refund" | "adjustment";
+  status: "pending" | "successful" | "failed" | "reversed";
+  amount: number;
+  currency: "NGN";
+  reference: string;
+  description: string;
+  createdAt: string;
+  completedAt?: string | null;
+  providerReference?: string | null;
+};
 
-const path=(u:string)=>`commerce/wallets/${encodeURIComponent(u)}`;
-const deposits="commerce/walletDeposits";
-const id=(p:string)=>`${p}_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
-const secret=()=>process.env.FLW_SECRET_KEY?.trim()||"";
-const origin=()=> (process.env.PUBLIC_APP_URL||"https://xoratv-x.onrender.com").replace(/\/$/,"");
-async function flw(pathname:string,init?:RequestInit){const key=secret();if(!key)throw new Error("Flutterwave is not configured on the server yet.");return fetch(FLW_BASE+pathname,{...init,headers:{Accept:"application/json","Content-Type":"application/json",Authorization:`Bearer ${key}`,...(init?.headers||{})},signal:init?.signal||AbortSignal.timeout(15000)});}
-async function read(u:string){return await queryRtdb(path(u)) as any;}
-async function write(u:string,w:any){await queryRtdb(path(u),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(w)});}
-export async function getWallet(userId:string):Promise<{userId:string;balance:number;currency:"NGN";transactions:WalletTransaction[]}>{const w=await read(userId);const t=w?.transactions?(Array.isArray(w.transactions)?w.transactions:Object.values(w.transactions)):[];return {userId,balance:Number(w?.balance||0),currency:"NGN",transactions:(t as WalletTransaction[]).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,50)};}
-export async function createWalletDeposit(p:{userId:string;email:string;name?:string|null;phone?:string|null;amount:number}){const amount=Math.round(Number(p.amount)*100)/100;if(!Number.isFinite(amount)||amount<100)throw new Error("Minimum wallet funding amount is ₦100.");if(amount>1000000)throw new Error("Wallet funding amount is above the current single-payment limit.");const reference=id("xora-wallet").replace(/_/g,"-"),now=new Date().toISOString(),deposit:WalletDeposit={id:id("deposit"),userId:p.userId,type:"deposit",status:"pending",amount,expectedAmount:amount,currency:"NGN",reference,description:"Xora wallet funding",createdAt:now,completedAt:null,providerReference:null,providerTransactionId:null,creditedAt:null};await queryRtdb(`${deposits}/${deposit.id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(deposit)});const res=await flw("/payments",{method:"POST",body:JSON.stringify({tx_ref:reference,amount,currency:"NGN",redirect_url:`${origin()}/wallet?deposit=${encodeURIComponent(reference)}`,customer:{email:String(p.email).trim(),name:String(p.name||"Xora User").trim(),phonenumber:p.phone||undefined},customizations:{title:"Xora Wallet",description:"Fund your Xora wallet"},meta:{userId:p.userId,walletDepositId:deposit.id}})});const body=await res.json().catch(()=>null);if(!res.ok||body?.status!=="success"||!body?.data?.link){await queryRtdb(`${deposits}/${deposit.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"failed",error:body?.message||`Flutterwave HTTP ${res.status}`,updatedAt:new Date().toISOString()})});throw new Error(body?.message||"Could not start wallet funding.");}return {depositId:deposit.id,reference,paymentLink:body.data.link,amount};}
-async function findDeposit(reference:string){const raw=await queryRtdb(deposits) as Record<string,WalletDeposit>|WalletDeposit[]|null;const list=raw?(Array.isArray(raw)?raw:Object.values(raw)):[];return list.find(d=>d?.reference===reference)||null;}
-async function verify(txId:string,ref:string,amount:number){const res=await flw(`/transactions/${encodeURIComponent(txId)}/verify`);const body=await res.json().catch(()=>null),d=body?.data,paid=Number(d?.amount);return {valid:res.ok&&body?.status==="success"&&d?.status==="successful"&&d?.currency==="NGN"&&d?.tx_ref===ref&&Number.isFinite(paid)&&paid>=amount,data:d};}
-export async function handleFlutterwaveWalletWebhook(request:Request){const expected=process.env.FLW_SECRET_HASH?.trim(),signature=request.headers.get("verif-hash")||"";if(!expected||signature!==expected)return {ok:false as const,status:401,error:"Invalid Flutterwave webhook signature."};const payload=await request.json().catch(()=>null),data=payload?.data;if(!data?.tx_ref||!data?.id)return {ok:false as const,status:400,error:"Invalid Flutterwave webhook payload."};const deposit=await findDeposit(String(data.tx_ref));if(!deposit)return {ok:true as const,status:200,ignored:true};const check=await verify(String(data.id),deposit.reference,deposit.expectedAmount);if(!check.valid){await queryRtdb(`${deposits}/${deposit.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"failed",providerTransactionId:String(data.id),updatedAt:new Date().toISOString()})});return {ok:true as const,status:200,credited:false};}if(deposit.status==="successful"&&deposit.creditedAt)return {ok:true as const,status:200,credited:false,duplicate:true};const wallet=await read(deposit.userId),transactions=wallet?.transactions?(Array.isArray(wallet.transactions)?Object.fromEntries(wallet.transactions.map((x:any)=>[x.id,x])):{...wallet.transactions}):{};if(Object.values(transactions).some((x:any)=>x.type==="deposit"&&x.reference===deposit.reference&&x.status==="successful"))return {ok:true as const,status:200,credited:false,duplicate:true};const now=new Date().toISOString(),tx:WalletTransaction={id:deposit.id,type:"deposit",status:"successful",amount:Number(check.data.amount),currency:"NGN",reference:deposit.reference,description:"Wallet funded via Flutterwave",createdAt:deposit.createdAt,completedAt:now,providerReference:String(check.data.flw_ref||"")};transactions[tx.id]=tx;await write(deposit.userId,{userId:deposit.userId,balance:Number(wallet?.balance||0)+tx.amount,currency:"NGN",transactions});await queryRtdb(`${deposits}/${deposit.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"successful",providerTransactionId:String(data.id),providerReference:data.flw_ref||null,creditedAt:now,completedAt:now})});return {ok:true as const,status:200,credited:true,amount:tx.amount};}
-export async function getWalletDepositStatus(reference:string,userId:string){const d=await findDeposit(reference);if(!d||d.userId!==userId)throw new Error("Wallet deposit not found.");return {id:d.id,reference:d.reference,amount:d.amount,status:d.status,creditedAt:d.creditedAt||null};}
+type Wallet = {
+  userId: string;
+  balance: number;
+  currency: "NGN";
+  transactions: Record<string, WalletTransaction>;
+};
+
+const walletPath = (userId: string) => `commerce/wallets/${encodeURIComponent(userId)}`;
+const depositsPath = "commerce/walletDeposits";
+const id = (prefix: string) => `${prefix}_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
+
+async function readWallet(userId: string): Promise<Wallet> {
+  const raw = await queryRtdb(walletPath(userId)) as Partial<Wallet> | null;
+  const transactions = raw?.transactions
+    ? (Array.isArray(raw.transactions)
+      ? Object.fromEntries(raw.transactions.map((x: WalletTransaction) => [x.id, x]))
+      : raw.transactions)
+    : {};
+  return {
+    userId,
+    balance: Number(raw?.balance || 0),
+    currency: "NGN",
+    transactions: transactions as Record<string, WalletTransaction>,
+  };
+}
+
+export async function getWallet(userId: string) {
+  const wallet = await readWallet(userId);
+  return {
+    userId,
+    balance: wallet.balance,
+    currency: wallet.currency,
+    transactions: Object.values(wallet.transactions)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+      .slice(0, 50),
+  };
+}
+
+/**
+ * Creates a funding request without connecting a payment provider.
+ * The payment rail is intentionally left unconfigured until Xora supplies one.
+ */
+export async function createWalletDeposit(params: { userId: string; amount: number }) {
+  const amount = Math.round(Number(params.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount < 100) throw new Error("Minimum wallet funding amount is ₦100.");
+  if (amount > 1000000) throw new Error("Wallet funding amount is above the current single-request limit.");
+
+  const now = new Date().toISOString();
+  const reference = id("xora-deposit").replace(/_/g, "-");
+  const deposit = {
+    id: id("deposit"),
+    userId: params.userId,
+    type: "deposit",
+    status: "pending",
+    amount,
+    expectedAmount: amount,
+    currency: "NGN",
+    reference,
+    description: "Xora wallet funding request",
+    createdAt: now,
+    completedAt: null,
+    creditedAt: null,
+    fundingProvider: null,
+  };
+
+  await queryRtdb(`${depositsPath}/${deposit.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(deposit),
+  });
+
+  return {
+    depositId: deposit.id,
+    reference,
+    amount,
+    status: "pending" as const,
+    providerConfigured: false,
+    message: "Your funding request was created. Xora has not connected an external payment provider yet.",
+  };
+}
+
+async function conditionalWalletUpdate(
+  userId: string,
+  updater: (wallet: Wallet) => Wallet,
+): Promise<Wallet> {
+  const base = getCleanDbUrl();
+  const token = await getFirebaseAccessToken();
+  if (!base || !token) {
+    // Local/dev fallback. Production uses Firebase conditional PUT below.
+    const current = await readWallet(userId);
+    const updated = updater(current);
+    await queryRtdb(walletPath(userId), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    });
+    return updated;
+  }
+
+  const target = `${base}/${walletPath(userId)}.json`;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const read = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      headers: { "X-Firebase-ETag": "true" },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!read.ok) throw new Error(`Unable to read wallet (HTTP ${read.status}).`);
+    const currentRaw = await read.json().catch(() => null);
+    const etag = read.headers.get("etag");
+    const current: Wallet = {
+      userId,
+      balance: Number(currentRaw?.balance || 0),
+      currency: "NGN",
+      transactions: currentRaw?.transactions
+        ? (Array.isArray(currentRaw.transactions)
+          ? Object.fromEntries(currentRaw.transactions.map((x: WalletTransaction) => [x.id, x]))
+          : currentRaw.transactions)
+        : {},
+    };
+    const updated = updater(current);
+    const write = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "if-match": etag || "null_etag",
+      },
+      body: JSON.stringify(updated),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (write.ok) return updated;
+    if (write.status !== 412) throw new Error(`Unable to update wallet (HTTP ${write.status}).`);
+  }
+  throw new Error("Wallet changed while processing the transaction. Please try again.");
+}
+
+export async function debitWallet(params: {
+  userId: string;
+  amount: number;
+  reference: string;
+  description: string;
+}) {
+  const amount = Math.round(Number(params.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Invalid wallet debit amount.");
+
+  const now = new Date().toISOString();
+  let transaction: WalletTransaction | null = null;
+
+  const wallet = await conditionalWalletUpdate(params.userId, (current) => {
+    const existing = Object.values(current.transactions).find(
+      (tx) => tx.reference === params.reference && tx.type === "purchase" && tx.status === "successful",
+    );
+    if (existing) {
+      transaction = existing;
+      return current;
+    }
+    if (current.balance < amount) {
+      throw new Error("Insufficient wallet balance.");
+    }
+    const tx: WalletTransaction = {
+      id: id("wallet_purchase"),
+      type: "purchase",
+      status: "successful",
+      amount: -amount,
+      currency: "NGN",
+      reference: params.reference,
+      description: params.description,
+      createdAt: now,
+      completedAt: now,
+      providerReference: null,
+    };
+    transaction = tx;
+    return {
+      ...current,
+      balance: Math.round((current.balance - amount) * 100) / 100,
+      transactions: { ...current.transactions, [tx.id]: tx },
+    };
+  });
+
+  return { wallet, transaction: transaction! };
+}
+
+export async function creditWallet(params: {
+  userId: string;
+  amount: number;
+  reference: string;
+  description: string;
+  providerReference?: string | null;
+}) {
+  const amount = Math.round(Number(params.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Invalid wallet credit amount.");
+
+  const now = new Date().toISOString();
+  let transaction: WalletTransaction | null = null;
+  const wallet = await conditionalWalletUpdate(params.userId, (current) => {
+    const existing = Object.values(current.transactions).find(
+      (tx) => tx.reference === params.reference && tx.type === "deposit" && tx.status === "successful",
+    );
+    if (existing) {
+      transaction = existing;
+      return current;
+    }
+    const tx: WalletTransaction = {
+      id: id("wallet_deposit"),
+      type: "deposit",
+      status: "successful",
+      amount,
+      currency: "NGN",
+      reference: params.reference,
+      description: params.description,
+      createdAt: now,
+      completedAt: now,
+      providerReference: params.providerReference || null,
+    };
+    transaction = tx;
+    return {
+      ...current,
+      balance: Math.round((current.balance + amount) * 100) / 100,
+      transactions: { ...current.transactions, [tx.id]: tx },
+    };
+  });
+  return { wallet, transaction: transaction! };
+}
+
+export async function getWalletDepositStatus(reference: string, userId: string) {
+  const raw = await queryRtdb(depositsPath) as Record<string, any> | any[] | null;
+  const list = raw ? (Array.isArray(raw) ? raw : Object.values(raw)) : [];
+  const deposit = list.find((d: any) => d?.reference === reference && d?.userId === userId);
+  if (!deposit) throw new Error("Wallet funding request not found.");
+  return {
+    id: deposit.id,
+    reference: deposit.reference,
+    amount: Number(deposit.amount),
+    status: deposit.status,
+    creditedAt: deposit.creditedAt || null,
+    providerConfigured: false,
+  };
+}
