@@ -111,3 +111,27 @@ export function adminDiscountCampaignsQuery() {
     queryFn: () => commerceFetch<{ok:true;campaigns:DiscountCampaign[]}>("/api/admin/commerce/discount-campaigns"),
   });
 }
+
+
+export type WalletTransaction = {
+  id: string; type: "deposit" | "purchase" | "refund" | "adjustment";
+  status: "pending" | "successful" | "failed" | "reversed";
+  amount: number; currency: "NGN"; reference: string; description: string;
+  createdAt: string; completedAt?: string | null; providerReference?: string | null;
+};
+export function walletQuery(userId?: string) {
+  return queryOptions({
+    queryKey: ["commerce", "wallet", userId],
+    enabled: Boolean(userId),
+    queryFn: () => commerceFetch<{ok:true;wallet:{userId:string;balance:number;currency:"NGN";transactions:WalletTransaction[]}}>(`/api/commerce/wallet?userId=${encodeURIComponent(userId || "")}`),
+    refetchInterval: 5000,
+  });
+}
+export function walletDepositStatusQuery(userId?: string, reference?: string | null) {
+  return queryOptions({
+    queryKey: ["commerce", "wallet-deposit", userId, reference],
+    enabled: Boolean(userId && reference),
+    queryFn: () => commerceFetch<{ok:true;deposit:{id:string;reference:string;amount:number;status:string;creditedAt:string|null}}>(`/api/commerce/wallet/deposit/status?userId=${encodeURIComponent(userId || "")}&reference=${encodeURIComponent(reference || "")}`),
+    refetchInterval: 3000,
+  });
+}
