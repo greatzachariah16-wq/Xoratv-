@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownToLine, Clock3, Loader2, WalletCards } from "lucide-react";
+import { ArrowDownToLine, Clock3, Loader2, Wallet } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { commerceFetch, walletQuery, walletDepositStatusQuery } from "@/lib/commerce";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +24,7 @@ function WalletPage() {
     return (
       <AppShell wide>
         <div className="mx-auto max-w-xl rounded-[30px] border border-border bg-surface p-8 text-center shadow-card">
-          <WalletCards className="mx-auto size-10 text-primary" />
+          <Wallet className="mx-auto size-10 text-primary" />
           <h1 className="mt-4 font-display text-2xl font-semibold">Your Xora Wallet</h1>
           <p className="mt-2 text-sm text-muted-foreground">Sign in to view your balance and use your wallet across Xora.</p>
           <a href="/auth" className="mt-5 inline-flex rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground">Sign in</a>
@@ -59,20 +59,20 @@ function WalletPage() {
 
   return (
     <AppShell wide>
-      <div className="space-y-6">
-        <header className="rounded-[30px] border border-border bg-surface p-6 shadow-card">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0 space-y-5 sm:space-y-6">
+        <header className="rounded-[24px] border border-border bg-surface p-4 shadow-card sm:rounded-[30px] sm:p-6">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
             <div>
               <div className="flex items-center gap-2 text-primary">
-                <WalletCards className="size-5" />
+                <Wallet className="size-5" />
                 <span className="text-sm font-semibold">Xora Wallet</span>
               </div>
-              <h1 className="mt-2 font-display text-3xl font-semibold">One balance for Xora.</h1>
+              <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">One balance for Xora.</h1>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                 Your wallet is the payment source for mobile data and paid courses.
               </p>
             </div>
-            <div className="rounded-2xl bg-primary/10 px-5 py-3 sm:text-right">
+            <div className="w-full rounded-2xl bg-primary/10 px-4 py-3 sm:w-auto sm:px-5 sm:text-right">
               <p className="text-xs text-muted-foreground">Available balance</p>
               <p className="mt-1 text-3xl font-semibold">₦{Number(data?.wallet?.balance || 0).toLocaleString()}</p>
             </div>
@@ -89,7 +89,7 @@ function WalletPage() {
         ) : null}
 
         <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-3xl border border-border bg-surface p-5 shadow-card">
+          <div className="rounded-[24px] border border-border bg-surface p-4 shadow-card sm:rounded-3xl sm:p-5">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <ArrowDownToLine className="size-5" />
