@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2 } from "lucide-react";
+import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
@@ -14,6 +14,7 @@ function CreatorStudio() {
   const [busy, setBusy] = useState(false);
   const [payoutBusy, setPayoutBusy] = useState(false);
   const [linkBusy, setLinkBusy] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState<string | null>(null);
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [bankName, setBankName] = useState("");
@@ -30,6 +31,23 @@ function CreatorStudio() {
       await commerceFetch("/api/commerce/creator/register", { method: "POST", body: JSON.stringify({ userId: user.id, displayName: profile?.display_name || user.displayName || "Xora Creator", username: profile?.username || user.email?.split("@")[0] || user.id.slice(0, 8) }) });
       setRegistered(true); await refetch();
     } catch (e) { alert(e instanceof Error ? e.message : "Creator registration failed."); } finally { setBusy(false); }
+  }
+
+  async function deleteCourse(courseId: string, title: string) {
+    if (!window.confirm(`Delete "${title}" from your Creator Studio? It will no longer be available for sale.`)) return;
+    setDeleteBusy(courseId);
+    try {
+      await commerceFetch("/api/commerce/creator/course", {
+        method: "DELETE",
+        body: JSON.stringify({ creatorId: user.id, courseId }),
+      });
+      await refetch();
+      alert("Course deleted.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not delete course.");
+    } finally {
+      setDeleteBusy(null);
+    }
   }
 
   async function savePayout() {
@@ -112,7 +130,7 @@ function CreatorStudio() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-display text-xl font-semibold">Your courses</h2><p className="mt-1 text-sm text-muted-foreground">Set your own course price when you publish.</p></div><Link to="/learn" className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"><Plus className="size-3.5"/> Open Learn</Link></div><div className="mt-4 space-y-3">{(dashboard?.courses||[]).map((c:any)=><div key={c.id} className="rounded-2xl border border-border p-4"><div className="flex justify-between gap-3"><span className="font-semibold">{c.title}</span><span className="font-semibold">₦{Number(c.price||0).toLocaleString()}</span></div><p className="mt-1 text-xs text-muted-foreground">{c.status}</p></div>)}{!(dashboard?.courses||[]).length?<p className="text-sm text-muted-foreground">No courses yet.</p>:null}</div></div>
+        <div className="rounded-3xl border border-border bg-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-display text-xl font-semibold">Your courses</h2><p className="mt-1 text-sm text-muted-foreground">Set your own course price when you publish.</p></div><Link to="/learn" className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"><Plus className="size-3.5"/> Open Learn</Link></div><div className="mt-4 space-y-3">{(dashboard?.courses||[]).map((c:any)=><div key={c.id} className="rounded-2xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="font-semibold">{c.title}</span><p className="mt-1 text-xs text-muted-foreground">{c.status}</p></div><div className="flex shrink-0 items-center gap-2"><span className="font-semibold">₦{Number(c.price||0).toLocaleString()}</span><button type="button" onClick={() => void deleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Trash2 className="size-3.5"/>{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div></div></div>)}{!(dashboard?.courses||[]).length?<p className="text-sm text-muted-foreground">No courses yet.</p>:null}</div></div>
         <div className="rounded-3xl border border-border bg-surface p-5"><div className="flex items-center gap-2"><Landmark className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Payout details</h2></div><p className="mt-1 text-sm text-muted-foreground">Bank transfer is supported. No bank list is hardcoded; enter the supported bank name when you are ready.</p><div className="mt-4 space-y-3"><input value={accountName} onChange={e=>setAccountName(e.target.value)} placeholder="Account name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={accountNumber} onChange={e=>setAccountNumber(e.target.value)} inputMode="numeric" placeholder="Account number" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={bankName} onChange={e=>setBankName(e.target.value)} placeholder="Bank name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><button onClick={()=>void savePayout()} disabled={payoutBusy || !accountName || !accountNumber || !bankName} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{payoutBusy?<Loader2 className="size-4 animate-spin"/>:<Landmark className="size-4"/>}Save payout details</button></div></div>
       </section>
     </div>
