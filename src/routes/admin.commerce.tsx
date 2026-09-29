@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook, Save, Send, Ban } from "lucide-react";
+import { Users, BookOpen, Smartphone, Wallet, ShieldCheck, Loader2, RefreshCw, CircleCheck, CircleX, Webhook, Save, Send, Ban, Plus, Tag, LockKeyhole } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { adminCommerceQuery, adminDataCatalogQuery, commerceFetch, meleHealthQuery, melePlansQuery, vtushareHealthQuery, vtusharePlansQuery, type MelePlan, type VtusharePlan, type DataCatalogRecord } from "@/lib/commerce";
+import { adminCommerceQuery, adminDataCatalogQuery, adminDiscountCampaignsQuery, commerceFetch, meleHealthQuery, melePlansQuery, vtushareHealthQuery, vtusharePlansQuery, type MelePlan, type VtusharePlan, type DataCatalogRecord, type DiscountCampaign } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerce });
 
@@ -38,6 +38,22 @@ function AdminCommerce() {
   const [phone, setPhone] = useState("");
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const discountQuery = useQuery(adminDiscountCampaignsQuery());
+  const [discountFormOpen, setDiscountFormOpen] = useState(false);
+  const [discountBusy, setDiscountBusy] = useState(false);
+  const [discountMessage, setDiscountMessage] = useState<string | null>(null);
+  const [discountForm, setDiscountForm] = useState({
+    name: "",
+    description: "",
+    discountType: "percentage" as "percentage" | "fixed",
+    discountValue: "",
+    appliesTo: "both" as "data" | "course" | "both",
+    maxRedemptions: "",
+    cpaProvider: "",
+    cpaOfferId: "",
+    cpaContentLockUrl: "",
+    cpaClickIdParameter: "subid",
+  });
   const o = data?.overview;
 
   const allPlans = useMemo(() => {
