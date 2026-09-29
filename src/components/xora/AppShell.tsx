@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   BarChart3,
-  CircleHelp,
   GraduationCap,
   Home,
   Plus,
@@ -14,10 +13,6 @@ import {
   Clapperboard,
   Tv,
   User,
-  MessageCircle,
-  Smartphone,
-  Wallet,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
