@@ -7,7 +7,7 @@ import { FeedList } from "@/components/xora/FeedList";
 import { TrendingRail } from "@/components/xora/TrendingRail";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
-import { commerceFetch, coursesMarketQuery, walletQuery, type Course } from "@/lib/commerce";
+import { commerceFetch, coursesMarketQuery, purchasedCoursesQuery, walletQuery, type Course } from "@/lib/commerce";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -27,12 +27,14 @@ function Learn() {
   const [purchased, setPurchased] = useState<string[]>([]);
   const { data, refetch } = useQuery(coursesMarketQuery());
   const wallet = useQuery(walletQuery(user?.id));
+  const purchasedQuery = useQuery(purchasedCoursesQuery(user?.id));
   const ref = typeof window !== "undefined"
     ? (new URLSearchParams(window.location.search).get("promo") ||
       new URLSearchParams(window.location.search).get("ref"))
     : null;
 
   const courses = useMemo(() => data?.courses || [], [data]);
+  const purchasedIds = useMemo(() => new Set([...(purchasedQuery.data?.courseIds || []), ...purchased]), [purchasedQuery.data, purchased]);
 
   async function upload(file: File, type: "video" | "thumbnail") {
     setUploading(type);
@@ -214,7 +216,7 @@ function Learn() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             {courses.map((course) => {
-              const owned = purchased.includes(course.id);
+              const owned = purchasedIds.has(course.id);
               return (
                 <article key={course.id} className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                   <div className="aspect-video bg-secondary">
