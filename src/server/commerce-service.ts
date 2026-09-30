@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
 import { debitWallet, creditWallet } from "./wallet-service";
+import { calculateDataPointsDiscount, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
 
@@ -948,7 +949,21 @@ export async function createDataOrder(params: {
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const orderId = id("data");
   const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "data");
-  const debit = await debitWallet({ userId: params.userId, amount: selected.customerPrice, reference: orderId, description: `Data purchase: ${selected.data_size} ${selected.network}` });
+  const cpaWallet = await getCpaWallet(params.userId);
+  const pointsDiscount = params.usePoints === true
+    ? calculateDataPointsDiscount({ points: cpaWallet.points, price: selected.customerPrice })
+    : { discount: 0, pointsToRedeem: 0, maxDiscount: Math.round(selected.customerPrice * 0.5 * 100) / 100, pointsNgnValue: 0.1 };
+  const finalPrice = Math.max(0, Math.round((selected.customerPrice - pointsDiscount.discount) * 100) / 100);
+  const debit = await debitWallet({ userId: params.userId, amount: finalPrice, reference: orderId, description: `Data purchase: ${selected.data_size} ${selected.network}${pointsDiscount.pointsToRedeem ? ` with ${pointsDiscount.pointsToRedeem} Xora Points` : ""}` });
+  let pointsRedemption: { points: number; remainingPoints: number } | null = null;
+  try {
+    if (pointsDiscount.pointsToRedeem > 0) {
+      pointsRedemption = await redeemCpaPoints({ userId: params.userId, points: pointsDiscount.pointsToRedeem, reference: orderId, purpose: "data_discount", description: `Data discount: ${selected.data_size} ${selected.network}` });
+    }
+  } catch (error) {
+    await creditWallet({ userId: params.userId, amount: finalPrice, reference: `${orderId}_points_refund`, description: `Refund for failed Xora Points redemption: ${selected.data_size} ${selected.network}` });
+    throw error;
+  }
   const record = {
     id: orderId,
     userId: params.userId,
@@ -961,11 +976,14 @@ export async function createDataOrder(params: {
     providerPlan: selected.providerPlan,
     providerCost: selected.providerCost,
     customerPrice: selected.customerPrice,
+    pointsDiscount: pointsDiscount.discount,
+    pointsRedeemed: pointsRedemption?.points || 0,
+    finalPrice,
     referralCode: params.referralCode || null,
     referralCreatorId,
     status: "paid",
-    paymentMethod: "xora_wallet",
-    walletTransactionId: debit.transaction.id,
+    paymentMethod: usePoints ? "xora_points" : "xora_wallet",
+    walletTransactionId: debit?.transaction?.id || null,
     createdAt: new Date().toISOString(),
   };
   await queryRtdb(`commerce/dataOrders/${orderId}`, {
@@ -1109,24 +1127,34 @@ export async function saveCourse(params: {
   return course;
 }
 
-export async function createCourseOrder(params: { userId: string; courseId: string; referralCode?: string | null }) {
+export async function createCourseOrder(params: { userId: string; courseId: string; referralCode?: string | null; paymentMethod?: "wallet" | "points" }) {
   const courses = await getCreatorCourses();
   const course = courses.find((c) => c.id === params.courseId && c.status === "published");
   if (!course) throw new Error("Course is unavailable.");
   const orderId = id("course_order");
   const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "course", course.id);
-  const debit = await debitWallet({
-    userId: params.userId,
-    amount: course.price,
-    reference: orderId,
-    description: `Course purchase: ${course.title}`,
-  });
+  const usePoints = params.paymentMethod === "points";
+  const requiredPoints = Math.ceil(Number(course.price || 0) / 0.1);
+  let debit: { transaction: any } | null = null;
+  let pointsRedemption: { points: number; remainingPoints: number } | null = null;
+  if (usePoints) {
+    pointsRedemption = await redeemCpaPoints({ userId: params.userId, points: requiredPoints, reference: orderId, purpose: "course_unlock", description: `Course unlock: ${course.title}` });
+  } else {
+    debit = await debitWallet({
+      userId: params.userId,
+      amount: course.price,
+      reference: orderId,
+      description: `Course purchase: ${course.title}`,
+    });
+  }
   const record = {
     id: orderId,
     userId: params.userId,
     courseId: course.id,
     creatorId: course.creatorId,
-    customerPrice: course.price,
+    customerPrice: usePoints ? 0 : course.price,
+    originalPrice: course.price,
+    pointsRedeemed: pointsRedemption?.points || 0,
     referralCode: params.referralCode || null,
     referralCreatorId,
     status: "paid",
