@@ -226,7 +226,7 @@ function OfferWall() {
             </div>
           </div>
           <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-            Your points balance is stored in XoraTV. Redemption rules for data discounts and course access can be configured without changing the CPAGrip feed.
+            1 XP is currently worth ₦0.10. Points can cover up to 50% of a data purchase or fully unlock a course when you have enough XP.
           </p>
         </section>
 
