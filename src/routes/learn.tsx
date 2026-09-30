@@ -32,8 +32,20 @@ function Learn() {
     ? (new URLSearchParams(window.location.search).get("promo") ||
       new URLSearchParams(window.location.search).get("ref"))
     : null;
+  const promotionTarget = useQuery({
+    queryKey: ["commerce", "promotion-target", ref],
+    enabled: Boolean(ref),
+    queryFn: async () => {
+      const response = await commerceFetch<any>(`/api/commerce/promotion-target?token=${encodeURIComponent(ref || "")}`);
+      return response.target;
+    },
+  });
 
-  const courses = useMemo(() => data?.courses || [], [data]);
+  const courses = useMemo(() => {
+    const all = data?.courses || [];
+    const target = promotionTarget.data?.course;
+    return target ? all.filter((course) => course.id === target.id) : all;
+  }, [data, promotionTarget.data]);
   const purchasedIds = useMemo(() => new Set([...(purchasedQuery.data?.courseIds || []), ...purchased]), [purchasedQuery.data, purchased]);
 
   async function upload(file: File, type: "video" | "thumbnail") {
