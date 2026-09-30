@@ -14,6 +14,7 @@ import {
   Tv,
   User,
   Wallet,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -29,6 +30,7 @@ const NAV = [
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
+  { to: "/offers", label: "Offers", icon: Gift },
 ] as const;
 
 function useUnreadCount() {
