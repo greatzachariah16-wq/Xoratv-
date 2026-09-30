@@ -297,6 +297,72 @@ export async function createOfferPromotionLink(params: { creatorId: string; offe
   return record;
 }
 
+export async function settleCpaRevenue() {
+  const raw = (await queryRtdb("commerce/cpaConversions")) as Record<string, any> | null;
+  const conversions = Object.values(raw || {}).filter((item: any) => item?.status === "approved" && item?.settlementStatus === "pending");
+  const settledAt = new Date().toISOString();
+  const settledByCreator = new Map<string, number>();
+  for (const conversion of conversions) {
+    await queryRtdb(conversionPath(String(conversion.id)), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settlementStatus: "settled", settledAt }),
+    });
+    if (conversion.creatorId) {
+      settledByCreator.set(String(conversion.creatorId), (settledByCreator.get(String(conversion.creatorId)) || 0) + Number(conversion.creatorCommission || 0));
+    }
+  }
+
+  const updatedCreators: string[] = [];
+  for (const [creatorId, amount] of settledByCreator.entries()) {
+    const current = (await queryRtdb(creatorStatsPath(creatorId))) as any || {};
+    const settledCommission = Number(current.settledCommission || 0) + amount;
+    const approvedConversions = Number(current.approvedConversions || 0);
+    const paidCommission = Number(current.paidCommission || 0);
+    const payableCommission = approvedConversions >= MIN_CREATOR_CONVERSIONS
+      ? Math.max(0, settledCommission - paidCommission)
+      : Number(current.payableCommission || 0);
+    await queryRtdb(creatorStatsPath(creatorId), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settledCommission, payableCommission, updatedAt: settledAt }),
+    });
+    updatedCreators.push(creatorId);
+  }
+  return { settledConversions: conversions.length, updatedCreators, settledAt };
+}
+
+export async function markCpaCreatorPaid(creatorId: string) {
+  const stats = (await queryRtdb(creatorStatsPath(creatorId))) as any || {};
+  const approvedConversions = Number(stats.approvedConversions || 0);
+  const payableCommission = Number(stats.payableCommission || 0);
+  if (approvedConversions < MIN_CREATOR_CONVERSIONS) throw new Error(`Creator must have at least ${MIN_CREATOR_CONVERSIONS} approved conversions before payout.`);
+  if (payableCommission <= 0) throw new Error("There is no settled CPA commission available for this creator.");
+  const now = new Date().toISOString();
+  const raw = (await queryRtdb("commerce/cpaConversions")) as Record<string, any> | null;
+  for (const conversion of Object.values(raw || {})) {
+    if (conversion?.creatorId === creatorId && conversion.settlementStatus === "settled" && conversion.paidAt == null) {
+      await queryRtdb(conversionPath(String(conversion.id)), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paidAt: now, settlementStatus: "paid" }),
+      });
+    }
+  }
+  await queryRtdb(creatorStatsPath(creatorId), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      payableCommission: 0,
+      paidCommission: Number(stats.paidCommission || 0) + payableCommission,
+      updatedAt: now,
+      lastPaidAt: now,
+      lastPaidAmount: payableCommission,
+    }),
+  });
+  return { creatorId, paidAmount: payableCommission, paidAt: now };
+}
+
 export async function getCreatorCpaDashboard(creatorId: string) {
   const stats = (await queryRtdb(creatorStatsPath(creatorId))) as any || {};
   const raw = (await queryRtdb("commerce/cpaConversions")) as Record<string, any> | null;
@@ -305,6 +371,7 @@ export async function getCreatorCpaDashboard(creatorId: string) {
     approvedConversions: Number(stats.approvedConversions || 0),
     pendingCommission: Number(stats.pendingCommission || 0),
     payableCommission: Number(stats.payableCommission || 0),
+    settledCommission: Number(stats.settledCommission || 0),
     paidCommission: Number(stats.paidCommission || 0),
     minConversions: MIN_CREATOR_CONVERSIONS,
     payoutEligible: Number(stats.approvedConversions || 0) >= MIN_CREATOR_CONVERSIONS && Number(stats.payableCommission || 0) > 0,
