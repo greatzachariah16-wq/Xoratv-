@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
-import { debitWallet, creditWallet } from "./wallet-service";
+import { debitWallet, creditWallet, getWallet } from "./wallet-service";
 import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
@@ -940,6 +940,7 @@ export async function getDataPriceQuote(params: { userId: string; catalogId: str
   const selected = catalog.find((record) => record.catalogId === String(params.catalogId) && record.status === "published");
   if (!selected) throw new Error("The selected data plan is not currently available.");
   const wallet = await getCpaWallet(params.userId);
+  const xoraWallet = await getWallet(params.userId);
   const quote = calculateDataPurchaseQuote({
     points: wallet.points,
     price: selected.customerPrice,
@@ -953,6 +954,11 @@ export async function getDataPriceQuote(params: { userId: string; catalogId: str
       data_size: selected.data_size,
       validity: selected.validity,
       price: selected.customerPrice,
+    },
+    wallet: {
+      balance: xoraWallet.balance,
+      required: quote.finalPrice,
+      sufficient: xoraWallet.balance >= quote.finalPrice,
     },
   };
 }
@@ -1013,9 +1019,28 @@ export async function createDataOrder(params: {
     walletTransactionId: debit.transaction.id,
     createdAt: new Date().toISOString(),
   };
-  await queryRtdb(`commerce/dataOrders/${orderId}`, {
-    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
-  });
+  try {
+    await queryRtdb(`commerce/dataOrders/${orderId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+    });
+  } catch (error) {
+    if (pointsRedemption?.points) {
+      await refundCpaPoints({
+        userId: params.userId,
+        points: pointsRedemption.points,
+        reference: `${orderId}_order_refund`,
+        purpose: "data_discount",
+        description: `Refund for failed data order: ${selected.data_size} ${selected.network}`,
+      });
+    }
+    await creditWallet({
+      userId: params.userId,
+      amount: finalPrice,
+      reference: `${orderId}_order_record_refund`,
+      description: `Refund for failed data order: ${selected.data_size} ${selected.network}`,
+    });
+    throw error;
+  }
   return record;
 }
 export async function testMelePurchase(params: {
