@@ -940,6 +940,7 @@ export async function createDataOrder(params: {
   catalogId: string;
   phoneNumber: string;
   referralCode?: string | null;
+  usePoints?: boolean;
 }) {
   const catalog = await getAdminDataCatalog(false);
   const selected = catalog.find((record) => record.catalogId === String(params.catalogId) && record.status === "published");
@@ -982,8 +983,8 @@ export async function createDataOrder(params: {
     referralCode: params.referralCode || null,
     referralCreatorId,
     status: "paid",
-    paymentMethod: usePoints ? "xora_points" : "xora_wallet",
-    walletTransactionId: debit?.transaction?.id || null,
+    paymentMethod: "xora_wallet",
+    walletTransactionId: debit.transaction.id,
     createdAt: new Date().toISOString(),
   };
   await queryRtdb(`commerce/dataOrders/${orderId}`, {
@@ -1158,8 +1159,8 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
     referralCode: params.referralCode || null,
     referralCreatorId,
     status: "paid",
-    paymentMethod: "xora_wallet",
-    walletTransactionId: debit.transaction.id,
+    paymentMethod: usePoints ? "xora_points" : "xora_wallet",
+    walletTransactionId: debit?.transaction?.id || null,
     createdAt: new Date().toISOString(),
   };
   try {
@@ -1167,12 +1168,16 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
     });
   } catch (error) {
-    await creditWallet({
-      userId: params.userId,
-      amount: course.price,
-      reference: `refund-${orderId}`,
-      description: `Refund for failed course order: ${course.title}`,
-    }).catch(() => undefined);
+    if (usePoints && pointsRedemption) {
+      await refundCpaPoints({ userId: params.userId, points: pointsRedemption.points, reference: orderId, description: `Refund for failed course unlock: ${course.title}` }).catch(() => undefined);
+    } else if (debit) {
+      await creditWallet({
+        userId: params.userId,
+        amount: course.price,
+        reference: `refund-${orderId}`,
+        description: `Refund for failed course order: ${course.title}`,
+      }).catch(() => undefined);
+    }
     throw error;
   }
   return record;
