@@ -11,6 +11,7 @@ export const Route = createFileRoute("/creator-studio")({ component: CreatorStud
 function CreatorStudio() {
   const { user, profile } = useAuth();
   const [registered, setRegistered] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [payoutBusy, setPayoutBusy] = useState(false);
   const [linkBusy, setLinkBusy] = useState<string | null>(null);
@@ -91,8 +92,45 @@ function CreatorStudio() {
     alert("Promotion link copied.");
   }
 
-  if (!creator && !registered) return <AppShell wide><div className="mx-auto max-w-4xl overflow-hidden rounded-[34px] border border-border bg-surface shadow-card"><div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><BarChart3 className="size-6"/></div><h1 className="mt-5 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Creator Studio</h1><p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">Turn your knowledge and audience into income. Register once so Xora can identify your creator account, sales, commissions and payout profile.</p><button onClick={() => void register()} disabled={busy} className="mt-7 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-card disabled:opacity-50">{busy ? "Setting up…" : "Become a creator"}</button></div></AppShell>;
-
+  if (!creator && !registered) return <AppShell wide>
+    <div className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[1.08fr_.92fr]">
+      <section className="relative overflow-hidden rounded-[34px] border border-border bg-surface p-6 shadow-card sm:p-8">
+        <div className="absolute -right-20 -top-20 size-56 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><BarChart3 className="size-6" /></div>
+            <span className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground">Creator application</span>
+          </div>
+          <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-primary">XoraTV Creator Studio</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Turn your audience into a storefront.</h1>
+          <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">Create video courses, promote Xora services, track commissions and manage payouts from one dedicated creator workspace.</p>
+          <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-background p-4"><p className="text-sm font-semibold">Create</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Publish paid video courses.</p></div>
+            <div className="rounded-2xl border border-border bg-background p-4"><p className="text-sm font-semibold">Promote</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Share your creator links.</p></div>
+            <div className="rounded-2xl border border-border bg-background p-4"><p className="text-sm font-semibold">Earn</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Track sales and commissions.</p></div>
+          </div>
+        </div>
+      </section>
+      <section className="rounded-[34px] border border-border bg-surface p-6 shadow-card sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Application</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold">Apply for Creator Studio</h2>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">This is separate from your normal XoraTV profile. Your creator activity will be tied to this signed-in account.</p>
+        <div className="mt-6 space-y-3">
+          <div className="flex gap-3 rounded-2xl border border-border bg-background p-4"><BookOpen className="mt-0.5 size-5 shrink-0 text-primary" /><div><p className="text-sm font-semibold">Creator identity</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your existing Xora profile identifies your creator account.</p></div></div>
+          <div className="flex gap-3 rounded-2xl border border-border bg-background p-4"><Wallet className="mt-0.5 size-5 shrink-0 text-primary" /><div><p className="text-sm font-semibold">Creator earnings</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Sales, commissions and payout details stay in Creator Studio.</p></div></div>
+        </div>
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background p-4">
+          <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} />
+          <span className="text-xs leading-5 text-muted-foreground">I agree to the <span className="font-semibold text-foreground">Creator Studio terms</span> and understand creator activity may be reviewed by XoraTV.</span>
+        </label>
+        <button onClick={() => void register()} disabled={busy || !termsAccepted} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-card disabled:cursor-not-allowed disabled:opacity-50">
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <BarChart3 className="size-4" />}
+          {busy ? "Submitting application…" : "Apply & open Creator Studio"}
+        </button>
+        <p className="mt-3 text-center text-[11px] leading-5 text-muted-foreground">Creator limits and anti-bot controls can be added later without changing the normal profile.</p>
+      </section>
+    </div>
+  </AppShell>;
   if (isPending) return <AppShell><div className="p-8 text-sm text-muted-foreground">Loading your studio…</div></AppShell>;
 
   return <AppShell wide>
