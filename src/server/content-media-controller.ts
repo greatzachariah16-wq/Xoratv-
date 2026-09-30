@@ -3,7 +3,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import ffmpegPath from "ffmpeg-static";
+import { createRequire } from "node:module";
+
+// ffmpeg-static is CommonJS and expects __dirname. Keep it external to Nitro's ESM bundle.
+const require = createRequire(import.meta.url);
+const ffmpegPath = require("ffmpeg-static") as string | null;
 import { registerCloudinaryVideo } from "./content-repository";
 
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
