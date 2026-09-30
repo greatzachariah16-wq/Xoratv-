@@ -1065,6 +1065,7 @@ export async function saveCourse(params: {
   thumbnailUrl?: string | null;
   videoUrl?: string | null;
   contentPostId?: string | null;
+  videoPublicId?: string | null;
 }) {
   const now = new Date().toISOString();
   const course: Course = {
@@ -1085,6 +1086,24 @@ export async function saveCourse(params: {
   await queryRtdb(`commerce/courses/${course.id}`, {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(course),
   });
+
+  if (course.videoUrl) {
+    await upsertXoraContent({
+      id: course.id,
+      firebaseId: course.id,
+      contentType: "course",
+      creatorId: course.creatorId,
+      title: course.title,
+      description: course.description,
+      cloudinaryPublicId: params.videoPublicId || null,
+      cloudinaryUrl: course.videoUrl,
+      thumbnailUrl: course.thumbnailUrl,
+      status: "ready",
+      metadata: { price: course.price, contentLockEnabled: false },
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt,
+    });
+  }
   return course;
 }
 
