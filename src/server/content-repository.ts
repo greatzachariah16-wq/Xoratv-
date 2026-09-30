@@ -19,7 +19,7 @@ export type XoraContentRecord = {
   updatedAt: string;
 };
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\\/$/, "");
+const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
 const SUPABASE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || "";
 const CONTENT_SECRET = process.env.XORA_CONTENT_DB_SECRET?.trim() || "";
 const MONGO_URI = process.env.MONGODB_URI?.trim() || "";
