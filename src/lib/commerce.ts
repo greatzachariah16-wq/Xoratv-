@@ -84,6 +84,10 @@ export function adminDataCatalogQuery(refresh = false) {
   });
 }
 
+export function adminCpaOverviewQuery() {
+  return queryOptions({ queryKey: ["admin","cpa-overview"], queryFn: () => commerceFetch<{ok:true;overview:any}>("/api/admin/commerce/cpa-overview"), refetchInterval: 15000 });
+}
+
 export function adminCommerceQuery() {
   return queryOptions({ queryKey: ["admin","commerce"], queryFn: () => commerceFetch<{ok:true;overview:any}>("/api/admin/commerce/overview") });
 }
