@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2 } from "lucide-react";
+import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2, Gift } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
@@ -58,6 +58,18 @@ function CreatorStudio() {
     } catch (e) { alert(e instanceof Error ? e.message : "Could not save payout details."); } finally { setPayoutBusy(false); }
   }
 
+  async function createOfferPromotion() {
+    setLinkBusy("offer");
+    try {
+      await commerceFetch("/api/offers/creator-link", { method: "POST", body: JSON.stringify({ creatorId: user.id }) });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not create Offer Wall promotion link.");
+    } finally {
+      setLinkBusy(null);
+    }
+  }
+
   async function createPromotion(service: "data" | "course", courseId?: string) {
     const key = service === "course" ? "course:" + courseId : "data";
     setLinkBusy(key);
@@ -98,7 +110,7 @@ function CreatorStudio() {
           <div><h2 className="font-display text-xl font-semibold">Promotion links</h2><p className="mt-1 text-sm text-muted-foreground">Generate private-looking share links for data or individual courses. The link itself does not expose your creator ID.</p></div>
           <Link2 className="size-5 text-primary"/>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-border bg-background p-4"><p className="text-sm font-semibold">Promote Xora Offers</p><p className="mt-1 text-xs text-muted-foreground">Share an opaque Offer Wall link and earn 35% of the CPAGrip payout on approved referred conversions.</p><button onClick={() => void createOfferPromotion()} disabled={Boolean(linkBusy)} className="mt-3 inline-flex rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">{linkBusy === "offer" ? "Generating…" : "Generate Offer Wall link"}</button></div>
           <button onClick={() => void createPromotion("data")} disabled={Boolean(linkBusy)} className="rounded-2xl border border-border bg-background p-4 text-left hover:bg-secondary disabled:opacity-50">
             <p className="text-sm font-semibold">Promote Xora Data</p>
             <p className="mt-1 text-xs text-muted-foreground">Create a unique opaque link to the data marketplace.</p>
@@ -121,11 +133,21 @@ function CreatorStudio() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">{link.label}</p>
               <p className="mt-1 truncate text-xs text-muted-foreground">{window.location.origin + link.path}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{link.service === "data" ? "Data promotion" : "Course promotion"} · {Number(link.clicks || 0).toLocaleString()} clicks</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{link.service === "data" ? "Data promotion" : link.service === "offer" ? "Offer Wall promotion" : "Course promotion"} · {Number(link.clicks || 0).toLocaleString()} clicks</p>
             </div>
             <button onClick={() => void copy(link.path)} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Copy className="size-3.5"/> Copy</button>
           </div>)}
           {!(dashboard?.links || []).length ? <p className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">No promotion links yet. Generate one above to start sharing.</p> : null}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-border bg-surface p-5">
+        <div className="flex items-center gap-2"><Gift className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Offer Wall commissions</h2></div>
+        <p className="mt-1 text-sm text-muted-foreground">Separate from data and course sales. You earn 35% of CPAGrip's actual payout on approved referred conversions.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">Approved conversions</p><p className="mt-1 text-2xl font-semibold">${Number(dashboard?.cpa?.approvedConversions || 0).toLocaleString()}</p><p className="mt-1 text-[11px] text-muted-foreground">Minimum ${Number(dashboard?.cpa?.minConversions || 200).toLocaleString()} to qualify</p></div>
+          <div className="rounded-2xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">Pending CPA commission</p><p className="mt-1 text-2xl font-semibold">${Number(dashboard?.cpa?.pendingCommission || 0).toFixed(2)}</p></div>
+          <div className="rounded-2xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">Payable after settlement</p><p className="mt-1 text-2xl font-semibold">${Number(dashboard?.cpa?.payableCommission || 0).toFixed(2)}</p><p className="mt-1 text-[11px] text-muted-foreground">{dashboard?.cpa?.payoutEligible ? "Eligible for payout" : "Waiting for conversion threshold and settlement"}</p></div>
         </div>
       </section>
 
