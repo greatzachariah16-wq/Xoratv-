@@ -11,7 +11,7 @@ export function AdminDiscountCampaigns() {
   const [form, setForm] = useState({
     name: "", description: "", discountType: "percentage" as "percentage" | "fixed",
     discountValue: "", appliesTo: "both" as "data" | "course" | "both", maxRedemptions: "",
-    cpaProvider: "", cpaOfferId: "", cpaContentLockUrl: "", cpaClickIdParameter: "subid",
+    cpaProvider: "", cpaOfferId: "", cpaContentLockUrl: "", cpaClickIdParameter: "",
   });
 
   async function createCampaign() {
@@ -23,7 +23,7 @@ export function AdminDiscountCampaigns() {
       });
       setMessage("Discount campaign created as a draft. Activate it after checking the CPA offer.");
       setOpen(false);
-      setForm({ name:"", description:"", discountType:"percentage", discountValue:"", appliesTo:"both", maxRedemptions:"", cpaProvider:"", cpaOfferId:"", cpaContentLockUrl:"", cpaClickIdParameter:"subid" });
+      setForm({ name:"", description:"", discountType:"percentage", discountValue:"", appliesTo:"both", maxRedemptions:"", cpaProvider:"", cpaOfferId:"", cpaContentLockUrl:"", cpaClickIdParameter:"" });
       await query.refetch();
     } catch (e) { setMessage(e instanceof Error ? e.message : "Could not create campaign."); }
     finally { setBusy(false); }
@@ -70,15 +70,16 @@ export function AdminDiscountCampaigns() {
           </div>
 
           <div className="mt-5"><p className="text-sm font-semibold">CPA offer configuration</p>
+            <p className="mt-1 text-xs text-muted-foreground">Optional while the CPA details are not yet supplied. The campaign stays locked as a draft until the real provider, offer and content-lock details are configured.</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <input value={form.cpaProvider} onChange={e=>setForm(v=>({...v,cpaProvider:e.target.value}))} placeholder="CPA provider" className="rounded-xl border border-input bg-background px-3 py-3 text-sm" />
               <input value={form.cpaOfferId} onChange={e=>setForm(v=>({...v,cpaOfferId:e.target.value}))} placeholder="Offer ID" className="rounded-xl border border-input bg-background px-3 py-3 text-sm" />
               <input value={form.cpaContentLockUrl} onChange={e=>setForm(v=>({...v,cpaContentLockUrl:e.target.value}))} placeholder="HTTPS content-lock URL" className="sm:col-span-2 rounded-xl border border-input bg-background px-3 py-3 text-sm" />
-              <input value={form.cpaClickIdParameter} onChange={e=>setForm(v=>({...v,cpaClickIdParameter:e.target.value}))} placeholder="Click ID parameter (default: subid)" className="rounded-xl border border-input bg-background px-3 py-3 text-sm" />
+              <input value={form.cpaClickIdParameter} onChange={e=>setForm(v=>({...v,cpaClickIdParameter:e.target.value}))} placeholder="Exact click-ID parameter (only when supplied)" className="rounded-xl border border-input bg-background px-3 py-3 text-sm" />
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end"><button type="button" disabled={busy || !form.name || !form.discountValue || !form.cpaProvider || !form.cpaOfferId || !form.cpaContentLockUrl} onClick={() => void createCampaign()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy ? <Loader2 className="size-4 animate-spin" /> : <Tag className="size-4" />} Create campaign</button></div>
+          <div className="mt-4 flex justify-end"><button type="button" disabled={busy || !form.name || !form.discountValue} onClick={() => void createCampaign()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy ? <Loader2 className="size-4 animate-spin" /> : <Tag className="size-4" />} Create campaign</button></div>
         </div>
       ) : null}
 
