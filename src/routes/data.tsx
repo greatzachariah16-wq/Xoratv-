@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Smartphone, Check, Loader2, ArrowRight, RefreshCw, Radio } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { dataPlansQuery, commerceFetch, type PublicDataPlan } from "@/lib/commerce";
+import { dataPlansQuery, commerceFetch, xoraPointsQuery, type PublicDataPlan } from "@/lib/commerce";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/data")({ component: BuyDataPage });
@@ -15,6 +15,8 @@ function BuyDataPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { data, isPending, error, refetch, isFetching } = useQuery(dataPlansQuery(true));
+  const pointsQuery = useQuery(xoraPointsQuery(user?.id));
+  const [usePoints, setUsePoints] = useState(false);
   const ref = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("promo") || new URLSearchParams(window.location.search).get("ref")) : null;
   const plans = useMemo(() => (data?.plans || []).filter((p) => p.network === network), [data, network]);
   const selected = plans.find((p) => p.catalogId === selectedId) || plans[0];
@@ -26,9 +28,12 @@ function BuyDataPage() {
     try {
       const result = await commerceFetch<{ok:true;order:any}>("/api/commerce/data/order", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, catalogId: selected.catalogId, phoneNumber: phone.replace(/\D/g, ""), referralCode: ref }),
+        body: JSON.stringify({ userId: user.id, catalogId: selected.catalogId, phoneNumber: phone.replace(/\D/g, ""), referralCode: ref, usePoints }),
       });
-      alert(`₦${Number(selected.price).toLocaleString()} was debited from your Xora Wallet. Your data order is now awaiting provider fulfilment.`);
+      const discount = Number(result.order?.pointsDiscount || 0);
+      const finalPrice = Number(result.order?.finalPrice ?? selected.price);
+      alert(`${discount > 0 ? `You used ${Number(result.order?.pointsRedeemed || 0).toLocaleString()} Xora Points and saved ₦${discount.toLocaleString()}. ` : ""}₦${finalPrice.toLocaleString()} was debited from your Xora Wallet. Your data order is now awaiting provider fulfilment.`);
+      await pointsQuery.refetch();
     } catch (e) { const message = e instanceof Error ? e.message : "Could not create order."; if (/insufficient wallet balance/i.test(message)) { window.location.href = `/wallet?returnTo=/data&catalogId=${encodeURIComponent(selected.catalogId)}&phone=${encodeURIComponent(phone)}`; return; } alert(message); }
     finally { setBusy(false); }
   }
@@ -54,7 +59,11 @@ function BuyDataPage() {
           <h2 className="font-display text-lg font-semibold">Recipient & order</h2>
           <label className="mt-4 block text-xs font-medium text-muted-foreground">Phone number</label>
           <input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="08012345678" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"/>
-          {selected ? <div className="mt-4 rounded-2xl border border-border bg-background p-4"><div className="flex justify-between text-sm"><span>{selected.network} {selected.data_size}</span><span className="font-semibold">₦{selected.price.toLocaleString()}</span></div><div className="mt-1 text-xs text-muted-foreground">{selected.validity}</div></div>:null}
+          {selected ? <div className="mt-4 rounded-2xl border border-border bg-background p-4"><div className="flex justify-between text-sm"><span>{selected.network} {selected.data_size}</span><span className="font-semibold">₦{selected.price.toLocaleString()}</span></div><div className="mt-1 text-xs text-muted-foreground">{selected.validity}</div></div>
+          <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div><p className="text-sm font-semibold">Use Xora Points</p><p className="mt-1 text-xs text-muted-foreground">Balance: {Number(pointsQuery.data?.wallet?.points || 0).toLocaleString()} XP · Up to {pointsQuery.data?.wallet?.maxDataDiscountPercent || 50}% off this data plan.</p></div>
+            <input type="checkbox" checked={usePoints} onChange={(e)=>setUsePoints(e.target.checked)} className="size-5 accent-primary" />
+          </label>:null}
           <button disabled={busy || !selected || phone.replace(/\D/g,"").length!==11} onClick={()=>void beginOrder()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy?<Loader2 className="size-4 animate-spin"/>:<ArrowRight className="size-4"/>}{busy?"Creating order…":"Continue"}</button>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Plans and prices are refreshed from Xora's live data catalogue. Prices are not hardcoded on this page. Your wallet is debited only on the server after the selected plan is validated. Data delivery remains subject to provider fulfilment.</p>
         </div>
