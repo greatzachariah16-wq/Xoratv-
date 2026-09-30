@@ -902,8 +902,9 @@ async function resolveCreatorAttribution(code: string | null | undefined, servic
     const promotion = await getPromotionLink(token);
     if (promotion && promotion.service === service && (!courseId || promotion.courseId === courseId)) return promotion.creatorId;
   }
-  if (service === "data" && token.endsWith("_data")) return token.slice(0, -5);
-  if (service === "course" && token.includes("_course_")) return token.split("_course_")[0];
+  // Promotion attribution is intentionally token-only. Legacy creator-ID/referral
+  // formats are not accepted here so internal identifiers never become a public
+  // attribution mechanism.
   return null;
 }
 export async function createDataOrder(params: {
