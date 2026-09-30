@@ -315,7 +315,7 @@ export function AppShell({
               <Plus className="size-6" aria-hidden="true" />
             </Link>
           </li>
-          {[NAV[2], NAV[3]].map(({ to, label, icon: Icon }) => (
+          {[NAV[2], NAV[4]].map(({ to, label, icon: Icon }) => (
             <li key={to}>
               <Link
                 to={to}
