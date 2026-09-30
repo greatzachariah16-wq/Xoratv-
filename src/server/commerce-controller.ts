@@ -1,6 +1,6 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
-  createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
+  createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
@@ -146,6 +146,18 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, plans: await getPublicDataPlans(url.searchParams.get("refresh") === "1") });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Plan catalog error" }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/data/quote" && request.method === "GET") {
+    try {
+      const userId = url.searchParams.get("userId");
+      const catalogId = url.searchParams.get("catalogId");
+      if (!userId || !catalogId) return json({ ok: false, error: "userId and catalogId are required." }, 400);
+      const result = await getDataPriceQuote({ userId, catalogId, usePoints: url.searchParams.get("usePoints") === "1" });
+      return json({ ok: true, ...result });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not calculate data price." }, 500);
     }
   }
 
