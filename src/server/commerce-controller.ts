@@ -1,6 +1,6 @@
 import { verifyAdminSession } from "./admin-auth";
 import {
-  createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses,
+  createCreatorProfile, createDataOrder, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
@@ -194,6 +194,14 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Creator registration failed." }, 500);
     }
+  }
+
+  if (path === "/api/commerce/promotion-target" && request.method === "GET") {
+    const token = url.searchParams.get("token");
+    if (!token) return json({ ok: false, error: "Missing promotion token." }, 400);
+    const target = await getPromotionTarget(token);
+    if (!target) return json({ ok: false, error: "Promotion target not found." }, 404);
+    return json({ ok: true, target });
   }
 
   if (path === "/api/commerce/creator/dashboard" && request.method === "GET") {
