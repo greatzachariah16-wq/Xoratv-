@@ -231,7 +231,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       if (!body.creatorId || !body.title || !body.description) return json({ ok: false, error: "Course title and description are required." }, 400);
       const creator = await getCreator(body.creatorId);
       if (!creator || creator.status !== "active") return json({ ok: false, error: "Creator account is not active." }, 403);
-      return json({ ok: true, course: await saveCourse(body) });
+      return json({ ok: true, course: await saveCourse({ ...body, videoPublicId: body.videoPublicId ? String(body.videoPublicId) : null }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Course creation failed." }, 500);
     }
