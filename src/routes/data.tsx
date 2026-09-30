@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Smartphone, Check, Loader2, ArrowRight, RefreshCw, Radio } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -16,10 +16,24 @@ function BuyDataPage() {
   const [busy, setBusy] = useState(false);
   const { data, isPending, error, refetch, isFetching } = useQuery(dataPlansQuery(true));
   const pointsQuery = useQuery(xoraPointsQuery(user?.id));
-  const [usePoints, setUsePoints] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);\n  const [quote, setQuote] = useState<any>(null);\n  const [quoteBusy, setQuoteBusy] = useState(false);
   const ref = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("promo") || new URLSearchParams(window.location.search).get("ref")) : null;
   const plans = useMemo(() => (data?.plans || []).filter((p) => p.network === network), [data, network]);
   const selected = plans.find((p) => p.catalogId === selectedId) || plans[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id || !selected) {
+      setQuote(null);
+      return;
+    }
+    setQuoteBusy(true);
+    commerceFetch<any>(`/api/commerce/data/quote?userId=${encodeURIComponent(user.id)}&catalogId=${encodeURIComponent(selected.catalogId)}&usePoints=${usePoints ? "1" : "0"}`)
+      .then((result) => { if (!cancelled) setQuote(result.quote || null); })
+      .catch(() => { if (!cancelled) setQuote(null); })
+      .finally(() => { if (!cancelled) setQuoteBusy(false); });
+    return () => { cancelled = true; };
+  }, [user?.id, selected?.catalogId, usePoints]);
 
   async function beginOrder() {
     if (!user) { window.location.href = "/auth"; return; }
@@ -60,7 +74,15 @@ function BuyDataPage() {
           <label className="mt-4 block text-xs font-medium text-muted-foreground">Phone number</label>
           <input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="08012345678" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"/>
           {selected ? <>
-          <div className="mt-4 rounded-2xl border border-border bg-background p-4"><div className="flex justify-between text-sm"><span>{selected.network} {selected.data_size}</span><span className="font-semibold">₦{selected.price.toLocaleString()}</span></div><div className="mt-1 text-xs text-muted-foreground">{selected.validity}</div></div>
+          <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+            <div className="flex justify-between text-sm"><span>{selected.network} {selected.data_size}</span><span className="font-semibold">₦{selected.price.toLocaleString()}</span></div>
+            <div className="mt-1 text-xs text-muted-foreground">{selected.validity}</div>
+            {quoteBusy ? <div className="mt-3 text-xs text-muted-foreground">Checking your Xora Points…</div> : quote && usePoints ? <div className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
+              <div className="flex justify-between"><span>Points discount</span><span className="font-semibold text-primary">−₦{Number(quote.pointsDiscount || 0).toLocaleString()}</span></div>
+              <div className="flex justify-between"><span>Points used</span><span>{Number(quote.pointsToRedeem || 0).toLocaleString()} XP</span></div>
+              <div className="flex justify-between font-semibold"><span>You pay</span><span>₦{Number(quote.finalPrice ?? selected.price).toLocaleString()}</span></div>
+            </div> : null}
+          </div>
           <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <div><p className="text-sm font-semibold">Use Xora Points</p><p className="mt-1 text-xs text-muted-foreground">Balance: {Number(pointsQuery.data?.wallet?.points || 0).toLocaleString()} XP · Up to {pointsQuery.data?.wallet?.maxDataDiscountPercent || 50}% off this data plan.</p></div>
             <input type="checkbox" checked={usePoints} onChange={(e)=>setUsePoints(e.target.checked)} className="size-5 accent-primary" />
