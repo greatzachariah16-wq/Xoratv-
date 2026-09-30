@@ -128,6 +128,14 @@ export type WalletTransaction = {
   amount: number; currency: "NGN"; reference: string; description: string;
   createdAt: string; completedAt?: string | null; providerReference?: string | null;
 };
+export function xoraPointsQuery(userId?: string) {
+  return queryOptions({
+    queryKey: ["commerce", "xora-points", userId],
+    enabled: Boolean(userId),
+    queryFn: () => commerceFetch<{ok:true;wallet:{points:number;lifetimeEarned:number;lifetimeRedeemed:number}}>(`/api/offers/wallet?userId=${encodeURIComponent(userId || "")}`),
+    refetchInterval: 5000,
+  });
+}
 export function walletQuery(userId?: string) {
   return queryOptions({
     queryKey: ["commerce", "wallet", userId],
