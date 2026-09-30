@@ -10,6 +10,7 @@ import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
+import { handleContentVideoUpload } from "./server/content-media-controller";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -839,6 +840,11 @@ export default {
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Content video upload: FFmpeg -> Cloudinary -> Supabase + MongoDB metadata
+    if (url.pathname === "/api/content/video-upload" && request.method === "POST") {
+      return await handleContentVideoUpload(request);
     }
 
     // Render file upload API
