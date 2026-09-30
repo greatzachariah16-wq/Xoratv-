@@ -258,7 +258,7 @@ export async function refundCpaPoints(params: { userId: string; points: number; 
 
 export async function getCpaWallet(userId: string) {
   const account = await getOrCreateCpaUser(userId);
-  return { points: account.points, lifetimeEarned: account.lifetimeEarned, lifetimeRedeemed: account.lifetimeRedeemed };
+  return { points: account.points, lifetimeEarned: account.lifetimeEarned, lifetimeRedeemed: account.lifetimeRedeemed, pointsNgnValue: pointsNgnValue(), maxDataDiscountPercent: MAX_DATA_POINTS_DISCOUNT_PERCENT };
 }
 
 export async function handleCpaPostback(request: Request) {
