@@ -7,6 +7,8 @@ import {
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
+import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
+
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -274,6 +276,35 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, payout: await savePayoutDetails(body.userId, body) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Payout details could not be saved." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/cpa-overview" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, overview: await getAdminCpaOverview() });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load CPA overview." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/cpa-postback-self-test" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.trackingId) return json({ ok: false, error: "Tracking ID is required." }, 400);
+      return json({
+        ok: true,
+        test: await runCpaPostbackSelfTest({
+          trackingId: String(body.trackingId),
+          offerId: body.offerId ? String(body.offerId) : undefined,
+          payout: body.payout === undefined ? undefined : Number(body.payout),
+        }),
+      });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "CPA postback self-test failed." }, 400);
     }
   }
 
