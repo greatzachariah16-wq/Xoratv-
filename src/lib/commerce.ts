@@ -103,10 +103,10 @@ export type DiscountCampaign = {
   status: "draft" | "active" | "paused" | "expired";
   cpaRequired: true;
   cpa: {
-    provider: string;
-    offerId: string;
-    contentLockUrl: string;
-    clickIdParameter: string;
+    provider: string | null;
+    offerId: string | null;
+    contentLockUrl: string | null;
+    clickIdParameter: string | null;
     postbackStatus: "not_configured" | "ready";
   };
   redemptions: number;
