@@ -1179,13 +1179,14 @@ export async function getPayoutDetails(userId: string) {
 }
 
 export async function getCreatorDashboard(userId: string) {
-  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout] = await Promise.all([
+  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw] = await Promise.all([
     getCreator(userId),
     queryRtdb("commerce/courses"),
     queryRtdb("commerce/dataOrders"),
     queryRtdb("commerce/courseOrders"),
     queryRtdb("commerce/commissions"),
     getPayoutDetails(userId),
+    queryRtdb(`commerce/cpaCreatorStats/${userId}`),
   ]);
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
   const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
@@ -1202,6 +1203,7 @@ export async function getCreatorDashboard(userId: string) {
     dataOrders,
     courseOrders,
     payout,
+    cpa: cpaStatsRaw || { approvedConversions: 0, pendingCommission: 0, payableCommission: 0, paidCommission: 0, minConversions: 200, payoutEligible: false },
     links: (await getCreatorPromotionLinks(userId)).map((link) => ({ ...link, path: "/s/" + link.token })),
   };
 }
