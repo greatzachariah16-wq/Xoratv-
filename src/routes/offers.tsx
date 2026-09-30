@@ -100,11 +100,6 @@ function OfferWall() {
   return (
     <AppShell wide>
       <main className="mx-auto w-full max-w-[390px] overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-card">
-        <header className="flex h-[72px] items-center gap-3 border-b border-border/60 px-5">
-          <p className="flex-1 font-display text-[22px] font-semibold text-primary">XoraTV</p>
-          <p className="shrink-0 text-[18px] font-semibold text-foreground">Offer Wall</p>
-        </header>
-
         <section className="mx-4 mt-4 h-[154px] overflow-hidden rounded-[24px] bg-primary px-5 py-0 text-primary-foreground shadow-lift">
           <div className="relative h-full">
             <p className="absolute left-0 top-[22px] text-[15px] font-semibold">Xora Points</p>
