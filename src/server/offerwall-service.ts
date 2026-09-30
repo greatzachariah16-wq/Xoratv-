@@ -129,6 +129,8 @@ export async function getCpaOffers(params: {
   feed.searchParams.set("user_id", cpagripUserId);
   feed.searchParams.set("key", key);
   feed.searchParams.set("tracking_id", account.trackingId);
+  // The Offer Wall is a mobile-first XoraTV surface; ask CPAGrip for mobile-eligible inventory.
+  feed.searchParams.set("showmobile", "1");
   if (params.ip) feed.searchParams.set("ip", params.ip);
   if (params.userAgent) feed.searchParams.set("ua", params.userAgent);
   feed.searchParams.set("limit", String(Math.min(50, Math.max(1, Number(params.limit || 20)))));
