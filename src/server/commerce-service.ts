@@ -1203,10 +1203,10 @@ export type DiscountCampaign = {
   status: DiscountCampaignStatus;
   cpaRequired: true;
   cpa: {
-    provider: string;
-    offerId: string;
-    contentLockUrl: string;
-    clickIdParameter: string;
+    provider: string | null;
+    offerId: string | null;
+    contentLockUrl: string | null;
+    clickIdParameter: string | null;
     postbackStatus: "not_configured" | "ready";
   };
   redemptions: number;
@@ -1252,10 +1252,10 @@ export async function createDiscountCampaign(params: {
   startAt?: string | null;
   endAt?: string | null;
   maxRedemptions?: number | null;
-  cpaProvider: string;
-  cpaOfferId: string;
-  cpaContentLockUrl: string;
-  cpaClickIdParameter?: string;
+  cpaProvider?: string | null;
+  cpaOfferId?: string | null;
+  cpaContentLockUrl?: string | null;
+  cpaClickIdParameter?: string | null;
 }): Promise<DiscountCampaign> {
   const name = String(params.name || "").trim();
   const provider = String(params.cpaProvider || "").trim();
@@ -1272,16 +1272,14 @@ export async function createDiscountCampaign(params: {
   if (!Number.isFinite(value) || value <= 0) throw new Error("Discount value must be greater than zero.");
   if (params.discountType === "percentage" && value > 100) throw new Error("Percentage discount cannot exceed 100%.");
   if (maxRedemptions !== null && (!Number.isFinite(maxRedemptions) || maxRedemptions < 1)) throw new Error("Maximum redemptions must be a positive number.");
-  if (!provider || !offerId || !contentLockUrl) {
-    throw new Error("A CPA provider, offer ID and content-lock URL are required.");
-  }
-
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(contentLockUrl);
-    if (parsedUrl.protocol !== "https:") throw new Error();
-  } catch {
-    throw new Error("CPA content-lock URL must be a valid HTTPS URL.");
+  let parsedUrl: URL | null = null;
+  if (contentLockUrl) {
+    try {
+      parsedUrl = new URL(contentLockUrl);
+      if (parsedUrl.protocol !== "https:") throw new Error();
+    } catch {
+      throw new Error("CPA content-lock URL must be a valid HTTPS URL.");
+    }
   }
 
   const now = new Date().toISOString();
@@ -1299,11 +1297,11 @@ export async function createDiscountCampaign(params: {
     status: "draft",
     cpaRequired: true,
     cpa: {
-      provider,
-      offerId,
-      contentLockUrl: parsedUrl.toString(),
-      clickIdParameter: String(params.cpaClickIdParameter || "subid").trim() || "subid",
-      postbackStatus: "not_configured",
+      provider: provider || null,
+      offerId: offerId || null,
+      contentLockUrl: parsedUrl?.toString() || null,
+      clickIdParameter: String(params.cpaClickIdParameter || "").trim() || null,
+      postbackStatus: provider && offerId && parsedUrl ? "ready" : "not_configured",
     },
     redemptions: 0,
     createdAt: now,
@@ -1322,8 +1320,13 @@ export async function updateDiscountCampaignStatus(idValue: string, status: Disc
   if (!["draft", "active", "paused", "expired"].includes(status)) throw new Error("Invalid campaign status.");
   const campaign = await queryRtdb(discountCampaignPath(idValue)) as DiscountCampaign | null;
   if (!campaign) throw new Error("Discount campaign not found.");
-  if (status === "active" && (!campaign.cpa.provider || !campaign.cpa.offerId || !campaign.cpa.contentLockUrl)) {
-    throw new Error("A complete CPA offer is required before activating this discount.");
+  if (status === "active" && (
+    !campaign.cpa.provider ||
+    !campaign.cpa.offerId ||
+    !campaign.cpa.contentLockUrl ||
+    campaign.cpa.postbackStatus !== "ready"
+  )) {
+    throw new Error("A complete CPA content-lock configuration is required before activating this discount.");
   }
   const updated = { ...campaign, status, updatedAt: new Date().toISOString() };
   await queryRtdb(discountCampaignPath(idValue), {
