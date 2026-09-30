@@ -11,6 +11,7 @@ import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleContentVideoUpload } from "./server/content-media-controller";
+import { getCpaOffers, recordCpaClick, handleCpaPostback } from "./server/offerwall-service";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -387,6 +388,47 @@ export default {
     ) {
       const xseriesRes = await handleXseriesRoute(request, url);
       if (xseriesRes) return xseriesRes;
+    }
+
+    // CPAGrip Offer Wall and conversion tracking
+    if (url.pathname === "/api/offers" && request.method === "GET") {
+      try {
+        const userId = url.searchParams.get("userId");
+        if (!userId) return new Response(JSON.stringify({ ok: false, error: "Missing userId." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+        const result = await getCpaOffers({
+          userId,
+          ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
+          userAgent: request.headers.get("user-agent"),
+          promotionToken: url.searchParams.get("promo"),
+          offerId: url.searchParams.get("offer"),
+          limit: Number(url.searchParams.get("limit") || 20),
+        });
+        return new Response(JSON.stringify({ ok: true, ...result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Offer feed error." }), { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/api/offers/click" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        if (!body.userId || !body.trackingId || !body.offerId) return new Response(JSON.stringify({ ok: false, error: "userId, trackingId and offerId are required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+        const result = await recordCpaClick({
+          userId: String(body.userId),
+          trackingId: String(body.trackingId),
+          offerId: String(body.offerId),
+          offerTitle: body.offerTitle ? String(body.offerTitle) : null,
+          promotionToken: body.promo ? String(body.promo) : null,
+        });
+        return new Response(JSON.stringify({ ok: true, click: result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Offer click error." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/api/webhooks/cpagrip" && request.method === "POST") {
+      const result = await handleCpaPostback(request);
+      return new Response(JSON.stringify(result), { status: result.status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
 
     // Creator promotion links + MELE/VTUshare + creator/course commerce APIs
