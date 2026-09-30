@@ -99,39 +99,39 @@ function OfferWall() {
 
   return (
     <AppShell wide>
-      <main className="mx-auto w-full max-w-[390px] overflow-hidden bg-background">
-        <header className="flex h-[72px] items-center gap-3 px-5">
+      <main className="mx-auto w-full max-w-[390px] overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-card">
+        <header className="flex h-[72px] items-center gap-3 border-b border-border/60 px-5">
           <p className="flex-1 font-display text-[22px] font-semibold text-primary">XoraTV</p>
           <p className="shrink-0 text-[18px] font-semibold text-foreground">Offer Wall</p>
         </header>
 
-        <section className="mx-5 h-[154px] overflow-hidden rounded-[24px] bg-primary px-0 py-0 text-primary-foreground">
+        <section className="mx-4 mt-4 h-[154px] overflow-hidden rounded-[24px] bg-primary px-5 py-0 text-primary-foreground shadow-lift">
           <div className="relative h-full">
-            <p className="absolute left-0 top-0 text-[15px] font-semibold">Xora Points</p>
-            <p className="absolute left-0 top-[42px] font-display text-[36px] font-extrabold leading-none">
+            <p className="absolute left-0 top-[22px] text-[15px] font-semibold">Xora Points</p>
+            <p className="absolute left-0 top-[60px] font-display text-[36px] font-extrabold leading-none">
               {points.toLocaleString()} XP
             </p>
-            <p className="absolute left-0 top-[94px] text-[13px] opacity-90">
+            <p className="absolute left-0 top-[108px] text-[13px] opacity-90">
               Complete eligible offers to earn points
             </p>
             <button
               type="button"
               onClick={() => document.getElementById("use-points")?.scrollIntoView({ behavior: "smooth" })}
-              className="absolute right-[20px] top-[101px] h-[34px] rounded-full bg-primary-foreground px-[18px] text-[12px] font-semibold text-primary press"
+              className="absolute right-[20px] top-[108px] h-[34px] rounded-full bg-primary-foreground px-[18px] text-[12px] font-semibold text-primary press"
             >
               Use points
             </button>
           </div>
         </section>
 
-        <section className="flex h-[90px] flex-col gap-2 overflow-hidden px-5 pb-3 pt-[18px]">
+        <section className="flex flex-col gap-2 overflow-hidden border-b border-border/60 px-5 pb-4 pt-6">
           <h1 className="font-display text-[22px] font-extrabold leading-none">Earn Xora Points</h1>
           <p className="text-[13px] text-muted-foreground">
             Choose an offer below. Rewards are credited after CPAGrip confirms completion.
           </p>
         </section>
 
-        <section className="flex min-h-[120px] flex-col gap-3 overflow-hidden px-5 pb-4">
+        <section className="flex min-h-[120px] flex-col gap-3 overflow-hidden px-5 pb-5 pt-4">
           {error ? (
             <div className="rounded-[18px] border border-destructive/20 bg-destructive/5 p-4 text-xs text-destructive">
               {error}
@@ -157,7 +157,7 @@ function OfferWall() {
           ) : null}
 
           {offers.map((offer) => (
-            <article key={offer.id} className="relative min-h-[104px] overflow-hidden rounded-[18px] bg-surface px-4 pt-4 shadow-card">
+            <article key={offer.id} className="relative min-h-[116px] overflow-hidden rounded-[20px] border border-border/60 bg-surface px-4 pt-4 shadow-card">
               <div className="flex gap-3">
                 {offer.imageUrl ? (
                   <img
@@ -214,9 +214,9 @@ function OfferWall() {
           </button>
         </section>
 
-        <section id="use-points" className="flex min-h-[180px] flex-col gap-2 overflow-hidden px-5 pb-5 pt-[14px]">
+        <section id="use-points" className="flex min-h-[180px] flex-col gap-2 overflow-hidden border-t border-border/60 px-5 pb-5 pt-6">
           <h2 className="font-display text-[19px] font-extrabold">Use your points</h2>
-          <div className="flex h-[92px] gap-2.5 rounded-[18px] bg-white p-1.5">
+          <div className="flex h-[92px] gap-2.5 overflow-x-auto rounded-[18px] border border-border/60 bg-surface-2 p-1.5">
             <div className="flex h-[82px] w-[110px] shrink-0 flex-col justify-between rounded-[16px] bg-surface px-3 py-2">
               <Sparkles className="size-4 text-primary" />
               <div><p className="text-[14px] font-semibold">Data</p><p className="text-[11px] text-muted-foreground">Discounts</p></div>
@@ -235,7 +235,7 @@ function OfferWall() {
           </p>
         </section>
 
-        <section className="mx-5 mb-6 rounded-[20px] bg-clay-soft p-4">
+        <section className="mx-4 mb-6 rounded-[22px] border border-border/50 bg-clay-soft p-4 shadow-card">
           <p className="text-[16px] font-semibold">Creator offer promotion</p>
           <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
             Creators can promote eligible offers using XoraTV links and earn 35% of the CPAGrip payout on approved referred conversions, subject to the 200-conversion payout threshold and settlement.
