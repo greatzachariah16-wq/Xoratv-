@@ -915,7 +915,8 @@ export async function resolvePromotionLink(token: string) {
   if (!link) return null;
   const now = new Date().toISOString();
   await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
-  const target = new URL(link.targetPath, "https://xoratv.local");
+  const targetPath = link.service === "course" ? "/learn" : "/data";
+  const target = new URL(targetPath, "https://xoratv.local");
   target.searchParams.set("promo", link.token);
   return { ...link, targetPath: target.pathname + target.search };
 }
