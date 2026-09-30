@@ -826,8 +826,9 @@ export async function handleMeleWebhook(request: Request) {
 export type CreatorPromotionLink = {
   token: string;
   creatorId: string;
-  service: "data" | "course";
+  service: "data" | "course" | "offer";
   courseId?: string | null;
+  offerId?: string | null;
   label: string;
   targetPath: string;
   clicks: number;
@@ -915,9 +916,10 @@ export async function resolvePromotionLink(token: string) {
   if (!link) return null;
   const now = new Date().toISOString();
   await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
-  const targetPath = link.service === "course" ? "/learn" : "/data";
+  const targetPath = link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : "/data";
   const target = new URL(targetPath, "https://xoratv.local");
   target.searchParams.set("promo", link.token);
+  if (link.service === "offer" && link.offerId) target.searchParams.set("offer", link.offerId);
   return { ...link, targetPath: target.pathname + target.search };
 }
 
