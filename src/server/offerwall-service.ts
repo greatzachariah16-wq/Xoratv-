@@ -197,6 +197,25 @@ export function pointsNgnValue() {
   return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_POINTS_NGN_VALUE;
 }
 
+export function calculateDataPurchaseQuote(params: { points: number; price: number; usePoints?: boolean }) {
+  const price = Math.max(0, Number(params.price) || 0);
+  const walletPoints = Math.max(0, Math.floor(Number(params.points) || 0));
+  const enabled = params.usePoints === true;
+  const pointsDiscount = enabled
+    ? calculateDataPointsDiscount({ points: walletPoints, price })
+    : { discount: 0, pointsToRedeem: 0, maxDiscount: Math.round(price * (MAX_DATA_POINTS_DISCOUNT_PERCENT / 100) * 100) / 100, pointsNgnValue: pointsNgnValue() };
+  return {
+    originalPrice: Math.round(price * 100) / 100,
+    points: walletPoints,
+    usePoints: enabled,
+    pointsDiscount: pointsDiscount.discount,
+    pointsToRedeem: pointsDiscount.pointsToRedeem,
+    maxDiscount: pointsDiscount.maxDiscount,
+    pointsNgnValue: pointsDiscount.pointsNgnValue,
+    finalPrice: Math.max(0, Math.round((price - pointsDiscount.discount) * 100) / 100),
+  };
+}
+
 export function calculateDataPointsDiscount(params: { points: number; price: number }) {
   const price = Math.max(0, Number(params.price) || 0);
   const points = Math.max(0, Math.floor(Number(params.points) || 0));
