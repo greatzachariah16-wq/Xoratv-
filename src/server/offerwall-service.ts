@@ -306,6 +306,28 @@ export async function handleCpaPostback(request: Request) {
 
   const tracking = await getTrackingRecord(trackingId);
   const userId = String(tracking?.userId || "").trim();
+
+  // Admin diagnostics can validate the exact CPAGrip payload/password/tracking
+  // path without awarding points or creating a payable conversion.
+  if (String(payload.test || "") === "1") {
+    const testId = id("cpa_webhook_test");
+    const diagnostic = {
+      id: testId,
+      status: userId ? "passed" : "unmatched_tracking",
+      trackingId,
+      offerId,
+      payout,
+      matchedUserId: userId || null,
+      receivedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    await queryRtdb(`commerce/cpaWebhookTests/${testId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(diagnostic),
+    });
+    return { ok: true as const, status: 200, test: true, diagnostic };
+  }
   if (!userId) {
     await queryRtdb(conversionPath(conversionId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: conversionId, status: "unmatched", offerId, trackingId, payout, payload, receivedAt: new Date().toISOString() }) });
     return { ok: true as const, status: 200, conversionId, matched: false };
@@ -362,6 +384,79 @@ export async function handleCpaPostback(request: Request) {
   }
 
   return { ok: true as const, status: 200, duplicate: false, conversionId, userId, points, creatorId, creatorCommission };
+}
+
+export async function getAdminCpaOverview() {
+  const [conversionsRaw, usersRaw, clicksRaw, creatorStatsRaw, testsRaw] = await Promise.all([
+    queryRtdb("commerce/cpaConversions"),
+    queryRtdb("commerce/cpaUsers"),
+    queryRtdb("commerce/cpaClicks"),
+    queryRtdb("commerce/cpaCreatorStats"),
+    queryRtdb("commerce/cpaWebhookTests"),
+  ]);
+  const conversions = Object.values((conversionsRaw || {}) as Record<string, any>);
+  const users = Object.values((usersRaw || {}) as Record<string, any>);
+  const clicks = Object.values((clicksRaw || {}) as Record<string, any>);
+  const creatorStats = Object.values((creatorStatsRaw || {}) as Record<string, any>);
+  const tests = Object.values((testsRaw || {}) as Record<string, any>)
+    .sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, 10);
+
+  const approved = conversions.filter((c: any) => c?.status === "approved");
+  const settled = conversions.filter((c: any) => c?.settlementStatus === "settled");
+  const pendingSettlement = conversions.filter((c: any) => c?.status === "approved" && c?.settlementStatus === "pending");
+  const totalPayout = conversions.reduce((sum, c: any) => sum + Number(c?.payout || 0), 0);
+  const totalPoints = conversions.reduce((sum, c: any) => sum + Number(c?.points || 0), 0);
+  const totalCreatorCommission = conversions.reduce((sum, c: any) => sum + Number(c?.creatorCommission || 0), 0);
+  const lastConversion = [...conversions].sort((a: any, b: any) => String(b.receivedAt || "").localeCompare(String(a.receivedAt || "")))[0] || null;
+
+  return {
+    configured: {
+      feed: Boolean(process.env.CPAGRIP_USER_ID?.trim() && process.env.CPAGRIP_RSS_KEY?.trim()),
+      postbackPassword: Boolean(process.env.CPAGRIP_POSTBACK_PASSWORD?.trim()),
+      endpoint: "/api/webhooks/cpagrip",
+    },
+    totals: {
+      users: users.length,
+      clicks: clicks.length,
+      conversions: conversions.length,
+      approvedConversions: approved.length,
+      settledConversions: settled.length,
+      pendingSettlement: pendingSettlement.length,
+      totalPayout,
+      totalPoints,
+      totalCreatorCommission,
+      creators: creatorStats.length,
+    },
+    lastConversion,
+    recentConversions: conversions
+      .sort((a: any, b: any) => String(b.receivedAt || "").localeCompare(String(a.receivedAt || "")))
+      .slice(0, 25),
+    creatorStats: creatorStats.sort((a: any, b: any) => Number(b.approvedConversions || 0) - Number(a.approvedConversions || 0)),
+    webhookTests: tests,
+  };
+}
+
+export async function runCpaPostbackSelfTest(params: { trackingId: string; offerId?: string; payout?: number }) {
+  const trackingId = String(params.trackingId || "").trim();
+  if (!trackingId) throw new Error("Tracking ID is required.");
+  const offerId = String(params.offerId || "xora_test_offer").trim();
+  const payout = Number(params.payout || 1);
+  if (!Number.isFinite(payout) || payout <= 0) throw new Error("Test payout must be positive.");
+  const testPayload = new URLSearchParams({
+    password: process.env.CPAGRIP_POSTBACK_PASSWORD?.trim() || "",
+    payout: payout.toFixed(2),
+    offer_id: offerId,
+    tracking_id: trackingId,
+    test: "1",
+  });
+  const request = new Request("https://xoratv-x.onrender.com/api/webhooks/cpagrip", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: testPayload.toString(),
+  });
+  const result = await handleCpaPostback(request);
+  return { ...result, endpoint: "/api/webhooks/cpagrip", simulated: true };
 }
 
 export async function createOfferPromotionLink(params: { creatorId: string; offerId?: string | null; offerTitle?: string | null }) {
