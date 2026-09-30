@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2, Gift } from "lucide-react";
+import { Activity, ArrowUpRight, BarChart3, BookOpen, ChevronRight, CircleDollarSign, Copy, Gift, Landmark, Link2, Loader2, Megaphone, Plus, ShieldCheck, Smartphone, Trash2, Wallet } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
