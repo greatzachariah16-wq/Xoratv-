@@ -11,7 +11,7 @@ import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleContentVideoUpload } from "./server/content-media-controller";
-import { getCpaOffers, recordCpaClick, handleCpaPostback, createOfferPromotionLink, settleCpaRevenue, markCpaCreatorPaid } from "./server/offerwall-service";
+import { getCpaOffers, getCpaWallet, recordCpaClick, handleCpaPostback, createOfferPromotionLink, settleCpaRevenue, markCpaCreatorPaid } from "./server/offerwall-service";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -447,6 +447,16 @@ export default {
         return new Response(JSON.stringify({ ok: true, link: result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Could not create offer promotion link." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/api/offers/wallet" && request.method === "GET") {
+      try {
+        const userId = url.searchParams.get("userId");
+        if (!userId) return new Response(JSON.stringify({ ok: false, error: "Missing userId." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, wallet: await getCpaWallet(userId) }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Could not read Xora Points." }), { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
     }
 
