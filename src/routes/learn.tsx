@@ -20,6 +20,7 @@ function Learn() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("500");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoPublicId, setVideoPublicId] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [uploading, setUploading] = useState<"video" | "thumbnail" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,8 +56,14 @@ function Learn() {
       const result = await uploadToCloudinary(file, {
         resourceType: type === "video" ? "video" : "image",
         folder: type === "video" ? "xora/courses/videos" : "xora/courses/thumbnails",
+        creatorId: user?.id,
+        title,
+        description,
       });
-      if (type === "video") setVideoUrl(result.playbackUrl || result.url);
+      if (type === "video") {
+        setVideoUrl(result.playbackUrl || result.url);
+        setVideoPublicId(result.publicId || "");
+      }
       else setThumbnailUrl(result.url);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Upload failed.");
@@ -91,6 +98,7 @@ function Learn() {
           price: Number(price),
           videoUrl,
           thumbnailUrl,
+          videoPublicId,
         }),
       });
       setShowCreate(false);
@@ -98,6 +106,7 @@ function Learn() {
       setDescription("");
       setPrice("500");
       setVideoUrl("");
+      setVideoPublicId("");
       setThumbnailUrl("");
       await refetch();
       setNotice("Course published with its video and thumbnail.");
