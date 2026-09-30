@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
 import { debitWallet, creditWallet } from "./wallet-service";
-import { calculateDataPointsDiscount, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
+import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
 
@@ -935,6 +935,28 @@ async function resolveCreatorAttribution(code: string | null | undefined, servic
   // attribution mechanism.
   return null;
 }
+export async function getDataPriceQuote(params: { userId: string; catalogId: string; usePoints?: boolean }) {
+  const catalog = await getAdminDataCatalog(false);
+  const selected = catalog.find((record) => record.catalogId === String(params.catalogId) && record.status === "published");
+  if (!selected) throw new Error("The selected data plan is not currently available.");
+  const wallet = await getCpaWallet(params.userId);
+  const quote = calculateDataPurchaseQuote({
+    points: wallet.points,
+    price: selected.customerPrice,
+    usePoints: params.usePoints === true,
+  });
+  return {
+    quote,
+    plan: {
+      catalogId: selected.catalogId,
+      network: selected.network,
+      data_size: selected.data_size,
+      validity: selected.validity,
+      price: selected.customerPrice,
+    },
+  };
+}
+
 export async function createDataOrder(params: {
   userId: string;
   catalogId: string;
@@ -951,10 +973,14 @@ export async function createDataOrder(params: {
   const orderId = id("data");
   const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "data");
   const cpaWallet = await getCpaWallet(params.userId);
-  const pointsDiscount = params.usePoints === true
-    ? calculateDataPointsDiscount({ points: cpaWallet.points, price: selected.customerPrice })
-    : { discount: 0, pointsToRedeem: 0, maxDiscount: Math.round(selected.customerPrice * 0.5 * 100) / 100, pointsNgnValue: 0.1 };
-  const finalPrice = Math.max(0, Math.round((selected.customerPrice - pointsDiscount.discount) * 100) / 100);
+  const purchaseQuote = calculateDataPurchaseQuote({ points: cpaWallet.points, price: selected.customerPrice, usePoints: params.usePoints === true });
+  const pointsDiscount = {
+    discount: purchaseQuote.pointsDiscount,
+    pointsToRedeem: purchaseQuote.pointsToRedeem,
+    maxDiscount: purchaseQuote.maxDiscount,
+    pointsNgnValue: purchaseQuote.pointsNgnValue,
+  };
+  const finalPrice = purchaseQuote.finalPrice;
   const debit = await debitWallet({ userId: params.userId, amount: finalPrice, reference: orderId, description: `Data purchase: ${selected.data_size} ${selected.network}${pointsDiscount.pointsToRedeem ? ` with ${pointsDiscount.pointsToRedeem} Xora Points` : ""}` });
   let pointsRedemption: { points: number; remainingPoints: number } | null = null;
   try {
