@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, Gift, Info, Loader2, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Gift, Info, Loader2, RefreshCw, ShieldCheck, Sparkles, Smartphone, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch } from "@/lib/commerce";
@@ -26,6 +26,7 @@ function OfferWall() {
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [showUsePoints, setShowUsePoints] = useState(false);
 
   async function loadOffers() {
     if (!user) return;
@@ -111,7 +112,7 @@ function OfferWall() {
             </p>
             <button
               type="button"
-              onClick={() => document.getElementById("use-points")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() => setShowUsePoints(true)}
               className="absolute right-[20px] top-[108px] h-[34px] rounded-full bg-primary-foreground px-[18px] text-[12px] font-semibold text-primary press"
             >
               Use points
@@ -208,6 +209,34 @@ function OfferWall() {
             {loading ? "Refreshing…" : "Refresh offers"}
           </button>
         </section>
+
+        {showUsePoints ? (
+          <div className="fixed inset-0 z-[80] flex items-end justify-center bg-foreground/30 p-4 backdrop-blur-sm sm:items-center">
+            <div className="w-full max-w-[390px] overflow-hidden rounded-[28px] border border-border bg-surface shadow-lift">
+              <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Xora Points</p>
+                  <h2 className="mt-1 font-display text-xl font-extrabold">What do you want to use them for?</h2>
+                </div>
+                <button type="button" onClick={() => setShowUsePoints(false)} aria-label="Close" className="grid size-9 place-items-center rounded-full bg-secondary press">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="space-y-3 p-5">
+                <Link to="/data" onClick={() => setShowUsePoints(false)} className="flex items-center gap-4 rounded-[20px] border border-border bg-background p-4 press">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Smartphone className="size-6" /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">Buy data</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Use your Xora Points for up to 50% off a data purchase.</span></span>
+                  <ArrowRight className="size-4 shrink-0 text-primary" />
+                </Link>
+                <Link to="/learn" onClick={() => setShowUsePoints(false)} className="flex items-center gap-4 rounded-[20px] border border-border bg-background p-4 press">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen className="size-6" /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">Purchase a course</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Use enough Xora Points to unlock an eligible course.</span></span>
+                  <ArrowRight className="size-4 shrink-0 text-primary" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <section id="use-points" className="flex min-h-[180px] flex-col gap-2 overflow-hidden border-t border-border/60 px-5 pb-5 pt-6">
           <h2 className="font-display text-[19px] font-extrabold">Use your points</h2>
