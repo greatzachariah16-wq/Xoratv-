@@ -132,7 +132,7 @@ export function xoraPointsQuery(userId?: string) {
   return queryOptions({
     queryKey: ["commerce", "xora-points", userId],
     enabled: Boolean(userId),
-    queryFn: () => commerceFetch<{ok:true;wallet:{points:number;lifetimeEarned:number;lifetimeRedeemed:number}}>(`/api/offers/wallet?userId=${encodeURIComponent(userId || "")}`),
+    queryFn: () => commerceFetch<{ok:true;wallet:{points:number;lifetimeEarned:number;lifetimeRedeemed:number;pointsNgnValue:number;maxDataDiscountPercent:number}}>(`/api/offers/wallet?userId=${encodeURIComponent(userId || "")}`),
     refetchInterval: 5000,
   });
 }
