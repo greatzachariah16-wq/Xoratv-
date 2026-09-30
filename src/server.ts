@@ -11,7 +11,7 @@ import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleContentVideoUpload } from "./server/content-media-controller";
-import { getCpaOffers, recordCpaClick, handleCpaPostback } from "./server/offerwall-service";
+import { getCpaOffers, recordCpaClick, handleCpaPostback, createOfferPromotionLink } from "./server/offerwall-service";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -406,6 +406,21 @@ export default {
         return new Response(JSON.stringify({ ok: true, ...result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Offer feed error." }), { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/api/offers/creator-link" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        if (!body.creatorId) return new Response(JSON.stringify({ ok: false, error: "creatorId is required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+        const result = await createOfferPromotionLink({
+          creatorId: String(body.creatorId),
+          offerId: body.offerId ? String(body.offerId) : null,
+          offerTitle: body.offerTitle ? String(body.offerTitle) : null,
+        });
+        return new Response(JSON.stringify({ ok: true, link: result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Could not create offer promotion link." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
     }
 
