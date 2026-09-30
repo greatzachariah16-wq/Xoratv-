@@ -3,6 +3,8 @@ import * as cheerio from "cheerio";
 import { queryRtdb } from "./xseries-service-account";
 
 const DEFAULT_POINTS_PER_USD = 100;
+const DEFAULT_POINTS_NGN_VALUE = 0.1;
+const MAX_DATA_POINTS_DISCOUNT_PERCENT = 50;
 const CREATOR_SHARE_PERCENT = 35;
 const MIN_CREATOR_CONVERSIONS = 200;
 const ATTRIBUTION_DAYS = 30;
@@ -188,6 +190,70 @@ export async function recordCpaClick(params: {
   };
   await queryRtdb(`commerce/cpaClicks/${clickId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
   return record;
+}
+
+export function pointsNgnValue() {
+  const configured = Number(process.env.XORA_POINTS_NGN_VALUE || DEFAULT_POINTS_NGN_VALUE);
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_POINTS_NGN_VALUE;
+}
+
+export function calculateDataPointsDiscount(params: { points: number; price: number }) {
+  const price = Math.max(0, Number(params.price) || 0);
+  const points = Math.max(0, Math.floor(Number(params.points) || 0));
+  const maxDiscount = Math.round(price * (MAX_DATA_POINTS_DISCOUNT_PERCENT / 100) * 100) / 100;
+  const requestedValue = Math.round(points * pointsNgnValue() * 100) / 100;
+  const discount = Math.min(maxDiscount, requestedValue);
+  const pointsToRedeem = Math.min(points, Math.ceil(discount / pointsNgnValue()));
+  return { discount: Math.round(discount * 100) / 100, pointsToRedeem, maxDiscount, pointsNgnValue: pointsNgnValue() };
+}
+
+export async function redeemCpaPoints(params: {
+  userId: string;
+  points: number;
+  reference: string;
+  purpose: "data_discount" | "course_unlock";
+  description: string;
+}) {
+  const requested = Math.max(0, Math.floor(Number(params.points) || 0));
+  if (!requested) return { points: 0, remainingPoints: (await getOrCreateCpaUser(params.userId)).points };
+  const redemptionPath = `commerce/cpaPointRedemptions/${params.reference}`;
+  const existing = await queryRtdb(redemptionPath) as any;
+  if (existing?.userId === params.userId && existing?.status === "redeemed") {
+    return { points: Number(existing.points || 0), remainingPoints: Number(existing.remainingPoints || 0), duplicate: true };
+  }
+  const account = await getOrCreateCpaUser(params.userId);
+  if (account.points < requested) throw new Error("Insufficient Xora Points.");
+  const now = new Date().toISOString();
+  const remainingPoints = account.points - requested;
+  const redemption = {
+    id: params.reference,
+    userId: params.userId,
+    points: requested,
+    purpose: params.purpose,
+    description: params.description,
+    status: "redeemed",
+    createdAt: now,
+    remainingPoints,
+  };
+  await queryRtdb(redemptionPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(redemption) });
+  await queryRtdb(cpaUserPath(params.userId), {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...account, points: remainingPoints, lifetimeRedeemed: Number(account.lifetimeRedeemed || 0) + requested, updatedAt: now }),
+  });
+  return { points: requested, remainingPoints, duplicate: false };
+}
+
+export async function refundCpaPoints(params: { userId: string; points: number; reference: string; description: string }) {
+  const requested = Math.max(0, Math.floor(Number(params.points) || 0));
+  if (!requested) return { points: 0 };
+  const account = await getOrCreateCpaUser(params.userId);
+  const now = new Date().toISOString();
+  const refundId = `refund_${params.reference}`;
+  if (await queryRtdb(`commerce/cpaPointRedemptions/${refundId}`)) return { points: 0, duplicate: true };
+  const updatedPoints = account.points + requested;
+  await queryRtdb(`commerce/cpaPointRedemptions/${refundId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: refundId, userId: params.userId, points: requested, purpose: "refund", status: "refunded", description: params.description, createdAt: now, remainingPoints: updatedPoints }) });
+  await queryRtdb(cpaUserPath(params.userId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...account, points: updatedPoints, lifetimeRedeemed: Math.max(0, Number(account.lifetimeRedeemed || 0) - requested), updatedAt: now }) });
+  return { points: requested, remainingPoints: updatedPoints };
 }
 
 export async function getCpaWallet(userId: string) {
