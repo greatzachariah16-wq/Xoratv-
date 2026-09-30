@@ -393,7 +393,8 @@ export default {
       url.pathname.startsWith("/s/") ||
       url.pathname.startsWith("/api/commerce") ||
       url.pathname.startsWith("/api/admin/commerce") ||
-      url.pathname === "/api/webhooks/mele"
+      url.pathname === "/api/webhooks/mele" ||
+      url.pathname === "/api/webhooks/discount-cpa"
     ) {
       const commerceRes = await handleCommerceRoute(request, url);
       if (commerceRes) return commerceRes;
