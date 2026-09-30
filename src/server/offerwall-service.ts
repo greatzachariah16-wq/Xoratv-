@@ -437,9 +437,9 @@ export async function getAdminCpaOverview() {
   };
 }
 
-export async function runCpaPostbackSelfTest(params: { trackingId: string; offerId?: string; payout?: number }) {
-  const trackingId = String(params.trackingId || "").trim();
-  if (!trackingId) throw new Error("Tracking ID is required.");
+export async function runCpaPostbackSelfTest(params: { trackingId?: string; offerId?: string; payout?: number }) {
+  const testAccount = await getOrCreateCpaUser("__admin_cpa_postback_test__");
+  const trackingId = String(params.trackingId || testAccount.trackingId).trim();
   const offerId = String(params.offerId || "xora_test_offer").trim();
   const payout = Number(params.payout || 1);
   if (!Number.isFinite(payout) || payout <= 0) throw new Error("Test payout must be positive.");
