@@ -7,7 +7,7 @@ import { FeedList } from "@/components/xora/FeedList";
 import { TrendingRail } from "@/components/xora/TrendingRail";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
-import { commerceFetch, coursesMarketQuery, purchasedCoursesQuery, walletQuery, type Course } from "@/lib/commerce";
+import { commerceFetch, coursesMarketQuery, purchasedCoursesQuery, walletQuery, xoraPointsQuery, type Course } from "@/lib/commerce";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -28,6 +28,7 @@ function Learn() {
   const [purchased, setPurchased] = useState<string[]>([]);
   const { data, refetch } = useQuery(coursesMarketQuery());
   const wallet = useQuery(walletQuery(user?.id));
+  const pointsQuery = useQuery(xoraPointsQuery(user?.id));
   const purchasedQuery = useQuery(purchasedCoursesQuery(user?.id));
   const ref = typeof window !== "undefined"
     ? (new URLSearchParams(window.location.search).get("promo") ||
@@ -117,17 +118,20 @@ function Learn() {
     }
   }
 
-  async function buyCourse(course: Course) {
+  async function buyCourse(course: Course, paymentMethod: "wallet" | "points" = "wallet") {
     if (!user) { window.location.href = "/auth"; return; }
     setNotice("");
     try {
       const result = await commerceFetch<any>("/api/commerce/course/order", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, courseId: course.id, referralCode: ref }),
+        body: JSON.stringify({ userId: user.id, courseId: course.id, referralCode: ref, paymentMethod }),
       });
       setPurchased((items) => items.includes(course.id) ? items : [...items, course.id]);
       await wallet.refetch();
-      setNotice(`₦${Number(course.price).toLocaleString()} was debited from your Xora Wallet.`);
+      await pointsQuery.refetch();
+      setNotice(paymentMethod === "points"
+        ? `Course unlocked with ${Number(result.order?.pointsRedeemed || 0).toLocaleString()} Xora Points.`
+        : `₦${Number(course.price).toLocaleString()} was debited from your Xora Wallet.`);
       return result;
     } catch (e) {
       const message = e instanceof Error ? e.message : "Could not purchase course.";
@@ -260,15 +264,32 @@ function Learn() {
                       <span className="text-lg font-semibold">₦{Number(course.price || 0).toLocaleString()}</span>
                       {owned ? (
                         <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700">
-                          <PlayCircle className="size-4" /> Purchased
+                          <PlayCircle className="size-4" /> Unlocked
                         </span>
                       ) : (
-                        <button
-                          className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                          onClick={() => void buyCourse(course)}
-                        >
-                          Buy with Wallet
-                        </button>
+                        <div className="flex flex-col items-end gap-2">
+                          <button
+                            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                            onClick={() => void buyCourse(course)}
+                          >
+                            Buy with Wallet
+                          </button>
+                          {(() => {
+                            const pointValue = Number(pointsQuery.data?.wallet?.pointsNgnValue || 0.1);
+                            const requiredPoints = Math.ceil(Number(course.price || 0) / pointValue);
+                            const balance = Number(pointsQuery.data?.wallet?.points || 0);
+                            return balance >= requiredPoints ? (
+                              <button
+                                className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-xs font-semibold text-primary"
+                                onClick={() => void buyCourse(course, "points")}
+                              >
+                                Unlock with {requiredPoints.toLocaleString()} XP
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">{requiredPoints.toLocaleString()} XP needed to unlock</span>
+                            );
+                          })()}
+                        </div>
                       )}
                     </div>
                   </div>
