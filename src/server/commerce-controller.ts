@@ -294,11 +294,10 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
     try {
       const body = await request.json();
-      if (!body.trackingId) return json({ ok: false, error: "Tracking ID is required." }, 400);
       return json({
         ok: true,
         test: await runCpaPostbackSelfTest({
-          trackingId: String(body.trackingId),
+          trackingId: body.trackingId ? String(body.trackingId) : undefined,
           offerId: body.offerId ? String(body.offerId) : undefined,
           payout: body.payout === undefined ? undefined : Number(body.payout),
         }),
