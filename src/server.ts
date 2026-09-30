@@ -11,7 +11,7 @@ import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleContentVideoUpload } from "./server/content-media-controller";
-import { getCpaOffers, recordCpaClick, handleCpaPostback, createOfferPromotionLink } from "./server/offerwall-service";
+import { getCpaOffers, recordCpaClick, handleCpaPostback, createOfferPromotionLink, settleCpaRevenue, markCpaCreatorPaid } from "./server/offerwall-service";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
@@ -388,6 +388,32 @@ export default {
     ) {
       const xseriesRes = await handleXseriesRoute(request, url);
       if (xseriesRes) return xseriesRes;
+    }
+
+    // Admin-only CPAGrip settlement controls. CPAGrip does not provide a settlement webhook here,
+    // so XoraTV moves pending creator revenue to payable only after an admin confirms receipt.
+    if (url.pathname === "/api/admin/offers/settle" && request.method === "POST") {
+      const session = verifyAdminSession(request);
+      if (!session.valid) return new Response(JSON.stringify({ ok: false, error: session.error || "Unauthorized." }), { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      try {
+        const result = await settleCpaRevenue();
+        return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "CPA settlement failed." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/api/admin/offers/pay-creator" && request.method === "POST") {
+      const session = verifyAdminSession(request);
+      if (!session.valid) return new Response(JSON.stringify({ ok: false, error: session.error || "Unauthorized." }), { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      try {
+        const body = await request.json();
+        if (!body.creatorId) return new Response(JSON.stringify({ ok: false, error: "creatorId is required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+        const result = await markCpaCreatorPaid(String(body.creatorId));
+        return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Creator CPA payout failed." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
     }
 
     // CPAGrip Offer Wall and conversion tracking
