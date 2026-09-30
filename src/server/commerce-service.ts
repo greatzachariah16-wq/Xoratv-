@@ -886,6 +886,30 @@ async function getPromotionLink(token: string): Promise<CreatorPromotionLink | n
   return (await queryRtdb(promotionLinkPath(token))) as CreatorPromotionLink | null;
 }
 
+export async function getPromotionTarget(token: string) {
+  const link = await getPromotionLink(token);
+  if (!link) return null;
+  if (link.service === "data") {
+    return { token: link.token, service: "data" as const, label: link.label };
+  }
+  if (!link.courseId) return null;
+  const course = await queryRtdb(`commerce/courses/${link.courseId}`) as Course | null;
+  if (!course || course.status !== "published" || course.creatorId !== link.creatorId) return null;
+  return {
+    token: link.token,
+    service: "course" as const,
+    label: link.label,
+    course: {
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      price: course.price,
+      thumbnailUrl: course.thumbnailUrl,
+      videoUrl: course.videoUrl,
+    },
+  };
+}
+
 export async function resolvePromotionLink(token: string) {
   const link = await getPromotionLink(token);
   if (!link) return null;
