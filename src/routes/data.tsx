@@ -16,7 +16,9 @@ function BuyDataPage() {
   const [busy, setBusy] = useState(false);
   const { data, isPending, error, refetch, isFetching } = useQuery(dataPlansQuery(true));
   const pointsQuery = useQuery(xoraPointsQuery(user?.id));
-  const [usePoints, setUsePoints] = useState(false);\n  const [quote, setQuote] = useState<any>(null);\n  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
+  const [quote, setQuote] = useState<any>(null);
+  const [quoteBusy, setQuoteBusy] = useState(false);
   const ref = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("promo") || new URLSearchParams(window.location.search).get("ref")) : null;
   const plans = useMemo(() => (data?.plans || []).filter((p) => p.network === network), [data, network]);
   const selected = plans.find((p) => p.catalogId === selectedId) || plans[0];
@@ -77,10 +79,14 @@ function BuyDataPage() {
           <div className="mt-4 rounded-2xl border border-border bg-background p-4">
             <div className="flex justify-between text-sm"><span>{selected.network} {selected.data_size}</span><span className="font-semibold">₦{selected.price.toLocaleString()}</span></div>
             <div className="mt-1 text-xs text-muted-foreground">{selected.validity}</div>
-            {quoteBusy ? <div className="mt-3 text-xs text-muted-foreground">Checking your Xora Points…</div> : quote && usePoints ? <div className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
-              <div className="flex justify-between"><span>Points discount</span><span className="font-semibold text-primary">−₦{Number(quote.pointsDiscount || 0).toLocaleString()}</span></div>
-              <div className="flex justify-between"><span>Points used</span><span>{Number(quote.pointsToRedeem || 0).toLocaleString()} XP</span></div>
-              <div className="flex justify-between font-semibold"><span>You pay</span><span>₦{Number(quote.finalPrice ?? selected.price).toLocaleString()}</span></div>
+            {quoteBusy ? <div className="mt-3 text-xs text-muted-foreground">Checking your Xora Points and wallet…</div> : quote ? <div className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
+              {usePoints ? <>
+                <div className="flex justify-between"><span>Points discount</span><span className="font-semibold text-primary">−₦{Number(quote.pointsDiscount || 0).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Points used</span><span>{Number(quote.pointsToRedeem || 0).toLocaleString()} XP</span></div>
+              </> : null}
+              <div className="flex justify-between"><span>Wallet balance</span><span>₦{Number(quote.wallet?.balance || 0).toLocaleString()}</span></div>
+              <div className="flex justify-between font-semibold"><span>You pay from wallet</span><span>₦{Number(quote.finalPrice ?? selected.price).toLocaleString()}</span></div>
+              {!quote.wallet?.sufficient ? <div className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">Your Xora Wallet needs ₦{Math.max(0, Number(quote.wallet?.required || quote.finalPrice || 0) - Number(quote.wallet?.balance || 0)).toLocaleString()} more. Fund your wallet before buying this plan.</div> : null}
             </div> : null}
           </div>
           <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
@@ -88,7 +94,7 @@ function BuyDataPage() {
             <input type="checkbox" checked={usePoints} onChange={(e)=>setUsePoints(e.target.checked)} className="size-5 accent-primary" />
           </label>
           </> : null}
-          <button disabled={busy || !selected || phone.replace(/\D/g,"").length!==11} onClick={()=>void beginOrder()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy?<Loader2 className="size-4 animate-spin"/>:<ArrowRight className="size-4"/>}{busy?"Creating order…":"Continue"}</button>
+          <button disabled={busy || !selected || phone.replace(/\D/g,"").length!==11} onClick={()=>{ if (quote && !quote.wallet?.sufficient) { window.location.href = `/wallet?returnTo=/data&catalogId=${encodeURIComponent(selected.catalogId)}&phone=${encodeURIComponent(phone)}`; return; } void beginOrder(); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy?<Loader2 className="size-4 animate-spin"/>:<ArrowRight className="size-4"/>}{busy?"Creating order…":quote && !quote.wallet?.sufficient?"Fund Xora Wallet":"Continue"}</button>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Plans and prices are refreshed from Xora's live data catalogue. Prices are not hardcoded on this page. Your wallet is debited only on the server after the selected plan is validated. Data delivery remains subject to provider fulfilment.</p>
         </div>
       </section>
