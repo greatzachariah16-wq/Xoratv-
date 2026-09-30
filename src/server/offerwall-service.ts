@@ -131,7 +131,7 @@ export async function getCpaOffers(params: {
   feed.searchParams.set("tracking_id", account.trackingId);
   if (params.ip) feed.searchParams.set("ip", params.ip);
   if (params.userAgent) feed.searchParams.set("ua", params.userAgent);
-  feed.searchParams.set("limit", String(Math.min(50, Math.max(1, Number(params.limit || 20))));
+  feed.searchParams.set("limit", String(Math.min(50, Math.max(1, Number(params.limit || 20)))));
 
   const response = await fetch(feed, { signal: AbortSignal.timeout(15000) });
   const xml = await response.text();
