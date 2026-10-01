@@ -15,7 +15,7 @@ export const Route = createFileRoute("/learn")({ component: Learn });
 
 function Learn() {
   const { user, profile } = useAuth();
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("create") === "1");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("500");
@@ -161,9 +161,9 @@ function Learn() {
             {user ? (
               <button
                 onClick={() => setShowCreate((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
               >
-                <Plus className="size-4" /> Create a course
+                <Plus className="size-3.5" /> {showCreate ? "Close editor" : "Create course"}
               </button>
             ) : null}
           </div>
