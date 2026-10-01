@@ -405,24 +405,8 @@ export function AdminNavigationMenu({
                       const Icon = item.icon;
                       const isActive = activeSectionId === item.id;
 
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            setOpen(false);
-                            if (item.href) {
-                              void navigate({ to: item.href as any });
-                              return;
-                            }
-                            onSectionClick?.(item.id);
-                          }}
-                          className={`group flex items-start gap-3 w-full rounded-2xl p-3 text-left transition-all border ${
-                            isActive
-                              ? "bg-primary/10 border-primary/40 shadow-sm"
-                              : "bg-card/40 border-border/50 hover:bg-secondary/70 hover:border-border"
-                          }`}
-                        >
+                      const content = (
+                        <>
                           <span className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background/90 shadow-sm transition-transform group-hover:scale-105 ${item.accentColor}`}>
                             <Icon className="size-4" />
                           </span>
@@ -436,6 +420,35 @@ export function AdminNavigationMenu({
                           <span className="mt-1 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-primary">
                             {item.isExternalRoute ? <ExternalLink className="size-3.5" /> : <ChevronRight className="size-4" />}
                           </span>
+                        </>
+                      );
+
+                      const className = `group flex items-start gap-3 w-full rounded-2xl p-3 text-left transition-all border ${
+                        isActive
+                          ? "bg-primary/10 border-primary/40 shadow-sm"
+                          : "bg-card/40 border-border/50 hover:bg-secondary/70 hover:border-border"
+                      }`;
+
+                      return item.href ? (
+                        <Link
+                          key={item.id}
+                          to={item.href as any}
+                          onClick={() => setOpen(false)}
+                          className={className}
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setOpen(false);
+                            onSectionClick?.(item.id);
+                          }}
+                          className={className}
+                        >
+                          {content}
                         </button>
                       );
                     })}
