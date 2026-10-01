@@ -31,12 +31,6 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     isFetchingNextPage,
   } = useInfiniteQuery(feedInfiniteQuery(feed, user?.id, mode));
 
-  useEffect(() => {
-    if (mode === "for_you" && feed === "home" && allPosts.length > 0) {
-      rememberShownPostIds(feed, allPosts.map((post) => post.id), mode);
-    }
-  }, [allPosts, feed, mode]);
-
   const allPosts = useMemo(() => {
     const raw = data?.pages.flatMap((page) => page) ?? [];
     const seen = new Set<string>();
@@ -46,6 +40,12 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
       return true;
     });
   }, [data?.pages]);
+
+  useEffect(() => {
+    if (mode === "for_you" && feed === "home" && allPosts.length > 0) {
+      rememberShownPostIds(feed, allPosts.map((post) => post.id), mode);
+    }
+  }, [allPosts, feed, mode]);
 
   // Bottom sentinel for infinite scrolling in batches of 10
   useEffect(() => {
