@@ -3,14 +3,14 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, LockKeyhole } from "lucide-react";
 import { AdminProtectedLayout } from "@/components/admin/AdminProtectedLayout";
-import { commerceFetch, melePlansQuery, vtusharePlansQuery, meleHealthQuery, vtushareHealthQuery, type MelePlan, type VtusharePlan } from "@/lib/commerce";
+import { melePlansQuery, vtusharePlansQuery, meleHealthQuery, vtushareHealthQuery, type MelePlan, type VtusharePlan } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce/test-data")({ component: TestData });
 
 function TestData() {
   const mele = useQuery(melePlansQuery(true)), vt = useQuery(vtusharePlansQuery(true)), mh = useQuery(meleHealthQuery()), vh = useQuery(vtushareHealthQuery());
   const [provider, setProvider] = useState<"mele" | "vtushare">("mele");
-  const [network, setNetwork] = useState("MTN"); const [planId, setPlanId] = useState(""); const [bundleId, setBundleId] = useState(""); const [networkId, setNetworkId] = useState(""); const [typeId, setTypeId] = useState(""); const [phone, setPhone] = useState(""); const [busy, setBusy] = useState(false); const [result, setResult] = useState<string | null>(null);
+  const [network, setNetwork] = useState("MTN"); const [planId, setPlanId] = useState(""); const [bundleId, setBundleId] = useState(""); const [networkId, setNetworkId] = useState(""); const [typeId, setTypeId] = useState(""); const [result, setResult] = useState<string | null>(null);
   const melePlans = useMemo(() => ((mele.data?.plans || []) as MelePlan[]).filter(p => p.network === network), [mele.data, network]);
   const vtPlans = (vt.data?.plans || []) as VtusharePlan[];
 
@@ -18,7 +18,7 @@ function TestData() {
     setResult("Live test purchases are temporarily locked. No provider wallet can be charged from this page.");
   }
 
-  return <AdminProtectedLayout title="Test Data" subtitle="Controlled live purchase tests for configured data providers." currentSectionId="commerce-test-data">
+  return <AdminProtectedLayout title="Test Data" subtitle="Safe provider test workspace — live purchases are currently locked." currentSectionId="commerce-test-data">
     <div className="mx-auto max-w-3xl space-y-4">
       <header><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Commerce</p><h1 className="mt-1 font-display text-2xl font-semibold">Test Data</h1><p className="mt-1 text-xs text-muted-foreground">This page is intentionally isolated because a test purchase may spend real provider wallet balance.</p></header>
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs"><div className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-4 text-amber-600" />Live purchase warning</div><p className="mt-1 text-muted-foreground">Live purchases are currently locked. This page will be enabled only after the provider purchase flow is fully finished and verified.</p></div>
