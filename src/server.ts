@@ -994,41 +994,6 @@ export default {
       }
     }
 
-    // Backend-only Shorts playback verification endpoint.
-    // Render Cron calls this; normal users never trigger verification.
-    if (
-      url.pathname === "/api/internal/shorts-verification/run" &&
-      (request.method === "POST" || request.method === "GET")
-    ) {
-      const configuredSecret = process.env.SHORTS_VERIFICATION_SECRET?.trim();
-      const suppliedSecret =
-        request.headers.get("x-shorts-verification-secret") ||
-        request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() ||
-        url.searchParams.get("secret");
-
-      if (!configuredSecret || suppliedSecret !== configuredSecret) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Unauthorized Shorts verification request" }),
-          { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-        );
-      }
-
-      try {
-        const summary = await runShortsVerification();
-        return new Response(JSON.stringify(summary), {
-          status: 200,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Shorts verification failed";
-        console.error("[Shorts Verification] Error:", err);
-        return new Response(JSON.stringify({ ok: false, error: message }), {
-          status: 500,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
-      }
-    }
-
     // Fall back to TanStack Start SSR handler
     try {
       const handler = await getServerEntry();
