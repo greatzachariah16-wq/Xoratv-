@@ -150,17 +150,28 @@ export async function registerCloudinaryVideo(input: {
 
 export async function getXoraContent(id: string): Promise<XoraContentRecord | null> {
   requireConfig();
-  const mongo = await getMongoDb();
-  const record = await mongo.collection<XoraContentRecord>("videos").findOne({ id });
-  if (record) return record;
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/xora_content?id=eq.${encodeURIComponent(id)}&limit=1`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "x-xora-content-secret": CONTENT_SECRET,
+  // MongoDB is the primary metadata lookup. If Atlas has a transient TLS
+  // problem, use the Supabase copy so deletion can still identify the media.
+  try {
+    const mongo = await getMongoDb();
+    const record = await mongo.collection<XoraContentRecord>("videos").findOne({ id });
+    if (record) return record;
+  } catch {
+    // Fall through to Supabase.
+  }
+
+  const response = await fetch(
+    SUPABASE_URL + "/rest/v1/xora_content?id=eq." + encodeURIComponent(id) + "&limit=1",
+    {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + SUPABASE_KEY,
+        "x-xora-content-secret": CONTENT_SECRET,
+      },
+      signal: AbortSignal.timeout(10000),
     },
-  });
+  );
   if (!response.ok) return null;
   const rows = await response.json().catch(() => []);
   return Array.isArray(rows) && rows[0] ? {
