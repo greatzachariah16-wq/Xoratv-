@@ -47,7 +47,7 @@ function ProfilePage() {
 
   return (
     <AppShell wide>
-      <div className="space-y-5">
+      <div className="mx-auto max-w-2xl space-y-5 pt-12 lg:pt-0">
         <header className="relative overflow-hidden rounded-[30px] border border-border bg-surface shadow-card">
           <div className="h-28 bg-gradient-to-br from-primary/20 via-background to-secondary/70" />
           <div className="relative px-5 pb-5 sm:px-7">
@@ -59,7 +59,7 @@ function ProfilePage() {
                   <button type="button" onClick={() => void signOut()} className="press inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground"><LogOut className="size-3.5" /> Sign out</button>
                 </div>
               ) : profile ? (
-                <button type="button" onClick={() => follows.toggle(profile.id)} disabled={follows.pending} className={cn("press rounded-xl px-5 py-2 text-sm font-semibold disabled:opacity-60", follows.isFollowing(profile.id) ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground")}>
+                <button type="button" onClick={() => follows.toggle(profile.id)} disabled={follows.pending} className={cn("press rounded-lg px-3.5 py-1.5 text-xs font-semibold disabled:opacity-60", follows.isFollowing(profile.id) ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground")}>
                   {follows.isFollowing(profile.id) ? "Following" : "Follow"}
                 </button>
               ) : null}
@@ -69,11 +69,11 @@ function ProfilePage() {
               <p className="mt-1 text-sm text-muted-foreground">@{username}</p>
               {profile?.bio ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-pretty">{profile.bio}</p> : null}
             </div>
-            <dl className="mt-5 grid grid-cols-3 overflow-hidden rounded-2xl border border-border bg-background/70">
+            <dl className="mt-4 grid grid-cols-3 overflow-hidden rounded-2xl border border-border bg-background/60">
               {[["Posts", posts?.length ?? 0], ["Followers", profile?.follower_count ?? 0], ["Following", profile?.following_count ?? 0]].map(([label, value]) => (
-                <div key={String(label)} className="px-3 py-4 text-center">
-                  <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 font-display text-lg font-semibold tabular-nums">{compactNumber(Number(value))}</dd>
+                <div key={String(label)} className="border-r border-border/70 px-2 py-2.5 text-center last:border-r-0">
+                  <dt className="text-[10px] font-medium text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5 text-sm font-semibold tabular-nums">{compactNumber(Number(value))}</dd>
                 </div>
               ))}
             </dl>
