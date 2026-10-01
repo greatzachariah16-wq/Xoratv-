@@ -262,8 +262,8 @@ function WatchPage() {
                   Xora Cinema
                 </div>
               </>
-            ) : null
-          {isStreamLoading && !streamUrl ? (
+            ) : null}
+            {isStreamLoading && !streamUrl ? (
             <div className="grid h-full w-full place-items-center bg-gradient-to-b from-[#0c0e17] to-black">
               <div className="text-center">
                 <Loader2 className="mx-auto size-10 animate-spin text-primary" />
