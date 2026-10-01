@@ -455,7 +455,7 @@ export function AdminNavigationMenu({
                             </div>
                             <span className="mt-1 text-muted-foreground/60"><ChevronRight className="size-4" /></span>
                           </button>
-                        )}
+                        )
                       );
                     })}
                   </div>
