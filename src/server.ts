@@ -18,11 +18,47 @@ import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/dis
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import { getFaoTvStreamUrl } from "./integrations/providers/faotv";
 import { runShortsVerification } from "./server/shorts-verification";
+
+const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
+let shortsVerificationRunning = false;
+
+async function runScheduledShortsVerification() {
+  if (shortsVerificationRunning) return;
+  shortsVerificationRunning = true;
+  try {
+    const summary = await runShortsVerification();
+    console.log("[Shorts Verification] Scheduled check:", {
+      checked: summary.checked,
+      playable: summary.playable,
+      hidden: summary.hidden,
+      errors: summary.errors,
+    });
+  } catch (error) {
+    console.error("[Shorts Verification] Scheduled check failed:", error);
+  } finally {
+    shortsVerificationRunning = false;
+  }
+}
+
+function startShortsVerificationScheduler() {
+  // Run once after startup, then repeat independently of user activity.
+  setTimeout(() => {
+    void runScheduledShortsVerification();
+    setInterval(() => void runScheduledShortsVerification(), SHORTS_VERIFICATION_INTERVAL_MS);
+  }, 30_000);
+}
 import { executeYouTubeApiSearch } from "./integrations/providers/youtube";
 import { executeVimeoApiSearch } from "./integrations/providers/vimeo";
 import { xseriesDbRead } from "./server/xseries-service-account";
 import type { XserisMediaItem } from "./lib/xseris/types";
 import type { XTvSeriesItem } from "./integrations/firebase/rtdb";
+
+// Initialize backend-only Shorts playback verification scheduler.
+try {
+  startShortsVerificationScheduler();
+} catch (e) {
+  console.warn("[Server] Could not initialize Shorts verification scheduler:", e);
+}
 
 // Initialize discovery background scheduler on server startup
 try {
