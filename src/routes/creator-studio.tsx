@@ -232,7 +232,7 @@ function CreatorStudio() {
       {studioSection === "overview" ? <section id="courses" className="scroll-mt-20 rounded-2xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">Your courses</h2><p className="mt-1 text-xs text-muted-foreground">Manage published courses from one compact list.</p></div><Link to="/learn?create=1" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-secondary"><Plus className="size-3.5" /> Create</Link></div>
         <div className="mt-3 space-y-2">{(dashboard?.courses || []).map((c:any) => <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{c.title}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{c.status} · ₦{Number(c.price || 0).toLocaleString()}</p></div><button type="button" onClick={() => openDeleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="shrink-0 rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[11px] font-semibold text-destructive">{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div>)}{!(dashboard?.courses || []).length ? <p className="py-4 text-center text-xs text-muted-foreground">No courses yet.</p> : null}</div>
-      </section>
+      </section> : null}
     </div>
       {deleteTarget ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-course-title">
