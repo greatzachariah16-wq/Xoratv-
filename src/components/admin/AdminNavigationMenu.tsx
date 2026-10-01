@@ -406,56 +406,37 @@ export function AdminNavigationMenu({
                       const isActive = activeSectionId === item.id;
 
                       return (
-                        item.href ? (
-                          <Link
-                            key={item.id}
-                            to={item.href as any}
-                            onClick={() => setOpen(false)}
-                            className={`group flex items-start gap-3 w-full rounded-2xl p-3 text-left transition-all border ${
-                              isActive
-                                ? "bg-primary/10 border-primary/40 shadow-sm"
-                                : "bg-card/40 border-border/50 hover:bg-secondary/70 hover:border-border"
-                            }`}
-                          >
-                            <span className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background/90 shadow-sm transition-transform group-hover:scale-105 ${item.accentColor}`}>
-                              <Icon className="size-4" />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-display text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                                  {item.title}
-                                </span>
-                                {item.badge && (
-                                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[9px] font-semibold text-muted-foreground border border-border/50">
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground leading-relaxed">
-                                {item.description}
-                              </p>
-                            </div>
-                            <span className="mt-1 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-primary">
-                              {item.isExternalRoute ? <ExternalLink className="size-3.5" /> : <ChevronRight className="size-4" />}
-                            </span>
-                          </Link>
-                        ) : (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => handleJump(item)}
-                            className="group flex items-start gap-3 w-full rounded-2xl p-3 text-left transition-all border bg-card/40 border-border/50 hover:bg-secondary/70 hover:border-border"
-                          >
-                            <span className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background/90 shadow-sm transition-transform group-hover:scale-105 ${item.accentColor}`}>
-                              <Icon className="size-4" />
-                            </span>
-                            <div className="min-w-0 flex-1">
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setOpen(false);
+                            if (item.href) {
+                              void navigate({ to: item.href as any });
+                              return;
+                            }
+                            onSectionClick?.(item.id);
+                          }}
+                          className={`group flex items-start gap-3 w-full rounded-2xl p-3 text-left transition-all border ${
+                            isActive
+                              ? "bg-primary/10 border-primary/40 shadow-sm"
+                              : "bg-card/40 border-border/50 hover:bg-secondary/70 hover:border-border"
+                          }`}
+                        >
+                          <span className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background/90 shadow-sm transition-transform group-hover:scale-105 ${item.accentColor}`}>
+                            <Icon className="size-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
                               <span className="font-display text-xs font-bold text-foreground group-hover:text-primary transition-colors">{item.title}</span>
-                              <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground leading-relaxed">{item.description}</p>
+                              {item.badge && <span className="rounded-full bg-secondary px-2 py-0.5 text-[9px] font-semibold text-muted-foreground border border-border/50">{item.badge}</span>}
                             </div>
-                            <span className="mt-1 text-muted-foreground/60"><ChevronRight className="size-4" /></span>
-                          </button>
-                        )
+                            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground leading-relaxed">{item.description}</p>
+                          </div>
+                          <span className="mt-1 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-primary">
+                            {item.isExternalRoute ? <ExternalLink className="size-3.5" /> : <ChevronRight className="size-4" />}
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
