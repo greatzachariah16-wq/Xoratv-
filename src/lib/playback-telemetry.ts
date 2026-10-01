@@ -41,7 +41,7 @@ export function startPlaybackTelemetry(id: string, streamUrl: string) {
   telemetry.set(id, {
     sessionStartedAt: performance.now(),
     streamUrl,
-    streamKind: /\\.m3u8(?:[?#]|$)/i.test(streamUrl) ? "hls" : /^(https?:)?\\/\\//i.test(streamUrl) ? "progressive" : "unknown",
+    streamKind: streamUrl.toLowerCase().includes(".m3u8") ? "hls" : /^https?:\\/\\//i.test(streamUrl) ? "progressive" : "unknown",
     bufferingMs: 0,
     playbackSeconds: 0,
     resourceTransferBytes: 0,
