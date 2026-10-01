@@ -1,0 +1,23 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { RefreshCw, Webhook, Loader2 } from "lucide-react";
+import { AdminProtectedLayout } from "@/components/admin/AdminProtectedLayout";
+import { adminCpaOverviewQuery, commerceFetch } from "@/lib/commerce";
+
+export const Route = createFileRoute("/admin/commerce/cpa")({ component: Cpa });
+function Cpa() {
+  const q = useQuery(adminCpaOverviewQuery());
+  const [busy,setBusy]=useState(false); const [message,setMessage]=useState<string|null>(null);
+  async function test(){setBusy(true);setMessage(null);try{const r=await commerceFetch<any>("/api/admin/commerce/cpa-postback-self-test",{method:"POST",body:JSON.stringify({payout:1})});setMessage(r.test?.diagnostic?.status==="passed"?"PASS — safe postback test passed; no points were awarded.":`Check failed: ${r.test?.diagnostic?.status||r.test?.error||"unknown"}`);await q.refetch();}catch(e){setMessage(e instanceof Error?e.message:"CPA test failed.");}finally{setBusy(false);}}
+  const t=q.data?.overview?.totals;
+  return <AdminProtectedLayout title="CPA & Offer Wall" subtitle="CPAGrip conversions, Xora Points, creator commissions and postback health." currentSectionId="commerce-cpa">
+    <div className="space-y-4">
+      <header className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">CPA</p><h1 className="mt-1 font-display text-2xl font-semibold">Offer Wall monitor</h1><p className="mt-1 text-xs text-muted-foreground">The detailed CPA controls live here instead of crowding Commerce Overview.</p></div><button type="button" onClick={()=>void q.refetch()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold"><RefreshCw className={q.isFetching?"size-3.5 animate-spin":"size-3.5"}/>Refresh</button></header>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">{[["Users",t?.users??0],["Clicks",t?.clicks??0],["Approved",t?.approvedConversions??0],["Points",Number(t?.totalPoints||0).toLocaleString()+" XP"]].map(([a,b])=><div key={String(a)} className="rounded-xl border border-border bg-surface p-3"><p className="text-[10px] text-muted-foreground">{a}</p><p className="mt-1 text-lg font-semibold">{b}</p></div>)}</div>
+      <div className="grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-border bg-surface p-4"><p className="text-sm font-semibold">Postback configuration</p><p className="mt-2 text-xs">Feed: <b>{q.data?.overview?.configured?.feed?"Configured":"Missing"}</b></p><p className="text-xs">Password: <b>{q.data?.overview?.configured?.postbackPassword?"Configured":"Missing"}</b></p><button type="button" onClick={()=>void test()} disabled={busy||!q.data?.overview?.configured?.postbackPassword} className="mt-3 inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">{busy?<Loader2 className="size-3.5 animate-spin"/>:<Webhook className="size-3.5"/>}{busy?"Testing…":"Safe postback test"}</button>{message?<p className="mt-3 rounded-lg border border-border bg-muted/20 p-2 text-xs">{message}</p>:null}</div>
+      <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-sm font-semibold">Settlement</p><p className="mt-2 text-xs">Pending: <b>{t?.pendingSettlement??0}</b></p><p className="text-xs">Settled: <b>{t?.settledConversions??0}</b></p><p className="text-xs">CPAGrip payout: <b>${Number(t?.totalPayout||0).toFixed(2)}</b></p><p className="text-xs">Creator commission: <b>${Number(t?.totalCreatorCommission||0).toFixed(2)}</b></p></div></div>
+      <div className="overflow-x-auto rounded-2xl border border-border bg-surface"><table className="w-full min-w-[700px] text-left text-xs"><thead className="border-b border-border bg-muted/30"><tr><th className="p-3">Time</th><th className="p-3">Offer</th><th className="p-3">Payout</th><th className="p-3">Points</th><th className="p-3">Settlement</th></tr></thead><tbody>{(q.data?.overview?.recentConversions||[]).map((c:any)=><tr key={c.id} className="border-b border-border/60"><td className="p-3">{c.receivedAt?new Date(c.receivedAt).toLocaleString():"—"}</td><td className="p-3">{c.offerId}</td><td className="p-3">${Number(c.payout||0).toFixed(2)}</td><td className="p-3">{Number(c.points||0).toLocaleString()} XP</td><td className="p-3">{c.settlementStatus}</td></tr>)}</tbody></table></div>
+    </div>
+  </AdminProtectedLayout>;
+}
