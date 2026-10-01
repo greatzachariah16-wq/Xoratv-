@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { Sparkles, PenLine, LogOut } from "lucide-react";
 import { profilePostsQuery, profileQuery } from "@/lib/api";
 import { compactNumber } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,8 +55,8 @@ function ProfilePage() {
               <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={82} />
               {isMe ? (
                 <div className="flex gap-2">
-                  <Link to="/creator-studio" className="press rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Creator Studio</Link>
-                  <button type="button" onClick={() => void signOut()} className="press rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-secondary">Sign out</button>
+                  <Link to="/creator-studio" className="press inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary"><PenLine className="size-3.5" /> Creator</Link>
+                  <button type="button" onClick={() => void signOut()} className="press inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground"><LogOut className="size-3.5" /> Sign out</button>
                 </div>
               ) : profile ? (
                 <button type="button" onClick={() => follows.toggle(profile.id)} disabled={follows.pending} className={cn("press rounded-xl px-5 py-2 text-sm font-semibold disabled:opacity-60", follows.isFollowing(profile.id) ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground")}>
