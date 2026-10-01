@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
+import { getAdaptiveStreamingUrl } from "@/lib/cloudinary";
 import { markPlaybackStartup, recordPlaybackTelemetry, startPlaybackTelemetry } from "@/lib/playback-telemetry";
 
 type Props = {
@@ -70,7 +71,9 @@ export function NativeVideoPlayer({
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
-  const src = effectiveStream ?? signedSrc;
+  const src = effectiveStream
+    ? getAdaptiveStreamingUrl(effectiveStream, undefined, dataSaver.maxResolutionHeight)
+    : signedSrc;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
 
