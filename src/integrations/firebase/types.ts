@@ -43,6 +43,11 @@ export interface PostRecord {
   genre?: string | null;
   like_count?: number;
   comment_count?: number;
+  /** Backend-only Shorts playback verification state. Unverified Shorts are not public. */
+  playability_status?: "playable" | "unplayable" | "unverified" | null;
+  playability_checked_at?: string | null;
+  playability_failure_count?: number | null;
+  playability_error?: string | null;
 }
 
 export interface ProfileRecord {
