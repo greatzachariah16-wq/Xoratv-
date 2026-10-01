@@ -537,7 +537,8 @@ export function NativeVideoPlayer({
           playsInline
           loop={loop}
           muted={muted}
-          preload="metadata"
+          preload={autoPlay ? "auto" : "none"}
+          loading="lazy"
           controlsList="nodownload"
           aria-label={title}
           className="h-full w-full bg-ink object-contain"
