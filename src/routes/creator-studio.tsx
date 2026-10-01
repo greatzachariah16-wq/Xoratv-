@@ -1,12 +1,39 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2, Gift, X, AlertTriangle, Menu } from "lucide-react";
+import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2, Gift, X, AlertTriangle, Menu, ChevronDown, Check } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
 
 export const Route = createFileRoute("/creator-studio")({ component: CreatorStudio });
+const BANK_OPTIONS = [
+  ["Access Bank", "access-bank"], ["ALAT by Wema", "alat-by-wema"], ["Citibank Nigeria", "citibank-nigeria"],
+  ["Ecobank Nigeria", "ecobank"], ["FCMB", "fcmb"], ["Fidelity Bank", "fidelity-bank"], ["First Bank of Nigeria", "first-bank"],
+  ["Globus Bank", "globus-bank"], ["GTBank", "gtbank"], ["Jaiz Bank", "jaiz-bank"], ["Keystone Bank", "keystone-bank"],
+  ["Kuda", "kuda"], ["Moniepoint", "moniepoint"], ["OPay", "opay"], ["PalmPay", "palmpay"], ["Polaris Bank", "polaris-bank"],
+  ["PremiumTrust Bank", "premiumtrust-bank"], ["Providus Bank", "providus-bank"], ["Stanbic IBTC", "stanbic-ibtc"],
+  ["Sterling Bank", "sterling-bank"], ["UBA", "uba"], ["Union Bank", "union-bank"], ["Unity Bank", "unity-bank"],
+  ["Wema Bank", "wema-bank"], ["Zenith Bank", "zenith-bank"],
+] as const;
+
+function bankLogoUrl(slug: string) {
+  return `https://cdn.jsdelivr.net/gh/supermx1/nigerian-banks-api@main/logos/${slug}.png`;
+}
+
+function BankLogo({ name, slug }: { name: string; slug: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white">
+      {!failed ? (
+        <img src={bankLogoUrl(slug)} alt="" className="size-6 object-contain" onError={() => setFailed(true)} />
+      ) : (
+        <span className="text-[10px] font-bold text-primary">{name.split(/\\s+/).map((x) => x[0]).join("").slice(0, 2)}</span>
+      )}
+    </span>
+  );
+}
+
 
 function CreatorStudio() {
   const { user, profile } = useAuth();
@@ -20,6 +47,8 @@ function CreatorStudio() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [studioSection, setStudioSection] = useState<"overview" | "courses" | "promotions" | "payouts" | "commissions">("overview");
+  const [bankOpen, setBankOpen] = useState(false);
+  const [promotionOpen, setPromotionOpen] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [bankName, setBankName] = useState("");
@@ -186,13 +215,26 @@ function CreatorStudio() {
           <div className="mt-5 max-w-xl space-y-4">
             <div><label className="text-xs font-semibold">Account name</label><input value={accountName} readOnly className="mt-1.5 h-10 w-full rounded-xl border border-border bg-secondary/60 px-3 text-sm" /><p className="mt-1.5 text-[11px] text-muted-foreground">This must match the name on your XoraTV profile.</p></div>
             <div><label className="text-xs font-semibold">Account number</label><input inputMode="numeric" maxLength={10} value={accountNumber} onChange={e => setAccountNumber(e.target.value.replace(/\D/g,"").slice(0,10))} placeholder="10-digit account number" className="mt-1.5 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" /><p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">Account name and account number should be accurate to avoid payment delay.</p></div>
-            <div><label className="text-xs font-semibold">Bank</label><select value={bankName} onChange={e => setBankName(e.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"><option value="">Select your bank</option>{["Access Bank","ALAT by Wema","Citibank Nigeria","Ecobank Nigeria","FCMB","Fidelity Bank","First Bank of Nigeria","Globus Bank","GTBank","Jaiz Bank","Keystone Bank","Kuda","Moniepoint","OPay","PalmPay","Polaris Bank","PremiumTrust Bank","Providus Bank","Stanbic IBTC","Sterling Bank","UBA","Union Bank","Unity Bank","Wema Bank","Zenith Bank"].map(b => <option key={b}>{b}</option>)}</select></div>
+            <div><label className="text-xs font-semibold">Bank</label><div className="relative mt-1.5">
+  <button type="button" onClick={() => setBankOpen(v => !v)} className="flex h-11 w-full items-center gap-3 rounded-xl border border-border bg-background px-3 text-left text-sm shadow-sm hover:bg-secondary/40">
+    {bankName ? (() => { const b = BANK_OPTIONS.find(([name]) => name === bankName); return b ? <BankLogo name={b[0]} slug={b[1]} /> : null; })() : <span className="flex size-8 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">₦</span>}
+    <span className={bankName ? "flex-1 font-medium" : "flex-1 text-muted-foreground"}>{bankName || "Select your bank"}</span>
+    <ChevronDown className={`size-4 text-muted-foreground transition-transform ${bankOpen ? "rotate-180" : ""}`} />
+  </button>
+  {bankOpen ? <div className="absolute left-0 right-0 top-12 z-[70] max-h-72 overflow-auto rounded-2xl border border-border bg-surface p-1.5 shadow-2xl">
+    {BANK_OPTIONS.map(([name, slug]) => <button key={name} type="button" onClick={() => { setBankName(name); setBankOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-secondary">
+      <BankLogo name={name} slug={slug} />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
+      {bankName === name ? <Check className="size-4 text-primary" /> : null}
+    </button>)}
+  </div> : null}
+</div></div>
             <button type="button" onClick={() => void savePayout()} disabled={payoutBusy || !accountName || accountNumber.replace(/\D/g,"").length !== 10 || !bankName} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50">{payoutBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Landmark className="size-3.5" />}{payoutBusy ? "Saving…" : "Save payment details"}</button>
           </div>
         </div> : null}
 
         {studioSection === "promotions" ? <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Promotion centre</p><h2 className="mt-1 font-display text-xl font-semibold">Promotions</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Generate a creator link for an available product and share it with your audience.</p>
+          <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Promotion centre</p><h2 className="mt-1 font-display text-xl font-semibold">Promotions</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Generate a creator link for an available product and share it with your audience.</p></div><button type="button" onClick={() => setPromotionOpen(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[11px] font-semibold text-primary hover:bg-primary/10"><Link2 className="size-3.5" /> Generate link</button></div>
           <div className="mt-5 space-y-2">
             {[{service:"data",label:"Xora Data Plans",courseId:undefined},{service:"course",label:"Published course",courseId:undefined}].slice(0,1).map(() => null)}
             <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-3"><Link2 className="size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Xora Data Plans</p><p className="text-[11px] text-muted-foreground">Available data catalogue</p></div>{(() => { const l=(dashboard?.links||[]).find((x:any)=>x.service==="data"); return l ? <button type="button" onClick={() => void copy(l.path)} className="rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold">Copy link</button> : <button type="button" onClick={() => void createPromotion("data")} disabled={linkBusy==="data"} className="rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground">{linkBusy==="data" ? "Generating…" : "Generate link"}</button>; })()}</div>
@@ -234,6 +276,22 @@ function CreatorStudio() {
         <div className="mt-3 space-y-2">{(dashboard?.courses || []).map((c:any) => <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{c.title}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{c.status} · ₦{Number(c.price || 0).toLocaleString()}</p></div><button type="button" onClick={() => openDeleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="shrink-0 rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[11px] font-semibold text-destructive">{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div>)}{!(dashboard?.courses || []).length ? <p className="py-4 text-center text-xs text-muted-foreground">No courses yet.</p> : null}</div>
       </section> : null}
     </div>
+
+      {promotionOpen ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="promotion-title">
+          <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
+            <div className="flex items-start justify-between gap-3 px-4 py-4">
+              <div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Promotion centre</p><h2 id="promotion-title" className="mt-1 font-display text-lg font-semibold">What do you want to promote?</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Choose one and XoraTV will create your creator link.</p></div>
+              <button type="button" onClick={() => setPromotionOpen(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary" aria-label="Close"><X className="size-4" /></button>
+            </div>
+            <div className="space-y-2 px-4 pb-4">
+              <button type="button" onClick={() => { setPromotionOpen(false); void createOfferPromotion(); }} disabled={linkBusy === "offer"} className="flex w-full items-center gap-3 rounded-xl border border-border bg-background px-3 py-3 text-left hover:bg-secondary disabled:opacity-60"><Gift className="size-4 shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">CPA offers</span><span className="block text-[11px] text-muted-foreground">Promote available XoraTV offer-wall offers.</span></span><span className="text-[10px] font-semibold text-primary">{linkBusy === "offer" ? "Creating…" : "Promote"}</span></button>
+              <button type="button" onClick={() => { setPromotionOpen(false); void createPromotion("data"); }} disabled={linkBusy === "data"} className="flex w-full items-center gap-3 rounded-xl border border-border bg-background px-3 py-3 text-left hover:bg-secondary disabled:opacity-60"><Wallet className="size-4 shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Data sales</span><span className="block text-[11px] text-muted-foreground">Share Xora data plans with your audience.</span></span><span className="text-[10px] font-semibold text-primary">{linkBusy === "data" ? "Creating…" : "Promote"}</span></button>
+              <button type="button" onClick={() => { setPromotionOpen(false); if ((dashboard?.courses || []).filter((x:any) => x.status === "published").length === 1) { const c = (dashboard?.courses || []).find((x:any) => x.status === "published"); if (c) void createPromotion("course", c.id); } else { setStudioSection("promotions"); } }} disabled={!(dashboard?.courses || []).some((x:any) => x.status === "published")} className="flex w-full items-center gap-3 rounded-xl border border-border bg-background px-3 py-3 text-left hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"><BookOpen className="size-4 shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Course sales</span><span className="block text-[11px] text-muted-foreground">{(dashboard?.courses || []).some((x:any) => x.status === "published") ? "Promote one of your published courses." : "Publish a course before promoting it."}</span></span><span className="text-[10px] font-semibold text-primary">Choose</span></button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {deleteTarget ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-course-title">
           <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
