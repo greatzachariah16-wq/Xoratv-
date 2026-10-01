@@ -32,7 +32,7 @@ import {
   getDiscoveryRunsFromRtdb,
   recordDiscoveryRun,
 } from "@/integrations/firebase/rtdb";
-import { rankPostsForUser, getOrCreateSessionId, type RankContext } from "./ranking";
+import { rankPostsForUser, getOrCreateSessionId, getShownPostIds, type RankContext } from "./ranking";
 import { loadUserSignals, trackEvent } from "./events";
 import { SEED_HORROR_MOVIES } from "@/integrations/firebase/movies";
 
