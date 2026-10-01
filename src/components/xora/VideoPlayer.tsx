@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
+import { markPlaybackStartup, recordPlaybackTelemetry, startPlaybackTelemetry } from "@/lib/playback-telemetry";
 
 type Props = {
   mediaPath?: string | null;
@@ -282,6 +283,9 @@ export function NativeVideoPlayer({
 
     if (!src) return;
 
+    const telemetryId = postId || `${title}-${src}`;
+    startPlaybackTelemetry(telemetryId, src);
+
     if (/\.m3u8(?:[?#]|$)/i.test(src)) {
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
@@ -345,7 +349,7 @@ export function NativeVideoPlayer({
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  const handlePlay = () => {
+  const handlePlay = () => {\n    const telemetryId = postId || `${title}-${src || "unknown"}`;\n    markPlaybackStartup(telemetryId);\n    recordPlaybackTelemetry(telemetryId, { playbackSeconds: current });
     setPlaying(true);
     if (!trackedStart.current && postId) {
       trackedStart.current = true;
@@ -391,7 +395,7 @@ export function NativeVideoPlayer({
       recordPlaybackConsumption(now - prev, dataSaver.maxBitrateKbps);
     }
     lastTimeRef.current = now;
-    setCurrent(now);
+    setCurrent(now);\n    const telemetryId = postId || `${title}-${src || "unknown"}`;\n    recordPlaybackTelemetry(telemetryId, { playbackSeconds: now });
     if (video.duration && !trackedComplete.current && postId) {
       if (video.currentTime / video.duration >= 0.85) {
         trackedComplete.current = true;
