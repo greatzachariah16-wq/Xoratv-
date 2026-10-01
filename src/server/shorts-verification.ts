@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import ffmpegPath from "ffmpeg-static";
 import type { PostRecord } from "@/integrations/firebase/types";
 import {
   getAllPosts,
@@ -94,10 +93,6 @@ async function verifyProviderEmbed(url: string): Promise<{ ok: boolean; error?: 
 }
 
 async function verifyNativeMedia(url: string): Promise<{ ok: boolean; error?: string }> {
-  if (!ffmpegPath) {
-    return { ok: false, error: "FFmpeg binary is unavailable" };
-  }
-
   return new Promise((resolve) => {
     const args = [
       "-hide_banner",
@@ -121,7 +116,7 @@ async function verifyNativeMedia(url: string): Promise<{ ok: boolean; error?: st
       "-",
     ];
 
-    const child = spawn(ffmpegPath, args, {
+    const child = spawn("ffmpeg", args, {
       stdio: ["ignore", "ignore", "pipe"],
     });
 
