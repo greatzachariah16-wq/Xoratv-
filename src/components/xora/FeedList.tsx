@@ -11,6 +11,7 @@ import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
 import { DataSaverBadge } from "./DataSaverBadge";
 import { cn } from "@/lib/utils";
+import { rememberShownPostIds } from "@/lib/ranking";
 
 export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?: boolean }) {
   const { user } = useAuth();
@@ -29,6 +30,12 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery(feedInfiniteQuery(feed, user?.id, mode));
+
+  useEffect(() => {
+    if (mode === "for_you" && feed === "home" && allPosts.length > 0) {
+      rememberShownPostIds(feed, allPosts.map((post) => post.id), mode);
+    }
+  }, [allPosts, feed, mode]);
 
   const allPosts = useMemo(() => {
     const raw = data?.pages.flatMap((page) => page) ?? [];
@@ -51,7 +58,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
           fetchNextPage();
         }
       },
-      { rootMargin: "400px" },
+      { rootMargin: "250px" },
     );
 
     observer.observe(sentinel);
