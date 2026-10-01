@@ -208,8 +208,6 @@ function CreatorStudio() {
         <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">Published courses</p><p className="mt-1 text-xl font-semibold">{Number(dashboard?.courses?.length || 0)}</p><p className="mt-1 text-[11px] text-muted-foreground">Your current catalogue</p></div>
         <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">Course + data sales</p><p className="mt-1 text-xl font-semibold">₦{Number(dashboard?.stats?.totalSales || 0).toLocaleString()}</p><p className="mt-1 text-[11px] text-muted-foreground">Recorded sales value</p></div>
         <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">CPA progress</p><p className="mt-1 text-xl font-semibold">{Number(dashboard?.cpa?.approvedConversions || 0)} / {Number(dashboard?.cpa?.minConversions || 200)}</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary" style={{ width: Math.min(100, (Number(dashboard?.cpa?.approvedConversions || 0) / Math.max(1, Number(dashboard?.cpa?.minConversions || 200))) * 100) + "%" }} /></div></div>
-      </section>
-
       </section> : null}
 
       {studioSection === "overview" ? <section className="grid gap-3 lg:grid-cols-[1.2fr_.8fr]">
@@ -228,8 +226,6 @@ function CreatorStudio() {
             <button type="button" onClick={() => setMenuOpen(true)} className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-3 text-sm font-semibold hover:bg-secondary"><span className="flex items-center gap-2"><Landmark className="size-4 text-primary" /> Manage studio</span><span className="text-xs text-muted-foreground">Menu</span></button>
           </div>
         </div>
-      </section>
-
       </section> : null}
 
       {studioSection === "overview" ? <section id="courses" className="scroll-mt-20 rounded-2xl border border-border bg-surface p-5">
