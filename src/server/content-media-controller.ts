@@ -22,6 +22,34 @@ function cloudinaryConfig() {
   return { cloudName, apiKey, apiSecret };
 }
 
+export async function deleteCloudinaryVideo(publicId: string): Promise<void> {
+  const cleanPublicId = String(publicId || "").trim();
+  if (!cleanPublicId) return;
+  const { cloudName, apiSecret } = cloudinaryConfig();
+  const timestamp = Math.round(Date.now() / 1000);
+  const signature = crypto.createHash("sha1")
+    .update(`invalidate=true&public_id=${cleanPublicId}&timestamp=${timestamp}${apiSecret}`)
+    .digest("hex");
+
+  const form = new URLSearchParams();
+  form.set("public_id", cleanPublicId);
+  form.set("timestamp", String(timestamp));
+  form.set("invalidate", "true");
+  form.set("api_key", cloudinaryConfig().apiKey);
+  form.set("signature", signature);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/destroy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
+    signal: AbortSignal.timeout(30000),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || (body?.result && !["ok", "not found"].includes(String(body.result)))) {
+    throw new Error(body?.error?.message || `Cloudinary video deletion failed (${response.status}).`);
+  }
+}
+
 async function runFfmpeg(input: string, output: string) {
   if (!ffmpegPath) throw new Error("FFmpeg binary is unavailable on this server.");
   await new Promise<void>((resolve, reject) => {
