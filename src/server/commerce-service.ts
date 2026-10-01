@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
 import { debitWallet, creditWallet, getWallet } from "./wallet-service";
 import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
+import { deleteXoraContent, getXoraContent } from "./content-repository";
+import { deleteCloudinaryVideo } from "./content-media-controller";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
 
@@ -1099,34 +1101,45 @@ export async function getPublishedCourses(): Promise<Course[]> {
   return (await getCreatorCourses()).filter((c) => c.status === "published");
 }
 
-export async function deleteCreatorCourse(courseId: string, creatorId: string): Promise<{ id: string; status: "archived" }> {
+export async function deleteCreatorCourse(courseId: string, creatorId: string): Promise<{ id: string; status: "deleted"; promotionLinksRemoved: number; mediaDeleted: boolean }> {
   const course = await queryRtdb(`commerce/courses/${courseId}`) as Course | null;
   if (!course) throw new Error("Course not found.");
   if (course.creatorId !== creatorId) throw new Error("You can only delete your own courses.");
-  if (course.status === "archived") return { id: course.id, status: "archived" };
 
-  // Keep the course record as an archived tombstone so historical purchases,
-  // commissions and promotion attribution are not broken by a hard delete.
+  const content = await getXoraContent(courseId);
   const now = new Date().toISOString();
-  await queryRtdb(`commerce/courses/${courseId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "archived", updatedAt: now }),
-  });
 
-  // Disable promotion links for the deleted course so an old shared link
-  // cannot continue sending customers to an unavailable product.
+  // Remove the public promotion links completely, rather than leaving dead links behind.
   const links = await readPromotionLinks();
-  const matching = links.filter((link) => link.creatorId === creatorId && link.service === "course" && link.courseId === courseId);
+  const matching = links.filter((link) =>
+    link.creatorId === creatorId && link.service === "course" && link.courseId === courseId
+  );
   if (matching.length) {
-    await writePromotionLinks(links.map((link) =>
-      matching.some((item) => item.token === link.token)
-        ? { ...link, status: "disabled", updatedAt: now }
-        : link,
-    ));
+    const tokens = new Set(matching.map((link) => link.token));
+    const remaining = links.filter((link) => !tokens.has(link.token));
+    await writePromotionLinks(remaining);
   }
 
-  return { id: course.id, status: "archived" };
+  // Delete the course record from Firebase.
+  await queryRtdb(`commerce/courses/${courseId}`, { method: "DELETE" });
+
+  // Remove the corresponding content metadata from MongoDB and Supabase.
+  await deleteXoraContent(courseId);
+
+  // Delete the actual course video from Cloudinary so storage is released.
+  let mediaDeleted = true;
+  if (content?.cloudinaryPublicId) {
+    await deleteCloudinaryVideo(content.cloudinaryPublicId);
+  } else if (course.videoUrl) {
+    mediaDeleted = false;
+  }
+
+  return {
+    id: course.id,
+    status: "deleted",
+    promotionLinksRemoved: matching.length,
+    mediaDeleted,
+  };
 }
 
 export async function saveCourse(params: {
