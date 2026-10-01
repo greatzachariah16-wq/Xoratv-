@@ -1107,32 +1107,30 @@ export async function deleteCreatorCourse(courseId: string, creatorId: string): 
   if (course.creatorId !== creatorId) throw new Error("You can only delete your own courses.");
 
   const content = await getXoraContent(courseId);
-  const now = new Date().toISOString();
-
-  // Remove the public promotion links completely, rather than leaving dead links behind.
-  const links = await readPromotionLinks();
-  const matching = links.filter((link) =>
-    link.creatorId === creatorId && link.service === "course" && link.courseId === courseId
-  );
-  if (matching.length) {
-    const tokens = new Set(matching.map((link) => link.token));
-    const remaining = links.filter((link) => !tokens.has(link.token));
-    await writePromotionLinks(remaining);
-  }
-
-  // Delete the course record from Firebase.
-  await queryRtdb(`commerce/courses/${courseId}`, { method: "DELETE" });
-
-  // Remove the corresponding content metadata from MongoDB and Supabase.
-  await deleteXoraContent(courseId);
-
-  // Delete the actual course video from Cloudinary so storage is released.
   let mediaDeleted = true;
+
+  // Delete the actual course video first. If this fails, keep the records intact so the
+  // operation can be retried instead of leaving a half-deleted course behind.
   if (content?.cloudinaryPublicId) {
     await deleteCloudinaryVideo(content.cloudinaryPublicId);
   } else if (course.videoUrl) {
     mediaDeleted = false;
   }
+
+  const links = await readPromotionLinks();
+  const matching = links.filter((link) =>
+    link.creatorId === creatorId && link.service === "course" && link.courseId === courseId
+  );
+
+  // Remove the course and its promotion links completely.
+  await queryRtdb(`commerce/courses/${courseId}`, { method: "DELETE" });
+  if (matching.length) {
+    const tokens = new Set(matching.map((link) => link.token));
+    await writePromotionLinks(links.filter((link) => !tokens.has(link.token)));
+  }
+
+  // Remove the course metadata from both MongoDB and Supabase.
+  await deleteXoraContent(courseId);
 
   return {
     id: course.id,
