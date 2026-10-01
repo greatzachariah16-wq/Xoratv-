@@ -132,6 +132,41 @@ export async function registerCloudinaryVideo(input: {
   });
 }
 
+export async function getXoraContent(id: string): Promise<XoraContentRecord | null> {
+  requireConfig();
+  const mongo = await getMongoDb();
+  const record = await mongo.collection<XoraContentRecord>("videos").findOne({ id });
+  if (record) return record;
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/xora_content?id=eq.${encodeURIComponent(id)}&limit=1`, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "x-xora-content-secret": CONTENT_SECRET,
+    },
+  });
+  if (!response.ok) return null;
+  const rows = await response.json().catch(() => []);
+  return Array.isArray(rows) && rows[0] ? {
+    id: rows[0].id,
+    firebaseId: rows[0].firebase_id,
+    contentType: rows[0].content_type,
+    creatorId: rows[0].creator_id,
+    title: rows[0].title,
+    description: rows[0].description,
+    cloudinaryPublicId: rows[0].cloudinary_public_id,
+    cloudinaryUrl: rows[0].cloudinary_url,
+    thumbnailUrl: rows[0].thumbnail_url,
+    durationSeconds: rows[0].duration_seconds,
+    originalBytes: rows[0].original_bytes,
+    compressedBytes: rows[0].compressed_bytes,
+    status: rows[0].status,
+    metadata: rows[0].metadata || {},
+    createdAt: rows[0].created_at,
+    updatedAt: rows[0].updated_at,
+  } : null;
+}
+
 export async function deleteXoraContent(id: string): Promise<void> {
   requireConfig();
   const mongo = await getMongoDb();
