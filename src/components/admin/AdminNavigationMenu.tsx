@@ -406,7 +406,7 @@ export function AdminNavigationMenu({
                       const isActive = activeSectionId === item.id;
 
                       return (
-                        {item.href ? (
+                        item.href ? (
                           <Link
                             key={item.id}
                             to={item.href as any}
