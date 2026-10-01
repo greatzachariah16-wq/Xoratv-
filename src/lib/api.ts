@@ -301,7 +301,7 @@ export function feedInfiniteQuery(
   feed: FeedType,
   userId?: string | null,
   mode: "for_you" | "following" = "for_you",
-  pageSize: number = 10,
+  pageSize: number = 6,
 ) {
   return infiniteQueryOptions({
     queryKey: ["feed-infinite", feed, userId || "guest", mode],
