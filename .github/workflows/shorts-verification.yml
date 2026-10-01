@@ -1,0 +1,22 @@
+name: XoraTV Shorts Verification
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+jobs:
+  verify-shorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run backend Shorts verification
+        env:
+          VERIFICATION_SECRET: ${{ secrets.SHORTS_VERIFICATION_SECRET }}
+        run: |
+          test -n "$VERIFICATION_SECRET"
+          curl --fail-with-body --silent --show-error \
+            --max-time 300 \
+            -X POST \
+            -H "x-shorts-verification-secret: $VERIFICATION_SECRET" \
+            https://xoratv-x.onrender.com/api/internal/shorts-verification/run
