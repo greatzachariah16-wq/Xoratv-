@@ -35,6 +35,12 @@ import { Route as AdminTrackerRouteImport } from './routes/admin.tracker'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminXseriesRouteImport } from './routes/admin.xseries'
 import { Route as AdminXserisRouteImport } from './routes/admin.xseris'
+import { Route as AdminCommerceCreatorReferenceRouteImport } from './routes/admin.commerce.creator-reference'
+import { Route as AdminCommercePricingRouteImport } from './routes/admin.commerce.pricing'
+import { Route as AdminCommerceTestDataRouteImport } from './routes/admin.commerce.test-data'
+import { Route as AdminCommerceCpaRouteImport } from './routes/admin.commerce.cpa'
+import { Route as AdminCommerceDiscountsRouteImport } from './routes/admin.commerce.discounts'
+import { Route as AdminCampaignsManageRouteImport } from './routes/admin.campaigns.manage'
 import { Route as ChatRoomIdRouteImport } from './routes/chat.$roomId'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as VideoPostIdRouteImport } from './routes/video.$postId'
@@ -169,6 +175,36 @@ const AdminXserisRoute = AdminXserisRouteImport.update({
   path: '/xseris',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCommerceCreatorReferenceRoute = AdminCommerceCreatorReferenceRouteImport.update({
+  id: '/admin/commerce/creator-reference',
+  path: '/creator-reference',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommercePricingRoute = AdminCommercePricingRouteImport.update({
+  id: '/admin/commerce/pricing',
+  path: '/pricing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommerceTestDataRoute = AdminCommerceTestDataRouteImport.update({
+  id: '/admin/commerce/test-data',
+  path: '/test-data',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommerceCpaRoute = AdminCommerceCpaRouteImport.update({
+  id: '/admin/commerce/cpa',
+  path: '/cpa',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommerceDiscountsRoute = AdminCommerceDiscountsRouteImport.update({
+  id: '/admin/commerce/discounts',
+  path: '/discounts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCampaignsManageRoute = AdminCampaignsManageRouteImport.update({
+  id: '/admin/campaigns/manage',
+  path: '/manage',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ChatRoomIdRoute = ChatRoomIdRouteImport.update({
   id: '/$roomId',
   path: '/$roomId',
@@ -212,6 +248,12 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
+  '/admin/commerce/creator-reference': typeof AdminCommerceCreatorReferenceRoute
+  '/admin/commerce/pricing': typeof AdminCommercePricingRoute
+  '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
+  '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
+  '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
   '/video/$postId': typeof VideoPostIdRoute
@@ -580,6 +622,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminXserisRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/commerce/creator-reference': {
+      id: '/admin/commerce/creator-reference'
+      path: '/creator-reference'
+      fullPath: '/admin/commerce/creator-reference'
+      preLoaderRoute: typeof AdminCommerceCreatorReferenceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/commerce/pricing': {
+      id: '/admin/commerce/pricing'
+      path: '/pricing'
+      fullPath: '/admin/commerce/pricing'
+      preLoaderRoute: typeof AdminCommercePricingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/commerce/test-data': {
+      id: '/admin/commerce/test-data'
+      path: '/test-data'
+      fullPath: '/admin/commerce/test-data'
+      preLoaderRoute: typeof AdminCommerceTestDataRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/commerce/cpa': {
+      id: '/admin/commerce/cpa'
+      path: '/cpa'
+      fullPath: '/admin/commerce/cpa'
+      preLoaderRoute: typeof AdminCommerceCpaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/commerce/discounts': {
+      id: '/admin/commerce/discounts'
+      path: '/discounts'
+      fullPath: '/admin/commerce/discounts'
+      preLoaderRoute: typeof AdminCommerceDiscountsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/campaigns/manage': {
+      id: '/admin/campaigns/manage'
+      path: '/manage'
+      fullPath: '/admin/campaigns/manage'
+      preLoaderRoute: typeof AdminCampaignsManageRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/chat/$roomId': {
       id: '/chat/$roomId'
       path: '/$roomId'
@@ -605,6 +689,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
+  AdminCommercePricingRoute: typeof AdminCommercePricingRoute
+  AdminCommerceTestDataRoute: typeof AdminCommerceTestDataRoute
+  AdminCommerceCpaRoute: typeof AdminCommerceCpaRoute
+  AdminCommerceDiscountsRoute: typeof AdminCommerceDiscountsRoute
+  AdminCampaignsManageRoute: typeof AdminCampaignsManageRoute
   AdminCampaignsRoute: typeof AdminCampaignsRoute
   AdminDiscoveryRoute: typeof AdminDiscoveryRoute
   AdminFraudRoute: typeof AdminFraudRoute
@@ -618,6 +708,12 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute
+  AdminCommercePricingRoute: AdminCommercePricingRoute
+  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute
+  AdminCommerceCpaRoute: AdminCommerceCpaRoute
+  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute
+  AdminCampaignsManageRoute: AdminCampaignsManageRoute
   AdminCampaignsRoute: AdminCampaignsRoute,
   AdminDiscoveryRoute: AdminDiscoveryRoute,
   AdminFraudRoute: AdminFraudRoute,
