@@ -192,7 +192,11 @@ export async function fetchRankedFeed(
   }
 
   if (rawPosts.length === 0) {
-    rawPosts = localPosts.filter((p) => p.feed === feed);
+    rawPosts = localPosts.filter(
+      (p) =>
+        p.feed === feed &&
+        (feed !== "shorts" || p.playability_status === "playable"),
+    );
     // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
     if (isFirebaseConfigured() && rawPosts.length > 0) {
       rawPosts.forEach((post) => {
