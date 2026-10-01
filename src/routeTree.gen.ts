@@ -285,6 +285,12 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
+  '/admin/commerce/creator-reference': typeof AdminCommerceCreatorReferenceRoute
+  '/admin/commerce/pricing': typeof AdminCommercePricingRoute
+  '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
+  '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
+  '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
   '/video/$postId': typeof VideoPostIdRoute
@@ -350,6 +356,12 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/xseries'
     | '/admin/xseris'
+    | '/admin/commerce/creator-reference'
+    | '/admin/commerce/pricing'
+    | '/admin/commerce/test-data'
+    | '/admin/commerce/cpa'
+    | '/admin/commerce/discounts'
+    | '/admin/campaigns/manage'
     | '/chat/$roomId'
     | '/profile/$username'
     | '/video/$postId'
