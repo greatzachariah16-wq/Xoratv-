@@ -18,6 +18,7 @@ function CreatorStudio() {
   const [deleteBusy, setDeleteBusy] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [bankName, setBankName] = useState("");
@@ -143,7 +144,22 @@ function CreatorStudio() {
 
   return <AppShell wide>
     <div className="min-w-0 space-y-5 sm:space-y-6">
-      <header className="relative overflow-hidden rounded-[32px] border border-border bg-surface p-5 shadow-card sm:p-7">
+      <header className="relative overflow-hidden rounded-[26px] border border-border bg-surface p-5 shadow-card sm:p-6">
+        <div className="mb-4 flex items-center justify-between border-b border-border/70 pb-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Creator workspace</span>
+          <div className="relative">
+            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Open Creator Studio menu" aria-expanded={menuOpen} className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-background hover:bg-secondary">
+              <span className="sr-only">Menu</span><span className="space-y-1"><span className="block h-px w-4 bg-foreground" /><span className="block h-px w-4 bg-foreground" /><span className="block h-px w-4 bg-foreground" /></span>
+            </button>
+            {menuOpen ? <div className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-2xl border border-border bg-surface p-1.5 shadow-xl">
+              <Link to="/learn?create=1" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Plus className="size-4 text-primary" /> Create course</Link>
+              <a href="#courses" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><BookOpen className="size-4 text-primary" /> My courses</a>
+              <a href="#promotions" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Link2 className="size-4 text-primary" /> Promotions</a>
+              <a href="#payouts" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Landmark className="size-4 text-primary" /> Payment details</a>
+              <a href="#commissions" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Gift className="size-4 text-primary" /> Commissions</a>
+            </div> : null}
+          </div>
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Creator Studio</p><h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your audience. Your storefront.</h1><p className="mt-2 text-sm text-muted-foreground">Manage courses, Xora data promotions, commissions and payouts from one place.</p></div><div className="rounded-2xl bg-primary/10 px-4 py-3 text-right"><p className="text-xs text-muted-foreground">Available balance</p><p className="text-2xl font-semibold">₦{Number(dashboard?.stats?.balance || 0).toLocaleString()}</p></div></div>
       </header>
 
@@ -151,7 +167,7 @@ function CreatorStudio() {
         {[[BarChart3,"Total sales",dashboard?.stats?.totalSales||0],[Smartphone,"Data sales",dashboard?.stats?.dataSales||0],[Wallet,"Commission",dashboard?.stats?.commission||0],[BookOpen,"Courses",dashboard?.courses?.length||0]].map(([Icon,label,value])=><div key={String(label)} className="rounded-[22px] border border-border bg-surface p-4 transition-transform hover:-translate-y-0.5"><Icon className="size-5 text-primary"/><p className="mt-4 text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{label === "Courses" ? value : "₦" + Number(value).toLocaleString()}</p></div>)}
       </section>
 
-      <section className="rounded-[28px] border border-border bg-surface p-5 shadow-card sm:p-6">
+      <section id="promotions" className="scroll-mt-5 rounded-[28px] border border-border bg-surface p-5 shadow-card sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h2 className="font-display text-xl font-semibold">Promotion links</h2><p className="mt-1 text-sm text-muted-foreground">Generate private-looking share links for data or individual courses. The link itself does not expose your creator ID.</p></div>
           <Link2 className="size-5 text-primary"/>
@@ -187,7 +203,7 @@ function CreatorStudio() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-border bg-surface p-5">
+      <section id="commissions" className="scroll-mt-5 rounded-3xl border border-border bg-surface p-5">
         <div className="flex items-center gap-2"><Gift className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Offer Wall commissions</h2></div>
         <p className="mt-1 text-sm text-muted-foreground">Separate from data and course sales. You earn 35% of CPAGrip's actual payout on approved referred conversions.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -198,8 +214,8 @@ function CreatorStudio() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-display text-xl font-semibold">Your courses</h2><p className="mt-1 text-sm text-muted-foreground">Set your own course price when you publish.</p></div><Link to="/learn" className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"><Plus className="size-3.5"/> Open Learn</Link></div><div className="mt-4 space-y-3">{(dashboard?.courses||[]).map((c:any)=><div key={c.id} className="rounded-2xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="font-semibold">{c.title}</span><p className="mt-1 text-xs text-muted-foreground">{c.status}</p></div><div className="flex shrink-0 items-center gap-2"><span className="font-semibold">₦{Number(c.price||0).toLocaleString()}</span><button type="button" onClick={() => openDeleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Trash2 className="size-3.5"/>{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div></div></div>)}{!(dashboard?.courses||[]).length?<p className="text-sm text-muted-foreground">No courses yet.</p>:null}</div></div>
-        <div className="rounded-3xl border border-border bg-surface p-5"><div className="flex items-center gap-2"><Landmark className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Payout details</h2></div><p className="mt-1 text-sm text-muted-foreground">Bank transfer is supported. No bank list is hardcoded; enter the supported bank name when you are ready.</p><div className="mt-4 space-y-3"><input value={accountName} onChange={e=>setAccountName(e.target.value)} placeholder="Account name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={accountNumber} onChange={e=>setAccountNumber(e.target.value)} inputMode="numeric" placeholder="Account number" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={bankName} onChange={e=>setBankName(e.target.value)} placeholder="Bank name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><button onClick={()=>void savePayout()} disabled={payoutBusy || !accountName || !accountNumber || !bankName} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{payoutBusy?<Loader2 className="size-4 animate-spin"/>:<Landmark className="size-4"/>}Save payout details</button></div></div>
+        <div id="courses" className="scroll-mt-5 rounded-3xl border border-border bg-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-display text-xl font-semibold">Your courses</h2><p className="mt-1 text-sm text-muted-foreground">Set your own course price when you publish.</p></div><Link to="/learn?create=1" className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-secondary"><Plus className="size-3.5"/> Create</Link></div><div className="mt-4 space-y-3">{(dashboard?.courses||[]).map((c:any)=><div key={c.id} className="rounded-2xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="font-semibold">{c.title}</span><p className="mt-1 text-xs text-muted-foreground">{c.status}</p></div><div className="flex shrink-0 items-center gap-2"><span className="font-semibold">₦{Number(c.price||0).toLocaleString()}</span><button type="button" onClick={() => openDeleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Trash2 className="size-3.5"/>{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div></div></div>)}{!(dashboard?.courses||[]).length?<p className="text-sm text-muted-foreground">No courses yet.</p>:null}</div></div>
+        <div id="payouts" className="scroll-mt-5 rounded-3xl border border-border bg-surface p-5"><div className="flex items-center gap-2"><Landmark className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Payout details</h2></div><p className="mt-1 text-sm text-muted-foreground">Bank transfer is supported. No bank list is hardcoded; enter the supported bank name when you are ready.</p><div className="mt-4 space-y-3"><input value={accountName} onChange={e=>setAccountName(e.target.value)} placeholder="Account name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={accountNumber} onChange={e=>setAccountNumber(e.target.value)} inputMode="numeric" placeholder="Account number" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={bankName} onChange={e=>setBankName(e.target.value)} placeholder="Bank name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><button onClick={()=>void savePayout()} disabled={payoutBusy || !accountName || !accountNumber || !bankName} className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary disabled:opacity-50">{payoutBusy?<Loader2 className="size-4 animate-spin"/>:<Landmark className="size-4"/>}Save payout details</button></div></div>
       </section>
     </div>
       {deleteTarget ? (
