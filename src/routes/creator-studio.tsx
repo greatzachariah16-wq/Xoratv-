@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2, Gift, X, AlertTriangle } from "lucide-react";
+import { BarChart3, BookOpen, Copy, Link2, Plus, Wallet, Landmark, Smartphone, Loader2, Trash2, Gift, X, AlertTriangle, Menu } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
@@ -143,79 +143,56 @@ function CreatorStudio() {
   if (isPending) return <AppShell><div className="p-8 text-sm text-muted-foreground">Loading your studio…</div></AppShell>;
 
   return <AppShell wide>
-    <div className="min-w-0 space-y-5 sm:space-y-6">
-      <header className="relative overflow-hidden rounded-[26px] border border-border bg-surface p-5 shadow-card sm:p-6">
-        <div className="mb-4 flex items-center justify-between border-b border-border/70 pb-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Creator workspace</span>
-          <div className="relative">
-            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Open Creator Studio menu" aria-expanded={menuOpen} className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-background hover:bg-secondary">
-              <span className="sr-only">Menu</span><span className="space-y-1"><span className="block h-px w-4 bg-foreground" /><span className="block h-px w-4 bg-foreground" /><span className="block h-px w-4 bg-foreground" /></span>
+    <div className="min-w-0 space-y-4">
+      <header className="sticky top-2 z-40 rounded-2xl border border-border bg-surface/95 p-3 shadow-card backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Creator Studio</p>
+            <h1 className="truncate font-display text-xl font-semibold">Good to see you, {creator?.displayName || profile?.display_name || "Creator"}</h1>
+          </div>
+          <div className="relative shrink-0">
+            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Open Creator Studio menu" aria-expanded={menuOpen} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold shadow-sm hover:bg-secondary">
+              <Menu className="size-4" /><span>Menu</span>
             </button>
-            {menuOpen ? <div className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-2xl border border-border bg-surface p-1.5 shadow-xl">
-              <Link to="/learn?create=1" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Plus className="size-4 text-primary" /> Create course</Link>
-              <a href="#courses" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><BookOpen className="size-4 text-primary" /> My courses</a>
-              <a href="#promotions" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Link2 className="size-4 text-primary" /> Promotions</a>
-              <a href="#payouts" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Landmark className="size-4 text-primary" /> Payment details</a>
-              <a href="#commissions" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><Gift className="size-4 text-primary" /> Commissions</a>
+            {menuOpen ? <div className="absolute right-0 top-12 z-[60] w-60 rounded-2xl border border-border bg-surface p-1.5 shadow-2xl">
+              <Link to="/learn?create=1" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><Plus className="size-4 text-primary" /> Create course</Link>
+              <a href="#courses" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><BookOpen className="size-4 text-primary" /> My courses</a>
+              <a href="#promotions" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><Link2 className="size-4 text-primary" /> Promotions</a>
+              <a href="#payouts" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><Landmark className="size-4 text-primary" /> Payment details</a>
+              <a href="#commissions" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><Gift className="size-4 text-primary" /> Commissions</a>
             </div> : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Creator Studio</p><h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your audience. Your storefront.</h1><p className="mt-2 text-sm text-muted-foreground">Manage courses, Xora data promotions, commissions and payouts from one place.</p></div><div className="rounded-2xl bg-primary/10 px-4 py-3 text-right"><p className="text-xs text-muted-foreground">Available balance</p><p className="text-2xl font-semibold">₦{Number(dashboard?.stats?.balance || 0).toLocaleString()}</p></div></div>
       </header>
 
-      <section className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[[BarChart3,"Total sales",dashboard?.stats?.totalSales||0],[Smartphone,"Data sales",dashboard?.stats?.dataSales||0],[Wallet,"Commission",dashboard?.stats?.commission||0],[BookOpen,"Courses",dashboard?.courses?.length||0]].map(([Icon,label,value])=><div key={String(label)} className="rounded-[22px] border border-border bg-surface p-4 transition-transform hover:-translate-y-0.5"><Icon className="size-5 text-primary"/><p className="mt-4 text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{label === "Courses" ? value : "₦" + Number(value).toLocaleString()}</p></div>)}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">Available balance</p><p className="mt-1 text-xl font-semibold">₦{Number(dashboard?.stats?.balance || 0).toLocaleString()}</p><p className="mt-1 text-[11px] text-muted-foreground">Ready for eligible payout</p></div>
+        <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">Published courses</p><p className="mt-1 text-xl font-semibold">{Number(dashboard?.courses?.length || 0)}</p><p className="mt-1 text-[11px] text-muted-foreground">Your current catalogue</p></div>
+        <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">Course + data sales</p><p className="mt-1 text-xl font-semibold">₦{Number(dashboard?.stats?.totalSales || 0).toLocaleString()}</p><p className="mt-1 text-[11px] text-muted-foreground">Recorded sales value</p></div>
+        <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-xs text-muted-foreground">CPA progress</p><p className="mt-1 text-xl font-semibold">{Number(dashboard?.cpa?.approvedConversions || 0)} / {Number(dashboard?.cpa?.minConversions || 200)}</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary" style={{ width: Math.min(100, (Number(dashboard?.cpa?.approvedConversions || 0) / Math.max(1, Number(dashboard?.cpa?.minConversions || 200))) * 100) + "%" }} /></div></div>
       </section>
 
-      <section id="promotions" className="scroll-mt-5 rounded-[28px] border border-border bg-surface p-5 shadow-card sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h2 className="font-display text-xl font-semibold">Promotion links</h2><p className="mt-1 text-sm text-muted-foreground">Generate private-looking share links for data or individual courses. The link itself does not expose your creator ID.</p></div>
-          <Link2 className="size-5 text-primary"/>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-border bg-background p-4"><p className="text-sm font-semibold">Promote Xora Offers</p><p className="mt-1 text-xs text-muted-foreground">Share an opaque Offer Wall link and earn 35% of the CPAGrip payout on approved referred conversions.</p><button onClick={() => void createOfferPromotion()} disabled={Boolean(linkBusy)} className="mt-3 inline-flex rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">{linkBusy === "offer" ? "Generating…" : "Generate Offer Wall link"}</button></div>
-          <button onClick={() => void createPromotion("data")} disabled={Boolean(linkBusy)} className="rounded-2xl border border-border bg-background p-4 text-left hover:bg-secondary disabled:opacity-50">
-            <p className="text-sm font-semibold">Promote Xora Data</p>
-            <p className="mt-1 text-xs text-muted-foreground">Create a unique opaque link to the data marketplace.</p>
-            <span className="mt-3 inline-flex rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">{linkBusy === "data" ? "Generating…" : "Generate link"}</span>
-          </button>
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <p className="text-sm font-semibold">Promote a course</p>
-            <p className="mt-1 text-xs text-muted-foreground">Each course gets its own share link.</p>
-            <div className="mt-3 space-y-2">
-              {(dashboard?.courses || []).map((course:any) => {
-                const key = "course:" + course.id;
-                return <button key={course.id} onClick={() => void createPromotion("course", course.id)} disabled={Boolean(linkBusy)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left text-xs hover:bg-secondary disabled:opacity-50"><span className="truncate font-semibold">{course.title}</span><span className="shrink-0 text-primary">{linkBusy === key ? "Generating…" : "Generate"}</span></button>;
-              })}
-              {!(dashboard?.courses || []).length ? <p className="text-xs text-muted-foreground">Publish a course first.</p> : null}
-            </div>
+      <section className="grid gap-3 lg:grid-cols-[1.2fr_.8fr]">
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Creator progress</p><h2 className="mt-1 font-display text-lg font-semibold">Your studio at a glance</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Only live account activity is shown here. Detailed records stay inside the menu.</p></div><BarChart3 className="size-5 text-primary" /></div>
+          <div className="mt-5 grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-background">
+            <div className="p-3"><p className="text-[10px] text-muted-foreground">Sales</p><p className="mt-1 text-base font-semibold">₦{Number(dashboard?.stats?.totalSales || 0).toLocaleString()}</p></div>
+            <div className="p-3"><p className="text-[10px] text-muted-foreground">Commission</p><p className="mt-1 text-base font-semibold">₦{Number(dashboard?.stats?.commission || 0).toLocaleString()}</p></div>
+            <div className="p-3"><p className="text-[10px] text-muted-foreground">Courses</p><p className="mt-1 text-base font-semibold">{Number(dashboard?.courses?.length || 0)}</p></div>
           </div>
         </div>
-        <div className="mt-4 space-y-3">
-          {(dashboard?.links || []).map((link:any) => <div key={link.token} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-background p-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">{link.label}</p>
-              <p className="mt-1 truncate text-xs text-muted-foreground">{window.location.origin + link.path}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{link.service === "data" ? "Data promotion" : link.service === "offer" ? "Offer Wall promotion" : "Course promotion"} · {Number(link.clicks || 0).toLocaleString()} clicks</p>
-            </div>
-            <button onClick={() => void copy(link.path)} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Copy className="size-3.5"/> Copy</button>
-          </div>)}
-          {!(dashboard?.links || []).length ? <p className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">No promotion links yet. Generate one above to start sharing.</p> : null}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Quick actions</p>
+          <div className="mt-3 space-y-2">
+            <Link to="/learn?create=1" className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-3 text-sm font-semibold hover:bg-secondary"><span className="flex items-center gap-2"><Plus className="size-4 text-primary" /> Create course</span><span className="text-xs text-muted-foreground">Open</span></Link>
+            <button type="button" onClick={() => setMenuOpen(true)} className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-3 text-sm font-semibold hover:bg-secondary"><span className="flex items-center gap-2"><Landmark className="size-4 text-primary" /> Manage studio</span><span className="text-xs text-muted-foreground">Menu</span></button>
+          </div>
         </div>
       </section>
 
-      <section id="commissions" className="scroll-mt-5 rounded-3xl border border-border bg-surface p-5">
-        <div className="flex items-center gap-2"><Gift className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Offer Wall commissions</h2></div>
-        <p className="mt-1 text-sm text-muted-foreground">Separate from data and course sales. You earn 35% of CPAGrip's actual payout on approved referred conversions.</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">Approved conversions</p><p className="mt-1 text-2xl font-semibold">{Number(dashboard?.cpa?.approvedConversions || 0).toLocaleString()}</p><p className="mt-1 text-[11px] text-muted-foreground">Minimum {Number(dashboard?.cpa?.minConversions || 200).toLocaleString()} to qualify</p></div>
-          <div className="rounded-2xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">Pending CPA commission</p><p className="mt-1 text-2xl font-semibold">${Number(dashboard?.cpa?.pendingCommission || 0).toFixed(2)}</p></div>
-          <div className="rounded-2xl border border-border bg-background p-4"><p className="text-xs text-muted-foreground">Payable after settlement</p><p className="mt-1 text-2xl font-semibold">${Number(dashboard?.cpa?.payableCommission || 0).toFixed(2)}</p><p className="mt-1 text-[11px] text-muted-foreground">{dashboard?.cpa?.payoutEligible ? "Eligible for payout" : "Waiting for conversion threshold and settlement"}</p></div>
-        </div>
-      </section>
-
-      <section className="grid gap-5 lg:grid-cols-2">
-        <div id="courses" className="scroll-mt-5 rounded-3xl border border-border bg-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-display text-xl font-semibold">Your courses</h2><p className="mt-1 text-sm text-muted-foreground">Set your own course price when you publish.</p></div><Link to="/learn?create=1" className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-secondary"><Plus className="size-3.5"/> Create</Link></div><div className="mt-4 space-y-3">{(dashboard?.courses||[]).map((c:any)=><div key={c.id} className="rounded-2xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="font-semibold">{c.title}</span><p className="mt-1 text-xs text-muted-foreground">{c.status}</p></div><div className="flex shrink-0 items-center gap-2"><span className="font-semibold">₦{Number(c.price||0).toLocaleString()}</span><button type="button" onClick={() => openDeleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Trash2 className="size-3.5"/>{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div></div></div>)}{!(dashboard?.courses||[]).length?<p className="text-sm text-muted-foreground">No courses yet.</p>:null}</div></div>
-        <div id="payouts" className="scroll-mt-5 rounded-3xl border border-border bg-surface p-5"><div className="flex items-center gap-2"><Landmark className="size-5 text-primary"/><h2 className="font-display text-xl font-semibold">Payout details</h2></div><p className="mt-1 text-sm text-muted-foreground">Bank transfer is supported. No bank list is hardcoded; enter the supported bank name when you are ready.</p><div className="mt-4 space-y-3"><input value={accountName} onChange={e=>setAccountName(e.target.value)} placeholder="Account name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={accountNumber} onChange={e=>setAccountNumber(e.target.value)} inputMode="numeric" placeholder="Account number" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><input value={bankName} onChange={e=>setBankName(e.target.value)} placeholder="Bank name" className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm"/><button onClick={()=>void savePayout()} disabled={payoutBusy || !accountName || !accountNumber || !bankName} className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary disabled:opacity-50">{payoutBusy?<Loader2 className="size-4 animate-spin"/>:<Landmark className="size-4"/>}Save payout details</button></div></div>
+      <section id="courses" className="scroll-mt-20 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">Your courses</h2><p className="mt-1 text-xs text-muted-foreground">Manage published courses from one compact list.</p></div><Link to="/learn?create=1" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-secondary"><Plus className="size-3.5" /> Create</Link></div>
+        <div className="mt-3 space-y-2">{(dashboard?.courses || []).map((c:any) => <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{c.title}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{c.status} · ₦{Number(c.price || 0).toLocaleString()}</p></div><button type="button" onClick={() => openDeleteCourse(c.id, c.title)} disabled={deleteBusy === c.id} className="shrink-0 rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[11px] font-semibold text-destructive">{deleteBusy === c.id ? "Deleting…" : "Delete"}</button></div>)}{!(dashboard?.courses || []).length ? <p className="py-4 text-center text-xs text-muted-foreground">No courses yet.</p> : null}</div>
       </section>
     </div>
       {deleteTarget ? (
