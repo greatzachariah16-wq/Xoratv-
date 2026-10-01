@@ -36,15 +36,31 @@ function requireConfig() {
 
 async function getMongoDb() {
   requireConfig();
-  if (!mongoClient) {
-    mongoClient = new MongoClient(MONGO_URI, { maxPoolSize: 10 });
+  if (mongoClient && mongoDb) return mongoDb;
+
+  // A failed Atlas connection must not leave a half-initialized MongoClient in
+  // memory. Render instances can retry after a transient TLS handshake failure.
+  mongoClient = new MongoClient(MONGO_URI, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 30000,
+  });
+
+  try {
     await mongoClient.connect();
     mongoDb = mongoClient.db("xoratv");
     await mongoDb.collection<XoraContentRecord>("videos").createIndex({ id: 1 }, { unique: true });
     await mongoDb.collection<XoraContentRecord>("videos").createIndex({ creatorId: 1, contentType: 1 });
     await mongoDb.collection<XoraContentRecord>("videos").createIndex({ cloudinaryPublicId: 1 }, { sparse: true });
+    return mongoDb;
+  } catch (error) {
+    await mongoClient.close().catch(() => undefined);
+    mongoClient = null;
+    mongoDb = null;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error("MongoDB content database connection failed: " + message);
   }
-  return mongoDb;
 }
 
 async function supabaseUpsert(record: XoraContentRecord) {
@@ -169,24 +185,41 @@ export async function getXoraContent(id: string): Promise<XoraContentRecord | nu
 
 export async function deleteXoraContent(id: string): Promise<void> {
   requireConfig();
-  const mongo = await getMongoDb();
-  await Promise.all([
-    (async () => {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/xora_content?id=eq.${encodeURIComponent(id)}`, {
+  const errors: string[] = [];
+
+  // Clean the two metadata stores independently. A transient MongoDB failure
+  // should not prevent the Supabase copy from being removed.
+  try {
+    const response = await fetch(
+      SUPABASE_URL + "/rest/v1/xora_content?id=eq." + encodeURIComponent(id),
+      {
         method: "DELETE",
         headers: {
           apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Authorization: "Bearer " + SUPABASE_KEY,
           "x-xora-content-secret": CONTENT_SECRET,
         },
-      });
-      if (!response.ok && response.status !== 404) {
-        const detail = await response.text().catch(() => "");
-        throw new Error(`Supabase content delete failed (${response.status}): ${detail.slice(0, 300)}`);
-      }
-    })(),
-    mongo.collection<XoraContentRecord>("videos").deleteOne({ id }),
-  ]);
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!response.ok && response.status !== 404) {
+      const detail = await response.text().catch(() => "");
+      errors.push("Supabase: " + response.status + " " + detail.slice(0, 200));
+    }
+  } catch (error) {
+    errors.push("Supabase: " + (error instanceof Error ? error.message : String(error)));
+  }
+
+  try {
+    const mongo = await getMongoDb();
+    await mongo.collection<XoraContentRecord>("videos").deleteOne({ id });
+  } catch (error) {
+    errors.push("MongoDB: " + (error instanceof Error ? error.message : String(error)));
+  }
+
+  if (errors.length) {
+    throw new Error("Course content cleanup failed — " + errors.join(" · "));
+  }
 }
 
 export async function closeContentDatabaseConnections() {
