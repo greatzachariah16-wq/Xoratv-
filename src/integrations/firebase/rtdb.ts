@@ -221,7 +221,11 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
     // Fallback: check /posts directly
     const all = await getAllPosts();
     return all.filter(
-      (p) => p.feed === feed && p.status === "published" && p.approval_status === "approved",
+      (p) =>
+        p.feed === feed &&
+        p.status === "published" &&
+        p.approval_status === "approved" &&
+        (feed !== "shorts" || p.playability_status === "playable"),
     );
   }
 
