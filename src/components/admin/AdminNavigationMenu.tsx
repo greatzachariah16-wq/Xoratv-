@@ -172,7 +172,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     title: "Discount Campaigns",
     category: "growth",
     description: "Create and manage CPA-gated data and course discounts.",
-    icon: Tag,
+    icon: Megaphone,
     href: "/admin/commerce/discounts",
     accentColor: "text-cyan-500",
   },
