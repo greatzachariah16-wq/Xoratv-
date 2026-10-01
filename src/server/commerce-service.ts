@@ -848,6 +848,18 @@ async function readPromotionLinks(): Promise<CreatorPromotionLink[]> {
   return (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
 }
 
+async function writePromotionLinks(links: CreatorPromotionLink[]): Promise<void> {
+  const next: Record<string, CreatorPromotionLink> = {};
+  for (const link of links) {
+    if (link?.token) next[link.token] = link;
+  }
+  await queryRtdb("commerce/promotionLinks", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(next),
+  });
+}
+
 export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course"; courseId?: string | null; }): Promise<CreatorPromotionLink> {
   const creator = await getCreator(params.creatorId);
   if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
