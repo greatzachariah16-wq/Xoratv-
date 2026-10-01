@@ -132,6 +132,28 @@ export async function registerCloudinaryVideo(input: {
   });
 }
 
+export async function deleteXoraContent(id: string): Promise<void> {
+  requireConfig();
+  const mongo = await getMongoDb();
+  await Promise.all([
+    (async () => {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/xora_content?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "x-xora-content-secret": CONTENT_SECRET,
+        },
+      });
+      if (!response.ok && response.status !== 404) {
+        const detail = await response.text().catch(() => "");
+        throw new Error(`Supabase content delete failed (${response.status}): ${detail.slice(0, 300)}`);
+      }
+    })(),
+    mongo.collection<XoraContentRecord>("videos").deleteOne({ id }),
+  ]);
+}
+
 export async function closeContentDatabaseConnections() {
   if (mongoClient) await mongoClient.close();
   mongoClient = null;
