@@ -17,6 +17,7 @@ import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import { getFaoTvStreamUrl } from "./integrations/providers/faotv";
+import { runShortsVerification } from "./server/shorts-verification";
 import { executeYouTubeApiSearch } from "./integrations/providers/youtube";
 import { executeVimeoApiSearch } from "./integrations/providers/vimeo";
 import { xseriesDbRead } from "./server/xseries-service-account";
@@ -954,6 +955,41 @@ export default {
       const streamResponse = await handleMediaStreaming(request, url);
       if (streamResponse) {
         return streamResponse;
+      }
+    }
+
+    // Backend-only Shorts playback verification endpoint.
+    // Render Cron calls this; normal users never trigger verification.
+    if (
+      url.pathname === "/api/internal/shorts-verification/run" &&
+      (request.method === "POST" || request.method === "GET")
+    ) {
+      const configuredSecret = process.env.SHORTS_VERIFICATION_SECRET?.trim();
+      const suppliedSecret =
+        request.headers.get("x-shorts-verification-secret") ||
+        request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() ||
+        url.searchParams.get("secret");
+
+      if (!configuredSecret || suppliedSecret !== configuredSecret) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Unauthorized Shorts verification request" }),
+          { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+        );
+      }
+
+      try {
+        const summary = await runShortsVerification();
+        return new Response(JSON.stringify(summary), {
+          status: 200,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Shorts verification failed";
+        console.error("[Shorts Verification] Error:", err);
+        return new Response(JSON.stringify({ ok: false, error: message }), {
+          status: 500,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
       }
     }
 
