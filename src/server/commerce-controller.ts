@@ -2,7 +2,7 @@ import { verifyAdminSession } from "./admin-auth";
 import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
   getPublicDataPlans,
-  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, testMelePurchase, testVtusharePurchase, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
+  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, savePayoutDetails, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback,
 } from "./commerce-service";
@@ -87,23 +87,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   if (path === "/api/admin/commerce/vtushare-test-purchase" && request.method === "POST") {
     const session = verifyAdminSession(request);
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      if (!body.bundleId || !body.networkId || !body.typeId || !body.phoneNumber) {
-        return json({ ok: false, error: "bundleId, networkId, typeId and phoneNumber are required." }, 400);
-      }
-      return json({
-        ok: true,
-        test: await testVtusharePurchase({
-          bundleId: Number(body.bundleId),
-          networkId: Number(body.networkId),
-          typeId: Number(body.typeId),
-          phoneNumber: body.phoneNumber,
-        }),
-      });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare purchase test failed." }, 500);
-    }
+    return json({
+      ok: false,
+      disabled: true,
+      error: "Live VTUshare test purchases are temporarily disabled while the purchase flow is being completed and verified. No provider wallet was charged.",
+    }, 503);
   }
 
   if (path === "/api/admin/commerce/vtushare-account" && request.method === "GET") {
@@ -457,19 +445,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   if (path === "/api/admin/commerce/mele-test-purchase" && request.method === "POST") {
     const session = verifyAdminSession(request);
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      if (!body.network || !body.planId || !body.phoneNumber) {
-        return json({ ok: false, error: "Network, planId and phoneNumber are required." }, 400);
-      }
-      return json({ ok: true, test: await testMelePurchase({
-        network: body.network,
-        planId: Number(body.planId),
-        phoneNumber: body.phoneNumber,
-      }) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "MELE purchase test failed." }, 500);
-    }
+    return json({
+      ok: false,
+      disabled: true,
+      error: "Live MELE test purchases are temporarily disabled while the purchase flow is being completed and verified. No provider wallet was charged.",
+    }, 503);
   }
 
   return null;
