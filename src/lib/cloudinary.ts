@@ -86,6 +86,34 @@ export function isCloudinaryConfigured(): boolean {
  * Converts a raw Cloudinary video URL or public_id into a constrained ~240p delivery URL.
  * Transformation: h_240,c_scale,q_auto:low,f_mp4
  */
+export function getAdaptiveStreamingUrl(rawUrl: string, publicId?: string, maxResolution = 360): string {
+  const maxres = maxResolution >= 720 ? "720p" : maxResolution >= 540 ? "540p" : "360p";
+  const transform = `sp_auto:maxres_${maxres}`;
+
+  if (!rawUrl && publicId) {
+    const { cloudName } = getCloudinaryConfig();
+    if (cloudName) {
+      const cleanId = publicId.replace(/\\.[a-zA-Z0-9]+$/, "");
+      return `https://res.cloudinary.com/${cloudName}/video/upload/${transform}/${cleanId}.m3u8`;
+    }
+    return "";
+  }
+
+  if (!rawUrl) return "";
+
+  const match = rawUrl.match(/^(https:\\/\\/res\\.cloudinary\\.com\\/[^/]+\\/video\\/upload\\/)(.*)$/);
+  if (!match) return rawUrl;
+  const base = match[1];
+  let rest = match[2].replace(/^([^/]+,?[^/]*)\\//, "");
+  if (/^v\\d+\\//.test(rest)) {
+    const version = rest.match(/^v\\d+\\//)?.[0] || "";
+    rest = rest.slice(version.length);
+    return `${base}${transform}/${version}${rest.replace(/\\.[a-zA-Z0-9]+$/, "")}.m3u8`;
+  }
+  rest = rest.replace(/\\.[a-zA-Z0-9]+$/, "");
+  return `${base}${transform}/${rest}.m3u8`;
+}
+
 export function get240pDeliveryUrl(rawUrl: string, publicId?: string): string {
   const transform = "h_240,c_scale,q_auto:low,f_mp4";
 
@@ -248,7 +276,7 @@ export async function uploadToCloudinary(
           resolve({
             url: rawUrl,
             deliveryUrl240p,
-            playbackUrl: deliveryUrl240p,
+            playbackUrl: adaptivePlaybackUrl || deliveryUrl240p,
             publicId,
             duration,
             bytes,
