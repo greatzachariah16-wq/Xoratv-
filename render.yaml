@@ -49,5 +49,3 @@ services:
         sync: false
       - key: MELE_WEBHOOK_SECRET
         sync: false
-      - key: SHORTS_VERIFICATION_SECRET
-        sync: false
