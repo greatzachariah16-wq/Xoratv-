@@ -228,14 +228,20 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
   const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
   const postIds = Object.keys(feedMap).filter((id) => {
     const entry = feedMap[id];
-    return entry.status === "published" && entry.approval_status === "approved";
+    const approved = entry.status === "published" && entry.approval_status === "approved";
+    return approved;
   });
 
   const posts: PostRecord[] = [];
   await Promise.all(
     postIds.map(async (id) => {
       const p = await getPost(id);
-      if (p) posts.push(p);
+      if (p) {
+        // Shorts are public only after the backend verifier has confirmed playback.
+        // Other feeds keep their existing publication rules.
+        if (feed === "shorts" && p.playability_status !== "playable") return;
+        posts.push(p);
+      }
     }),
   );
 
