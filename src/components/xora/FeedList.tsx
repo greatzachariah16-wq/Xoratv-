@@ -183,7 +183,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
                 >
                   <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
                 </div>
-                {index === 0 && (feed === "home" || feed === "shorts" || feed === "learn") ? (
+                {(index + 1) % 2 === 0 && (feed === "home" || feed === "shorts" || feed === "learn") ? (
                   <AdsterraBanner className="my-3" />
                 ) : null}
                 {showInHouseAd && (
