@@ -19,6 +19,10 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
+  Banknote,
+  DollarSign,
+  TestTube2,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   Sheet,
@@ -113,6 +117,72 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     description: "Sponsor campaign videos, targeting, and impressions tracking.",
     icon: Megaphone,
     href: "/admin/campaigns",
+    accentColor: "text-purple-500",
+  },
+  {
+    id: "commerce",
+    title: "Commerce Overview",
+    category: "growth",
+    description: "Live creators, orders, sales and payout readiness.",
+    icon: SlidersHorizontal,
+    href: "/admin/commerce",
+    accentColor: "text-primary",
+    badge: "Commerce",
+  },
+  {
+    id: "creator-reference",
+    title: "Creator Reference",
+    category: "growth",
+    description: "Creator identities and the bank payout details they supplied.",
+    icon: Banknote,
+    href: "/admin/commerce/creator-reference",
+    accentColor: "text-emerald-500",
+    badge: "Payouts",
+  },
+  {
+    id: "commerce-pricing",
+    title: "Pricing",
+    category: "growth",
+    description: "Edit Xora customer prices for MELE and VTUshare catalogues.",
+    icon: DollarSign,
+    href: "/admin/commerce/pricing",
+    accentColor: "text-amber-500",
+  },
+  {
+    id: "commerce-test-data",
+    title: "Test Data",
+    category: "growth",
+    description: "Run controlled live MELE or VTUshare purchase tests.",
+    icon: TestTube2,
+    href: "/admin/commerce/test-data",
+    accentColor: "text-rose-500",
+    badge: "Live Test",
+  },
+  {
+    id: "commerce-cpa",
+    title: "CPA & Offer Wall",
+    category: "growth",
+    description: "Monitor conversions, Xora Points, commissions and postbacks.",
+    icon: Megaphone,
+    href: "/admin/commerce/cpa",
+    accentColor: "text-purple-500",
+  },
+  {
+    id: "commerce-discounts",
+    title: "Discount Campaigns",
+    category: "growth",
+    description: "Create and manage CPA-gated data and course discounts.",
+    icon: Tag,
+    href: "/admin/commerce/discounts",
+    accentColor: "text-cyan-500",
+  },
+  {
+    id: "campaign-manager",
+    title: "Campaign Manager",
+    category: "growth",
+    description: "Create, edit, pause and remove in-house advertising campaigns.",
+    icon: Megaphone,
+    href: "/admin/campaigns/manage",
     accentColor: "text-purple-500",
   },
 
@@ -273,7 +343,7 @@ export function AdminNavigationMenu({
                   Admin Command Menu
                 </SheetTitle>
                 <SheetDescription className="text-[11px] text-muted-foreground">
-                  Quick navigation across all 10 management sections
+                  Quick navigation across all management sections
                 </SheetDescription>
               </div>
             </div>
