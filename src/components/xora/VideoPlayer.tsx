@@ -349,7 +349,10 @@ export function NativeVideoPlayer({
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  const handlePlay = () => {\n    const telemetryId = postId || `${title}-${src || "unknown"}`;\n    markPlaybackStartup(telemetryId);\n    recordPlaybackTelemetry(telemetryId, { playbackSeconds: current });
+  const handlePlay = () => {
+    const telemetryId = postId || `${title}-${src || "unknown"}`;
+    markPlaybackStartup(telemetryId);
+    recordPlaybackTelemetry(telemetryId, { playbackSeconds: current });
     setPlaying(true);
     if (!trackedStart.current && postId) {
       trackedStart.current = true;
@@ -395,7 +398,9 @@ export function NativeVideoPlayer({
       recordPlaybackConsumption(now - prev, dataSaver.maxBitrateKbps);
     }
     lastTimeRef.current = now;
-    setCurrent(now);\n    const telemetryId = postId || `${title}-${src || "unknown"}`;\n    recordPlaybackTelemetry(telemetryId, { playbackSeconds: now });
+    setCurrent(now);
+    const telemetryId = postId || `${title}-${src || "unknown"}`;
+    recordPlaybackTelemetry(telemetryId, { playbackSeconds: now });
     if (video.duration && !trackedComplete.current && postId) {
       if (video.currentTime / video.duration >= 0.85) {
         trackedComplete.current = true;
