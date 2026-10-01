@@ -149,6 +149,7 @@ function CreatorStudio() {
   if (isPending) return <AppShell><div className="p-8 text-sm text-muted-foreground">Loading your studio…</div></AppShell>;
 
   return <AppShell wide>
+    <>
     <div className="min-w-0 space-y-4 pt-14 lg:pt-0">
       <header className="sticky top-[60px] z-40 rounded-2xl lg:top-2 border border-border bg-surface/95 p-3 shadow-card backdrop-blur">
         <div className="flex items-center justify-between gap-3">
@@ -268,5 +269,6 @@ function CreatorStudio() {
           </div>
         </div>
       ) : null}
+    </>
   </AppShell>;
 }
