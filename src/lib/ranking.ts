@@ -32,7 +32,7 @@ export const SCORING_WEIGHTS = {
   RECENCY_HALF_LIFE_HOURS: 48,
   EXPLORATION_NOISE_AMPLITUDE: 6.0,
   NOT_INTERESTED_PENALTY: -100,
-  ALREADY_SHOWN_PENALTY: -20,
+  ALREADY_SHOWN_PENALTY: -45,
   SAME_AUTHOR_STREAK_PENALTY: -30,
   MAX_SAME_AUTHOR_WINDOW: 2,
   STREAK_WINDOW_SIZE: 10,
@@ -92,6 +92,36 @@ export function getOrCreateSessionId(): string {
 // 3. TYPES
 // ==========================================
 
+const SHOWN_IDS_PREFIX = "xora:shown:";
+
+export function getShownPostIds(feed: FeedType, mode: "for_you" | "following" = "for_you"): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(`${SHOWN_IDS_PREFIX}${feed}:${mode}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberShownPostIds(
+  feed: FeedType,
+  ids: string[],
+  mode: "for_you" | "following" = "for_you",
+): void {
+  if (typeof window === "undefined" || ids.length === 0) return;
+  try {
+    const key = `${SHOWN_IDS_PREFIX}${feed}:${mode}`;
+    const existing = getShownPostIds(feed, mode);
+    const merged = Array.from(new Set([...existing, ...ids])).slice(-120);
+    sessionStorage.setItem(key, JSON.stringify(merged));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 export type RankContext = {
   userId: string | null;
   sessionId: string;
@@ -147,6 +177,11 @@ function scorePost(
   const ageHours = Math.max(0, (Date.now() - postDate) / (1000 * 60 * 60));
   const recencyFactor = Math.pow(0.5, ageHours / SCORING_WEIGHTS.RECENCY_HALF_LIFE_HOURS);
   score += recencyFactor * 15;
+
+  // Give genuinely new posts a controlled freshness lift. This complements
+  // recency decay instead of replacing personalization or engagement signals.
+  if (ageHours <= 24) score += 18;
+  else if (ageHours <= 72) score += 9;
 
   // 4. Ingestion / Quality / Recommendation scores
   const recScore = post.recommendation_score ?? 50;
