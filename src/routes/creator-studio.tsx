@@ -143,12 +143,12 @@ function CreatorStudio() {
   if (isPending) return <AppShell><div className="p-8 text-sm text-muted-foreground">Loading your studio…</div></AppShell>;
 
   return <AppShell wide>
-    <div className="min-w-0 space-y-4">
-      <header className="sticky top-2 z-40 rounded-2xl border border-border bg-surface/95 p-3 shadow-card backdrop-blur">
+    <div className="min-w-0 space-y-4 pt-14 lg:pt-0">
+      <header className="sticky top-[60px] z-40 rounded-2xl lg:top-2 border border-border bg-surface/95 p-3 shadow-card backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Creator Studio</p>
-            <h1 className="truncate font-display text-xl font-semibold">Good to see you, {creator?.displayName || profile?.display_name || "Creator"}</h1>
+            <h1 className="mt-0.5 truncate font-display text-lg font-semibold leading-tight sm:text-xl">Good to see you, {creator?.displayName || profile?.display_name || "Creator"}</h1>
           </div>
           <div className="relative shrink-0">
             <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Open Creator Studio menu" aria-expanded={menuOpen} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold shadow-sm hover:bg-secondary">
