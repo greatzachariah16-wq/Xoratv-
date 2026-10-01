@@ -92,26 +92,44 @@ export function getAdaptiveStreamingUrl(rawUrl: string, publicId?: string, maxRe
 
   if (!rawUrl && publicId) {
     const { cloudName } = getCloudinaryConfig();
-    if (cloudName) {
-      const cleanId = publicId.replace(/\\.[a-zA-Z0-9]+$/, "");
-      return `https://res.cloudinary.com/${cloudName}/video/upload/${transform}/${cleanId}.m3u8`;
-    }
-    return "";
+    if (!cloudName) return "";
+    const dot = publicId.lastIndexOf(".");
+    const cleanId = dot > publicId.lastIndexOf("/") ? publicId.slice(0, dot) : publicId;
+    return `https://res.cloudinary.com/${cloudName}/video/upload/${transform}/${cleanId}.m3u8`;
   }
 
   if (!rawUrl) return "";
 
-  const match = rawUrl.match(/^(https:\\/\\/res\\.cloudinary\\.com\\/[^/]+\\/video\\/upload\\/)(.*)$/);
-  if (!match) return rawUrl;
-  const base = match[1];
-  let rest = match[2].replace(/^([^/]+,?[^/]*)\\//, "");
-  if (/^v\\d+\\//.test(rest)) {
-    const version = rest.match(/^v\\d+\\//)?.[0] || "";
-    rest = rest.slice(version.length);
-    return `${base}${transform}/${version}${rest.replace(/\\.[a-zA-Z0-9]+$/, "")}.m3u8`;
+  const marker = "/video/upload/";
+  const markerIndex = rawUrl.indexOf(marker);
+  if (markerIndex === -1 || !rawUrl.includes("res.cloudinary.com")) return rawUrl;
+
+  const base = rawUrl.slice(0, markerIndex + marker.length);
+  const parts = rawUrl.slice(markerIndex + marker.length).split("/").filter(Boolean);
+  if (parts.length === 0) return rawUrl;
+
+  const first = parts[0];
+  const isVersion = first.startsWith("v") && Number.isFinite(Number(first.slice(1)));
+  const isTransformation =
+    first.includes(",") ||
+    first.startsWith("h_") ||
+    first.startsWith("w_") ||
+    first.startsWith("c_") ||
+    first.startsWith("q_") ||
+    first.startsWith("f_") ||
+    first.startsWith("sp_") ||
+    first.startsWith("br_") ||
+    first.startsWith("vc_");
+
+  if (isTransformation && !isVersion) parts.shift();
+
+  const last = parts.length - 1;
+  const extensionIndex = parts[last].lastIndexOf(".");
+  if (extensionIndex > parts[last].lastIndexOf("/")) {
+    parts[last] = parts[last].slice(0, extensionIndex);
   }
-  rest = rest.replace(/\\.[a-zA-Z0-9]+$/, "");
-  return `${base}${transform}/${rest}.m3u8`;
+
+  return `${base}${transform}/${parts.join("/")}.m3u8`;
 }
 
 export function get240pDeliveryUrl(rawUrl: string, publicId?: string): string {
