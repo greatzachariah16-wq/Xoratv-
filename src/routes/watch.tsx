@@ -225,15 +225,44 @@ function WatchPage() {
 
       {/* Main Cinema Theater Stage - Large YouTube-Grade Viewport */}
       <main className="mx-auto max-w-[1680px] px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        <div
-          id="cinema-stage-wrapper"
-          className={cn(
-            "relative mx-auto w-full overflow-hidden bg-black transition-all duration-300 shadow-2xl",
-            isFullscreen
-              ? "h-screen w-screen rounded-none border-none"
-              : "aspect-video min-h-[380px] sm:min-h-[500px] md:min-h-[640px] lg:min-h-[740px] xl:min-h-[820px] max-h-[90vh] rounded-2xl md:rounded-3xl border border-white/15 ring-1 ring-white/10",
-          )}
-        >
+        <div className="relative mx-auto w-full max-w-[1720px]">
+          {!isFullscreen ? (
+            <>
+              <div className="pointer-events-none absolute -inset-x-3 -inset-y-3 rounded-[2rem] border border-white/[0.08] bg-white/[0.015] shadow-[0_0_90px_rgba(255,255,255,0.035)] backdrop-blur-md sm:-inset-x-5 sm:-inset-y-5 sm:rounded-[2.4rem]" />
+              <div className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 -translate-x-full flex-col items-center gap-5 text-[9px] font-semibold uppercase tracking-[0.35em] text-white/25 lg:flex">
+                <span className="[writing-mode:vertical-rl]">Xora Cinema</span>
+                <span className="h-16 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
+                <span className="[writing-mode:vertical-rl]">Now Playing</span>
+              </div>
+              <div className="pointer-events-none absolute -right-2 top-1/2 hidden translate-x-full -translate-y-1/2 flex-col items-center gap-5 text-[9px] font-semibold uppercase tracking-[0.35em] text-white/25 lg:flex">
+                <span className="[writing-mode:vertical-rl]">Xora Cinema</span>
+                <span className="h-16 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
+                <span className="[writing-mode:vertical-rl]">Feature Film</span>
+              </div>
+            </>
+          ) : null}
+
+          <div
+            id="cinema-stage-wrapper"
+            className={cn(
+              "relative mx-auto w-full overflow-hidden bg-black transition-all duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.55)]",
+              isFullscreen
+                ? "h-screen w-screen rounded-none border-none"
+                : "aspect-video max-h-[88vh] rounded-[1.35rem] border border-white/15 ring-1 ring-white/10 sm:rounded-[1.75rem] md:rounded-[2rem]",
+            )}
+          >
+            {!isFullscreen ? (
+              <>
+                <div className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] ring-1 ring-inset ring-white/[0.08]" />
+                <div className="pointer-events-none absolute left-4 top-4 z-20 h-8 w-8 border-l border-t border-primary/60 sm:left-5 sm:top-5 sm:h-10 sm:w-10" />
+                <div className="pointer-events-none absolute right-4 top-4 z-20 h-8 w-8 border-r border-t border-primary/60 sm:right-5 sm:top-5 sm:h-10 sm:w-10" />
+                <div className="pointer-events-none absolute bottom-4 left-4 z-20 h-8 w-8 border-b border-l border-primary/35 sm:bottom-5 sm:left-5 sm:h-10 sm:w-10" />
+                <div className="pointer-events-none absolute bottom-4 right-4 z-20 h-8 w-8 border-b border-r border-primary/35 sm:bottom-5 sm:right-5 sm:h-10 sm:w-10" />
+                <div className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2 rounded-b-full border-x border-b border-white/10 bg-black/30 px-5 py-1 text-[8px] font-bold uppercase tracking-[0.4em] text-white/35 backdrop-blur-md">
+                  Xora Cinema
+                </div>
+              </>
+            ) : null
           {isStreamLoading && !streamUrl ? (
             <div className="grid h-full w-full place-items-center bg-gradient-to-b from-[#0c0e17] to-black">
               <div className="text-center">
@@ -306,6 +335,7 @@ function WatchPage() {
               </button>
             </div>
           )}
+          </div>
         </div>
 
         {/* Dynamic Promotional Sponsor Ad Popup triggered on Full Screen Portrait toggle */}
