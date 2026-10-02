@@ -20,6 +20,7 @@ import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
+import { DablinkerBanner } from "@/components/ads/DablinkerBanner";
 import { cn } from "@/lib/utils";
 
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
