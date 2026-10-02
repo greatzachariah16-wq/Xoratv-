@@ -62,13 +62,19 @@ function swapAd(ct,newWrap){
 }
 function L(ct){
     if(!ct.getAttribute("id"))ct.setAttribute("id","bnc_"+Math.floor(Math.random()*999999));
-    if(!ct.querySelector(".dablinker-bnr-wrap"))ct.innerHTML='<div style="text-align:center;padding:24px;color:#999;font-family:Arial;font-size:13px;">Loading Ads...</div>';
+    if(ct.getAttribute("data-dablinker-loading")==="1")return;
+    ct.setAttribute("data-dablinker-loading","1");
+    if(!ct.querySelector(".dablinker-bnr-wrap"))ct.innerHTML='<div style="text-align:center;padding:18px;color:#999;font-family:Arial;font-size:12px;">Advertisement</div>';
     F(function(r){
+        ct.setAttribute("data-dablinker-loading","0");
         if(r&&r.success){
             var newWrap=B(r,r.id),old=ct.querySelector(".dablinker-bnr-wrap");
             if(old)swapAd(ct,newWrap);else{ct.innerHTML="";ct.appendChild(newWrap);}
             if(k)clearTimeout(k);k=setTimeout(function(){L(ct);},t);
-        }else{ct.style.display="none";}
+        }else{
+            // Keep the reserved ad slot visible and retry later instead of hiding it permanently.
+            if(k)clearTimeout(k);k=setTimeout(function(){L(ct);},15000);
+        }
     });
 }
 function I(){
