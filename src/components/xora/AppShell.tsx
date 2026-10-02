@@ -251,7 +251,15 @@ export function AppShell({
         </div>
       </header>
 
-      {showDablinkerTopBanner ? (\n        <div className="sticky top-14 z-40 border-b border-border/70 bg-background/95 px-3 py-2 shadow-sm backdrop-blur-md lg:top-0 lg:ml-[248px] lg:px-8">\n          <div className="mx-auto flex min-h-[90px] max-w-[728px] items-center justify-center">\n            <DablinkerBanner className="w-full max-w-[728px]" />\n          </div>\n        </div>\n      ) : null}\n\n      <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
+      {showDablinkerTopBanner ? (
+        <div className="sticky top-14 z-40 border-b border-border/70 bg-background/95 px-3 py-2 shadow-sm backdrop-blur-md lg:top-0 lg:ml-[248px] lg:px-8">
+          <div className="mx-auto flex min-h-[90px] max-w-[728px] items-center justify-center">
+            <DablinkerBanner className="w-full max-w-[728px]" />
+          </div>
+        </div>
+      ) : null}
+
+      <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
           className={cn(
             "mx-auto px-4 pb-48 pt-4 lg:px-8 lg:pb-28 lg:pt-8",
