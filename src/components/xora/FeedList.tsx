@@ -187,6 +187,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
                 {(index + 1) % 2 === 0 && (feed === "home" || feed === "shorts" || feed === "learn") ? (
                   <AdsterraBanner className="my-3" />
                 ) : null}
+                {feed === "home" ? <DablinkerBanner className="my-3" /> : null}
                 {showInHouseAd && (
                   <XoraInHouseAd placement="home_feed" variant="compact" className="my-3.5" />
                 )}
