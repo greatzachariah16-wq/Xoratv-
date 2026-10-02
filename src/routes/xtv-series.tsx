@@ -473,6 +473,9 @@ function XTvSeriesPage() {
           </section>
         ) : null}
 
+        {/* Dablinker banner: directly beneath the featured title/movie section */}
+        {featured ? <DablinkerBanner className="my-3" /> : null}
+
         {/* All Titles Shelf */}
         <section id="xseries-catalog-shelf">
           <div className="mb-3.5 flex items-end justify-between">
