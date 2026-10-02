@@ -20,7 +20,6 @@ import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
-import { DablinkerBanner } from "@/components/ads/DablinkerBanner";
 import { cn } from "@/lib/utils";
 
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
@@ -474,65 +473,7 @@ function XTvSeriesPage() {
         ) : null}
 
         {/* Dablinker banner: directly beneath the featured title/movie section */}
-        {featured ? <DablinkerBanner className="my-3" /> : null}
-
-        {/* All Titles Shelf */}
-        <section id="xseries-catalog-shelf">
-          <div className="mb-3.5 flex items-end justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                {genre === "All" ? "Full Collection" : `${genre} Titles`}
-              </p>
-              <h2 className="font-display text-lg font-semibold tracking-tight sm:text-xl">
-                {genre === "All" ? "All Available Titles" : `${genre} on X Series`}
-              </h2>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition"
-                title="Reshuffle feed"
-              >
-                <Shuffle className="size-3.5" />
-                <span>
-                  {filtered.length} {filtered.length === 1 ? "title" : "titles"}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {shelves.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-4">
-              {shelves.map((item, index) => (
-                <XTvCard key={`${item.id}-${index}`} item={item} userId={user?.id} />
-              ))}
-            </div>
-          ) : filtered.length > 0 ? (
-            <div className="rounded-xl border border-dashed border-border/60 p-6 text-center text-xs text-muted-foreground">
-              Showing the 1 featured title available in this view.
-            </div>
-          ) : allItems.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-border/80 bg-surface/40 p-12 text-center">
-              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-                <Film className="size-6" />
-              </div>
-              <h3 className="mt-4 font-display text-xl font-semibold">No titles published yet</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                All media in X Series is published directly from the sovereign Admin Studio. Import
-                and approve your titles in the admin panel to display them here instantly.
-              </p>
-              <Link
-                to="/admin/xseris"
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-              >
-                <PlusCircle className="size-4" /> Publish in Admin Studio
-              </Link>
-            </div>
-          ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-border/80 bg-surface/40 p-10 text-center">
-              <div className="mx-auto grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
-                <Film className="size-5" />
+        {featured ?
               </div>
               <h3 className="mt-3 font-display text-lg font-semibold">No titles in "{genre}"</h3>
               <p className="mt-1 text-sm text-muted-foreground">
