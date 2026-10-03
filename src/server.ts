@@ -668,7 +668,7 @@ export default {
         if (!query.trim() && (feed === "shorts" || feed === "home")) {
           query =
             feed === "shorts"
-              ? "#shorts horror supernatural fantasy"
+              ? "shorts"
               : "horror fantasy supernatural movie";
         }
 
