@@ -30,6 +30,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
 import { AdminNavigationMenu } from "@/components/admin/AdminNavigationMenu";
 import { Button } from "@/components/ui/button";
+import { AdcashSwitch } from "@/components/admin/AdcashSwitch";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -380,7 +381,9 @@ function AdminPage() {
           </div>
         </section>
 
-        {/* Recent Moderation Quick Snapshot */}
+        <AdcashSwitch />
+
+        {/* Recent Moderation Quick Snapshot */
         <section className="mt-10 space-y-4">
           <div className="flex items-center justify-between">
             <div>
