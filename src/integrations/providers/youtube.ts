@@ -242,9 +242,14 @@ export async function searchYouTubeWithStatus(params: ProviderSearchParams) {
 
       const res = await fetch(`/api/youtube/search?${searchParams.toString()}`);
       const data = await res.json().catch(() => null);
-      if (data && typeof data.ok === "boolean") return data;
+      // Only trust the server response when it actually returned candidates.
+      // If the server is missing its key, quota-limited, or otherwise failed,
+      // fall through to the VITE client key instead of turning the feed blank.
+      if (data && data.ok === true && Array.isArray(data.candidates) && data.candidates.length > 0) {
+        return data;
+      }
     } catch {
-      // Use direct server execution below.
+      // Fall through to the direct YouTube API path below.
     }
   }
   return executeYouTubeApiSearch(params);
