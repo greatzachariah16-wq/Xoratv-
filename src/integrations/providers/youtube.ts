@@ -162,6 +162,7 @@ export async function executeYouTubeApiSearch(
         viewCount?: number | null;
         definition?: string | null;
         tags?: string[];
+        isVertical?: boolean | null;
       }
     > = {};
 
