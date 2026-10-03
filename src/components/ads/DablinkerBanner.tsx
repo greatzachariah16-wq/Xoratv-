@@ -82,11 +82,9 @@ function L(ct){
         id="bnc_"+Math.floor(Math.random()*999999);
         ct.setAttribute("id",id);
     }
-    if(!ct.querySelector(".dablinker-bnr-wrap")){
-        ct.innerHTML='<div style="text-align:center;padding:24px;color:#999;font-family:Arial;font-size:13px;">Loading Ads...</div>';
-    }
     F(function(r){
         if(r&&r.success){
+            ct.style.display="block";
             var newWrap=B(r,r.id);
             var old=ct.querySelector(".dablinker-bnr-wrap");
             if(old){
@@ -176,6 +174,7 @@ export function DablinkerBanner({ className = "" }: { className?: string }) {
       className={`dablinker-banner-ad-container w-full ${className}`}
       data-dablinker-ref={DABLINKER_REF}
       aria-label="Advertisement"
+      style={{ display: "none" }}
     />
   );
 }
