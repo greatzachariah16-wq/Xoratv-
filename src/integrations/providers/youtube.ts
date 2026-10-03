@@ -169,8 +169,10 @@ export async function executeYouTubeApiSearch(
     if (videoIds.length > 0) {
       try {
         const detailsParams = new URLSearchParams({
-          part: "snippet,contentDetails,statistics",
+          part: "snippet,contentDetails,statistics,status,player",
           id: videoIds.join(","),
+          maxWidth: "720",
+          maxHeight: "1280",
           key: apiKey.trim(),
         });
         const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`;
@@ -184,12 +186,17 @@ export async function executeYouTubeApiSearch(
             const viewCount = rawViews ? parseInt(rawViews, 10) || null : null;
             const definition = item.contentDetails?.definition || null;
             const tags = Array.isArray(item.snippet?.tags) ? item.snippet.tags : [];
+            const embedWidth = Number(item.player?.embedWidth) || 0;
+            const embedHeight = Number(item.player?.embedHeight) || 0;
+            const isVertical =
+              embedWidth > 0 && embedHeight > 0 ? embedHeight >= embedWidth : null;
 
             metadataMap[item.id] = {
               duration,
               viewCount,
               definition,
               tags,
+              isVertical,
             };
           }
         }
@@ -244,6 +251,7 @@ export async function executeYouTubeApiSearch(
             viewCount: meta.viewCount ?? null,
             tags: meta.tags && meta.tags.length ? meta.tags.slice(0, 8) : undefined,
             resolution,
+            isVertical: meta.isVertical ?? null,
           };
         },
       );
