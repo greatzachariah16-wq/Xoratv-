@@ -29,7 +29,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery(feedInfiniteQuery(feed, user?.id, mode));
+  } = useInfiniteQuery({\n    ...feedInfiniteQuery(feed, user?.id, mode),\n    enabled: typeof window !== "undefined",\n  });
 
   const allPosts = useMemo(() => {
     const raw = data?.pages.flatMap((page) => page) ?? [];
