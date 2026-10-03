@@ -53,7 +53,6 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const unread = useUnreadCount();
   const { data: walletData } = useQuery(walletQuery(user?.id));
-  const showDablinkerTopBanner = pathname === "/" || pathname.startsWith("/xtv-series");
 
   const currentProfile =
     profile ||
@@ -249,12 +248,6 @@ export function AppShell({
           )}
         </div>
       </header>
-
-      {showDablinkerTopBanner ? (
-        <div className="sticky top-14 z-40 border-b border-border/70 bg-background/95 px-3 py-2 shadow-sm backdrop-blur-md lg:top-0 lg:ml-[248px] lg:px-8">
-          <div className="mx-auto flex min-h-[90px] max-w-[728px] items-center justify-center">
-        </div>
-      </div>
 
       {rail ? (
         <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-8 xl:block">
