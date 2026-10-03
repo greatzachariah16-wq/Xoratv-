@@ -44,6 +44,8 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
       if (!post || !post.id || seen.has(post.id)) return false;
       // Shorts is strictly YouTube-backed; all visible videos need a thumbnail.
       if (feed === "shorts" && (post.source !== "youtube" || !post.poster_path)) return false;
+      // Never show legacy Dailymotion content on the Home feed.
+      if (feed === "home" && post.source === "dailymotion") return false;
       if (post.kind === "video" && !post.poster_path) return false;
       seen.add(post.id);
       return true;
