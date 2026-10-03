@@ -208,7 +208,69 @@ export async function fetchRankedFeed(
     }
   }
 
-  // Dedicated discovery layers: Home and Shorts use separate YouTube pools.\n  // Shorts is strictly YouTube-only; all visible video candidates require thumbnails.\n  try {\n    const liveYouTube = await searchRecentYouTubeFeed(feed === "shorts" ? "shorts" : "home", 12);\n    const existingIds = new Set(rawPosts.map((p) => p.id));\n    const livePosts: PostRecord[] = liveYouTube\n      .filter((candidate) => !existingIds.has(candidate.id) && Boolean(candidate.thumbnailUrl))\n      .map((candidate) => ({\n        id: candidate.id,\n        author_id: `youtube-channel-${candidate.channelName || "youtube"}`,\n        title: candidate.title,\n        caption: candidate.description,\n        kind: "video",\n        feed,\n        status: "published",\n        approval_status: "approved",\n        media_path: null,\n        poster_path: candidate.thumbnailUrl,\n        stream_url: candidate.embedUrl,\n        duration_seconds: candidate.durationSeconds,\n        featured: false,\n        recommendation_score: 88,\n        quality_score: candidate.resolution === "HD" ? 95 : 88,\n        is_color: true,\n        rights_status: "unknown",\n        source: "youtube",\n        created_at: candidate.publishedAt || new Date().toISOString(),\n        discovered_at: new Date().toISOString(),\n        year: candidate.publishedAt ? new Date(candidate.publishedAt).getFullYear() : null,\n        genre: "YouTube Discovery",\n        like_count: 0,\n        comment_count: 0,\n        playability_status: "playable",\n      } as PostRecord));\n\n    if (feed === "shorts") {\n      // Hard rule: no creator, Vimeo, Dailymotion, NOAA, or local short can enter Shorts.\n      rawPosts = livePosts;\n    } else if (feed === "home") {\n      rawPosts = [...rawPosts, ...livePosts];\n    }\n  } catch (err) {\n    console.warn("[YouTube Discovery] Live feed layer unavailable:", err);\n    if (feed === "shorts") rawPosts = [];\n  }\n\n  // 1. If following mode requested on Home feed
+  // Dedicated discovery layers: Home and Shorts use separate YouTube pools.
+  // Shorts is strictly YouTube-only; all visible video candidates require thumbnails.
+  try {
+    const liveYouTube = await searchRecentYouTubeFeed(feed === "shorts" ? "shorts" : "home", 12);
+    const existingIds = new Set(rawPosts.map((p) => p.id));
+    const livePosts: PostRecord[] = liveYouTube
+      .filter((candidate) => !existingIds.has(candidate.id) && Boolean(candidate.thumbnailUrl))
+      .map((candidate) => ({
+        id: candidate.id,
+        author_id: `youtube-channel-${candidate.channelName || "youtube"}`,
+        title: candidate.title,
+        caption: candidate.description,
+        kind: "video",
+        feed,
+        status: "published",
+        approval_status: "approved",
+        media_path: null,
+        poster_path: candidate.thumbnailUrl,
+        stream_url: candidate.embedUrl,
+        duration_seconds: candidate.durationSeconds,
+        featured: false,
+        recommendation_score: 88,
+        quality_score: candidate.resolution === "HD" ? 95 : 88,
+        is_color: true,
+        rights_status: "unknown",
+        source: "youtube",
+        created_at: candidate.publishedAt || new Date().toISOString(),
+        discovered_at: new Date().toISOString(),
+        year: candidate.publishedAt ? new Date(candidate.publishedAt).getFullYear() : null,
+        genre: "YouTube Discovery",
+        like_count: 0,
+        comment_count: 0,
+        playability_status: "playable",
+      } as PostRecord));
+
+    if (feed === "shorts") {
+      // Keep only verified/stored YouTube Shorts when live discovery is empty or unavailable.
+      // This prevents a temporary YouTube API problem from blanking the entire Shorts page.
+      const storedYouTubeShorts = rawPosts.filter(
+        (p) =>
+          p.source === "youtube" &&
+          Boolean(p.poster_path) &&
+          p.playability_status === "playable",
+      );
+      const storedIds = new Set(storedYouTubeShorts.map((p) => p.id));
+      rawPosts = [
+        ...storedYouTubeShorts,
+        ...livePosts.filter((p) => !storedIds.has(p.id)),
+      ];
+    } else if (feed === "home") {
+      rawPosts = [...rawPosts, ...livePosts];
+    }
+  } catch (err) {
+    console.warn("[YouTube Discovery] Live feed layer unavailable:", err);
+    if (feed === "shorts") {
+      rawPosts = rawPosts.filter(
+        (p) =>
+          p.source === "youtube" &&
+          Boolean(p.poster_path) &&
+          p.playability_status === "playable",
+      );
+    }
+  }\n\n  // 1. If following mode requested on Home feed
   if (feed === "home" && mode === "following") {
     let follows: string[] = [];
     if (userId) {
