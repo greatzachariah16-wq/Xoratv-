@@ -393,7 +393,7 @@ function AdminPage() {
           <AdcashSwitch />
         </section>
 
-        {/* Recent Moderation Quick Snapshot */
+        {/* Recent Moderation Quick Snapshot */}
         <section className="mt-10 space-y-4">
           <div className="flex items-center justify-between">
             <div>
