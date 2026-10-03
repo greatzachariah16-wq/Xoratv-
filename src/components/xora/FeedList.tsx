@@ -190,6 +190,9 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
                 {(index + 1) % 2 === 0 && (feed === "home" || feed === "shorts" || feed === "learn") ? (
                   <AdsterraBanner className="my-3" />
                 ) : null}
+                {(feed === "home" || feed === "shorts") ? (
+                  <AdcashBanner className="my-2" />
+                ) : null}
               </div>
             );
           })}
