@@ -342,42 +342,62 @@ export async function searchRecentYouTubeFeed(
   feed: "home" | "shorts",
   limit = 12,
 ): Promise<ProviderCandidate[]> {
-  const query =
-    feed === "shorts"
-      ? "shorts"
-      : "horror fantasy supernatural movie";
+  if (feed === "home") {
+    const result = await searchYouTubeWithStatus({
+      query: "horror fantasy supernatural movie",
+      limit,
+      feed,
+      order: "date",
+      minDurationSeconds: 2400,
+    });
 
-  const result = await searchYouTubeWithStatus({
-    query,
-    limit,
-    feed,
-    order: "date",
-    ...(feed === "home" ? { minDurationSeconds: 2400 } : {}),
-  });
-
-  return result.candidates.filter((candidate) => {
-    if (
-      candidate.provider !== "youtube" ||
-      !candidate.thumbnailUrl ||
-      !candidate.embedUrl
-    ) {
-      return false;
-    }
-
-    if (feed === "shorts") {
-      // The YouTube API already applies videoDuration=short (< 4 minutes).
-      // When videos.list metadata is available, tighten this to the current
-      // Shorts ceiling; if metadata is unavailable, keep the API-filtered result
-      // instead of dropping the entire Shorts feed.
-      return (
-        candidate.durationSeconds == null ||
-        (candidate.durationSeconds > 0 && candidate.durationSeconds <= 180)
-      );
-    }
-
-    return (
-      typeof candidate.durationSeconds === "number" &&
-      candidate.durationSeconds >= 2400
+    return result.candidates.filter(
+      (candidate) =>
+        candidate.provider === "youtube" &&
+        Boolean(candidate.thumbnailUrl) &&
+        Boolean(candidate.embedUrl) &&
+        typeof candidate.durationSeconds === "number" &&
+        candidate.durationSeconds >= 2400,
     );
-  });
+  }
+
+  // The Data API exposes duration/embeddability filters, but not a direct Shorts flag.
+  // Use several recent Shorts-oriented searches and enforce the current 3-minute ceiling.
+  const queries = ["#shorts", "shorts horror", "shorts supernatural", "shorts fantasy"];
+  const results = await Promise.all(
+    queries.map((query) =>
+      searchYouTubeWithStatus({
+        query,
+        limit,
+        feed: "shorts",
+        order: "date",
+      }),
+    ),
+  );
+
+  const merged = new Map<string, ProviderCandidate>();
+  for (const result of results) {
+    for (const candidate of result.candidates) {
+      if (candidate.provider !== "youtube") continue;
+      if (!candidate.thumbnailUrl || !candidate.embedUrl) continue;
+      if (
+        typeof candidate.durationSeconds !== "number" ||
+        candidate.durationSeconds <= 0 ||
+        candidate.durationSeconds > 180
+      ) {
+        continue;
+      }
+      // Reject videos whose public embed dimensions clearly show landscape.
+      if (candidate.isVertical === false) continue;
+      merged.set(candidate.id, candidate);
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt || 0).getTime() -
+        new Date(a.publishedAt || 0).getTime(),
+    )
+    .slice(0, limit);
 }
