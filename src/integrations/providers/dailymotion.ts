@@ -30,7 +30,19 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
     "tags",
   ].join(",");
 
-  const searchUrl = `https://api.dailymotion.com/videos?search=${encodeURIComponent(query)}&fields=${fields}&limit=${limit}`;
+  const searchParams = new URLSearchParams({
+    search: query,
+    fields,
+    limit: String(limit),
+  });
+
+  if (params.feed === "shorts") {
+    searchParams.set("sort", "recent");
+    searchParams.set("shorter_than", "3");
+    searchParams.set("timeframe", "604800");
+  }
+
+  const searchUrl = `https://api.dailymotion.com/videos?${searchParams.toString()}`;
 
   try {
     const headers: Record<string, string> = {
@@ -65,7 +77,7 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
         ? params.minDurationSeconds
         : params.feed === "shorts"
           ? 0
-          : 2400; // Default 40 minutes (2400s) for movie searches
+          : 2400;
 
     const candidates = items
       .map(
@@ -105,6 +117,14 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
       )
       .filter((item: ProviderCandidate | null): item is ProviderCandidate => {
         if (!item) return false;
+        if (!item.thumbnailUrl || !item.embedUrl) return false;
+        if (
+          params.feed === "shorts" &&
+          typeof item.durationSeconds === "number" &&
+          item.durationSeconds > 180
+        ) {
+          return false;
+        }
         if (
           minDuration > 0 &&
           typeof item.durationSeconds === "number" &&
