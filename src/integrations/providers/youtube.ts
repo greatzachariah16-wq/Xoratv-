@@ -363,7 +363,15 @@ export async function searchRecentYouTubeFeed(
 
   // The Data API exposes duration/embeddability filters, but not a direct Shorts flag.
   // Use several recent Shorts-oriented searches and enforce the current 3-minute ceiling.
-  const queries = ["#shorts", "shorts horror", "shorts supernatural", "shorts fantasy"];
+  const queries = [
+    "#shorts",
+    "creator shorts",
+    "vlog shorts",
+    "comedy shorts",
+    "gaming shorts",
+    "tech shorts",
+    "lifestyle shorts",
+  ];
   const results = await Promise.all(
     queries.map((query) =>
       searchYouTubeWithStatus({
