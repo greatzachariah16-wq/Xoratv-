@@ -132,8 +132,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
   }),
   shellComponent: RootShell,
-  // Xora uses browser-side Firebase/auth/feed state; keep the app shell server-rendered but render routes on the client.
-  ssr: false,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
