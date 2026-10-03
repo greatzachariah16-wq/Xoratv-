@@ -110,7 +110,7 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
             title: item.title || "Untitled Dailymotion Video",
             description: item.description || null,
             thumbnailUrl: thumbnail,
-            embedUrl: `https://www.dailymotion.com/embed/video/${item.id}?autoplay=0`,
+            embedUrl: `https://geo.dailymotion.com/player.html?video=${item.id}&autoplay=0`,
             watchUrl: item.url || `https://www.dailymotion.com/video/${item.id}`,
             durationSeconds: typeof item.duration === "number" ? item.duration : null,
             channelName: item["owner.screenname"] || null,
