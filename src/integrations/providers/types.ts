@@ -1,7 +1,7 @@
-export type ProviderType = "youtube" | "vimeo" | "dailymotion" | "noaa";
+export type ProviderType = "youtube" | "vimeo" | "noaa";
 
 export interface ProviderCandidate {
-  id: string; // e.g. yt-<videoId>, vimeo-<id>, dm-<id>, noaa-<id>
+  id: string; // e.g. yt-<videoId>, vimeo-<id>, noaa-<id>
   provider: ProviderType;
   title: string;
   description: string | null;
