@@ -20,6 +20,7 @@ import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
+import { DablinkerBanner } from "@/components/ads/DablinkerBanner";
 import { cn } from "@/lib/utils";
 
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
@@ -472,27 +473,42 @@ function XTvSeriesPage() {
           </section>
         ) : null}
 
-        {/* Dablinker banner: directly beneath the featured title/movie section */}
-        {featured ?
-              </div>
-              <h3 className="mt-3 font-display text-lg font-semibold">No titles in "{genre}"</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                There are no published titles matching this category.
-              </p>
-              <button
-                id="btn-reset-category-filter"
-                type="button"
-                onClick={() => {
-                  setGenre("All");
-                  setSearch("");
-                }}
-                className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:border-primary/40"
-              >
-                Show all available movies ({allItems.length})
-              </button>
+        {/* Movie grid and empty state */}
+        {shelves.length > 0 ? (
+          <section aria-label="More movies and series">
+            <div className="mb-3 flex items-center gap-2">
+              <Layers3 className="size-4 text-primary" />
+              <h2 className="font-display text-lg font-semibold">Explore more</h2>
             </div>
-          )}
-        </section>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {shelves.map((item) => (
+                <div key={item.id} className="space-y-3">
+                  <XTvCard item={item} userId={user?.id} />
+                  <DablinkerBanner className="my-2" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : !featured ? (
+          <section className="rounded-2xl border border-dashed border-border p-8 text-center">
+            <Film className="mx-auto size-8 text-muted-foreground" />
+            <h3 className="mt-3 font-display text-lg font-semibold">No titles in "{genre}"</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              There are no published titles matching this category.
+            </p>
+            <button
+              id="btn-reset-category-filter"
+              type="button"
+              onClick={() => {
+                setGenre("All");
+                setSearch("");
+              }}
+              className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:border-primary/40"
+            >
+              Show all available movies ({allItems.length})
+            </button>
+          </section>
+        ) : null}
       </div>
     </AppShell>
   );
