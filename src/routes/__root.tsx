@@ -124,6 +124,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       {
+        id: "adcash-library",
+        src: "https://acscdn.com/script/aclib.js",
+        async: true,
+      },
+      {
         id: "hilltop-inpage-push-script",
         src: "//untimely-hello.com/bIXqV.std/G/lf0qYuWKcK/-exmD9lupZ/UolXkrPmTzcv0/NQTHQ/0VMyTYMGtUN/z/Qy1uNaDCQ_xMNawR",
         async: true,
