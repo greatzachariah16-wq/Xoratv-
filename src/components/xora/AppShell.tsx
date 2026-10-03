@@ -260,6 +260,23 @@ export function AppShell({
         </div>
       </main>
 
+      {/* Fixed Global Bottom Adsterra Banner — pinned above the mobile navigation and at the bottom on desktop */}
+      <div className="fixed bottom-[68px] left-0 right-0 z-40 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all lg:bottom-0 lg:left-[248px] lg:border-b-0 xl:right-[320px]">
+        <div
+          className={cn(
+            "mx-auto flex min-h-[50px] items-center justify-center",
+            wide ? "max-w-5xl" : "max-w-[620px]",
+          )}
+        >
+          <AdsterraBannerAd
+            adKey="075ef17698a6be8914c3d3aaaf74c814"
+            width={320}
+            height={50}
+            className="my-0 shadow-xs"
+          />
+        </div>
+      </div>
+
       {rail ? (
         <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-8 xl:block">
           {rail}
