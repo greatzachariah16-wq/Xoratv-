@@ -3,10 +3,6 @@
  * Enforces official embedded player URLs with safe defaults (nocookie, dnt, autoplay=0).
  */
 
-const DAILYMOTION_PLAYER_ID =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_DAILYMOTION_PLAYER_ID) ||
-  "x8lr5"; // Temporary fallback Player ID; replace with XoraTV's Dailymotion Player ID.
-
 export interface EmbedInfo {
   provider: "youtube" | "vimeo" | "dailymotion" | "custom";
   videoId: string | null;
@@ -98,36 +94,6 @@ export function parseEmbedInfo(
         provider: "vimeo",
         videoId,
         embedUrl: `https://player.vimeo.com/video/${videoId}?dnt=1`,
-      };
-    }
-  }
-
-  // 3. Dailymotion
-  if (
-    source === "dailymotion" ||
-    input.includes("dailymotion.com") ||
-    input.includes("dai.ly") ||
-    input.startsWith("dm-")
-  ) {
-    let videoId: string | null = null;
-    if (input.startsWith("dm-")) {
-      videoId = input.slice(3);
-    } else {
-      const match = input.match(
-        /(?:dailymotion\.com\/(?:video\/|embed\/video\/)|dai\.ly\/|geo\.dailymotion\.com\/player\/[^/]+\.html\?video=)([a-zA-Z0-9]+)/,
-      );
-      videoId = match ? match[1] : null;
-    }
-
-    if (!videoId && source === "dailymotion" && /^[a-zA-Z0-9]+$/.test(input)) {
-      videoId = input;
-    }
-
-    if (videoId) {
-      return {
-        provider: "dailymotion",
-        videoId,
-        embedUrl: `https://geo.dailymotion.com/player/${DAILYMOTION_PLAYER_ID}.html?video=${videoId}&autoplay=0`,
       };
     }
   }
