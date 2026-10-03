@@ -14,6 +14,7 @@ export interface ProviderCandidate {
   tags?: string[];
   viewCount?: number | null;
   resolution?: string | null;
+  isVertical?: boolean | null;
   expedition?: string | null;
   dive?: string | null;
   credit?: string | null;
