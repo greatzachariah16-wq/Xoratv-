@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
+import { AdcashCinemaBanner } from "@/components/ads/AdcashBanner";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { cn } from "@/lib/utils";
 
@@ -338,7 +339,7 @@ function WatchPage() {
           </div>
         </div>
 
-        {/* Dynamic Promotional Sponsor Ad Popup triggered on Full Screen Portrait toggle */}
+        {/* Adcash cinema banner: appears below the player a few seconds after playback starts */}\n        <AdcashCinemaBanner delayMs={5000} />\n\n        {/* Dynamic Promotional Sponsor Ad Popup triggered on Full Screen Portrait toggle */}
         <LargeBannerPopupAd placement="cinema_popup" triggerKey={adTriggerKey} />
 
         {/* Movie Information & Details */}
