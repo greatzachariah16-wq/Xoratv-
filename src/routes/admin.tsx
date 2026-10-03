@@ -381,7 +381,7 @@ function AdminPage() {
           </div>
         </section>
 
-        <AdcashSwitch />
+        <section className="mt-8 space-y-3">\n          <div>\n            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Ad Monetization</p>\n            <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">Adcash Control Manager</h2>\n          </div>\n          <AdcashSwitch />\n        </section>
 
         {/* Recent Moderation Quick Snapshot */
         <section className="mt-10 space-y-4">
