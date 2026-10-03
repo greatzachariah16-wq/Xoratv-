@@ -259,10 +259,6 @@ export function ProviderEmbedPlayer({
     } else if (embedSrc.includes("vimeo.com")) {
       if (!embedSrc.includes("quality="))
         embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
-    } else if (embedSrc.includes("dailymotion.com")) {
-      if (!embedSrc.includes("quality="))
-        embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360";
-    }
   }
   if (autoPlay) {
     if (embedSrc.includes("autoplay=0")) {
@@ -308,8 +304,6 @@ export function ProviderEmbedPlayer({
         const vimeoAction = nextPlaying ? "play" : "pause";
         targetWindow.postMessage(JSON.stringify({ method: vimeoAction }), "*");
 
-        // 4. Dailymotion postMessage format
-        targetWindow.postMessage(JSON.stringify({ command: nextPlaying ? "play" : "pause" }), "*");
       } catch (err) {
         console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
       }
