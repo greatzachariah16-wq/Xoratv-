@@ -41,7 +41,6 @@ export function ProviderEmbedPlayer({
   const { user } = useAuth();
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
-  // Watch session integrity refs for embed players
   const embedSessionRef = useRef<{ sessionId: string; nonce: string; devId: string } | null>(null);
   const embedActiveSecondsRef = useRef<number>(0);
   const embedLastClaimedSecondsRef = useRef<number>(0);
@@ -50,7 +49,6 @@ export function ProviderEmbedPlayer({
     setIsClient(true);
   }, []);
 
-  // Listen to fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement === containerRef.current));
@@ -59,7 +57,6 @@ export function ProviderEmbedPlayer({
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // Auto-hide controls in fullscreen / landscape
   const bumpControls = useCallback(() => {
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -70,7 +67,6 @@ export function ProviderEmbedPlayer({
     }, 3500);
   }, [isPlaying]);
 
-  // Listen for iframe postMessage playback state changes from YouTube embeds
   useEffect(() => {
     if (!isClient) return;
 
@@ -78,7 +74,6 @@ export function ProviderEmbedPlayer({
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         if (data && data.event === "onStateChange") {
-          // 1 = playing, 2 = paused, 0 = ended
           if (data.info === 1) {
             setIsPlaying(true);
           } else if (data.info === 2 || data.info === 0) {
@@ -94,7 +89,6 @@ export function ProviderEmbedPlayer({
     return () => window.removeEventListener("message", handleEmbedMessage);
   }, [isClient]);
 
-  // View start & 3s view analytics
   useEffect(() => {
     if (postId && isClient) {
       trackEvent({
@@ -117,7 +111,6 @@ export function ProviderEmbedPlayer({
     }
   }, [postId, authorId, genre, feed, isClient]);
 
-  // Active watch time tracking and immediate pause-marking for Provider Embeds
   useEffect(() => {
     if (!isClient || !isPlaying || !user || !postId) {
       return;
@@ -132,7 +125,6 @@ export function ProviderEmbedPlayer({
         const fp = await generateDeviceFingerprint();
         const devId = fp.fingerprintId;
 
-        // Initialize active session
         const startRes = await fetch("/api/engagement/start-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -151,17 +143,14 @@ export function ProviderEmbedPlayer({
               nonce: sData.nonce,
               devId,
             };
-            // Broadcast immediate watch started event so dashboard reflects active streaming
             window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
           }
         }
 
-        // Tick active elapsed playing seconds (prevents fast-forward fraud)
         secondsTicker = setInterval(() => {
           embedActiveSecondsRef.current += 1;
         }, 1000);
 
-        // Periodic heartbeat every 10 seconds of verified active playback
         heartbeatInterval = setInterval(async () => {
           if (!embedSessionRef.current || isCancelled) return;
           const currentPlayed = embedActiveSecondsRef.current;
@@ -208,7 +197,6 @@ export function ProviderEmbedPlayer({
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (secondsTicker) clearInterval(secondsTicker);
 
-      // Immediately flush and mark watch time when paused or stopped!
       const session = embedSessionRef.current;
       const currentPlayed = embedActiveSecondsRef.current;
       const delta = currentPlayed - embedLastClaimedSecondsRef.current;
@@ -239,7 +227,6 @@ export function ProviderEmbedPlayer({
     };
   }, [isClient, isPlaying, user, postId]);
 
-  // Ensure origin is always accurately set in embed URL and apply 300MB/hr mobile data saver params
   const dataSaver = getActiveDataSaverConfig();
   let embedSrc = embedUrl;
   const currentOrigin =
@@ -250,7 +237,6 @@ export function ProviderEmbedPlayer({
   if (currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += `&origin=${encodeURIComponent(currentOrigin)}`;
   }
-  // Mobile Data Saver: apply 360p / 300MB/hr bandwidth constraints to embeds
   if (dataSaver.maxBitrateKbps <= 667) {
     if (embedSrc.includes("youtube.com") || embedSrc.includes("youtube-nocookie.com")) {
       if (!embedSrc.includes("vq="))
@@ -259,6 +245,7 @@ export function ProviderEmbedPlayer({
     } else if (embedSrc.includes("vimeo.com")) {
       if (!embedSrc.includes("quality="))
         embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
+    }
   }
   if (autoPlay) {
     if (embedSrc.includes("autoplay=0")) {
@@ -286,24 +273,17 @@ export function ProviderEmbedPlayer({
 
       try {
         const targetWindow = iframe.contentWindow;
-
-        // 1. YouTube postMessage standard format
         const ytCommand = nextPlaying ? "playVideo" : "pauseVideo";
         targetWindow.postMessage(
           JSON.stringify({ event: "command", func: ytCommand, args: [] }),
           "*",
         );
-
-        // 2. Custom internal stream-proxy player postMessage protocol
         targetWindow.postMessage(
           JSON.stringify({ type: "xora_player_cmd", action: nextPlaying ? "play" : "pause" }),
           "*",
         );
-
-        // 3. Vimeo postMessage standard format
         const vimeoAction = nextPlaying ? "play" : "pause";
         targetWindow.postMessage(JSON.stringify({ method: vimeoAction }), "*");
-
       } catch (err) {
         console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
       }
@@ -311,7 +291,6 @@ export function ProviderEmbedPlayer({
     [isPlaying, bumpControls],
   );
 
-  // Fullscreen and Landscape Orientation Handler
   const toggleFullscreen = useCallback(async () => {
     const container = containerRef.current;
     if (!container) return;
@@ -341,7 +320,6 @@ export function ProviderEmbedPlayer({
         className,
       )}
     >
-      {/* Top Cinema Mask Overlay: covers title, channel avatar, and branding */}
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4 transition-opacity duration-300",
@@ -387,13 +365,11 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      {/* Bottom right watermark shield: covers external embed branding */}
       <div className="pointer-events-none absolute bottom-2 right-2.5 z-20 flex select-none items-center gap-1.5 rounded-full border border-white/15 bg-black/90 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white shadow-xl backdrop-blur-md">
         <span className="size-1.5 rounded-full bg-primary" />
         <span>XORA CINEMA</span>
       </div>
 
-      {/* Floating interactive control bar on bottom for Play/Pause, Landscape & Fullscreen */}
       <div
         className={cn(
           "absolute bottom-3 left-3 z-30 flex items-center gap-2 transition-opacity duration-300",
@@ -419,7 +395,6 @@ export function ProviderEmbedPlayer({
           )}
         </button>
 
-        {/* Fullscreen Button */}
         <button
           type="button"
           onClick={toggleFullscreen}
