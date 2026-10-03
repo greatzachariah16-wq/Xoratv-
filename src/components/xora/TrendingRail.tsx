@@ -6,7 +6,8 @@ import { UserAvatar } from "./UserAvatar";
 import { RowSkeleton } from "./Skeletons";
 
 export function TrendingRail() {
-  const { data, isPending } = useQuery({\n    ...feedQuery("home"),\n    enabled: typeof window !== "undefined",\n  });
+  const { data, isPending } = useQuery({
+    ...feedQuery("home"),\n    enabled: typeof window !== "undefined",\n  });
 
   const trending = [...(data ?? [])]
     .sort((a, b) => (b.like_count ?? 0) - (a.like_count ?? 0))
