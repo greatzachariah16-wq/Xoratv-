@@ -332,7 +332,7 @@ export async function searchRecentYouTubeFeed(
 ): Promise<ProviderCandidate[]> {
   const query =
     feed === "shorts"
-      ? "#shorts horror supernatural fantasy"
+      ? "#shorts"
       : "horror fantasy supernatural movie";
 
   const result = await searchYouTubeWithStatus({
