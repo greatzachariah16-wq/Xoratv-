@@ -24,6 +24,7 @@ export interface ProviderSearchParams {
   limit?: number;
   feed?: "home" | "shorts" | "learn";
   minDurationSeconds?: number;
+  order?: "date" | "relevance";
 }
 
 export interface ProviderExecutionStatus {
