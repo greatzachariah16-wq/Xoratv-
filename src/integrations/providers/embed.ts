@@ -3,6 +3,10 @@
  * Enforces official embedded player URLs with safe defaults (nocookie, dnt, autoplay=0).
  */
 
+const DAILYMOTION_PLAYER_ID =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_DAILYMOTION_PLAYER_ID) ||
+  "x8lr5"; // Temporary fallback Player ID; replace with XoraTV's Dailymotion Player ID.
+
 export interface EmbedInfo {
   provider: "youtube" | "vimeo" | "dailymotion" | "custom";
   videoId: string | null;
@@ -123,7 +127,7 @@ export function parseEmbedInfo(
       return {
         provider: "dailymotion",
         videoId,
-        embedUrl: `https://geo.dailymotion.com/player.html?video=${videoId}&autoplay=0`,
+        embedUrl: `https://geo.dailymotion.com/player/${DAILYMOTION_PLAYER_ID}.html?video=${videoId}&autoplay=0`,
       };
     }
   }
