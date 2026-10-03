@@ -140,7 +140,7 @@ async function attachAuthor(post: PostRecord): Promise<PostWithAuthor> {
   if (!authorProfile && post.author_id) {
     if (profileMemoryCache.has(post.author_id)) {
       authorProfile = profileMemoryCache.get(post.author_id);
-    } else if (isFirebaseConfigured()) {
+    } else if (typeof window !== "undefined" && isFirebaseConfigured()) {
       try {
         const remote = await getProfile(post.author_id);
         if (remote) {
@@ -180,7 +180,7 @@ export async function fetchRankedFeed(
 ): Promise<PostWithAuthor[]> {
   let rawPosts: PostRecord[] = [];
 
-  if (isFirebaseConfigured()) {
+  if (typeof window !== "undefined" && isFirebaseConfigured()) {
     try {
       const rtdbPosts = await getFeedPosts(feed);
       if (rtdbPosts && rtdbPosts.length > 0) {
@@ -198,7 +198,7 @@ export async function fetchRankedFeed(
         (feed !== "shorts" || p.playability_status === "playable"),
     );
     // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
-    if (isFirebaseConfigured() && rawPosts.length > 0) {
+    if (typeof window !== "undefined" && isFirebaseConfigured() && rawPosts.length > 0) {
       rawPosts.forEach((post) => {
         setPostRecord(post).catch(() => {});
       });
@@ -209,7 +209,7 @@ export async function fetchRankedFeed(
   if (feed === "home" && mode === "following") {
     let follows: string[] = [];
     if (userId) {
-      if (isFirebaseConfigured()) {
+      if (typeof window !== "undefined" && isFirebaseConfigured()) {
         follows = await getFollowsForUser(userId).catch(() => []);
       }
       if (follows.length === 0) {
@@ -244,7 +244,7 @@ export async function fetchRankedFeed(
   let likedPostIds: string[] = [];
 
   if (userId) {
-    if (isFirebaseConfigured()) {
+    if (typeof window !== "undefined" && isFirebaseConfigured()) {
       try {
         const [f, l] = await Promise.all([
           getFollowsForUser(userId).catch(() => []),
@@ -275,7 +275,7 @@ export async function fetchRankedFeed(
     }
   }
 
-  const signals = await loadUserSignals(userId);
+  const signals = typeof window !== "undefined" ? await loadUserSignals(userId) : null;
 
   const rankCtx: RankContext = {
     userId: userId || null,
