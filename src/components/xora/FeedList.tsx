@@ -14,7 +14,7 @@ import { EmptyState, ErrorState } from "./EmptyState";
 import { DataSaverBadge } from "./DataSaverBadge";
 import { cn } from "@/lib/utils";
 import { rememberShownPostIds } from "@/lib/ranking";
-import { searchRecentYouTubeFeed } from "@/integrations/providers/youtube";
+import { searchDailymotion } from "@/integrations/providers/dailymotion";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 
 export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?: boolean }) {
@@ -38,9 +38,28 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     enabled: typeof window !== "undefined",
   });
 
-  const youtubeShortsQuery = useQuery({
-    queryKey: ["youtube-shorts-feed"],
-    queryFn: () => searchRecentYouTubeFeed("shorts", 12),
+  const shortsQuery = useQuery({
+    queryKey: ["dailymotion-shorts-feed"],
+    queryFn: async () => {
+      const list = await searchDailymotion({
+        query: "shorts",
+        limit: 25,
+        feed: "shorts",
+      });
+      return list
+        .filter(
+          (v) =>
+            Boolean(v.embedUrl) &&
+            Boolean(v.thumbnailUrl) &&
+            (typeof v.durationSeconds !== "number" || v.durationSeconds <= 180),
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.publishedAt || 0).getTime() -
+            new Date(a.publishedAt || 0).getTime(),
+        )
+        .slice(0, 12);
+    },
     enabled: feed === "shorts" && typeof window !== "undefined",
     staleTime: 5 * 60 * 1000,
   });
@@ -151,21 +170,21 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         </div>
       ) : null}
 
-      {feed === "shorts" && youtubeShortsQuery.data?.length ? (
+      {feed === "shorts" && shortsQuery.data?.length ? (
         <div className="space-y-4">
-          {youtubeShortsQuery.data.map((video, index) => (
+          {shortsQuery.data.map((video, index) => (
             <div key={video.id} className="space-y-2">
               <article className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
                 <div className="px-3 pt-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">YouTube Shorts</p>
+                      <p className="truncate text-sm font-semibold">Shorts</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {video.channelName || "YouTube creator"}
+                        {video.channelName || "Dailymotion creator"}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                      YouTube
+                      Dailymotion
                     </span>
                   </div>
                   <ProviderEmbedPlayer
@@ -194,12 +213,12 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
             </div>
           ))}
         </div>
-      ) : feed === "shorts" && youtubeShortsQuery.isPending ? (
+      ) : feed === "shorts" && shortsQuery.isPending ? (
         <FeedSkeleton vertical={vertical} />
-      ) : feed === "shorts" && youtubeShortsQuery.isError ? (
+      ) : feed === "shorts" && shortsQuery.isError ? (
         <ErrorState
-          message="YouTube Shorts could not be loaded. Please try again."
-          onRetry={() => void youtubeShortsQuery.refetch()}
+          message="Dailymotion Shorts could not be loaded. Please try again."
+          onRetry={() => void shortsQuery.refetch()}
         />
       ) : isPending ? (
         <FeedSkeleton vertical={vertical} />
