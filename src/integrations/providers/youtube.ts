@@ -307,11 +307,10 @@ export async function searchRecentYouTubeFeed(
     for (const candidate of entry.value.candidates || []) {
       if (candidate.provider !== "youtube") continue;
       if (!candidate.thumbnailUrl || !candidate.embedUrl) continue;
-      if (
-        typeof candidate.durationSeconds !== "number" ||
-        candidate.durationSeconds <= 0 ||
-        candidate.durationSeconds > 180
-      ) {
+      // YouTube search already restricts this feed to short-form videos.
+      // Metadata lookup can omit duration, so do not discard an otherwise
+      // playable candidate just because videos.list returned no duration.
+      if (typeof candidate.durationSeconds === "number" && candidate.durationSeconds > 180) {
         continue;
       }
       // Do not require YouTube's embed dimensions: that metadata is not guaranteed
