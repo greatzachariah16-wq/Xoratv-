@@ -335,7 +335,7 @@ export async function searchRecentYouTubeFeed(
 ): Promise<ProviderCandidate[]> {
   const query =
     feed === "shorts"
-      ? "#shorts"
+      ? "shorts"
       : "horror fantasy supernatural movie";
 
   const result = await searchYouTubeWithStatus({
@@ -356,10 +356,13 @@ export async function searchRecentYouTubeFeed(
     }
 
     if (feed === "shorts") {
+      // The YouTube API already applies videoDuration=short (< 4 minutes).
+      // When videos.list metadata is available, tighten this to the current
+      // Shorts ceiling; if metadata is unavailable, keep the API-filtered result
+      // instead of dropping the entire Shorts feed.
       return (
-        typeof candidate.durationSeconds === "number" &&
-        candidate.durationSeconds > 0 &&
-        candidate.durationSeconds <= 180
+        candidate.durationSeconds == null ||
+        (candidate.durationSeconds > 0 && candidate.durationSeconds <= 180)
       );
     }
 
