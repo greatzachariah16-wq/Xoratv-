@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const { data: profile } = useQuery({
     queryKey: ["me", "profile", userId],
-    enabled: Boolean(userId),
+    enabled: Boolean(userId) && typeof window !== "undefined",
     queryFn: async (): Promise<Profile | null> => {
       if (!userId) return null;
 
