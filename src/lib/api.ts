@@ -35,6 +35,7 @@ import {
 import { rankPostsForUser, getOrCreateSessionId, getShownPostIds, type RankContext } from "./ranking";
 import { loadUserSignals, trackEvent } from "./events";
 import { SEED_HORROR_MOVIES } from "@/integrations/firebase/movies";
+import { searchRecentYouTubeFeed } from "@/integrations/providers/youtube";
 
 export type { FeedType };
 export type Profile = ProfileRecord;
@@ -195,7 +196,9 @@ export async function fetchRankedFeed(
     rawPosts = localPosts.filter(
       (p) =>
         p.feed === feed &&
-        (feed !== "shorts" || p.playability_status === "playable"),
+        Boolean(p.poster_path) &&
+        (feed !== "shorts" ||
+          (p.source === "youtube" && p.playability_status === "playable")),
     );
     // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
     if (typeof window !== "undefined" && isFirebaseConfigured() && rawPosts.length > 0) {
@@ -205,7 +208,7 @@ export async function fetchRankedFeed(
     }
   }
 
-  // 1. If following mode requested on Home feed
+  // Dedicated discovery layers: Home and Shorts use separate YouTube pools.\n  // Shorts is strictly YouTube-only; all visible video candidates require thumbnails.\n  try {\n    const liveYouTube = await searchRecentYouTubeFeed(feed === "shorts" ? "shorts" : "home", 12);\n    const existingIds = new Set(rawPosts.map((p) => p.id));\n    const livePosts: PostRecord[] = liveYouTube\n      .filter((candidate) => !existingIds.has(candidate.id) && Boolean(candidate.thumbnailUrl))\n      .map((candidate) => ({\n        id: candidate.id,\n        author_id: `youtube-channel-${candidate.channelName || "youtube"}`,\n        title: candidate.title,\n        caption: candidate.description,\n        kind: "video",\n        feed,\n        status: "published",\n        approval_status: "approved",\n        media_path: null,\n        poster_path: candidate.thumbnailUrl,\n        stream_url: candidate.embedUrl,\n        duration_seconds: candidate.durationSeconds,\n        featured: false,\n        recommendation_score: 88,\n        quality_score: candidate.resolution === "HD" ? 95 : 88,\n        is_color: true,\n        rights_status: "unknown",\n        source: "youtube",\n        created_at: candidate.publishedAt || new Date().toISOString(),\n        discovered_at: new Date().toISOString(),\n        year: candidate.publishedAt ? new Date(candidate.publishedAt).getFullYear() : null,\n        genre: "YouTube Discovery",\n        like_count: 0,\n        comment_count: 0,\n        playability_status: "playable",\n      } as PostRecord));\n\n    if (feed === "shorts") {\n      // Hard rule: no creator, Vimeo, Dailymotion, NOAA, or local short can enter Shorts.\n      rawPosts = livePosts;\n    } else if (feed === "home") {\n      rawPosts = [...rawPosts, ...livePosts];\n    }\n  } catch (err) {\n    console.warn("[YouTube Discovery] Live feed layer unavailable:", err);\n    if (feed === "shorts") rawPosts = [];\n  }\n\n  // 1. If following mode requested on Home feed
   if (feed === "home" && mode === "following") {
     let follows: string[] = [];
     if (userId) {
