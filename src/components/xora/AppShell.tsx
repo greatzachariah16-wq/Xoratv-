@@ -249,6 +249,17 @@ export function AppShell({
         </div>
       </header>
 
+      <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
+        <div
+          className={cn(
+            "mx-auto px-4 pb-28 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            wide ? "max-w-5xl" : "max-w-[620px]",
+          )}
+        >
+          {children}
+        </div>
+      </main>
+
       {rail ? (
         <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-8 xl:block">
           {rail}
