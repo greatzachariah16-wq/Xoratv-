@@ -253,10 +253,15 @@ export async function fetchRankedFeed(
           p.playability_status === "playable",
       );
       const storedIds = new Set(storedYouTubeShorts.map((p) => p.id));
-      rawPosts = [
-        ...storedYouTubeShorts,
-        ...livePosts.filter((p) => !storedIds.has(p.id)),
-      ];
+      // Fresh YouTube discovery is the primary Shorts pool.
+      // Firebase is only the fallback/cache when fresh discovery returns nothing.
+      rawPosts =
+        livePosts.length > 0
+          ? [
+              ...livePosts,
+              ...storedYouTubeShorts.filter((p) => !livePosts.some((live) => live.id === p.id)),
+            ]
+          : storedYouTubeShorts;
     } else if (feed === "home") {
       rawPosts = [...rawPosts, ...livePosts];
     }
