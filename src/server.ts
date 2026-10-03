@@ -660,9 +660,17 @@ export default {
     // YouTube Data API v3 Proxy endpoint (secure server-side discovery)
     if (url.pathname === "/api/youtube/search" && request.method === "GET") {
       try {
-        const query = url.searchParams.get("q") || url.searchParams.get("query") || "";
+        let query = url.searchParams.get("q") || url.searchParams.get("query") || "";
         const limit = parseInt(url.searchParams.get("limit") || "12", 10);
         const feed = url.searchParams.get("feed") as "home" | "shorts" | "learn" | undefined;
+        const order = (url.searchParams.get("order") || "relevance") as "date" | "relevance";
+
+        if (!query.trim() && (feed === "shorts" || feed === "home")) {
+          query =
+            feed === "shorts"
+              ? "#shorts horror supernatural fantasy"
+              : "horror fantasy supernatural movie";
+        }
 
         if (!query.trim()) {
           return new Response(JSON.stringify({ ok: true, count: 0, candidates: [] }), {
@@ -679,6 +687,7 @@ export default {
             query,
             limit,
             feed,
+            order,
           },
           { referer },
         );
