@@ -270,7 +270,9 @@ export async function fetchRankedFeed(
           p.playability_status === "playable",
       );
     }
-  }\n\n  // 1. If following mode requested on Home feed
+  }
+
+  // 1. If following mode requested on Home feed
   if (feed === "home" && mode === "following") {
     let follows: string[] = [];
     if (userId) {
