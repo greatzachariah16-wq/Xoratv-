@@ -30,21 +30,24 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
     "tags",
   ].join(",");
 
-  const searchParams = new URLSearchParams({
-    search: query,
-    fields,
-    limit: String(limit),
-  });
+  const fetchCandidates = async (includeTimeframe: boolean) => {
+    const searchParams = new URLSearchParams({
+      search: query,
+      fields,
+      limit: String(limit),
+      ...(params.feed === "shorts"
+        ? {
+            sort: "recent",
+            shorter_than: "3",
+          }
+        : {}),
+    });
 
-  if (params.feed === "shorts") {
-    searchParams.set("sort", "recent");
-    searchParams.set("shorter_than", "3");
-    searchParams.set("timeframe", "604800");
-  }
+    if (params.feed === "shorts" && includeTimeframe) {
+      searchParams.set("timeframe", "604800");
+    }
 
-  const searchUrl = `https://api.dailymotion.com/videos?${searchParams.toString()}`;
-
-  try {
+    const searchUrl = `https://api.dailymotion.com/videos?${searchParams.toString()}`;
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
@@ -57,6 +60,7 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
       delete headers["Authorization"];
       res = await fetch(searchUrl, { headers });
     }
+
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       let errorMsg = `HTTP ${res.status}`;
@@ -66,7 +70,7 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
       } catch {
         if (errBody) errorMsg = `HTTP ${res.status}: ${errBody.slice(0, 80)}`;
       }
-      return { ok: false, count: 0, candidates: [], error: errorMsg };
+      return { ok: false as const, candidates: [] as ProviderCandidate[], error: errorMsg };
     }
 
     const data = await res.json();
@@ -135,7 +139,25 @@ export async function searchDailymotionWithStatus(params: ProviderSearchParams):
         return true;
       });
 
-    return { ok: true, count: candidates.length, candidates };
+    return { ok: true as const, candidates };
+  };
+
+  try {
+    let result = await fetchCandidates(params.feed === "shorts");
+
+    if (params.feed === "shorts" && result.ok && result.candidates.length === 0) {
+      result = await fetchCandidates(false);
+    }
+
+    if (!result.ok) {
+      return { ok: false, count: 0, candidates: [], error: result.error };
+    }
+
+    return {
+      ok: true,
+      count: result.candidates.length,
+      candidates: result.candidates,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Network error";
     return { ok: false, count: 0, candidates: [], error: msg };
@@ -146,5 +168,8 @@ export async function searchDailymotion(
   params: ProviderSearchParams,
 ): Promise<ProviderCandidate[]> {
   const res = await searchDailymotionWithStatus(params);
+  if (!res.ok) {
+    throw new Error(res.error || "Dailymotion search failed");
+  }
   return res.candidates;
 }
