@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Sparkles, Users, Compass, Loader2 } from "lucide-react";
 import { feedInfiniteQuery, type FeedType } from "@/lib/api";
@@ -14,6 +14,8 @@ import { EmptyState, ErrorState } from "./EmptyState";
 import { DataSaverBadge } from "./DataSaverBadge";
 import { cn } from "@/lib/utils";
 import { rememberShownPostIds } from "@/lib/ranking";
+import { searchRecentYouTubeFeed } from "@/integrations/providers/youtube";
+import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 
 export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?: boolean }) {
   const { user } = useAuth();
@@ -142,7 +144,57 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         </div>
       ) : null}
 
-      {isPending ? (
+      {feed === "shorts" && youtubeShortsQuery.data?.length ? (
+        <div className="space-y-4">
+          {youtubeShortsQuery.data.map((video, index) => (
+            <div key={video.id} className="space-y-2">
+              <article className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+                <div className="px-3 pt-3">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">YouTube Shorts</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {video.channelName || "YouTube creator"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      YouTube
+                    </span>
+                  </div>
+                  <ProviderEmbedPlayer
+                    embedUrl={video.embedUrl}
+                    title={video.title}
+                    vertical
+                    autoPlay={index === 0}
+                    postId={video.id}
+                    feed="shorts"
+                    className="mx-auto"
+                  />
+                </div>
+                <div className="px-3 pb-3 pt-3">
+                  <h3 className="font-display text-[17px] font-semibold leading-snug text-balance">
+                    {video.title}
+                  </h3>
+                  {video.description ? (
+                    <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                      {video.description}
+                    </p>
+                  ) : null}
+                </div>
+              </article>
+              {(index + 1) % 2 === 0 ? <AdsterraBanner className="my-3" /> : null}
+              <AdcashBanner className="my-2" />
+            </div>
+          ))}
+        </div>
+      ) : feed === "shorts" && youtubeShortsQuery.isPending ? (
+        <FeedSkeleton vertical={vertical} />
+      ) : feed === "shorts" && youtubeShortsQuery.isError ? (
+        <ErrorState
+          message="YouTube Shorts could not be loaded. Please try again."
+          onRetry={() => void youtubeShortsQuery.refetch()}
+        />
+      ) : isPending ? (
         <FeedSkeleton vertical={vertical} />
       ) : isError ? (
         <ErrorState message={(error as Error).message} onRetry={() => void refetch()} />
