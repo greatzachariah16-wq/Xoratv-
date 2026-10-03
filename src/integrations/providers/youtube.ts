@@ -283,48 +283,28 @@ export async function searchRecentYouTubeFeed(
     );
   }
 
-  const queries = [
-    "#shorts",
-    "creator shorts",
-    "vlog shorts",
-    "comedy shorts",
-    "gaming shorts",
-    "tech shorts",
-    "lifestyle shorts",
-  ];
+  // Keep Shorts discovery to one cheap, recent YouTube search. Multiple search.list
+  // calls were consuming quota rapidly and could make the entire Shorts feed fail.
+  const result = await searchYouTubeWithStatus({
+    query: "#shorts",
+    limit: Math.min(limit, 24),
+    feed: "shorts",
+    order: "date",
+  });
 
-  const settled = await Promise.allSettled(
-    queries.map((query) =>
-      searchYouTubeWithStatus({
-        query,
-        limit,
-        feed: "shorts",
-        order: "date",
-      }),
-    ),
-  );
-
-  const merged = new Map<string, ProviderCandidate>();
-
-  for (const entry of settled) {
-    if (entry.status !== "fulfilled" || !entry.value?.ok) continue;
-
-    for (const candidate of entry.value.candidates || []) {
-      if (candidate.provider !== "youtube") continue;
-      if (!candidate.thumbnailUrl || !candidate.embedUrl) continue;
-      // YouTube search already restricts this feed to short-form videos.
-      // Metadata lookup can omit duration, so do not discard an otherwise
-      // playable candidate just because videos.list returned no duration.
-      if (typeof candidate.durationSeconds === "number" && candidate.durationSeconds > 180) {
-        continue;
-      }
-      // Do not require YouTube's embed dimensions: that metadata is not guaranteed
-      // for every public video and was causing valid Shorts to be discarded.
-      merged.set(candidate.id, candidate);
-    }
+  if (!result.ok) {
+    console.warn("[YouTube Shorts] Discovery failed:", result.error || "unknown error");
+    return [];
   }
 
-  return Array.from(merged.values())
+  return (result.candidates || [])
+    .filter(
+      (candidate) =>
+        candidate.provider === "youtube" &&
+        Boolean(candidate.thumbnailUrl) &&
+        Boolean(candidate.embedUrl) &&
+        (typeof candidate.durationSeconds !== "number" || candidate.durationSeconds <= 180),
+    )
     .sort(
       (a, b) =>
         new Date(b.publishedAt || 0).getTime() -
