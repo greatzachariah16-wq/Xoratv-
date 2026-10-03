@@ -125,11 +125,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     scripts: [
       {
         id: "adcash-library",
-        src: "//acscdn.com/script/aclib.js",
-        async: true,
-      },
-      {
-        id: "adcash-library",
         src: "https://acscdn.com/script/aclib.js",
         async: true,
       },
