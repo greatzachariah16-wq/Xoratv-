@@ -1,8 +1,5 @@
 import type { ProviderCandidate, ProviderSearchParams } from "./types";
 
-/**
- * In-memory TTL cache for YouTube queries to prevent consuming quota on duplicate requests.
- */
 interface CacheEntry {
   timestamp: number;
   data: {
@@ -14,7 +11,7 @@ interface CacheEntry {
 }
 
 const searchCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function unescapeHtml(str: string): string {
   if (!str) return "";
@@ -41,9 +38,6 @@ function parseIsoDuration(durationStr: string): number | null {
   return total > 0 ? total : null;
 }
 
-/**
- * Direct YouTube Data API v3 search implementation using official endpoints.
- */
 export async function executeYouTubeApiSearch(
   params: ProviderSearchParams,
   options?: { apiKey?: string; referer?: string },
@@ -65,34 +59,22 @@ export async function executeYouTubeApiSearch(
       ok: false,
       count: 0,
       candidates: [],
-      error:
-        "YouTube API key (YOUTUBE_API_KEY / VITE_YOUTUBE_API_KEY) is not configured in server environment",
+      error: "YouTube API key is not configured in server environment",
     };
   }
 
   const query = params.query.trim();
-  if (!query) {
-    return { ok: true, count: 0, candidates: [] };
-  }
+  if (!query) return { ok: true, count: 0, candidates: [] };
 
   const limit = Math.min(Math.max(params.limit || 10, 1), 50);
-
-  // Check cache
   const cacheKey = `${query}::${limit}::${params.feed || "all"}::${params.order || "relevance"}`;
   const cached = searchCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.data;
-  }
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) return cached.data;
 
   try {
     const headers: Record<string, string> = {};
-    if (options?.referer) {
-      headers["Referer"] = options.referer;
-    } else if (typeof window !== "undefined" && window.location?.origin) {
-      headers["Referer"] = window.location.origin;
-    }
+    if (options?.referer) headers.Referer = options.referer;
 
-    // 1. YouTube Data API v3 Search
     const searchParams = new URLSearchParams({
       part: "snippet",
       type: "video",
@@ -101,72 +83,57 @@ export async function executeYouTubeApiSearch(
       maxResults: String(limit),
       key: apiKey.trim(),
       order: params.order || "relevance",
+      videoDuration: params.feed === "shorts" ? "short" : "long",
     });
 
-    if (params.feed === "shorts") {
-      searchParams.set("videoDuration", "short");
-    } else {
-      // Look for long videos (> 20 mins) for movie searches
-      searchParams.set("videoDuration", "long");
-    }
-
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`;
-    const res = await fetch(searchUrl, { headers });
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`,
+      { headers },
+    );
 
     if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      let errorMsg = `HTTP ${res.status}`;
+      const body = await res.text().catch(() => "");
+      let message = `HTTP ${res.status}`;
       try {
-        const parsed = JSON.parse(errBody);
+        const parsed = JSON.parse(body);
         const reason = parsed?.error?.errors?.[0]?.reason || "";
         const apiMsg = parsed?.error?.message || "";
-
-        if (
-          apiMsg.toLowerCase().includes("requests from referer") &&
-          apiMsg.toLowerCase().includes("blocked")
-        ) {
-          errorMsg = `YouTube API Key Error: HTTP Referrer restrictions in Google Cloud Console are blocking this domain. Add your app domain (e.g., https://*.run.app/* or https://*.onrender.com/*) to Allowed Referrers in Google Cloud Console > APIs & Services > Credentials.`;
-        } else if (reason === "quotaExceeded" || reason === "dailyLimitExceeded") {
-          errorMsg = "YouTube API daily quota exceeded. Please check Google Cloud Console.";
+        if (reason === "quotaExceeded" || reason === "dailyLimitExceeded") {
+          message = "YouTube API daily quota exceeded.";
         } else if (reason === "keyInvalid" || apiMsg.toLowerCase().includes("api key not valid")) {
-          errorMsg = "Invalid YouTube API key. Please check your Google Cloud credentials.";
+          message = "Invalid YouTube API key.";
         } else if (reason === "accessNotConfigured") {
-          errorMsg =
-            "YouTube Data API v3 is not enabled in your Google Cloud project. Please enable it in Google Cloud Console.";
+          message = "YouTube Data API v3 is not enabled.";
         } else if (apiMsg) {
-          errorMsg = `YouTube API Error (${res.status}): ${apiMsg}`;
+          message = `YouTube API Error (${res.status}): ${apiMsg}`;
         }
       } catch {
-        if (errBody) errorMsg = `HTTP ${res.status}: ${errBody.slice(0, 100)}`;
+        if (body) message = `HTTP ${res.status}: ${body.slice(0, 100)}`;
       }
-      return { ok: false, count: 0, candidates: [], error: errorMsg };
+      return { ok: false, count: 0, candidates: [], error: message };
     }
 
     const data = await res.json();
-    const items = data.items || [];
+    const items = Array.isArray(data.items) ? data.items : [];
     if (!items.length) {
       const emptyResult = { ok: true, count: 0, candidates: [] };
       searchCache.set(cacheKey, { timestamp: Date.now(), data: emptyResult });
       return emptyResult;
     }
 
-    // 2. Fetch Rich Metadata (Duration, ViewCount, Definition, Tags) via videos.list in a single batched call
     const videoIds = items
       .map((item: { id?: { videoId?: string } }) => item.id?.videoId)
       .filter(Boolean) as string[];
 
-    const metadataMap: Record<
-      string,
-      {
-        duration?: number | null;
-        viewCount?: number | null;
-        definition?: string | null;
-        tags?: string[];
-        isVertical?: boolean | null;
-      }
-    > = {};
+    const metadataMap: Record<string, {
+      duration?: number | null;
+      viewCount?: number | null;
+      definition?: string | null;
+      tags?: string[];
+      isVertical?: boolean | null;
+    }> = {};
 
-    if (videoIds.length > 0) {
+    if (videoIds.length) {
       try {
         const detailsParams = new URLSearchParams({
           part: "snippet,contentDetails,statistics,status,player",
@@ -175,169 +142,119 @@ export async function executeYouTubeApiSearch(
           maxHeight: "1280",
           key: apiKey.trim(),
         });
-        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`;
-        const detailsRes = await fetch(detailsUrl, { headers });
-
+        const detailsRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`,
+          { headers },
+        );
         if (detailsRes.ok) {
           const detailsData = await detailsRes.json();
           for (const item of detailsData.items || []) {
             const duration = parseIsoDuration(item.contentDetails?.duration || "");
             const rawViews = item.statistics?.viewCount;
-            const viewCount = rawViews ? parseInt(rawViews, 10) || null : null;
-            const definition = item.contentDetails?.definition || null;
-            const tags = Array.isArray(item.snippet?.tags) ? item.snippet.tags : [];
             const embedWidth = Number(item.player?.embedWidth) || 0;
             const embedHeight = Number(item.player?.embedHeight) || 0;
-            const isVertical =
-              embedWidth > 0 && embedHeight > 0 ? embedHeight >= embedWidth : null;
-
             metadataMap[item.id] = {
               duration,
-              viewCount,
-              definition,
-              tags,
-              isVertical,
+              viewCount: rawViews ? parseInt(rawViews, 10) || null : null,
+              definition: item.contentDetails?.definition || null,
+              tags: Array.isArray(item.snippet?.tags) ? item.snippet.tags : [],
+              isVertical:
+                embedWidth > 0 && embedHeight > 0 ? embedHeight >= embedWidth : null,
             };
           }
         }
-      } catch (durationErr) {
-        console.warn("[YouTube Provider] Failed to batch fetch video metadata:", durationErr);
+      } catch (err) {
+        console.warn("[YouTube Provider] Metadata lookup failed:", err);
       }
     }
 
-    // 3. Normalize into ProviderCandidate
-    const candidates = items
+    const candidates: ProviderCandidate[] = items
       .filter((item: { id?: { videoId?: string } }) => Boolean(item.id?.videoId))
-      .map(
-        (item: {
-          id: { videoId: string };
-          snippet: {
-            title: string;
-            description?: string;
-            thumbnails?: {
-              maxres?: { url: string };
-              high?: { url: string };
-              medium?: { url: string };
-              default?: { url: string };
-            };
-            channelTitle?: string;
-            publishedAt?: string;
-          };
-        }): ProviderCandidate => {
-          const videoId = item.id.videoId;
-          const snippet = item.snippet;
-          const meta = metadataMap[videoId] || {};
+      .map((item: any) => {
+        const videoId = item.id.videoId;
+        const snippet = item.snippet;
+        const meta = metadataMap[videoId] || {};
+        const thumbnail =
+          snippet.thumbnails?.maxres?.url ||
+          snippet.thumbnails?.high?.url ||
+          snippet.thumbnails?.medium?.url ||
+          snippet.thumbnails?.default?.url ||
+          null;
 
-          const thumbnail =
-            snippet.thumbnails?.maxres?.url ||
-            snippet.thumbnails?.high?.url ||
-            snippet.thumbnails?.medium?.url ||
-            snippet.thumbnails?.default?.url ||
-            null;
-
-          const resolution = meta.definition === "hd" ? "HD" : meta.definition ? "SD" : null;
-
-          return {
-            id: `yt-${videoId}`,
-            provider: "youtube",
-            title: unescapeHtml(snippet.title || "Untitled YouTube Video"),
-            description: snippet.description ? unescapeHtml(snippet.description) : null,
-            thumbnailUrl: thumbnail,
-            embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`,
-            watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
-            durationSeconds: meta.duration ?? null,
-            channelName: snippet.channelTitle ? unescapeHtml(snippet.channelTitle) : null,
-            publishedAt: snippet.publishedAt || null,
-            viewCount: meta.viewCount ?? null,
-            tags: meta.tags && meta.tags.length ? meta.tags.slice(0, 8) : undefined,
-            resolution,
-            isVertical: meta.isVertical ?? null,
-          };
-        },
-      );
+        return {
+          id: `yt-${videoId}`,
+          provider: "youtube",
+          title: unescapeHtml(snippet.title || "Untitled YouTube Video"),
+          description: snippet.description ? unescapeHtml(snippet.description) : null,
+          thumbnailUrl: thumbnail,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`,
+          watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          durationSeconds: meta.duration ?? null,
+          channelName: snippet.channelTitle ? unescapeHtml(snippet.channelTitle) : null,
+          publishedAt: snippet.publishedAt || null,
+          viewCount: meta.viewCount ?? null,
+          tags: meta.tags?.length ? meta.tags.slice(0, 8) : undefined,
+          resolution: meta.definition === "hd" ? "HD" : meta.definition ? "SD" : null,
+          isVertical: meta.isVertical ?? null,
+        } as ProviderCandidate;
+      });
 
     const minDuration =
       typeof params.minDurationSeconds === "number"
         ? params.minDurationSeconds
         : params.feed === "shorts"
           ? 0
-          : 2400; // Default 40 minutes (2400s) for movie searches
+          : 2400;
 
-    const filteredCandidates = candidates.filter((c) => {
-      if (
-        minDuration > 0 &&
-        typeof c.durationSeconds === "number" &&
-        c.durationSeconds < minDuration
-      ) {
-        return false;
-      }
-      return true;
-    });
+    const filteredCandidates = candidates.filter(
+      (candidate) =>
+        !(minDuration > 0) ||
+        typeof candidate.durationSeconds !== "number" ||
+        candidate.durationSeconds >= minDuration,
+    );
 
-    const result = { ok: true, count: filteredCandidates.length, candidates: filteredCandidates };
+    const result = {
+      ok: true,
+      count: filteredCandidates.length,
+      candidates: filteredCandidates,
+    };
     searchCache.set(cacheKey, { timestamp: Date.now(), data: result });
     return result;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Network error contacting YouTube";
-    return { ok: false, count: 0, candidates: [], error: msg };
+    return {
+      ok: false,
+      count: 0,
+      candidates: [],
+      error: err instanceof Error ? err.message : "Network error contacting YouTube",
+    };
   }
 }
 
-/**
- * Searches YouTube with status feedback.
- * If running in a browser, queries the secure server proxy `/api/youtube/search` first;
- * falls back to direct API execution if running standalone or server-side.
- */
-export async function searchYouTubeWithStatus(params: ProviderSearchParams): Promise<{
-  ok: boolean;
-  count: number;
-  candidates: ProviderCandidate[];
-  error?: string;
-}> {
-  // If running in browser environment, try the backend API endpoint to keep keys server-side
+export async function searchYouTubeWithStatus(params: ProviderSearchParams) {
   if (typeof window !== "undefined") {
     try {
       const searchParams = new URLSearchParams({
         q: params.query,
         limit: String(params.limit || 12),
       });
-      if (params.feed) {
-        searchParams.set("feed", params.feed);
-      }
-      if (params.order) {
-        searchParams.set("order", params.order);
-      }
+      if (params.feed) searchParams.set("feed", params.feed);
+      if (params.order) searchParams.set("order", params.order);
 
       const res = await fetch(`/api/youtube/search?${searchParams.toString()}`);
-      const data = (await res.json().catch(() => null)) as {
-        ok: boolean;
-        count: number;
-        candidates: ProviderCandidate[];
-        error?: string;
-      } | null;
-
-      if (data && typeof data.ok === "boolean") {
-        return data;
-      }
+      const data = await res.json().catch(() => null);
+      if (data && typeof data.ok === "boolean") return data;
     } catch {
-      // Fall through to direct execution
+      // Use direct server execution below.
     }
   }
-
-  // Direct execution (server runtime or fallback)
   return executeYouTubeApiSearch(params);
 }
 
 export async function searchYouTube(params: ProviderSearchParams): Promise<ProviderCandidate[]> {
-  const res = await searchYouTubeWithStatus(params);
-  return res.candidates;
+  const result = await searchYouTubeWithStatus(params);
+  return result.candidates;
 }
 
-
-/**
- * Dedicated live discovery layer for the public feeds.
- * Home and Shorts use separate YouTube discovery pools.
- */
 export async function searchRecentYouTubeFeed(
   feed: "home" | "shorts",
   limit = 12,
@@ -361,8 +278,6 @@ export async function searchRecentYouTubeFeed(
     );
   }
 
-  // The Data API exposes duration/embeddability filters, but not a direct Shorts flag.
-  // Use several recent Shorts-oriented searches and enforce the current 3-minute ceiling.
   const queries = [
     "#shorts",
     "creator shorts",
@@ -372,7 +287,8 @@ export async function searchRecentYouTubeFeed(
     "tech shorts",
     "lifestyle shorts",
   ];
-  const results = await Promise.all(
+
+  const settled = await Promise.allSettled(
     queries.map((query) =>
       searchYouTubeWithStatus({
         query,
@@ -384,8 +300,11 @@ export async function searchRecentYouTubeFeed(
   );
 
   const merged = new Map<string, ProviderCandidate>();
-  for (const result of results) {
-    for (const candidate of result.candidates) {
+
+  for (const entry of settled) {
+    if (entry.status !== "fulfilled" || !entry.value?.ok) continue;
+
+    for (const candidate of entry.value.candidates || []) {
       if (candidate.provider !== "youtube") continue;
       if (!candidate.thumbnailUrl || !candidate.embedUrl) continue;
       if (
@@ -395,8 +314,8 @@ export async function searchRecentYouTubeFeed(
       ) {
         continue;
       }
-      // Reject videos whose public embed dimensions clearly show landscape.
-      if (candidate.isVertical === false) continue;
+      // Do not require YouTube's embed dimensions: that metadata is not guaranteed
+      // for every public video and was causing valid Shorts to be discarded.
       merged.set(candidate.id, candidate);
     }
   }
