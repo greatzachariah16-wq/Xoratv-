@@ -7,7 +7,6 @@ import type {
 } from "./types";
 import { searchYouTubeWithStatus } from "./youtube";
 import { searchVimeoWithStatus } from "./vimeo";
-import { searchDailymotionWithStatus } from "./dailymotion";
 import { searchNoaaWithStatus } from "./noaa";
 import { setPostRecord, setProfile, getProfile, pathSafe } from "@/integrations/firebase/rtdb";
 import { ref, set, get, remove } from "firebase/database";
@@ -18,7 +17,6 @@ export * from "./types";
 export * from "./embed";
 export { searchYouTube, searchYouTubeWithStatus } from "./youtube";
 export { searchVimeo, searchVimeoWithStatus } from "./vimeo";
-export { searchDailymotion, searchDailymotionWithStatus } from "./dailymotion";
 export { searchNoaa, searchNoaaWithStatus } from "./noaa";
 
 export interface MultiProviderSearchParams extends ProviderSearchParams {
@@ -32,7 +30,7 @@ export interface MultiProviderSearchParams extends ProviderSearchParams {
 export async function searchAllProvidersWithStatus(
   params: MultiProviderSearchParams,
 ): Promise<MultiProviderSearchResult> {
-  const selected = params.providers || ["noaa", "youtube", "vimeo", "dailymotion"];
+  const selected = params.providers || ["noaa", "youtube", "vimeo"];
   const statuses: ProviderExecutionStatus[] = [];
   const candidates: ProviderCandidate[] = [];
 
@@ -75,22 +73,6 @@ export async function searchAllProvidersWithStatus(
       searchVimeoWithStatus(params).then((res) => {
         statuses.push({
           provider: "vimeo",
-          ok: res.ok,
-          count: res.count,
-          error: res.error,
-        });
-        if (res.candidates.length) {
-          candidates.push(...res.candidates);
-        }
-      }),
-    );
-  }
-
-  if (selected.includes("dailymotion")) {
-    tasks.push(
-      searchDailymotionWithStatus(params).then((res) => {
-        statuses.push({
-          provider: "dailymotion",
           ok: res.ok,
           count: res.count,
           error: res.error,
