@@ -381,7 +381,7 @@ export function ProviderEmbedPlayer({
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
+          referrerPolicy="strict-origin-when-cross-origin"
           className={cn(
             "h-full w-full border-0 pointer-events-auto",
             isFullscreen ? "rounded-none" : "rounded-2xl",
