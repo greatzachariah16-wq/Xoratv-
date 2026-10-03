@@ -78,7 +78,7 @@ export async function executeYouTubeApiSearch(
   const limit = Math.min(Math.max(params.limit || 10, 1), 50);
 
   // Check cache
-  const cacheKey = `${query}::${limit}::${params.feed || "all"}`;
+  const cacheKey = `${query}::${limit}::${params.feed || "all"}::${params.order || "relevance"}`;
   const cached = searchCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.data;
@@ -100,6 +100,7 @@ export async function executeYouTubeApiSearch(
       q: query,
       maxResults: String(limit),
       key: apiKey.trim(),
+      order: params.order || "relevance",
     });
 
     if (params.feed === "shorts") {
@@ -318,4 +319,50 @@ export async function searchYouTubeWithStatus(params: ProviderSearchParams): Pro
 export async function searchYouTube(params: ProviderSearchParams): Promise<ProviderCandidate[]> {
   const res = await searchYouTubeWithStatus(params);
   return res.candidates;
+}
+
+
+/**
+ * Dedicated live discovery layer for the public feeds.
+ * Home and Shorts use separate YouTube discovery pools.
+ */
+export async function searchRecentYouTubeFeed(
+  feed: "home" | "shorts",
+  limit = 12,
+): Promise<ProviderCandidate[]> {
+  const query =
+    feed === "shorts"
+      ? "#shorts horror supernatural fantasy"
+      : "horror fantasy supernatural movie";
+
+  const result = await searchYouTubeWithStatus({
+    query,
+    limit,
+    feed,
+    order: "date",
+    ...(feed === "home" ? { minDurationSeconds: 2400 } : {}),
+  });
+
+  return result.candidates.filter((candidate) => {
+    if (
+      candidate.provider !== "youtube" ||
+      !candidate.thumbnailUrl ||
+      !candidate.embedUrl
+    ) {
+      return false;
+    }
+
+    if (feed === "shorts") {
+      return (
+        typeof candidate.durationSeconds === "number" &&
+        candidate.durationSeconds > 0 &&
+        candidate.durationSeconds <= 180
+      );
+    }
+
+    return (
+      typeof candidate.durationSeconds === "number" &&
+      candidate.durationSeconds >= 2400
+    );
+  });
 }
