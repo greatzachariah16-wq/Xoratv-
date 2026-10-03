@@ -110,7 +110,7 @@ export function parseEmbedInfo(
       videoId = input.slice(3);
     } else {
       const match = input.match(
-        /(?:dailymotion\.com\/(?:video\/|embed\/video\/)|dai\.ly\/)([a-zA-Z0-9]+)/,
+        /(?:dailymotion\.com\/(?:video\/|embed\/video\/)|dai\.ly\/|geo\.dailymotion\.com\/player\.html\?video=)([a-zA-Z0-9]+)/,
       );
       videoId = match ? match[1] : null;
     }
@@ -123,7 +123,7 @@ export function parseEmbedInfo(
       return {
         provider: "dailymotion",
         videoId,
-        embedUrl: `https://www.dailymotion.com/embed/video/${videoId}?autoplay=0`,
+        embedUrl: `https://geo.dailymotion.com/player.html?video=${videoId}&autoplay=0`,
       };
     }
   }
