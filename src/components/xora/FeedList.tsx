@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { AdsterraBanner } from "@/components/ads/AdsterraBanner";
+import { AdcashBanner } from "@/components/ads/AdcashBanner";
 import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
