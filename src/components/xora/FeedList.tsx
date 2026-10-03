@@ -46,7 +46,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         limit: 25,
         feed: "shorts",
       });
-      return list
+      const filtered = list
         .filter(
           (v) =>
             Boolean(v.embedUrl) &&
@@ -59,6 +59,12 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
             new Date(a.publishedAt || 0).getTime(),
         )
         .slice(0, 12);
+
+      if (filtered.length === 0) {
+        throw new Error("No short videos found from Dailymotion. Try again.");
+      }
+
+      return filtered;
     },
     enabled: feed === "shorts" && typeof window !== "undefined",
     staleTime: 5 * 60 * 1000,
@@ -217,8 +223,23 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         <FeedSkeleton vertical={vertical} />
       ) : feed === "shorts" && shortsQuery.isError ? (
         <ErrorState
-          message="Dailymotion Shorts could not be loaded. Please try again."
+          message={shortsQuery.error instanceof Error ? shortsQuery.error.message : "Dailymotion Shorts could not be loaded. Please try again."}
           onRetry={() => void shortsQuery.refetch()}
+        />
+      ) : feed === "shorts" && shortsQuery.isSuccess && !shortsQuery.data?.length ? (
+        <EmptyState
+          icon={Sparkles}
+          title="No shorts right now"
+          description="Dailymotion returned no short videos. Tap retry or check back soon."
+          action={
+            <button
+              type="button"
+              onClick={() => void shortsQuery.refetch()}
+              className="press inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              Retry
+            </button>
+          }
         />
       ) : isPending ? (
         <FeedSkeleton vertical={vertical} />
