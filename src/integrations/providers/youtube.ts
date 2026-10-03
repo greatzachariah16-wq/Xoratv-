@@ -285,9 +285,12 @@ export async function searchRecentYouTubeFeed(
 
   // Keep Shorts discovery to one cheap, recent YouTube search. Multiple search.list
   // calls were consuming quota rapidly and could make the entire Shorts feed fail.
+  // Ask YouTube for a larger first page, then keep only true Shorts (<= 180s).
+  // This stays at one search.list call while avoiding the problem where the
+  // first 12 "short" results are ordinary 2–4 minute videos.
   const result = await searchYouTubeWithStatus({
     query: "#shorts",
-    limit: Math.min(limit, 24),
+    limit: 50,
     feed: "shorts",
     order: "date",
   });
