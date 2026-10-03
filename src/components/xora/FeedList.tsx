@@ -38,6 +38,13 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     enabled: typeof window !== "undefined",
   });
 
+  const youtubeShortsQuery = useQuery({
+    queryKey: ["youtube-shorts-feed"],
+    queryFn: () => searchRecentYouTubeFeed("shorts", 12),
+    enabled: feed === "shorts" && typeof window !== "undefined",
+    staleTime: 5 * 60 * 1000,
+  });
+
   const allPosts = useMemo(() => {
     const raw = data?.pages.flatMap((page) => page) ?? [];
     const seen = new Set<string>();
