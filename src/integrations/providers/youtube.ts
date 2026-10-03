@@ -295,6 +295,9 @@ export async function searchYouTubeWithStatus(params: ProviderSearchParams): Pro
       if (params.feed) {
         searchParams.set("feed", params.feed);
       }
+      if (params.order) {
+        searchParams.set("order", params.order);
+      }
 
       const res = await fetch(`/api/youtube/search?${searchParams.toString()}`);
       const data = (await res.json().catch(() => null)) as {
