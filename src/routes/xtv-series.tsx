@@ -20,7 +20,6 @@ import { loadUserSignals, trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
-import { DablinkerBanner } from "@/components/ads/DablinkerBanner";
 import { cn } from "@/lib/utils";
 
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
@@ -484,7 +483,6 @@ function XTvSeriesPage() {
               {shelves.map((item) => (
                 <div key={item.id} className="space-y-3">
                   <XTvCard item={item} userId={user?.id} />
-                  <DablinkerBanner className="my-2" />
                 </div>
               ))}
             </div>
