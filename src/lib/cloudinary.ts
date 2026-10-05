@@ -135,11 +135,12 @@ export function getAdaptiveStreamingUrl(rawUrl: string, publicId?: string, maxRe
 export function getOriginalVideoUrl(rawUrl: string): string {
   if (!rawUrl) return "";
 
-  const match = rawUrl.match(/^(https?:\\/\\/res\\.cloudinary\\.com\\/[^/]+\\/video\\/upload\\/)(.*)$/);
+  const match = rawUrl.match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)$/);
   if (!match) return rawUrl;
 
   const base = match[1];
   const parts = match[2].split("/").filter(Boolean);
+
   while (parts.length > 0) {
     const first = parts[0];
     const isVersion = /^v\d+$/.test(first);
@@ -161,6 +162,7 @@ export function getOriginalVideoUrl(rawUrl: string): string {
   }
 
   if (!parts.length) return rawUrl;
+
   const last = parts.length - 1;
   parts[last] = parts[last].replace(/\.[a-zA-Z0-9]+$/, "") + ".mp4";
   return base + parts.join("/");
