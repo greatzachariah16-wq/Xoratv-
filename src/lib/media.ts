@@ -145,30 +145,11 @@ export async function uploadMedia(
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
-  // Sparkle Hub Supabase Storage is the secondary XoraTV video store.
-  // Render remains the API/processing layer; the video bytes are persisted in
-  // Sparkle Storage when its server credential is configured.
-  if (bucket === "videos") {
-    const sparkle = await uploadToSparkleVideoStorage(userId, file, onProgress);
-    if (sparkle) {
-      if (isFirebaseConfigured()) {
-        try {
-          await recordMediaIndex({
-            objectKey: sparkle.path,
-            renderUrl: sparkle.streamUrl,
-            bucket,
-            ownerId: userId,
-            created_at: new Date().toISOString(),
-          });
-        } catch (indexErr) {
-          console.warn("[Media] Note recording Sparkle mediaIndex in RTDB:", indexErr);
-        }
-      }
-      return sparkle.streamUrl;
-    }
-  }
+  // Cloudinary is the active creator-video storage/delivery path.
+  // Do not route creator videos through the old Sparkle Hub bridge.
+  // XoraTV Content Supabase will be added separately for selected videos only.
 
-  // Existing Cloudinary path remains the first fallback.
+  // Existing Cloudinary path remains the primary video path.
   if (bucket === "videos" && isCloudinaryConfigured()) {
     const res = await uploadToCloudinary(file, {
       resourceType: "video",
