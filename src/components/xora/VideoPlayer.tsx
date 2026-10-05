@@ -537,8 +537,9 @@ export function NativeVideoPlayer({
           playsInline
           loop={loop}
           muted={muted}
-          preload={autoPlay ? "auto" : "none"}
-          loading="lazy"
+          // Shorts need the media connection warmed before the in-view autoplay
+          // starts; lazy-loading the video element can add an unnecessary stall on mobile.
+          preload={autoPlay ? "auto" : "metadata"}
           controlsList="nodownload"
           aria-label={title}
           className="h-full w-full bg-ink object-contain"
