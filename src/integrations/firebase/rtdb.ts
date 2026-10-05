@@ -243,7 +243,7 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
       if (p) {
         // Shorts are public only after the backend verifier has confirmed playback.
         // Other feeds keep their existing publication rules.
-        if (feed === "shorts" && p.playability_status !== "playable") return;
+        if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") return;
         posts.push(p);
       }
     }),
