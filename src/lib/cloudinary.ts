@@ -146,26 +146,45 @@ export function get240pDeliveryUrl(rawUrl: string, publicId?: string): string {
 
   if (!rawUrl) return "";
 
-  // If already has transformation
-  if (rawUrl.includes(transform)) {
-    return rawUrl;
-  }
-
-  // Match Cloudinary video URL: https://res.cloudinary.com/<cloud>/video/upload/(v<version>/)?<path>
   const match = rawUrl.match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)$/);
   if (match) {
     const base = match[1];
-    let rest = match[2];
-    // Strip redundant leading transformation if any
-    rest = rest.replace(/^[^/]+,\w+\//, "");
-    // Force .mp4 container for universal playback
-    rest = rest.replace(/\.[a-zA-Z0-9]+$/, ".mp4");
-    return `${base}${transform}/${rest}`;
+    const parts = match[2].split("/").filter(Boolean);
+
+    // Remove every Cloudinary transformation component already present.
+    // This prevents URLs such as h_240,.../h_240,.../video.mp4 after a
+    // creator upload is resolved more than once by the feed/player.
+    while (parts.length > 0) {
+      const first = parts[0];
+      const isVersion = /^v\\d+$/.test(first);
+      const looksLikeTransformation =
+        !isVersion &&
+        (first.includes(",") ||
+          first.startsWith("h_") ||
+          first.startsWith("w_") ||
+          first.startsWith("c_") ||
+          first.startsWith("q_") ||
+          first.startsWith("f_") ||
+          first.startsWith("sp_") ||
+          first.startsWith("br_") ||
+          first.startsWith("vc_") ||
+          first.startsWith("fl_") ||
+          first.startsWith("d_"));
+      if (!looksLikeTransformation) break;
+      parts.shift();
+    }
+
+    const last = parts.length - 1;
+    if (last < 0) return rawUrl;
+
+    // Keep Cloudinary version/public ID, but always deliver an MP4 rendition.
+    parts[last] = parts[last].replace(/\.[a-zA-Z0-9]+$/, "") + ".mp4";
+    return `${base}${transform}/${parts.join("/")}`;
   }
 
+  // Non-Cloudinary URLs must remain untouched.
   return rawUrl;
 }
-
 /**
  * Uploads a video or media file directly to Cloudinary.
  * Supports:
