@@ -207,79 +207,55 @@ export async function fetchRankedFeed(
     }
   }
 
-  // Dedicated discovery layers: Home and Shorts use separate YouTube pools.
-  // Shorts is strictly YouTube-only; all visible video candidates require thumbnails.
-  try {
-    const liveYouTube = await searchRecentYouTubeFeed(feed === "shorts" ? "shorts" : "home", 12);
-    const existingIds = new Set(rawPosts.map((p) => p.id));
-    const livePosts: PostRecord[] = liveYouTube
-      .filter((candidate) => !existingIds.has(candidate.id) && Boolean(candidate.thumbnailUrl))
-      .map((candidate) => ({
-        id: candidate.id,
-        author_id: `youtube-channel-${candidate.channelName || "youtube"}`,
-        title: candidate.title,
-        caption: candidate.description,
-        kind: "video",
-        feed,
-        status: "published",
-        approval_status: "approved",
-        media_path: null,
-        poster_path: candidate.thumbnailUrl,
-        stream_url: candidate.embedUrl,
-        duration_seconds: candidate.durationSeconds,
-        featured: false,
-        recommendation_score: 88,
-        quality_score: candidate.resolution === "HD" ? 95 : 88,
-        is_color: true,
-        rights_status: "unknown",
-        source: "youtube",
-        created_at: candidate.publishedAt || new Date().toISOString(),
-        discovered_at: new Date().toISOString(),
-        year: candidate.publishedAt ? new Date(candidate.publishedAt).getFullYear() : null,
-        genre: "YouTube Discovery",
-        like_count: 0,
-        comment_count: 0,
-        playability_status: "playable",
-      } as PostRecord));
-
-    if (feed === "shorts") {
-      // Shorts contains BOTH Xora creator uploads and verified YouTube discovery.
-      // Creator uploads must never be filtered out just because they are not YouTube posts.
-      const creatorShorts = rawPosts.filter(
-        (p) =>
-          p.kind === "video" &&
-          p.feed === "shorts" &&
-          p.status === "published" &&
-          p.approval_status === "approved" &&
-          Boolean(p.stream_url || p.media_path) &&
-          p.source === "creator",
-      );
-      const storedYouTubeShorts = rawPosts.filter(
-        (p) =>
-          p.source === "youtube" &&
-          Boolean(p.poster_path) &&
-          p.playability_status === "playable",
-      );
-
-      // Keep creator uploads first so a creator's newly published Short
-      // appears immediately, while YouTube discovery remains supplemental.
-      const discovered = livePosts.filter((p) => !creatorShorts.some((c) => c.id === p.id));
-      const stored = storedYouTubeShorts.filter(
-        (p) => !creatorShorts.some((c) => c.id === p.id) && !discovered.some((d) => d.id === p.id),
-      );
-      rawPosts = [...creatorShorts, ...discovered, ...stored];
-    } else if (feed === "home") {
+  // Dedicated discovery layer: Home may use YouTube discovery.
+  // Shorts are Xora-native only: creator uploads from Firebase/RTDB are the
+  // complete Shorts source. Never query, merge, or persist YouTube Shorts here.
+  if (feed === "shorts") {
+    rawPosts = rawPosts.filter(
+      (p) =>
+        p.kind === "video" &&
+        p.feed === "shorts" &&
+        p.status === "published" &&
+        p.approval_status === "approved" &&
+        Boolean(p.stream_url || p.media_path) &&
+        p.source === "creator",
+    );
+  } else {
+    try {
+      const liveYouTube = await searchRecentYouTubeFeed("home", 12);
+      const existingIds = new Set(rawPosts.map((p) => p.id));
+      const livePosts: PostRecord[] = liveYouTube
+        .filter((candidate) => !existingIds.has(candidate.id) && Boolean(candidate.thumbnailUrl))
+        .map((candidate) => ({
+          id: candidate.id,
+          author_id: `youtube-channel-${candidate.channelName || "youtube"}`,
+          title: candidate.title,
+          caption: candidate.description,
+          kind: "video",
+          feed,
+          status: "published",
+          approval_status: "approved",
+          media_path: null,
+          poster_path: candidate.thumbnailUrl,
+          stream_url: candidate.embedUrl,
+          duration_seconds: candidate.durationSeconds,
+          featured: false,
+          recommendation_score: 88,
+          quality_score: candidate.resolution === "HD" ? 95 : 88,
+          is_color: true,
+          rights_status: "unknown",
+          source: "youtube",
+          created_at: candidate.publishedAt || new Date().toISOString(),
+          discovered_at: new Date().toISOString(),
+          year: candidate.publishedAt ? new Date(candidate.publishedAt).getFullYear() : null,
+          genre: "YouTube Discovery",
+          like_count: 0,
+          comment_count: 0,
+          playability_status: "playable",
+        } as PostRecord));
       rawPosts = [...rawPosts, ...livePosts];
-    }
-  } catch (err) {
-    console.warn("[YouTube Discovery] Live feed layer unavailable:", err);
-    if (feed === "shorts") {
-      // Keep native Xora creator Shorts available even when discovery is unavailable.
-      rawPosts = rawPosts.filter(
-        (p) =>
-          p.source === "creator" ||
-          (p.source === "youtube" && Boolean(p.poster_path) && p.playability_status === "playable"),
-      );
+    } catch (err) {
+      console.warn("[YouTube Discovery] Live home feed layer unavailable:", err);
     }
   }
 
