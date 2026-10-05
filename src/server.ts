@@ -238,6 +238,36 @@ async function handleMediaStreaming(request: Request, url: URL): Promise<Respons
   }
 }
 
+function readImageDimensions(buffer: Buffer, mimeType: string): { width: number; height: number } | null {
+  if (mimeType === "image/png" && buffer.length >= 24 && buffer.readUInt32BE(0) === 0x89504e47) {
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  }
+  if (mimeType === "image/jpeg" && buffer.length > 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < buffer.length) {
+      if (buffer[offset] !== 0xff) { offset++; continue; }
+      const marker = buffer[offset + 1];
+      const length = buffer.readUInt16BE(offset + 2);
+      if (marker >= 0xc0 && marker <= 0xc3) {
+        return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) };
+      }
+      if (length < 2) break;
+      offset += 2 + length;
+    }
+  }
+  if (mimeType === "image/webp" && buffer.length >= 30 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+    const chunk = buffer.toString("ascii", 12, 16);
+    if (chunk === "VP8X") return { width: 1 + buffer.readUIntLE(24, 3), height: 1 + buffer.readUIntLE(27, 3) };
+    if (chunk === "VP8 " && buffer.length >= 30) {
+      const start = 20;
+      if (buffer[start + 3] === 0x9d && buffer[start + 4] === 0x01 && buffer[start + 5] === 0x2a) {
+        return { width: buffer.readUInt16LE(start + 6) & 0x3fff, height: buffer.readUInt16LE(start + 8) & 0x3fff };
+      }
+    }
+  }
+  return null;
+}
+
 async function handleUpload(request: Request): Promise<Response> {
   try {
     const formData = await request.formData();
@@ -255,6 +285,26 @@ async function handleUpload(request: Request): Promise<Response> {
 
     const fileBuffer = Buffer.from(await (file as File).arrayBuffer());
     const originalName = (file as File).name || "upload.bin";
+    if (bucket === "channel-featured") {
+      const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
+      if (!allowed.has((file as File).type)) {
+        return new Response(JSON.stringify({ ok: false, error: "Use JPG, PNG or WebP for the Featured image." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      if (fileBuffer.length > 5 * 1024 * 1024) {
+        return new Response(JSON.stringify({ ok: false, error: "Featured image must be 5MB or smaller." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      const dimensions = readImageDimensions(fileBuffer, (file as File).type);
+      if (!dimensions || dimensions.width !== 1920 || dimensions.height !== 1080) {
+        return new Response(JSON.stringify({ ok: false, error: "Featured image must be exactly 1920 × 1080 pixels (16:9)." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      if (!userId || userId === "creator") {
+        return new Response(JSON.stringify({ ok: false, error: "Creator account is required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      const creator = await queryRtdb(`commerce/creators/${userId}`) as { status?: string } | null;
+      if (!creator || creator.status !== "active") {
+        return new Response(JSON.stringify({ ok: false, error: "Creator account is not active." }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
     const ext = path.extname(originalName) || ".bin";
 
     let relativePath = "";
