@@ -1327,7 +1327,7 @@ export async function getPayoutDetails(userId: string) {
 }
 
 export async function getCreatorDashboard(userId: string) {
-  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw] = await Promise.all([
+  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw, postsRaw] = await Promise.all([
     getCreator(userId),
     queryRtdb("commerce/courses"),
     queryRtdb("commerce/dataOrders"),
@@ -1335,11 +1335,17 @@ export async function getCreatorDashboard(userId: string) {
     queryRtdb("commerce/commissions"),
     getPayoutDetails(userId),
     queryRtdb(`commerce/cpaCreatorStats/${userId}`),
+    queryRtdb("posts"),
   ]);
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
   const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
   const courseOrders = courseOrdersRaw ? Object.values(courseOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
   const commissions = commissionsRaw ? Object.values(commissionsRaw as Record<string, any>).filter((c) => c.creatorId === userId && c.status !== "reversed") : [];
+  const creatorShorts = postsRaw
+    ? Object.values(postsRaw as Record<string, any>)
+        .filter((p) => p && p.author_id === userId && p.source === "creator" && p.kind === "video" && p.feed === "shorts" && p.status === "published")
+        .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))
+    : [];
   const successful = (o: any) => o.status === "success" || o.status === "paid" || o.status === "delivered";
   const totalSales = dataOrders.concat(courseOrders).filter(successful).reduce((n, o) => n + Number(o.customerPrice || 0), 0);
   const dataSales = dataOrders.filter(successful).reduce((n, o) => n + Number(o.customerPrice || 0), 0);
@@ -1348,6 +1354,7 @@ export async function getCreatorDashboard(userId: string) {
     creator,
     stats: { balance: commission, totalSales, dataSales, commission },
     courses,
+    shorts: creatorShorts,
     dataOrders,
     courseOrders,
     payout,
