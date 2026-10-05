@@ -169,6 +169,7 @@ export async function uploadMedia(
   }
 
   // Existing Cloudinary path remains the first fallback.
+  if (bucket === "videos" && isCloudinaryConfigured()) {
     const res = await uploadToCloudinary(file, {
       resourceType: "video",
       onProgress,
