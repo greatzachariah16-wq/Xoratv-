@@ -268,7 +268,7 @@ function OfferWall() {
             to="/creator-studio"
             className="mt-4 inline-flex h-[30px] items-center rounded-full bg-primary px-4 text-[11px] font-semibold text-primary-foreground press"
           >
-            Creator Studio
+            X Channel
           </Link>
         </section>
       </main>
