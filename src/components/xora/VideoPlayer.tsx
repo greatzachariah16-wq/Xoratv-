@@ -82,11 +82,13 @@ export function NativeVideoPlayer({
   // Shorts follow the proven Xora Sparkle Hub playback path: use the stored
   // playable URL directly and let the native <video> element handle it.
   // Homepage playback keeps its existing stream handling unchanged.
-  const src = feed === "shorts"
-    ? (effectiveStream && effectiveStream.includes("res.cloudinary.com")
-        ? getOriginalVideoUrl(effectiveStream)
-        : effectiveStream || signedSrc)
-    : (effectiveStream || signedSrc);
+  // Shorts must receive a real MP4 URL. Prefer the stored Cloudinary delivery
+  // URL exactly as uploaded; do not rewrite it before the browser sees it.
+  // The previous URL rewriting could turn an otherwise valid rendition into a
+  // URL the Android WebView could not decode. We still keep the original URL
+  // available as a native-player retry below.
+  const src = effectiveStream || signedSrc;
+  const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
 
@@ -94,6 +96,7 @@ export function NativeVideoPlayer({
   const [muted, setMuted] = useState(feed === "shorts" ? true : false);
   const [waiting, setWaiting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const shortsRetriedOriginal = useRef(false);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
@@ -125,6 +128,7 @@ export function NativeVideoPlayer({
     trackedStart.current = false;
     tracked3s.current = false;
     trackedComplete.current = false;
+    shortsRetriedOriginal.current = false;
     sessionRef.current = null;
     lastHeartbeatTimeRef.current = 0;
     if (timer3sRef.current) {
@@ -548,7 +552,22 @@ export function NativeVideoPlayer({
           onWaiting={() => setWaiting(true)}
           onPlaying={() => setWaiting(false)}
           onCanPlay={() => setWaiting(false)}
-          onError={() => setFailed(true)}
+          onError={() => {
+            const video = videoRef.current;
+            // If a Cloudinary delivery transformation is rejected by the
+            // device/WebView, retry the same asset's original MP4 once.
+            if (feed === "shorts" && originalShortsSrc && !shortsRetriedOriginal.current && originalShortsSrc !== src) {
+              shortsRetriedOriginal.current = true;
+              setFailed(false);
+              if (video) {
+                video.src = originalShortsSrc;
+                video.load();
+                if (autoPlay) void video.play().catch(() => {});
+              }
+              return;
+            }
+            setFailed(true);
+          }}
           onDurationChange={(e) => setTotal(e.currentTarget.duration || 0)}
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded}
