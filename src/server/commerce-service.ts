@@ -25,6 +25,7 @@ export type CreatorProfile = {
   status: "pending" | "active" | "suspended";
   createdAt: string;
   updatedAt: string;
+  featuredImageUrl?: string | null;
 };
 
 export type Course = {
@@ -1098,6 +1099,18 @@ export async function createCreatorProfile(params: {
 
 export async function getCreator(userId: string): Promise<CreatorProfile | null> {
   return (await queryRtdb(`commerce/creators/${userId}`)) as CreatorProfile | null;
+}
+
+export async function saveCreatorFeaturedImage(userId: string, featuredImageUrl: string) {
+  const creator = await getCreator(userId);
+  if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
+  const url = String(featuredImageUrl || "").trim();
+  if (!url || url.length > 2048) throw new Error("A valid featured image URL is required.");
+  const updated: CreatorProfile = { ...creator, featuredImageUrl: url, updatedAt: new Date().toISOString() };
+  await queryRtdb(`commerce/creators/${userId}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated),
+  });
+  return updated;
 }
 
 export async function getCreatorCourses(creatorId?: string): Promise<Course[]> {
