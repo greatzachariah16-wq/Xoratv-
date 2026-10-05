@@ -711,12 +711,8 @@ export function NativeVideoPlayer({
 }
 
 export function VideoPlayer(props: Props) {
-  // Creator Shorts use Xora's native HTML5 player.
-  // Discovered provider Shorts (for example YouTube) carry an embed URL, not
-  // a raw media file, so they must stay on the provider embed player.
-  // Passing a YouTube embed page to <video src> causes the browser to report
-  // "Unable to play video" even though the provider video itself is valid.
-  if (props.feed === "shorts" && props.source === "creator") {
+  // Shorts are Xora-native only. Never send Shorts through provider embeds.
+  if (props.feed === "shorts") {
     return <NativeVideoPlayer {...props} autoPlay={props.autoPlay} />;
   }
 
