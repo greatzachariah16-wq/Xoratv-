@@ -190,8 +190,8 @@ function XChannel(){
           </label>
           <div className="relative flex size-full flex-col justify-end p-6 sm:p-8 lg:p-9">
             <span className="w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[.2em] backdrop-blur">Featured</span>
-            <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">Your channel. Your stories.</h2>
-            <p className="mt-2 max-w-xl text-xs leading-5 text-white/70">Make your best work the first thing people discover on XoraTV.</p>
+            <h2 className="mt-4 max-w-xl text-2xl font-semibold leading-tight tracking-tight sm:text-3xl lg:text-4xl">Your channel. Your stories.</h2>
+            <p className="mt-2 max-w-md text-[11px] leading-5 text-white/70 sm:text-xs">Make your best work the first thing people discover on XoraTV.</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link to="/create" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-foreground"><Upload className="size-3.5"/> Publish a video</Link>
               <button onClick={()=>setSection("videos")} className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold backdrop-blur">Explore channel</button>
