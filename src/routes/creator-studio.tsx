@@ -132,7 +132,48 @@ function XChannel(){
     if(section==="community")return <EmptyContent icon={<Users/>} title="Community" text="Channel announcements, posts and conversations will live here." action="Create post" href="/create"/>;
     if(section==="about")return <section className="rounded-2xl border border-border bg-surface p-6 shadow-card"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">About this channel</p><h2 className="mt-2 font-display text-xl font-semibold">{displayName}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{profile?.bio||"Welcome to my XoraTV channel."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Stat label="Subscribers" value={String(dashboard?.stats?.followers||0)}/><Stat label="Courses" value={String(publishedCourses.length)}/><Stat label="Joined" value="XoraTV"/></div></section>;
     if(section==="courses")return <CourseShelf courses={publishedCourses}/>;
-    return <div className="space-y-6"><section className="overflow-hidden rounded-3xl border border-border bg-ink text-white shadow-lift"><div className="relative aspect-[2.8/1] min-h-[180px] bg-gradient-to-br from-primary/80 via-ink to-foreground/90"><div className="absolute inset-0 opacity-20" style={{background:"radial-gradient(circle at 78% 20%, currentColor, transparent 35%)"}}/><div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8"><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-white/65">Featured on X Channel</p><h2 className="mt-2 max-w-2xl font-display text-2xl font-semibold sm:text-3xl">Your channel is ready for its first story.</h2><p className="mt-2 max-w-xl text-xs leading-5 text-white/65">Publish your best video and make it the first thing your audience sees.</p></div></div></section><section><div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-primary">Learn</p><h2 className="mt-1 font-display text-xl font-semibold">Courses from {displayName}</h2></div><button onClick={()=>setSection("courses")} className="text-xs font-semibold text-primary">View all</button></div><CourseShelf courses={publishedCourses.slice(0,4)}/></section></div>;
+    return <div className="space-y-8">
+      <section className="grid gap-4 lg:grid-cols-[1.65fr_.75fr]">
+        <article className="group relative min-h-[330px] overflow-hidden rounded-[26px] bg-ink text-white shadow-lift">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/75 via-ink to-foreground"/>
+          <div className="absolute -right-16 -top-16 size-64 rounded-full bg-primary/25 blur-3xl transition duration-500 group-hover:scale-110"/>
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 to-transparent"/>
+          <div className="relative flex min-h-[330px] flex-col justify-end p-6 sm:p-8">
+            <span className="w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[.2em] backdrop-blur">Featured</span>
+            <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">Your channel. Your stories.</h2>
+            <p className="mt-2 max-w-xl text-xs leading-5 text-white/65">Make your best work the first thing people discover on XoraTV.</p>
+            <div className="mt-5 flex gap-2">
+              <Link to="/create" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-foreground"><Upload className="size-3.5"/> Publish a video</Link>
+              <button onClick={()=>setSection("videos")} className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold backdrop-blur">Explore channel</button>
+            </div>
+          </div>
+        </article>
+        <aside className="flex flex-col justify-between rounded-[26px] border border-border bg-surface p-6 shadow-card">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel note</p>
+            <h3 className="mt-2 font-display text-xl font-semibold">Built for your audience.</h3>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Videos, Shorts, courses and community can live together under one media identity.</p>
+          </div>
+          <div className="mt-7 grid grid-cols-2 gap-2">
+            <Stat label="Followers" value={Number(dashboard?.stats?.followers||0).toLocaleString()}/>
+            <Stat label="Courses" value={String(publishedCourses.length)}/>
+          </div>
+        </aside>
+      </section>
+      <section>
+        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Your catalogue</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest from {displayName}</h2></div><button onClick={()=>setSection("videos")} className="text-xs font-semibold text-primary">View videos</button></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1,2,3].map(i=><div key={i} className="group overflow-hidden rounded-[22px] border border-border bg-surface shadow-sm">
+            <div className="relative aspect-video overflow-hidden bg-secondary"><div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-foreground/10"/><div className="absolute bottom-3 left-3 rounded-full bg-ink/75 px-2.5 py-1 text-[9px] font-semibold text-white">Coming soon</div></div>
+            <div className="p-4"><p className="text-sm font-semibold">Your next story</p><p className="mt-1 text-[11px] text-muted-foreground">Publish a video to start filling this shelf.</p></div>
+          </div>)}
+        </div>
+      </section>
+      <section>
+        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Learning</p><h2 className="mt-1 font-display text-2xl font-semibold">Courses</h2></div><button onClick={()=>setSection("courses")} className="text-xs font-semibold text-primary">View all</button></div>
+        <CourseShelf courses={publishedCourses.slice(0,4)}/>
+      </section>
+    </div>;
   }
 
   function ManageContent(){
@@ -145,10 +186,40 @@ function XChannel(){
   function PayoutForm(){return <div className="mt-4 grid gap-3 sm:grid-cols-2"><input value={accountName} onChange={e=>setAccountName(e.target.value)} placeholder="Account name" className="h-10 rounded-xl border border-border bg-background px-3 text-sm"/><input inputMode="numeric" maxLength={10} value={accountNumber} onChange={e=>setAccountNumber(e.target.value.replace(/\D/g,"").slice(0,10))} placeholder="10-digit account number" className="h-10 rounded-xl border border-border bg-background px-3 text-sm"/><div className="relative sm:col-span-2"><button onClick={()=>setBankOpen(v=>!v)} className="flex h-10 w-full items-center gap-3 rounded-xl border border-border bg-background px-3 text-left text-sm">{bankName?<BankLogo name={bankName} slug={BANK_OPTIONS.find(x=>x[0]===bankName)?.[1]||"gtbank"}/>:<span className="text-muted-foreground">Select bank</span>}<span className="flex-1">{bankName}</span><ChevronDown className="size-4"/></button>{bankOpen?<div className="absolute left-0 right-0 top-11 z-50 max-h-64 overflow-auto rounded-2xl border border-border bg-surface p-1 shadow-xl">{BANK_OPTIONS.map(([name,slug])=><button key={name} onClick={()=>{setBankName(name);setBankOpen(false)}} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-secondary"><BankLogo name={name} slug={slug}/><span className="flex-1 text-sm">{name}</span>{bankName===name?<Check className="size-4 text-primary"/>:null}</button>)}</div>:null}</div><button onClick={()=>void savePayout()} disabled={payoutBusy||accountNumber.length!==10||!bankName} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2">{payoutBusy?<Loader2 className="size-3.5 animate-spin"/>:<Landmark className="size-3.5"/>}{payoutBusy?"Saving…":"Save payout details"}</button></div>}
 
   return <AppShell wide>
-    <div className="space-y-4">
-      <header className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
-        <div className="relative h-44 sm:h-56 bg-ink"><div className="absolute inset-0 bg-gradient-to-br from-primary/70 via-ink to-foreground"/><div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_75%_20%,white,transparent_32%)]"/><div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7"><p className="text-[10px] font-semibold uppercase tracking-[.22em] text-white/60">XoraTV X Channel</p></div></div>
-        <div className="px-5 pb-5 sm:px-7 sm:pb-7"><div className="-mt-9 flex flex-col gap-4 sm:-mt-10 sm:flex-row sm:items-end sm:justify-between"><div className="flex min-w-0 items-end gap-3"><div className="rounded-2xl bg-surface p-1 shadow-card"><UserAvatar path={avatar} name={displayName} size={76}/></div><div className="min-w-0 pb-1"><h1 className="truncate font-display text-2xl font-semibold">{displayName}</h1><p className="text-xs text-muted-foreground">@{username} · {Number(dashboard?.stats?.followers||0).toLocaleString()} subscribers</p></div></div><button onClick={()=>setMenuOpen(v=>!v)} className="inline-flex h-9 items-center gap-2 self-start rounded-xl border border-border bg-background px-3 text-xs font-semibold sm:self-end"><Menu className="size-4"/>Manage</button></div><p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">{profile?.bio||"Build your audience on XoraTV."}</p><div className="mt-5 flex gap-1 overflow-x-auto pb-1 hide-scrollbar">{publicTabs.map(([key,label])=><button key={key} onClick={()=>setSection(key)} className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold ${section===key?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-secondary"}`}>{label}</button>)}</div></div>
+    <div className="space-y-6">
+      <header className="overflow-hidden rounded-[28px] border border-border bg-surface shadow-card">
+        <div className="relative min-h-[280px] overflow-hidden bg-ink sm:min-h-[330px]">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/55 via-ink to-foreground"/>
+          <div className="absolute -right-24 -top-28 size-[360px] rounded-full bg-primary/25 blur-3xl"/>
+          <div className="absolute -bottom-28 left-1/3 size-[300px] rounded-full bg-white/10 blur-3xl"/>
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-ink/80 to-transparent"/>
+          <div className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.2em] text-white/70 backdrop-blur-md sm:left-7 sm:top-7">
+            <Radio className="size-3.5"/> X Channel
+          </div>
+        </div>
+        <div className="relative px-5 pb-6 sm:px-8 sm:pb-8">
+          <div className="-mt-14 flex flex-col gap-5 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex min-w-0 items-end gap-4">
+              <div className="rounded-[22px] bg-surface p-1.5 shadow-lift">
+                <UserAvatar path={avatar} name={displayName} size={88}/>
+              </div>
+              <div className="min-w-0 pb-1.5">
+                <h1 className="truncate font-display text-2xl font-semibold tracking-tight sm:text-3xl">{displayName}</h1>
+                <p className="mt-1 text-xs text-muted-foreground">@{username} <span className="mx-1.5">·</span> {Number(dashboard?.stats?.followers||0).toLocaleString()} followers</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={()=>setMenuOpen(v=>!v)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-3.5 text-xs font-semibold transition hover:bg-secondary"><Settings2 className="size-4"/> Manage</button>
+              <button className="inline-flex h-10 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm">Follow</button>
+            </div>
+          </div>
+          <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">{profile?.bio||"Stories, ideas and original videos from XoraTV."}</p>
+          <nav className="mt-6 -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 hide-scrollbar">
+            {publicTabs.map(([key,label])=><button key={key} onClick={()=>setSection(key)} className={`relative whitespace-nowrap px-3.5 py-2.5 text-xs font-semibold transition ${section===key?"text-foreground":"text-muted-foreground hover:text-foreground"}`}>
+              {label}{section===key?<span className="absolute inset-x-2 -bottom-1 h-0.5 rounded-full bg-primary"/>:null}
+            </button>)}
+          </nav>
+        </div>
       </header>
 
       {menuOpen?<div className="rounded-2xl border border-border bg-surface p-2 shadow-card"><div className="flex items-center gap-2 px-3 py-2"><Settings2 className="size-4 text-primary"/><p className="text-xs font-semibold">Manage X Channel</p></div><div className="grid gap-1 sm:grid-cols-4">{manageTabs.map(([key,label])=><button key={key} onClick={()=>{setSection(key);setMenuOpen(false)}} className="rounded-xl px-3 py-3 text-left text-xs font-semibold hover:bg-secondary">{label}</button>)}</div></div>:null}
