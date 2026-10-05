@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BarChart3, BookOpen, Check, ChevronDown, Gift, Landmark, Loader2,
-  Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users, Wallet,
+  BookOpen, Check, ChevronDown, Gift, Landmark, Loader2,
+  Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users,
   X, AlertTriangle,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
