@@ -78,7 +78,7 @@ export function NativeVideoPlayer({
   const poster = getOptimizedImageUrl(rawPoster);
 
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false); // start unmuted for shorts autoplay
+  const [muted, setMuted] = useState(feed === "shorts" ? true : false);
   const [waiting, setWaiting] = useState(false);
   const [failed, setFailed] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -467,14 +467,11 @@ export function NativeVideoPlayer({
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          video.muted = false; // unmuted
-          setMuted(false);
-          void video.play().catch(() => {
-            // If browser blocks unmuted autoplay, fall back to muted once
-            video.muted = true;
-            setMuted(true);
-            void video.play().catch(() => {});
-          });
+          // Start Shorts muted so Android can begin immediately without waiting
+          // for an autoplay permission rejection. The viewer can unmute normally.
+          video.muted = true;
+          setMuted(true);
+          void video.play().catch(() => {});
         } else {
           video.pause();
         }
@@ -712,6 +709,12 @@ export function NativeVideoPlayer({
 }
 
 export function VideoPlayer(props: Props) {
+  // Shorts are always Xora's native HTML5 player. This avoids provider
+  // embeds, extra network hops, and provider buffering on mobile.
+  if (props.feed === "shorts") {
+    return <NativeVideoPlayer {...props} autoPlay={props.autoPlay} />;
+  }
+
   const embedInfo = parseEmbedInfo(
     props.streamUrl || props.externalUrl || props.mediaPath,
     props.source,
