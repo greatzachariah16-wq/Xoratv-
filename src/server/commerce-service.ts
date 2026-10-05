@@ -1363,6 +1363,35 @@ export async function getCreatorDashboard(userId: string) {
   };
 }
 
+export async function deleteCreatorShort(postId: string, creatorId: string): Promise<{ id: string; deleted: true; mediaDeleted: boolean }> {
+  const cleanPostId = String(postId || "").trim();
+  const cleanCreatorId = String(creatorId || "").trim();
+  if (!cleanPostId || !cleanCreatorId) throw new Error("Post and creator are required.");
+
+  const post = await queryRtdb(`posts/${cleanPostId}`) as any | null;
+  if (!post) throw new Error("Short not found.");
+  if (String(post.author_id || "") !== cleanCreatorId) throw new Error("You can only delete your own Shorts.");
+  if (post.source !== "creator" || post.kind !== "video" || post.feed !== "shorts") throw new Error("That post is not a creator Short.");
+
+  let mediaDeleted = false;
+  const mediaUrl = String(post.media_path || post.stream_url || "");
+  const cloudinaryMatch = mediaUrl.match(/res\.cloudinary\.com\/[^/]+\/video\/upload\/(?:[^/]+\/)*(?:v\\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
+  if (cloudinaryMatch?.[1]) {
+    const publicId = cloudinaryMatch[1].replace(/\.[a-zA-Z0-9]+$/, "");
+    try {
+      await deleteCloudinaryVideo(publicId);
+      mediaDeleted = true;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Could not remove the video from Cloudinary.");
+    }
+  }
+
+  await queryRtdb(`posts/${cleanPostId}`, { method: "DELETE" });
+  await queryRtdb(`postsByFeed/shorts/${cleanPostId}`, { method: "DELETE" });
+
+  return { id: cleanPostId, deleted: true, mediaDeleted };
+}
+
 export async function recordCommission(params: {
   creatorId: string; orderId: string; source: "course" | "data"; amount: number; referralCode: string;
 }) {
