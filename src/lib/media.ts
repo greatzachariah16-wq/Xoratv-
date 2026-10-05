@@ -27,6 +27,37 @@ export type MediaBucket = "videos" | "posters" | "avatars";
 export const RENDER_BACKEND_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_RENDER_BACKEND_URL) || "";
 
+async function uploadToSparkleVideoStorage(
+  userId: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<{ path: string; streamUrl: string } | null> {
+  const renderBase = getRenderBaseUrl();
+  if (!renderBase) return null;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", userId);
+
+  try {
+    onProgress?.(10);
+    const res = await fetch(`${renderBase}/api/storage/sparkle/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as { ok?: boolean; path?: string; streamUrl?: string };
+    if (!data.ok || !data.path || !data.streamUrl) return null;
+
+    onProgress?.(100);
+    return { path: data.path, streamUrl: `${renderBase}${data.streamUrl}` };
+  } catch (error) {
+    console.warn("[Media] Sparkle Hub video storage unavailable; using existing fallback:", error);
+    return null;
+  }
+}
+
 export function getRenderBaseUrl(): string {
   if (RENDER_BACKEND_URL) {
     return RENDER_BACKEND_URL.replace(/\/+$/, "");
@@ -114,8 +145,30 @@ export async function uploadMedia(
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
-  // If bucket is videos and Cloudinary is configured, use Cloudinary
-  if (bucket === "videos" && isCloudinaryConfigured()) {
+  // Sparkle Hub Supabase Storage is the secondary XoraTV video store.
+  // Render remains the API/processing layer; the video bytes are persisted in
+  // Sparkle Storage when its server credential is configured.
+  if (bucket === "videos") {
+    const sparkle = await uploadToSparkleVideoStorage(userId, file, onProgress);
+    if (sparkle) {
+      if (isFirebaseConfigured()) {
+        try {
+          await recordMediaIndex({
+            objectKey: sparkle.path,
+            renderUrl: sparkle.streamUrl,
+            bucket,
+            ownerId: userId,
+            created_at: new Date().toISOString(),
+          });
+        } catch (indexErr) {
+          console.warn("[Media] Note recording Sparkle mediaIndex in RTDB:", indexErr);
+        }
+      }
+      return sparkle.streamUrl;
+    }
+  }
+
+  // Existing Cloudinary path remains the first fallback.
     const res = await uploadToCloudinary(file, {
       resourceType: "video",
       onProgress,
