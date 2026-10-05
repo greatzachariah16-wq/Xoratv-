@@ -10,7 +10,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { useSignedUrl } from "@/lib/media";
+import { resolveMediaUrl, useSignedUrl } from "@/lib/media";
 import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
@@ -82,7 +82,7 @@ export function NativeVideoPlayer({
   // playable URL directly and let the native <video> element handle it.
   // Homepage playback keeps its existing stream handling unchanged.
   const src = feed === "shorts"
-    ? (effectiveStream || signedSrc)
+    ? (effectiveStream ? resolveMediaUrl("videos", effectiveStream) : signedSrc)
     : (effectiveStream || signedSrc);
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
