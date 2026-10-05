@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen, Check, ChevronDown, Gift, Landmark, Loader2,
-  Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users,
+  Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users, ImagePlus,
   X, AlertTriangle,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -48,6 +48,9 @@ function XChannel(){
   const [accountNumber,setAccountNumber]=useState("");
   const [bankName,setBankName]=useState("");
   const [linkBusy,setLinkBusy]=useState(false);
+  const [featuredBusy,setFeaturedBusy]=useState(false);
+  const [featuredError,setFeaturedError]=useState("");
+  const [featuredPreview,setFeaturedPreview]=useState("");
   const {data,isPending,refetch}=useQuery(creatorDashboardQuery(user?.id));
 
   if(!user)return <AppShell wide><div className="mx-auto max-w-3xl rounded-[30px] border border-border bg-surface p-10 text-center shadow-card"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><Radio className="size-7"/></div><h1 className="mt-5 font-display text-3xl font-semibold">X Channel</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">Sign in to create and manage your XoraTV creator channel.</p><Link to="/auth" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Sign in</Link></div></AppShell>;
@@ -84,6 +87,45 @@ function XChannel(){
     try{await commerceFetch("/api/offers/creator-link",{method:"POST",body:JSON.stringify({creatorId:user.id})});await refetch();}
     catch(e){alert(e instanceof Error?e.message:"Could not create your offer link.");}
     finally{setLinkBusy(false);}
+  }
+
+  async function uploadFeaturedImage(file: File){
+    setFeaturedError("");
+    if (!["image/jpeg","image/png","image/webp"].includes(file.type)) {
+      setFeaturedError("Use JPG, PNG or WebP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFeaturedError("Featured image must be 5MB or smaller.");
+      return;
+    }
+    const dimensions = await new Promise<{width:number;height:number}|null>((resolve)=>{
+      const image = new Image();
+      image.onload=()=>{resolve({width:image.naturalWidth,height:image.naturalHeight}); URL.revokeObjectURL(image.src);};
+      image.onerror=()=>{resolve(null); URL.revokeObjectURL(image.src);};
+      image.src=URL.createObjectURL(file);
+    });
+    if (!dimensions || dimensions.width !== 1920 || dimensions.height !== 1080) {
+      setFeaturedError("Featured image must be exactly 1920 × 1080 pixels (16:9).");
+      return;
+    }
+    const previewUrl=URL.createObjectURL(file);
+    setFeaturedPreview(previewUrl);
+    setFeaturedBusy(true);
+    try{
+      const form=new FormData();
+      form.append("file",file);
+      form.append("bucket","channel-featured");
+      form.append("userId",user.id);
+      const uploadRes=await fetch("/api/upload",{method:"POST",body:form});
+      const uploadBody=await uploadRes.json().catch(()=>null);
+      if(!uploadRes.ok || !uploadBody?.ok || !uploadBody?.url) throw new Error(uploadBody?.error||"Image upload failed.");
+      await commerceFetch("/api/commerce/creator/featured-image",{method:"POST",body:JSON.stringify({userId:user.id,featuredImageUrl:uploadBody.url})});
+      await refetch();
+    }catch(e){
+      setFeaturedPreview("");
+      setFeaturedError(e instanceof Error?e.message:"Could not save Featured image.");
+    }finally{setFeaturedBusy(false);}
   }
 
   async function savePayout(){
@@ -134,18 +176,27 @@ function XChannel(){
     if(section==="courses")return <CourseShelf courses={publishedCourses}/>;
     return <div className="space-y-8">
       <section className="grid gap-4 lg:grid-cols-[1.65fr_.75fr]">
-        <article className="group relative min-h-[330px] overflow-hidden rounded-[26px] bg-ink text-white shadow-lift">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/75 via-ink to-foreground"/>
-          <div className="absolute -right-16 -top-16 size-64 rounded-full bg-primary/25 blur-3xl transition duration-500 group-hover:scale-110"/>
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 to-transparent"/>
-          <div className="relative flex min-h-[330px] flex-col justify-end p-6 sm:p-8">
+        <article className="group relative aspect-video w-full overflow-hidden rounded-[26px] bg-ink text-white shadow-lift">
+          {dashboard?.creator?.featuredImageUrl||featuredPreview
+            ? <img src={featuredPreview||dashboard.creator.featuredImageUrl} alt="" className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.015]"/>
+            : <div className="absolute inset-0 bg-gradient-to-br from-primary/75 via-ink to-foreground"/>
+          }
+          <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-black/10 to-black/75"/>
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 to-transparent"/>
+          <label className="absolute right-4 top-4 z-10 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-[10px] font-semibold backdrop-blur-md transition hover:bg-black/50">
+            {featuredBusy?<Loader2 className="size-3.5 animate-spin"/>:<ImagePlus className="size-3.5"/>}
+            {featuredBusy?"Uploading…":"Change image"}
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={featuredBusy} onChange={e=>{const file=e.target.files?.[0]; if(file) void uploadFeaturedImage(file); e.currentTarget.value="";}}/>
+          </label>
+          <div className="relative flex size-full flex-col justify-end p-6 sm:p-8 lg:p-9">
             <span className="w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[.2em] backdrop-blur">Featured</span>
             <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">Your channel. Your stories.</h2>
-            <p className="mt-2 max-w-xl text-xs leading-5 text-white/65">Make your best work the first thing people discover on XoraTV.</p>
-            <div className="mt-5 flex gap-2">
+            <p className="mt-2 max-w-xl text-xs leading-5 text-white/70">Make your best work the first thing people discover on XoraTV.</p>
+            <div className="mt-5 flex flex-wrap gap-2">
               <Link to="/create" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-foreground"><Upload className="size-3.5"/> Publish a video</Link>
               <button onClick={()=>setSection("videos")} className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold backdrop-blur">Explore channel</button>
             </div>
+            {featuredError?<p className="mt-3 text-[10px] font-medium text-red-200">{featuredError}</p>:null}
           </div>
         </article>
         <aside className="flex flex-col justify-between rounded-[26px] border border-border bg-surface p-6 shadow-card">
