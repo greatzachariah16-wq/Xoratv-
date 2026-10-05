@@ -4,7 +4,7 @@ import {
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
-  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase,
+  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
@@ -222,6 +222,22 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     const userId = url.searchParams.get("userId");
     if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
     return json({ ok: true, dashboard: await getCreatorDashboard(userId) });
+  }
+
+  if (path === "/api/commerce/creator/customization" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (!body.userId) return json({ ok: false, error: "User ID is required." }, 400);
+      return json({ ok: true, creator: await saveCreatorCustomization(String(body.userId), {
+        channelBio: String(body.channelBio ?? ""),
+        featuredTitle: String(body.featuredTitle ?? ""),
+        featuredDescription: String(body.featuredDescription ?? ""),
+        showCourses: body.showCourses !== false,
+        showCommunity: body.showCommunity !== false,
+      }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not save channel customization." }, 400);
+    }
   }
 
   if (path === "/api/commerce/creator/featured-image" && request.method === "POST") {
