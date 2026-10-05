@@ -7,7 +7,6 @@ import { commerceFetch } from "@/lib/commerce";
 
 export const Route = createFileRoute("/offers")({ component: OfferWall });
 
-export { OfferWall };
 
 type Offer = {
   id: string;
