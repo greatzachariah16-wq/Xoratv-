@@ -3,7 +3,7 @@ import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
-  saveCourse, deleteCreatorCourse, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
+  saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
@@ -262,6 +262,18 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create promotion link." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/creator/short" && request.method === "DELETE") {
+    try {
+      const body = await request.json();
+      if (!body.creatorId || !body.postId) return json({ ok: false, error: "Creator and Short are required." }, 400);
+      const creator = await getCreator(String(body.creatorId));
+      if (!creator || creator.status !== "active") return json({ ok: false, error: "Creator account is not active." }, 403);
+      return json({ ok: true, result: await deleteCreatorShort(String(body.postId), String(body.creatorId)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not delete Short." }, 400);
     }
   }
 
