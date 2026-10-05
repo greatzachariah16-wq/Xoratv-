@@ -10,6 +10,9 @@ import { AppShell } from "@/components/xora/AppShell";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
+import { getProfileByUsername, setProfile } from "@/integrations/firebase/rtdb";
+import { ref as firebaseRef, remove as firebaseRemove } from "firebase/database";
+import { rtdb } from "@/integrations/firebase/config";
 
 export const Route = createFileRoute("/creator-studio")({ component: XChannel });
 
