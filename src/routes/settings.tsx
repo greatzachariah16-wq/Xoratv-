@@ -38,7 +38,7 @@ export const Route = createFileRoute("/settings")({
 const APP_NAV_LINKS = [
   { href: "/wallet", label: "Xora Wallet", description: "Fund your wallet and use the same balance for data and course purchases.", icon: Wallet },
   { href: "/data", label: "Buy Data", description: "Browse Xora-approved mobile data plans and purchase from your wallet.", icon: Smartphone },
-  { href: "/creator-studio", label: "Creator Studio", description: "Manage creator sales, courses, promotions, links and payouts.", icon: Sparkles },
+  { href: "/creator-studio", label: "Creator Studio", description: "Manage your X Channel, content, analytics, promotions and payouts.", icon: Sparkles },
   { href: "/offers", label: "Offer Wall", description: "Complete eligible offers to earn Xora Points for future data discounts and course unlocks.", icon: Gift },
   { href: "/learn", label: "Learn", description: "Explore video courses and create your own video course.", icon: BookOpen },
   { href: "/xtv-series", label: "X Series", description: "Browse Xora's video and series catalogue.", icon: Tv },
