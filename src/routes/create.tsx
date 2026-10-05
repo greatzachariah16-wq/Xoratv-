@@ -185,6 +185,7 @@ function CreatePage() {
     },
     onSuccess: (postId) => {
       queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["feed-infinite"] });
       queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       toast.success("Posted");
       void navigate({ to: "/video/$postId", params: { postId } });
