@@ -100,6 +100,32 @@ async function uploadToCloudinary(filePath: string, folder: string) {
   return body;
 }
 
+function cloudinary240pUrl(secureUrl: string): string {
+  const marker = "/video/upload/";
+  const markerIndex = secureUrl.indexOf(marker);
+  if (markerIndex === -1) return secureUrl;
+  const base = secureUrl.slice(0, markerIndex + marker.length);
+  const rest = secureUrl.slice(markerIndex + marker.length).split("/").filter(Boolean);
+  if (!rest.length) return secureUrl;
+
+  while (rest.length > 0) {
+    const first = rest[0];
+    const isVersion = /^v\d+$/.test(first);
+    const isTransformation =
+      !isVersion &&
+      (first.includes(",") || first.startsWith("h_") || first.startsWith("w_") ||
+        first.startsWith("c_") || first.startsWith("q_") || first.startsWith("f_") ||
+        first.startsWith("sp_") || first.startsWith("br_") || first.startsWith("vc_") ||
+        first.startsWith("fl_") || first.startsWith("d_"));
+    if (!isTransformation) break;
+    rest.shift();
+  }
+
+  const last = rest.length - 1;
+  if (last < 0) return secureUrl;
+  rest[last] = rest[last].replace(/\.[a-zA-Z0-9]+$/, "") + ".mp4";
+  return base + "h_240,c_scale,q_auto:low,f_mp4/" + rest.join("/");
+}
 export async function handleContentVideoUpload(request: Request): Promise<Response> {
   const form = await request.formData();
   const file = form.get("file");
@@ -136,6 +162,7 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
       ok: true,
       url: cloudinary.secure_url,
       playbackUrl: cloudinary.secure_url,
+      deliveryUrl240p: cloudinary240pUrl(String(cloudinary.secure_url)),
       publicId: cloudinary.public_id,
       duration: typeof cloudinary.duration === "number" ? Math.round(cloudinary.duration) : undefined,
       bytes: file.size,
