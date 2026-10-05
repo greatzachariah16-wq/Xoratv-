@@ -111,6 +111,17 @@ export function AppShell({
             );
           })}
           <Link
+            to="/rewards"
+            className={cn(
+              "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+              pathname.startsWith("/rewards")
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+          >
+            <Gift className="size-4.5" aria-hidden="true" /> Rewards
+          </Link>
+          <Link
             to="/search"
             className={cn(
               "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
