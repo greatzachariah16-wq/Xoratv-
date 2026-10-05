@@ -144,6 +144,7 @@ export async function uploadMedia(
   userId: string,
   file: File,
   onProgress?: (percent: number) => void,
+  options?: { title?: string; description?: string },
 ): Promise<string> {
   // Cloudinary is the active creator-video storage/delivery path.
   // Do not route creator videos through the old Sparkle Hub bridge.
@@ -153,6 +154,9 @@ export async function uploadMedia(
   if (bucket === "videos" && isCloudinaryConfigured()) {
     const res = await uploadToCloudinary(file, {
       resourceType: "video",
+      creatorId: userId,
+      title: options?.title,
+      description: options?.description,
       onProgress,
     });
 
