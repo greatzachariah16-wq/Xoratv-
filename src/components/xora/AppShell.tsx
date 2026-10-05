@@ -301,15 +301,15 @@ export function AppShell({
         className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-1.5 pt-2 backdrop-blur-md lg:hidden"
         style={{ ["--safe-extra" as string]: "0.5rem" }}
       >
-        <ul className="grid grid-cols-5">
-          {[NAV[0], NAV[1]].map(({ to, label, icon: Icon }) => {
+        <ul className="grid grid-cols-6">
+          {[NAV[0], NAV[1], NAV[2]].map(({ to, label, icon: Icon }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
             return (
               <li key={to}>
                 <Link
                   to={to}
                   className={cn(
-                    "press flex flex-col items-center gap-1 py-1.5 text-[10px] font-medium",
+                    "press flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
                     active ? "text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -328,20 +328,33 @@ export function AppShell({
               <Plus className="size-6" aria-hidden="true" />
             </Link>
           </li>
-          {[NAV[2], NAV[4]].map(({ to, label, icon: Icon }) => (
-            <li key={to}>
-              <Link
-                to={to}
-                className={cn(
-                  "press relative flex flex-col items-center gap-1 py-1.5 text-[10px] font-medium",
-                  pathname.startsWith(to) ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <Icon className="size-5" aria-hidden="true" />
-                {label}
-              </Link>
-            </li>
-          ))}
+          <li>
+            <Link
+              to="/rewards"
+              className={cn(
+                "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
+                pathname.startsWith("/rewards") || pathname.startsWith("/offers")
+                  ? "text-primary"
+                  : "text-muted-foreground",
+              )}
+              aria-label="Rewards"
+            >
+              <Gift className="size-5" aria-hidden="true" />
+              Rewards
+            </Link>
+          </li>
+          <li>
+            <Link
+              to={NAV[4].to}
+              className={cn(
+                "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
+                pathname.startsWith(NAV[4].to) ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <Radio className="size-5" aria-hidden="true" />
+              X Channel
+            </Link>
+          </li>
         </ul>
       </nav>
     </div>
