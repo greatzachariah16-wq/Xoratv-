@@ -198,7 +198,7 @@ export async function fetchRankedFeed(
         p.feed === feed &&
         Boolean(p.poster_path) &&
         (feed !== "shorts" ||
-          (p.source === "youtube" && p.playability_status === "playable")),
+          (p.source === "creator" || (p.source === "youtube" && p.playability_status === "playable"))),
     );
     // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
     if (typeof window !== "undefined" && isFirebaseConfigured() && rawPosts.length > 0) {
