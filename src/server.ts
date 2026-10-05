@@ -18,6 +18,7 @@ import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/dis
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import { getFaoTvStreamUrl } from "./integrations/providers/faotv";
 import { runShortsVerification } from "./server/shorts-verification";
+import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 
 const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
 let shortsVerificationRunning = false;
@@ -1045,6 +1046,12 @@ export default {
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Sparkle Hub Supabase Storage bridge: videos are stored outside Render disk.
+    if (url.pathname.startsWith("/api/storage/sparkle/")) {
+      const storageRes = await handleSparkleStorageRoute(request, url);
+      if (storageRes) return storageRes;
     }
 
     // Content video upload: FFmpeg -> Cloudinary -> Supabase + MongoDB metadata
