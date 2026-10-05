@@ -1,9 +1,13 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/rewards")({
   component: RewardsRoute,
 });
 
 function RewardsRoute() {
-  return <Navigate to="/offers" replace />;
+  if (typeof window !== "undefined") {
+    window.location.replace("/offers");
+  }
+
+  return null;
 }
