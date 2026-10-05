@@ -285,6 +285,22 @@ async function handleUpload(request: Request): Promise<Response> {
 
     const fileBuffer = Buffer.from(await (file as File).arrayBuffer());
     const originalName = (file as File).name || "upload.bin";
+    if (bucket === "profile-avatar") {
+      const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
+      if (!allowed.has((file as File).type)) {
+        return new Response(JSON.stringify({ ok: false, error: "Use JPG, PNG or WebP for your profile photo." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      if (fileBuffer.length > 3 * 1024 * 1024) {
+        return new Response(JSON.stringify({ ok: false, error: "Profile photo must be 3MB or smaller." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      if (!userId || userId === "creator") {
+        return new Response(JSON.stringify({ ok: false, error: "Creator account is required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+      const creator = await queryRtdb(`commerce/creators/${userId}`) as { status?: string } | null;
+      if (!creator || creator.status !== "active") {
+        return new Response(JSON.stringify({ ok: false, error: "Creator account is not active." }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
     if (bucket === "channel-featured") {
       const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
       if (!allowed.has((file as File).type)) {
