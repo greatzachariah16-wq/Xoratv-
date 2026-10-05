@@ -55,7 +55,7 @@ function ProfilePage() {
               <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={82} />
               {isMe ? (
                 <div className="flex gap-2">
-                  <Link to="/creator-studio" className="press inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary"><PenLine className="size-3.5" /> Creator</Link>
+                  <Link to="/creator-studio" className="press inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary"><PenLine className="size-3.5" /> X Channel</Link>
                   <button type="button" onClick={() => void signOut()} className="press inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground"><LogOut className="size-3.5" /> Sign out</button>
                 </div>
               ) : profile ? (
