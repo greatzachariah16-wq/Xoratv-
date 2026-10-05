@@ -244,24 +244,32 @@ export async function fetchRankedFeed(
       } as PostRecord));
 
     if (feed === "shorts") {
-      // Keep only verified/stored YouTube Shorts when live discovery is empty or unavailable.
-      // This prevents a temporary YouTube API problem from blanking the entire Shorts page.
+      // Shorts contains BOTH Xora creator uploads and verified YouTube discovery.
+      // Creator uploads must never be filtered out just because they are not YouTube posts.
+      const creatorShorts = rawPosts.filter(
+        (p) =>
+          p.kind === "video" &&
+          p.feed === "shorts" &&
+          p.status === "published" &&
+          p.approval_status === "approved" &&
+          Boolean(p.stream_url || p.media_path) &&
+          Boolean(p.poster_path) &&
+          p.source === "creator",
+      );
       const storedYouTubeShorts = rawPosts.filter(
         (p) =>
           p.source === "youtube" &&
           Boolean(p.poster_path) &&
           p.playability_status === "playable",
       );
-      const storedIds = new Set(storedYouTubeShorts.map((p) => p.id));
-      // Fresh YouTube discovery is the primary Shorts pool.
-      // Firebase is only the fallback/cache when fresh discovery returns nothing.
-      rawPosts =
-        livePosts.length > 0
-          ? [
-              ...livePosts,
-              ...storedYouTubeShorts.filter((p) => !livePosts.some((live) => live.id === p.id)),
-            ]
-          : storedYouTubeShorts;
+
+      // Keep creator uploads first so a creator's newly published Short
+      // appears immediately, while YouTube discovery remains supplemental.
+      const discovered = livePosts.filter((p) => !creatorShorts.some((c) => c.id === p.id));
+      const stored = storedYouTubeShorts.filter(
+        (p) => !creatorShorts.some((c) => c.id === p.id) && !discovered.some((d) => d.id === p.id),
+      );
+      rawPosts = [...creatorShorts, ...discovered, ...stored];
     } else if (feed === "home") {
       rawPosts = [...rawPosts, ...livePosts];
     }
