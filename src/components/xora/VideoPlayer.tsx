@@ -26,7 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
-import { getAdaptiveStreamingUrl } from "@/lib/cloudinary";
+import { get240pDeliveryUrl } from "@/lib/cloudinary";
 import { markPlaybackStartup, recordPlaybackTelemetry, startPlaybackTelemetry } from "@/lib/playback-telemetry";
 
 type Props = {
@@ -76,8 +76,13 @@ export function NativeVideoPlayer({
   const shortsMaxBuffer = feed === "shorts" ? Math.min(dataSaver.maxBufferLengthSeconds, 5) : dataSaver.maxBufferLengthSeconds;
   const shortsMaxBufferSize = feed === "shorts" ? Math.min(dataSaver.maxBufferSizeMb, 4) : dataSaver.maxBufferSizeMb;
 
+  // Shorts use a direct MP4 rendition instead of HLS. This is deliberately
+  // boring and reliable on older Android WebViews/devices while still using
+  // Cloudinary's low-resolution delivery transformation.
   const src = effectiveStream
-    ? getAdaptiveStreamingUrl(effectiveStream, undefined, shortsMaxResolution)
+    ? feed === "shorts"
+      ? get240pDeliveryUrl(effectiveStream)
+      : effectiveStream
     : signedSrc;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
