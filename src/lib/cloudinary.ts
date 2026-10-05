@@ -132,6 +132,40 @@ export function getAdaptiveStreamingUrl(rawUrl: string, publicId?: string, maxRe
   return `${base}${transform}/${parts.join("/")}.m3u8`;
 }
 
+export function getOriginalVideoUrl(rawUrl: string): string {
+  if (!rawUrl) return "";
+
+  const match = rawUrl.match(/^(https?:\\/\\/res\\.cloudinary\\.com\\/[^/]+\\/video\\/upload\\/)(.*)$/);
+  if (!match) return rawUrl;
+
+  const base = match[1];
+  const parts = match[2].split("/").filter(Boolean);
+  while (parts.length > 0) {
+    const first = parts[0];
+    const isVersion = /^v\d+$/.test(first);
+    const looksLikeTransformation =
+      !isVersion &&
+      (first.includes(",") ||
+        first.startsWith("h_") ||
+        first.startsWith("w_") ||
+        first.startsWith("c_") ||
+        first.startsWith("q_") ||
+        first.startsWith("f_") ||
+        first.startsWith("sp_") ||
+        first.startsWith("br_") ||
+        first.startsWith("vc_") ||
+        first.startsWith("fl_") ||
+        first.startsWith("d_"));
+    if (!looksLikeTransformation) break;
+    parts.shift();
+  }
+
+  if (!parts.length) return rawUrl;
+  const last = parts.length - 1;
+  parts[last] = parts[last].replace(/\.[a-zA-Z0-9]+$/, "") + ".mp4";
+  return base + parts.join("/");
+}
+
 export function get240pDeliveryUrl(rawUrl: string, publicId?: string): string {
   const transform = "h_240,c_scale,q_auto:low,f_mp4";
 
