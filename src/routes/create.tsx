@@ -124,23 +124,15 @@ function CreatePage() {
         }
         durationSeconds = measured;
 
-        if (isCloudinaryConfigured()) {
-          setProgress(5);
-          // Upload directly to Cloudinary using unsigned preset
-          const uploadRes = await uploadToCloudinary(video, {
-            resourceType: "video",
-            onProgress: (pct) => setProgress(pct),
-          });
+        // Upload creator videos through Sparkle Hub Storage first.
+        // uploadMedia keeps Cloudinary/Render as fallbacks if Sparkle Storage
+        // is not configured yet.
+        setProgress(5);
+        streamUrl = await uploadMedia("videos", user.id, video, setProgress);
+        mediaPath = streamUrl;
 
-          // Delivery URL forces 240p transformation (h_240,c_scale,q_auto:low,f_mp4)
-          streamUrl = uploadRes.deliveryUrl240p || uploadRes.playbackUrl;
-          mediaPath = uploadRes.publicId || uploadRes.url;
-          if (uploadRes.duration) {
-            durationSeconds = uploadRes.duration;
-          }
-
-          // Optional cover image via Cloudinary
-          if (poster) {
+        if (poster) {
+          if (isCloudinaryConfigured()) {
             try {
               const posterRes = await uploadToCloudinary(poster, {
                 resourceType: "image",
@@ -151,15 +143,7 @@ function CreatePage() {
               console.warn("[Create] Cloudinary poster upload note:", posterErr);
               posterPath = await uploadMedia("posters", user.id, poster).catch(() => null);
             }
-          }
-        } else {
-          // Fallback to Render upload when Cloudinary credentials are not set
-          console.warn(
-            "[Create] Cloudinary is not configured. Falling back to ephemeral Render disk upload.",
-          );
-          mediaPath = await uploadMedia("videos", user.id, video, setProgress);
-          streamUrl = resolveMediaUrl("videos", mediaPath);
-          if (poster) {
+          } else {
             posterPath = await uploadMedia("posters", user.id, poster).catch(() => null);
           }
         }
