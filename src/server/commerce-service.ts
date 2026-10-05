@@ -1375,14 +1375,29 @@ export async function deleteCreatorShort(postId: string, creatorId: string): Pro
 
   let mediaDeleted = false;
   const mediaUrl = String(post.media_path || post.stream_url || "");
-  const cloudinaryMatch = mediaUrl.match(/res\.cloudinary\.com\/[^/]+\/video\/upload\/(?:[^/]+\/)*(?:v\\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
-  if (cloudinaryMatch?.[1]) {
-    const publicId = cloudinaryMatch[1].replace(/\.[a-zA-Z0-9]+$/, "");
-    try {
-      await deleteCloudinaryVideo(publicId);
-      mediaDeleted = true;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Could not remove the video from Cloudinary.");
+  const cloudinaryMatch = mediaUrl.match(/^(https?:\/\/res\\.cloudinary\\.com\/[^/]+\/video\/upload\/)(.*)$/);
+  if (cloudinaryMatch) {
+    const parts = cloudinaryMatch[2].split("/").filter(Boolean);
+    while (parts.length > 0) {
+      const first = parts[0];
+      const isVersion = /^v\\d+$/.test(first);
+      const looksLikeTransformation = !isVersion && (
+        first.includes(",") || first.startsWith("h_") || first.startsWith("w_") ||
+        first.startsWith("c_") || first.startsWith("q_") || first.startsWith("f_") ||
+        first.startsWith("sp_") || first.startsWith("br_") || first.startsWith("vc_") ||
+        first.startsWith("fl_") || first.startsWith("d_")
+      );
+      if (!looksLikeTransformation) break;
+      parts.shift();
+    }
+    const publicId = parts.join("/").replace(/\\.[a-zA-Z0-9]+$/, "");
+    if (publicId) {
+      try {
+        await deleteCloudinaryVideo(publicId);
+        mediaDeleted = true;
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : "Could not remove the video from Cloudinary.");
+      }
     }
   }
 
