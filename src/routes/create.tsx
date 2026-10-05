@@ -128,7 +128,10 @@ function CreatePage() {
         // uploadMedia keeps Cloudinary/Render as fallbacks if Sparkle Storage
         // is not configured yet.
         setProgress(5);
-        streamUrl = await uploadMedia("videos", user.id, video, setProgress);
+        streamUrl = await uploadMedia("videos", user.id, video, setProgress, {
+          title: title.trim(),
+          description: caption.trim(),
+        });
         mediaPath = streamUrl;
 
         if (poster) {
