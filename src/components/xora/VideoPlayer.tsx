@@ -26,7 +26,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
-import { get240pDeliveryUrl } from "@/lib/cloudinary";
 import { markPlaybackStartup, recordPlaybackTelemetry, startPlaybackTelemetry } from "@/lib/playback-telemetry";
 
 type Props = {
@@ -79,11 +78,12 @@ export function NativeVideoPlayer({
   // Shorts use a direct MP4 rendition instead of HLS. This is deliberately
   // boring and reliable on older Android WebViews/devices while still using
   // Cloudinary's low-resolution delivery transformation.
-  const src = effectiveStream
-    ? feed === "shorts"
-      ? get240pDeliveryUrl(effectiveStream)
-      : effectiveStream
-    : signedSrc;
+  // Shorts follow the proven Xora Sparkle Hub playback path: use the stored
+  // playable URL directly and let the native <video> element handle it.
+  // Homepage playback keeps its existing stream handling unchanged.
+  const src = feed === "shorts"
+    ? (effectiveStream || signedSrc)
+    : (effectiveStream || signedSrc);
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
 
@@ -281,25 +281,23 @@ export function NativeVideoPlayer({
     };
   }, [playing, user, postId]);
 
-  const hlsRef = useRef<import("hls.js").default | null>(null);
-
-  // Pause and release the element on unmount / source swap so audio never
-  // keeps playing after navigating away, and attach HLS stream if applicable.
+  // Xora Sparkle Hub's Shorts method: assign the resolved playable URL
+  // directly to the native video element. No HLS.js, no provider embed, and
+  // no Cloudinary URL rewriting for Shorts.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-
     if (!src) return;
 
     const telemetryId = postId || `${title}-${src}`;
     startPlaybackTelemetry(telemetryId, src);
 
-    if (/\.m3u8(?:[?#]|$)/i.test(src)) {
+    // Only Shorts use this direct native path. Homepage keeps the existing
+    // provider/HLS handling below.
+    if (feed === "shorts") {
+      video.src = src;
+      video.load();
+    } else if (/\.m3u8(?:[?#]|$)/i.test(src)) {
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
       } else {
@@ -309,46 +307,37 @@ export function NativeVideoPlayer({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                maxBitrate: shortsMaxBitrate * 1000,
-                maxBufferLength: shortsMaxBuffer,
-                maxMaxBufferLength: shortsMaxBuffer * 2,
-                maxBufferSize: shortsMaxBufferSize * 1024 * 1024,
+                maxBitrate: dataSaver.maxBitrateKbps * 1000,
+                maxBufferLength: dataSaver.maxBufferLengthSeconds,
+                maxMaxBufferLength: dataSaver.maxBufferLengthSeconds * 2,
+                maxBufferSize: dataSaver.maxBufferSizeMb * 1024 * 1024,
                 capLevelToPlayerSize: true,
                 backBufferLength: 4,
               });
               hls.loadSource(src);
               hls.attachMedia(videoRef.current);
-              hlsRef.current = hls;
               hls.on(Hls.Events.ERROR, (_event, data) => {
-                if (data.fatal) {
-                  setFailed(true);
-                }
+                if (data.fatal) setFailed(true);
               });
-            } else {
-              videoRef.current.src = src;
+              return;
             }
+            videoRef.current.src = src;
           })
           .catch(() => {
             if (videoRef.current) videoRef.current.src = src;
           });
-      }
+        }
     } else {
       video.src = src;
     }
 
     return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-      if (timer3sRef.current) {
-        clearTimeout(timer3sRef.current);
-      }
+      if (timer3sRef.current) clearTimeout(timer3sRef.current);
       video.pause();
       video.removeAttribute("src");
       video.load();
     };
-  }, [src, shortsMaxBitrate, shortsMaxBuffer, shortsMaxBufferSize]);
+  }, [src, feed, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
