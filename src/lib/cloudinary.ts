@@ -313,7 +313,7 @@ export async function uploadToCloudinary(
           resolve({
             url: rawUrl,
             deliveryUrl240p,
-            playbackUrl: adaptivePlaybackUrl || deliveryUrl240p,
+            playbackUrl: deliveryUrl240p,
             publicId,
             duration,
             bytes,
