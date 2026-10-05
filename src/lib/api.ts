@@ -253,7 +253,6 @@ export async function fetchRankedFeed(
           p.status === "published" &&
           p.approval_status === "approved" &&
           Boolean(p.stream_url || p.media_path) &&
-          Boolean(p.poster_path) &&
           p.source === "creator",
       );
       const storedYouTubeShorts = rawPosts.filter(
