@@ -196,9 +196,8 @@ export async function fetchRankedFeed(
     rawPosts = localPosts.filter(
       (p) =>
         p.feed === feed &&
-        Boolean(p.poster_path) &&
-        (feed !== "shorts" ||
-          (p.source === "creator" || (p.source === "youtube" && p.playability_status === "playable"))),
+        (feed !== "shorts" || p.source === "creator" || (p.source === "youtube" && p.playability_status === "playable")) &&
+        (feed === "shorts" || Boolean(p.poster_path)),
     );
     // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
     if (typeof window !== "undefined" && isFirebaseConfigured() && rawPosts.length > 0) {
@@ -275,11 +274,11 @@ export async function fetchRankedFeed(
   } catch (err) {
     console.warn("[YouTube Discovery] Live feed layer unavailable:", err);
     if (feed === "shorts") {
+      // Keep native Xora creator Shorts available even when discovery is unavailable.
       rawPosts = rawPosts.filter(
         (p) =>
-          p.source === "youtube" &&
-          Boolean(p.poster_path) &&
-          p.playability_status === "playable",
+          p.source === "creator" ||
+          (p.source === "youtube" && Boolean(p.poster_path) && p.playability_status === "playable"),
       );
     }
   }
