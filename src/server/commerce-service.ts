@@ -26,6 +26,11 @@ export type CreatorProfile = {
   createdAt: string;
   updatedAt: string;
   featuredImageUrl?: string | null;
+  channelBio?: string | null;
+  featuredTitle?: string | null;
+  featuredDescription?: string | null;
+  showCourses?: boolean;
+  showCommunity?: boolean;
 };
 
 export type Course = {
@@ -1099,6 +1104,29 @@ export async function createCreatorProfile(params: {
 
 export async function getCreator(userId: string): Promise<CreatorProfile | null> {
   return (await queryRtdb(`commerce/creators/${userId}`)) as CreatorProfile | null;
+}
+
+export async function saveCreatorCustomization(userId: string, params: {
+  channelBio?: string;
+  featuredTitle?: string;
+  featuredDescription?: string;
+  showCourses?: boolean;
+  showCommunity?: boolean;
+}) {
+  const creator = await getCreator(userId);
+  if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
+  const clean = {
+    channelBio: String(params.channelBio ?? "").trim().slice(0, 280),
+    featuredTitle: String(params.featuredTitle ?? "").trim().slice(0, 100),
+    featuredDescription: String(params.featuredDescription ?? "").trim().slice(0, 240),
+    showCourses: params.showCourses !== false,
+    showCommunity: params.showCommunity !== false,
+  };
+  const updated: CreatorProfile = { ...creator, ...clean, updatedAt: new Date().toISOString() };
+  await queryRtdb(`commerce/creators/${userId}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated),
+  });
+  return updated;
 }
 
 export async function saveCreatorFeaturedImage(userId: string, featuredImageUrl: string) {
