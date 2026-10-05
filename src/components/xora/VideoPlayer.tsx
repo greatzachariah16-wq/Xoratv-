@@ -71,8 +71,13 @@ export function NativeVideoPlayer({
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
+  const shortsMaxResolution = feed === "shorts" ? 240 : dataSaver.maxResolutionHeight;
+  const shortsMaxBitrate = feed === "shorts" ? Math.min(dataSaver.maxBitrateKbps, 450) : dataSaver.maxBitrateKbps;
+  const shortsMaxBuffer = feed === "shorts" ? Math.min(dataSaver.maxBufferLengthSeconds, 5) : dataSaver.maxBufferLengthSeconds;
+  const shortsMaxBufferSize = feed === "shorts" ? Math.min(dataSaver.maxBufferSizeMb, 4) : dataSaver.maxBufferSizeMb;
+
   const src = effectiveStream
-    ? getAdaptiveStreamingUrl(effectiveStream, undefined, dataSaver.maxResolutionHeight)
+    ? getAdaptiveStreamingUrl(effectiveStream, undefined, shortsMaxResolution)
     : signedSrc;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
@@ -299,10 +304,10 @@ export function NativeVideoPlayer({
             if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
-                maxBitrate: dataSaver.maxBitrateKbps * 1000,
-                maxBufferLength: dataSaver.maxBufferLengthSeconds,
-                maxMaxBufferLength: dataSaver.maxBufferLengthSeconds * 2,
-                maxBufferSize: dataSaver.maxBufferSizeMb * 1024 * 1024,
+                maxBitrate: shortsMaxBitrate * 1000,
+                maxBufferLength: shortsMaxBuffer,
+                maxMaxBufferLength: shortsMaxBuffer * 2,
+                maxBufferSize: shortsMaxBufferSize * 1024 * 1024,
                 capLevelToPlayerSize: true,
                 backBufferLength: 4,
               });
@@ -338,7 +343,7 @@ export function NativeVideoPlayer({
       video.removeAttribute("src");
       video.load();
     };
-  }, [src, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
+  }, [src, shortsMaxBitrate, shortsMaxBuffer, shortsMaxBufferSize]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
