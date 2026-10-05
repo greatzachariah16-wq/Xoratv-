@@ -11,6 +11,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { resolveMediaUrl, useSignedUrl } from "@/lib/media";
+import { getOriginalVideoUrl } from "@/lib/cloudinary";
 import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
@@ -82,7 +83,9 @@ export function NativeVideoPlayer({
   // playable URL directly and let the native <video> element handle it.
   // Homepage playback keeps its existing stream handling unchanged.
   const src = feed === "shorts"
-    ? (effectiveStream ? resolveMediaUrl("videos", effectiveStream) : signedSrc)
+    ? (effectiveStream && effectiveStream.includes("res.cloudinary.com")
+        ? getOriginalVideoUrl(effectiveStream)
+        : effectiveStream || signedSrc)
     : (effectiveStream || signedSrc);
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
