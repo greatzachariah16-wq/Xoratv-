@@ -180,6 +180,7 @@ function CreatePage() {
         featured: false,
         recommendation_score: 90,
         source: "creator",
+        playability_status: kind === "video" && feed === "shorts" ? "playable" : null,
       });
       return postId;
     },
