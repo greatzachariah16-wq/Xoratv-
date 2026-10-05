@@ -192,7 +192,7 @@ export function get240pDeliveryUrl(rawUrl: string, publicId?: string): string {
     // creator upload is resolved more than once by the feed/player.
     while (parts.length > 0) {
       const first = parts[0];
-      const isVersion = /^v\\d+$/.test(first);
+      const isVersion = /^v\d+$/.test(first);
       const looksLikeTransformation =
         !isVersion &&
         (first.includes(",") ||
