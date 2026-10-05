@@ -178,15 +178,15 @@ function XChannel(){
 
   if(isPending)return <AppShell wide><div className="p-8 text-sm text-muted-foreground">Loading your X Channel…</div></AppShell>;
 
-  const publicTabs:[Section,string][]=[["home","Home"],["videos","Videos"],["shorts","Shorts"],["courses","Courses"],["community","Community"],["about","About"]];
+  const publicTabs:[Section,string][]=[["home","Home"],["videos","Videos"],["shorts","Shorts"],...(showCourses?[["courses","Courses"] as [Section,string]]:[]),...(showCommunity?[["community","Community"] as [Section,string]]:[]),["about","About"]];
   const manageTabs:[Section,string][]=[["manage","Overview"],["analytics","Analytics"],["earnings","Earnings"],["customize","Customize"]];
 
   function PublicContent(){
     if(section==="videos")return <EmptyContent icon={<Upload/>} title="Your videos" text="Long-form videos published to this X Channel will appear here." action="Upload video" href="/create"/>;
     if(section==="shorts")return <EmptyContent icon={<Radio/>} title="Your Shorts" text="Your published Shorts will appear here as your channel grows." action="Open Shorts" href="/shorts"/>;
-    if(section==="community")return <EmptyContent icon={<Users/>} title="Community" text="Channel announcements, posts and conversations will live here." action="Create post" href="/create"/>;
-    if(section==="about")return <section className="rounded-2xl border border-border bg-surface p-6 shadow-card"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">About this channel</p><h2 className="mt-2 font-display text-xl font-semibold">{displayName}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{profile?.bio||"Welcome to my XoraTV channel."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Stat label="Subscribers" value={String(dashboard?.stats?.followers||0)}/><Stat label="Courses" value={String(publishedCourses.length)}/><Stat label="Joined" value="XoraTV"/></div></section>;
-    if(section==="courses")return <CourseShelf courses={publishedCourses}/>;
+    if(section==="community" && showCommunity)return <EmptyContent icon={<Users/>} title="Community" text="Channel announcements, posts and conversations will live here." action="Create post" href="/create"/>;
+    if(section==="about")return <section className="rounded-2xl border border-border bg-surface p-6 shadow-card"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">About this channel</p><h2 className="mt-2 font-display text-xl font-semibold">{displayName}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{publicBio||"Welcome to my XoraTV channel."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Stat label="Subscribers" value={String(dashboard?.stats?.followers||0)}/><Stat label="Courses" value={String(publishedCourses.length)}/><Stat label="Joined" value="XoraTV"/></div></section>;
+    if(section==="courses" && showCourses)return <CourseShelf courses={publishedCourses}/>;
     return <div className="space-y-8">
       <section className="grid gap-4 lg:grid-cols-[1.65fr_.75fr]">
         <article className="group relative aspect-video w-full overflow-hidden rounded-[26px] bg-ink text-white shadow-lift">
