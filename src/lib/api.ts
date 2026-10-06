@@ -556,8 +556,9 @@ export function myLikesQuery(userId: string | null | undefined) {
       if (!userId) return [];
       if (isFirebaseConfigured()) {
         try {
-          const liked = await getUserLikedPosts(userId);
-          if (liked.length > 0) return liked;
+          // Firebase is authoritative here. An empty Firebase result means
+          // the user has no likes; do not resurrect stale local likes.
+          return await getUserLikedPosts(userId);
         } catch (err) {
           console.warn("[RealtimeDB] Likes query fallback:", err);
         }
@@ -770,13 +771,19 @@ export function searchQuery(term: string) {
 
 export async function toggleLike(postId: string, userId: string, liked: boolean) {
   const key = `${postId}:${userId}`;
+
+  // Firebase is the source of truth when configured. Let failures reach the
+  // mutation so the UI does not show the Like animation as a success.
+  if (isFirebaseConfigured()) {
+    await toggleLikeRtdb(postId, userId, liked);
+  }
+
   if (liked) {
     localLikes.delete(key);
     trackEvent({ type: "skip", postId, userId });
   } else {
     localLikes.add(key);
     trackEvent({ type: "like", postId, userId });
-    // Record engagement action to backend
     fetch("/api/engagement/action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -788,14 +795,6 @@ export async function toggleLike(postId: string, userId: string, liked: boolean)
         }
       })
       .catch(() => {});
-  }
-
-  if (isFirebaseConfigured()) {
-    try {
-      await toggleLikeRtdb(postId, userId, liked);
-    } catch (err) {
-      console.warn("[RealtimeDB] Toggle like note:", err);
-    }
   }
 }
 
