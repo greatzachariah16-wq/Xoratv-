@@ -305,7 +305,7 @@ export async function fetchRankedFeed(
     if (typeof window !== "undefined" && isFirebaseConfigured()) {
       try {
         const [f, l] = await Promise.all([
-          getFollowsForUser(userId).catch(() => []),
+          getSubscriptionsForUser(userId).catch(() => []),
           getUserLikedPosts(userId).catch(() => []),
         ]);
         follows = f;
