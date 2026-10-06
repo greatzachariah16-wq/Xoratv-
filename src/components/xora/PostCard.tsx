@@ -42,7 +42,7 @@ import { trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
-import { SpiritualLikeMoment } from "./SpiritualLikeMoment";
+import { LikePetalBurst } from "./LikePetalBurst";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -62,13 +62,14 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [likeMoment, setLikeMoment] = useState(false);
+  const [likeMomentOrigin, setLikeMomentOrigin] = useState<{ x: number; y: number } | null>(null);
+  const [displayLikeCount, setDisplayLikeCount] = useState(post.like_count ?? 0);
+  const likeButtonRef = useRef<HTMLButtonElement | null>(null);
   const viewRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!likeMoment) return;
-    const timer = window.setTimeout(() => setLikeMoment(false), 1650);
-    return () => window.clearTimeout(timer);
-  }, [likeMoment]);
+    setDisplayLikeCount(post.like_count ?? 0);
+  }, [post.like_count]);
 
   useEffect(() => {
     if (post.kind !== "video" || typeof IntersectionObserver === "undefined") return;
@@ -329,19 +330,41 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
           ) : null}
 
           <div className="relative mt-3 border-t border-border pt-2.5">
-            <SpiritualLikeMoment active={likeMoment} />
+            <LikePetalBurst
+              active={likeMoment}
+              origin={likeMomentOrigin}
+              onDone={() => {
+                setLikeMoment(false);
+                setLikeMomentOrigin(null);
+              }}
+            />
             <div className="flex items-center gap-1">
               <button
+                ref={likeButtonRef}
                 type="button"
                 onClick={async () => {
-                  if (liked) {
-                    likes.toggle(post.id);
+                  const wasLiked = liked;
+                  if (wasLiked) {
+                    try {
+                      await likes.toggleAsync(post.id);
+                      setDisplayLikeCount((count) => Math.max(0, count - 1));
+                    } catch {
+                      // The mutation hook shows the error.
+                    }
                     return;
                   }
+
                   try {
                     await likes.toggleAsync(post.id);
-                    setLikeMoment(false);
-                    requestAnimationFrame(() => setLikeMoment(true));
+                    setDisplayLikeCount((count) => count + 1);
+                    const rect = likeButtonRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      setLikeMomentOrigin({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2,
+                      });
+                    }
+                    setLikeMoment(true);
                   } catch {
                     // The mutation hook shows the error; do not play the animation on failure.
                   }
@@ -355,7 +378,7 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
                 className={cn("size-4", liked ? "pop fill-primary text-primary" : "")}
                 aria-hidden="true"
               />
-              <span className="tabular-nums">{compactNumber(post.like_count ?? 0)}</span>
+              <span className="tabular-nums">{compactNumber(displayLikeCount)}</span>
             </button>
             <Link
               to="/video/$postId"
