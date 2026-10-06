@@ -16,7 +16,7 @@ import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runne
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
-import { getFaoTvStreamUrl } from "./integrations/providers/faotv";
+import { fetchIptvChannels, getIptvStreamUrl } from "./integrations/providers/iptv-org";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 
@@ -885,7 +885,7 @@ export default {
       }
     }
 
-    // XTv playback endpoint. Resolves either FAO TV channels or X Series media streams
+    // IPTV-org Live TV catalogue endpoint\n    if (url.pathname === "/api/tv/channels" && request.method === "GET") {\n      try {\n        const result = await fetchIptvChannels({\n          query: url.searchParams.get("q") || undefined,\n          country: url.searchParams.get("country") || undefined,\n          category: url.searchParams.get("category") || undefined,\n          limit: Number(url.searchParams.get("limit") || "30"),\n        });\n        return new Response(JSON.stringify(result), {\n          status: result.ok ? 200 : 502,\n          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },\n        });\n      } catch (err) {\n        const msg = err instanceof Error ? err.message : "IPTV catalogue error";\n        return new Response(JSON.stringify({ ok: false, total: 0, channels: [], error: msg }), {\n          status: 502,\n          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },\n        });\n      }\n    }\n\n    // XTv playback endpoint. Resolves IPTV-org channels or X Series media streams
     if (
       (url.pathname === "/api/xtv-series/stream" ||
         url.pathname.startsWith("/api/xtv-series/stream/")) &&
@@ -959,20 +959,20 @@ export default {
           );
         }
 
-        const channelId = rawId.replace(/^fao_/, "");
-        const streamUrl = await getFaoTvStreamUrl(channelId);
+        const channelId = rawId.replace(/^iptv_/, "");
+        const streamUrl = await getIptvStreamUrl(channelId);
         if (!streamUrl) {
           return new Response(
             JSON.stringify({
               ok: false,
               error: "XTv could not resolve a playable stream for this channel.",
-              provider: "faotv",
+              provider: "iptv-org",
               channelId,
             }),
             { status: 404, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ ok: true, provider: "faotv", channelId, streamUrl }), {
+        return new Response(JSON.stringify({ ok: true, provider: "iptv-org", channelId, streamUrl }), {
           status: 200,
           headers: {
             ...CORS_HEADERS,
@@ -982,27 +982,11 @@ export default {
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "XTv stream resolution error";
-        return new Response(JSON.stringify({ ok: false, error: msg, provider: "faotv" }), {
+        return new Response(JSON.stringify({ ok: false, error: msg, provider: "iptv-org" }), {
           status: 502,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
       }
-    }
-
-    // Backwards-compatible alias for existing clients.
-    if (url.pathname === "/api/faotv/stream" && request.method === "GET") {
-      const channelId = url.searchParams.get("channelId") || "";
-      if (!channelId) {
-        return new Response(JSON.stringify({ ok: false, error: "Missing channelId" }), {
-          status: 400,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
-      }
-      const streamUrl = await getFaoTvStreamUrl(channelId);
-      return new Response(JSON.stringify({ ok: !!streamUrl, streamUrl }), {
-        status: 200,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      });
     }
 
     // Automated Discovery Job (Cron / Webhook / On-Demand endpoint)
