@@ -136,7 +136,6 @@ function LiveTvPage() {
             {!query.isFetching && channels.length === 0 && <div className="py-16 text-center"><Tv className="mx-auto size-10 text-muted-foreground/40" /><p className="mt-3 font-semibold">No channels found</p><p className="mt-1 text-sm text-muted-foreground">Try another search or category.</p></div>}
           </div>
         </section>
-      </div>
     </AppShell>
   );
 }
