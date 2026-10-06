@@ -1,7 +1,7 @@
 /**
  * XTv Series & Movie background discovery engine for XoraTV.
  *
- * Dedicated content source powered exclusively by IPTV-org (TeamRaven).
+ * Dedicated content source powered exclusively by IPTV-org.
  * Completely removes YouTube, Vimeo, and Dailymotion from the XTv Series pipeline.
  * Pulls full-length continuous channels, series sets, and movie streams.
  * Bypasses the admin publish gate and persists directly to Firebase RTDB (/xtvSeries/items).
@@ -76,9 +76,11 @@ export async function runXTvSeriesDiscovery(): Promise<{
                 item.provider === "youtube" ||
                 item.provider === "vimeo" ||
                 item.provider === "dailymotion" ||
+                item.provider === "faotv" ||
                 item.id.startsWith("yt_") ||
                 item.id.startsWith("vim_") ||
-                item.id.startsWith("dm_")
+                item.id.startsWith("dm_") ||
+                item.id.startsWith("fao_")
               ) {
                 void fetch(`${dbUrl.replace(/\/+$/, "")}/xtvSeries/items/${key}.json`, {
                   method: "DELETE",
