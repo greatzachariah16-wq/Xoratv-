@@ -204,7 +204,7 @@ function AdminPage() {
     },
     {
       title: "Provider Discovery Engine",
-      description: "Automated ingestion pipeline for YouTube, Vimeo, FAOTV, and RSS sources.",
+      description: "Automated ingestion pipeline for YouTube, Vimeo, IPTV-org, and RSS sources.",
       href: "/admin/discovery",
       icon: Compass,
       badge: "Discovery",
