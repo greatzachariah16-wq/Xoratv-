@@ -5,7 +5,6 @@ import crypto from "node:crypto";
 import { Readable } from "node:stream";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { getFaoTvStreamUrl } from "../integrations/providers/faotv";
 import { xseriesDbRead } from "./xseries-service-account";
 import { extractYouTubeId } from "./xseries-crawler";
 
@@ -243,22 +242,7 @@ export async function extractStreamUrl(
     };
   }
 
-  // 2. FaoTV provider channels
-  if (providerHint === "faotv" || host.includes("teamraven.online")) {
-    const channelId =
-      urlObj.searchParams.get("id") || urlObj.pathname.split("/").filter(Boolean).pop() || "";
-    const faoStream = await getFaoTvStreamUrl(channelId);
-    if (faoStream) {
-      return {
-        streamUrl: faoStream,
-        contentType: "application/x-mpegURL",
-        provider: "faotv",
-        isHls: true,
-      };
-    }
-  }
-
-  // 3. Vimeo extraction via config JSON
+  // 2. Vimeo extraction via config JSON
   if (host.includes("vimeo.com")) {
     const vimeoId = urlObj.pathname.match(/(?:video\/)?(\d{5,15})/)?.[1];
     if (vimeoId) {
