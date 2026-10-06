@@ -99,9 +99,10 @@ export function resolveMediaUrl(
 
   // If bucket is videos and path is a Cloudinary public_id (e.g. xora/videos/...)
   if (bucket === "videos" && isCloudinaryConfigured() && !cleanPath.startsWith("videos/")) {
-    const cloudinaryDelivery = getOriginalVideoUrl(cleanPath);
-    if (cloudinaryDelivery) {
-      return cloudinaryDelivery;
+    const { cloudName } = getCloudinaryConfig();
+    if (cloudName) {
+      const cloudinaryOriginal = `https://res.cloudinary.com/${cloudName}/video/upload/${cleanPath.replace(/\\.[a-zA-Z0-9]+$/, "")}.mp4`;
+      return cloudinaryOriginal;
     }
   }
 
