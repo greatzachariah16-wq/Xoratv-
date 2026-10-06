@@ -138,7 +138,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
               )}
             >
               <Users className="size-3.5" aria-hidden="true" />
-              Following
+              Subscriptions
             </button>
           </div>
 
@@ -153,10 +153,10 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
       ) : !allPosts.length ? (
         <EmptyState
           icon={mode === "following" ? Users : Sparkles}
-          title={mode === "following" ? "No posts from followed creators" : "Nothing here yet"}
+          title={mode === "following" ? "No posts from subscribed creators" : "Nothing here yet"}
           description={
             mode === "following"
-              ? "Follow creators from the 'For You' feed or search to see their latest videos here."
+              ? "Subscribe to creators from the 'For You' feed or search to see their latest videos here."
               : "Be the first to post in this feed — upload a video or share a thought."
           }
           action={
