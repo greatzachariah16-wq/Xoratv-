@@ -43,7 +43,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     return raw.filter((post) => {
       if (!post || !post.id || seen.has(post.id)) return false;
       // Shorts accepts Xora creator uploads as well as verified discovery videos.
-      if (feed === "shorts" && post.kind !== "video") return false;
+      if (feed === "shorts" && (post.kind !== "video" || post.source !== "creator")) return false;
       // Never show legacy Dailymotion content on the Home feed.
       if (feed === "home" && post.source === "dailymotion") return false;
       // Covers are optional for Shorts; the video itself is enough to render the card.
@@ -111,7 +111,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
 
   return (
     <div className="space-y-4">
-      {feed === "home" ? (
+      {feed === "home" || feed === "shorts" ? (
         <div className="flex items-center justify-between border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <button
