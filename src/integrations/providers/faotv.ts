@@ -136,7 +136,7 @@ export async function fetchFaoTvChannels(options?: {
   query.set("limit", String(limit));
   if (key) query.set("api_key", key);
 
-  const base = getApiBase().replace(/\\/+$/, "");
+  const base = getApiBase().replace(/\/+$/, "");
   const configured = process.env.FAOTV_CHANNELS?.trim();
   const endpoints = [
     configured,
@@ -191,7 +191,7 @@ export async function fetchFaoTvChannels(options?: {
 
       for (const match of html.matchAll(pattern)) {
         const id = match[1]?.trim();
-        const rawLabel = match[2]?.replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+        const rawLabel = match[2]?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         if (!id || !rawLabel || seen.has(id)) continue;
         if (q && !rawLabel.toLowerCase().includes(q.toLowerCase())) continue;
         seen.add(id);
