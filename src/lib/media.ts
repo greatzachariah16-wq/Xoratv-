@@ -6,6 +6,7 @@ import {
   uploadToCloudinary,
   isCloudinaryConfigured,
   getOriginalVideoUrl,
+  getCloudinaryConfig,
   type CloudinaryUploadResult,
   type CloudinaryUploadOptions,
 } from "./cloudinary";
@@ -13,7 +14,7 @@ import {
 export {
   uploadToCloudinary,
   isCloudinaryConfigured,
-  get240pDeliveryUrl,
+  getOriginalVideoUrl,
   type CloudinaryUploadResult,
   type CloudinaryUploadOptions,
 };
@@ -81,12 +82,10 @@ export function resolveMediaUrl(
   const trimmed = path.trim();
   if (!trimmed) return null;
 
-  // Blob or data URLs are local preview assets
   if (/^(blob:|data:)/i.test(trimmed)) {
     return trimmed;
   }
 
-  // If already an absolute HTTP/HTTPS URL (e.g. Cloudinary, YouTube, external)
   if (/^https?:\/\//i.test(trimmed)) {
     if (bucket === "videos" && trimmed.includes("res.cloudinary.com")) {
       return getOriginalVideoUrl(trimmed);
@@ -94,52 +93,37 @@ export function resolveMediaUrl(
     return trimmed;
   }
 
-  // Strip leading slashes
   const cleanPath = trimmed.replace(/^\/+/, "");
 
-  // If bucket is videos and path is a Cloudinary public_id (e.g. xora/videos/...)
   if (bucket === "videos" && isCloudinaryConfigured() && !cleanPath.startsWith("videos/")) {
     const { cloudName } = getCloudinaryConfig();
     if (cloudName) {
-      const cloudinaryOriginal = `https://res.cloudinary.com/${cloudName}/video/upload/${cleanPath.replace(/\\.[a-zA-Z0-9]+$/, "")}.mp4`;
+      const cloudinaryOriginal = `https://res.cloudinary.com/${cloudName}/video/upload/${cleanPath.replace(/\.[a-zA-Z0-9]+$/, "")}.mp4`;
       return cloudinaryOriginal;
     }
   }
 
-  // If path already starts with the bucket name, don't duplicate it
   const finalKey = cleanPath.startsWith(`${bucket}/`) ? cleanPath : `${bucket}/${cleanPath}`;
 
   const renderBase = getRenderBaseUrl();
   return renderBase ? `${renderBase}/${finalKey}` : `/${finalKey}`;
 }
 
-/**
- * Resolves media path into direct stream link.
- */
 export async function signMedia(bucket: MediaBucket, path: string): Promise<string | null> {
   return resolveMediaUrl(bucket, path);
 }
 
-/**
- * Resolves a stored media path or key to a streamable Render backend URL.
- * Used by VideoPlayer and UserAvatar components across the application.
- */
 export function useSignedUrl(bucket: MediaBucket, path: string | null | undefined) {
   const { data } = useQuery({
     queryKey: ["media-stream-url", bucket, path],
     queryFn: () => resolveMediaUrl(bucket, path),
     enabled: Boolean(path),
-    staleTime: 1000 * 60 * 60, // 1 hour caching
+    staleTime: 1000 * 60 * 60,
     gcTime: 1000 * 60 * 90,
   });
   return data ?? (path ? resolveMediaUrl(bucket, path) : null);
 }
 
-/**
- * Uploads media.
- * For videos: uses Cloudinary (Option 1 with 240p transformation) if configured.
- * Otherwise falls back to Render backend endpoint: POST /api/upload with a clear warning.
- */
 export async function uploadMedia(
   bucket: MediaBucket,
   userId: string,
@@ -147,11 +131,6 @@ export async function uploadMedia(
   onProgress?: (percent: number) => void,
   options?: { title?: string; description?: string },
 ): Promise<string> {
-  // Cloudinary is the active creator-video storage/delivery path.
-  // Do not route creator videos through the old Sparkle Hub bridge.
-  // XoraTV Content Supabase will be added separately for selected videos only.
-
-  // Existing Cloudinary path remains the primary video path.
   if (bucket === "videos" && isCloudinaryConfigured()) {
     const res = await uploadToCloudinary(file, {
       resourceType: "video",
@@ -161,7 +140,9 @@ export async function uploadMedia(
       onProgress,
     });
 
-    // Creator uploads must preserve their full-quality Cloudinary MP4. Do not save the 240p rendition as the canonical stream URL.\n    const finalUrl = res.playbackUrl || res.url;
+    // Creator uploads must preserve their full-quality Cloudinary MP4.
+    // Do not save the 240p rendition as the canonical stream URL.
+    const finalUrl = res.url || res.playbackUrl;
     const finalPath = res.publicId || res.url;
 
     if (isFirebaseConfigured()) {
@@ -245,7 +226,6 @@ export async function uploadMedia(
 
   onProgress?.(90);
 
-  // Record in RTDB mediaIndex if Firebase is configured
   if (isFirebaseConfigured()) {
     try {
       await recordMediaIndex({
