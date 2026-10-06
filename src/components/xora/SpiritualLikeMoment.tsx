@@ -18,14 +18,15 @@ export function SpiritualLikeMoment({ active, onDone }: Props) {
 
   return (
     <div
-      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-[min(92vw,330px)] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/20 bg-black/20 shadow-2xl backdrop-blur-[2px] animate-[xoraLikeScene_1650ms_ease-out_forwards]"
+      className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center bg-black/20 px-3 py-4 animate-[xoraLikeOverlay_1650ms_ease-out_forwards]"
       aria-hidden="true"
     >
-      <img
-        src={`data:image/webp;base64,${SPIRITUAL_LIKE_MOMENT_WEBP_BASE64}`}
-        alt=""
-        className="block aspect-[16/9] w-full object-cover animate-[xoraSpiritBreath_1650ms_ease-in-out_forwards]"
-      />
+      <div className="relative h-[50vh] w-[min(94vw,760px)] overflow-hidden rounded-3xl border border-white/25 bg-black shadow-2xl">
+        <img
+          src={`data:image/webp;base64,${SPIRITUAL_LIKE_MOMENT_WEBP_BASE64}`}
+          alt=""
+          className="block h-full w-full object-cover animate-[xoraSpiritBreath_1650ms_ease-in-out_forwards]"
+        />
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_27%_68%,rgba(220,255,231,0.35),transparent_20%),radial-gradient(circle_at_65%_38%,rgba(200,255,230,0.10),transparent_35%)]" />
 
@@ -40,7 +41,15 @@ export function SpiritualLikeMoment({ active, onDone }: Props) {
       <span className="absolute left-[43%] top-[53%] size-1.5 rounded-full bg-white/80 shadow-[0_0_8px_white] animate-[xoraMagicParticle_1050ms_ease-out_80ms_forwards]" />
       <span className="absolute left-[38%] top-[56%] size-1 rounded-full bg-white/70 shadow-[0_0_8px_white] animate-[xoraMagicParticle_1000ms_ease-out_140ms_forwards]" />
 
+      </div>
+
       <style>{`
+        @keyframes xoraLikeOverlay {
+          0% { opacity: 0; }
+          12% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { opacity: 0; }
+        }
         @keyframes xoraLikeScene {
           0% { opacity: 0; transform: translate(-50%, 10px) scale(.96); }
           18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
