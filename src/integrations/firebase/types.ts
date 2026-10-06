@@ -41,8 +41,10 @@ export interface PostRecord {
   discovered_at?: string | null;
   year?: number | null;
   genre?: string | null;
+  view_count?: number;
   like_count?: number;
   comment_count?: number;
+  share_count?: number;
   /** Backend-only Shorts playback verification state. Unverified Shorts are not public. */
   playability_status?: "playable" | "unplayable" | "unverified" | null;
   playability_checked_at?: string | null;
@@ -62,6 +64,7 @@ export interface ProfileRecord {
   is_admin?: boolean | null;
   follower_count?: number;
   following_count?: number;
+  subscriber_count?: number;
   created_at: string;
 }
 
