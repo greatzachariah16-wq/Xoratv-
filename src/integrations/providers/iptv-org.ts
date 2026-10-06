@@ -200,6 +200,7 @@ export async function fetchIptvChannels(options?: {
 
       const available = streams
         .filter((stream) => stream.url.startsWith("http"))
+        .filter((stream) => !(stream.labels || []).some((label) => label.toLowerCase() === "geo-blocked"))
         .sort((a, b) => streamScore(b) - streamScore(a));
 
       const selected = available[0];
@@ -240,8 +241,11 @@ export async function fetchIptvChannels(options?: {
 }
 
 export async function getIptvChannel(channelId: string): Promise<IptvChannel | null> {
-  const result = await fetchIptvChannels({ limit: 100 });
-  return result.channels.find((channel) => channel.id === channelId) || null;
+  const data = await loadData();
+  const channel = data.channels.find((item) => item.id === channelId);
+  if (!channel) return null;
+  const result = await fetchIptvChannels({ query: channel.name, limit: 100 });
+  return result.channels.find((item) => item.id === channelId) || null;
 }
 
 export async function discoverIptvChannels(): Promise<XTvSeriesItem[]> {
