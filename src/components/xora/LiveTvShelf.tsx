@@ -39,7 +39,7 @@ export function LiveTvShelf({ className }: { className?: string }) {
           <h2 className="mt-1 font-display text-xl font-semibold tracking-tight">Live TV</h2>
         </div>
         <Link
-          to="/tv"
+          to="/xtv-series" hash="live-tv"
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground"
         >
           View all <ArrowRight className="size-3.5" />
@@ -51,7 +51,7 @@ export function LiveTvShelf({ className }: { className?: string }) {
           {channels.slice(0, 6).map((channel) => (
             <Link
               key={channel.id}
-              to="/tv"
+              to="/xtv-series" hash="live-tv"
               className="group overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
             >
               <div className="relative grid aspect-video place-items-center bg-secondary/60 p-4">
@@ -72,7 +72,7 @@ export function LiveTvShelf({ className }: { className?: string }) {
           ))}
         </div>
       ) : (
-        <Link to="/tv" className="block rounded-2xl border border-border/60 bg-surface p-5 text-center hover:border-primary/40">
+        <Link to="/xtv-series" hash="live-tv" className="block rounded-2xl border border-border/60 bg-surface p-5 text-center hover:border-primary/40">
           <Tv className="mx-auto size-7 text-primary" />
           <p className="mt-2 text-sm font-semibold">Open Live TV</p>
           <p className="mt-1 text-xs text-muted-foreground">Discover available live channels.</p>
