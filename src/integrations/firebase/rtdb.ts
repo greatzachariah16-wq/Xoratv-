@@ -488,7 +488,7 @@ export interface XTvSeriesItem {
   videoUrl?: string;
   streamUrl?: string;
   thumbnailUrl?: string;
-  provider?: "youtube" | "vimeo" | "dailymotion" | "faotv" | "open" | "xseries" | string;
+  provider?: "youtube" | "vimeo" | "dailymotion" | "open" | "xseries" | string;
   durationSeconds?: number;
   createdAt: string;
   categories?: string[];
