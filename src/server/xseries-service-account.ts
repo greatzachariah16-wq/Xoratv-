@@ -252,8 +252,13 @@ export async function queryRtdb(path: string, init?: RequestInit): Promise<unkno
         return fallbackVal;
       }
     }
-    if (init?.method === "PUT" || init?.method === "DELETE") {
+    if (init?.method === "PUT") {
       return null;
+    }
+    // DELETE must never look successful when the remote Firebase write failed.
+    // The caller needs the error so it can avoid reporting a false deletion.
+    if (init?.method === "DELETE") {
+      throw e;
     }
     throw e;
   }
