@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
 
 export const Route = createFileRoute("/xtv-series")({
-  head: () => ({
+  head: () =>
+      <LiveTvShelf /> ({
     meta: [
       { title: "X Series — Movies, Series & Cinema | Xora" },
       {
