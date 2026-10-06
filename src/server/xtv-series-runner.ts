@@ -1,13 +1,13 @@
 /**
  * XTv Series & Movie background discovery engine for XoraTV.
  *
- * Dedicated content source powered exclusively by FaoTV (TeamRaven).
+ * Dedicated content source powered exclusively by IPTV-org (TeamRaven).
  * Completely removes YouTube, Vimeo, and Dailymotion from the XTv Series pipeline.
  * Pulls full-length continuous channels, series sets, and movie streams.
  * Bypasses the admin publish gate and persists directly to Firebase RTDB (/xtvSeries/items).
  */
 
-import { discoverFaoTvSeriesAndMovies } from "../integrations/providers/faotv";
+import { discoverIptvChannels } from "../integrations/providers/iptv-org";
 import type { XTvSeriesItem, XTvSeriesRun } from "../integrations/firebase/rtdb";
 
 let isSeriesRunning = false;
@@ -49,23 +49,23 @@ export async function runXTvSeriesDiscovery(): Promise<{
   }
 
   isSeriesRunning = true;
-  const runId = `faotv_series_run_${Date.now()}`;
+  const runId = `iptv-org_series_run_${Date.now()}`;
   const startTime = new Date().toISOString();
   let itemsFound = 0;
   let itemsPersisted = 0;
 
   try {
     const dbUrl = getDbUrl();
-    console.log("[XTvSeries] Starting FaoTV series & movie channel discovery...");
+    console.log("[XTvSeries] Starting IPTV-org series & movie channel discovery...");
 
-    // Discover movies and series channels from FaoTV exclusively
-    const candidateItems = await discoverFaoTvSeriesAndMovies();
+    // Discover movies and series channels from IPTV-org exclusively
+    const candidateItems = await discoverIptvChannels();
     itemsFound = candidateItems.length;
-    console.log(`[XTvSeries] Discovered ${itemsFound} channels from FaoTV.`);
+    console.log(`[XTvSeries] Discovered ${itemsFound} channels from IPTV-org.`);
 
     // Persist to RTDB
     if (dbUrl && candidateItems.length > 0) {
-      // First, purge legacy non-FaoTV items (YouTube, Vimeo, Dailymotion) if present
+      // First, purge legacy non-IPTV-org items (YouTube, Vimeo, Dailymotion) if present
       try {
         const existingRes = await fetch(`${dbUrl.replace(/\/+$/, "")}/xtvSeries/items.json`);
         if (existingRes.ok) {
@@ -91,7 +91,7 @@ export async function runXTvSeriesDiscovery(): Promise<{
         console.warn("[XTvSeries] Notice on legacy items check:", purgeErr);
       }
 
-      // Persist discovered FaoTV channels
+      // Persist discovered IPTV-org channels
       for (const item of candidateItems) {
         try {
           const safeId = sanitizeKey(item.id);
@@ -130,11 +130,11 @@ export async function runXTvSeriesDiscovery(): Promise<{
       itemsFound,
       itemsPersisted,
       timestamp: lastSeriesRunTime,
-      provider: "faotv",
+      provider: "iptv-org",
     };
 
     console.log(
-      `[XTvSeries] FaoTV engine run complete. Found: ${itemsFound}, Persisted: ${itemsPersisted}`,
+      `[XTvSeries] IPTV-org engine run complete. Found: ${itemsFound}, Persisted: ${itemsPersisted}`,
     );
 
     return {
@@ -143,7 +143,7 @@ export async function runXTvSeriesDiscovery(): Promise<{
       runId,
     };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "XTv Series FaoTV discovery failed";
+    const errorMsg = err instanceof Error ? err.message : "XTv Series IPTV-org discovery failed";
     console.error("[XTvSeries] Engine run error:", err);
     return {
       ok: false,
@@ -168,20 +168,20 @@ export function startXTvSeriesScheduler() {
   const intervalMs = Math.max(10, intervalMinutes) * 60 * 1000;
 
   console.log(
-    `[XTvSeries] Background FaoTV content engine scheduled every ${intervalMinutes} minutes.`,
+    `[XTvSeries] Background IPTV-org content engine scheduled every ${intervalMinutes} minutes.`,
   );
 
-  // Initial delayed pull after 10 seconds to prime the app with FaoTV channels
+  // Initial delayed pull after 10 seconds to prime the app with IPTV-org channels
   setTimeout(() => {
     void runXTvSeriesDiscovery().catch((err) => {
-      console.warn("[XTvSeries] Initial FaoTV background pull error:", err);
+      console.warn("[XTvSeries] Initial IPTV-org background pull error:", err);
     });
   }, 10000);
 
   // Scheduled recurring cycle
   seriesSchedulerTimer = setInterval(() => {
     void runXTvSeriesDiscovery().catch((err) => {
-      console.warn("[XTvSeries] Scheduled FaoTV background cycle error:", err);
+      console.warn("[XTvSeries] Scheduled IPTV-org background cycle error:", err);
     });
   }, intervalMs);
 }
