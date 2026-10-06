@@ -801,11 +801,34 @@ export async function toggleLike(postId: string, userId: string, liked: boolean)
 
 export async function deletePost(postId: string, feed: FeedType = "home") {
   localPosts = localPosts.filter((p) => p.id !== postId);
+
+  // Creator Shorts have a dedicated deletion path because the Short also owns
+  // a Cloudinary media object. Do not report success from the generic post
+  // delete path while leaving the stored video behind.
+  if (feed === "shorts") {
+    const post = await getPost(postId).catch(() => null);
+    const creatorId = post?.source === "creator" ? post.author_id : null;
+    if (creatorId) {
+      const response = await fetch("/api/commerce/creator/short", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creatorId, postId }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body?.ok) {
+        throw new Error(body?.error || "Creator Short deletion failed.");
+      }
+      return;
+    }
+  }
+
   if (isFirebaseConfigured()) {
     try {
       await deletePostRecord(postId, feed);
     } catch (err) {
-      console.warn("[RealtimeDB] Failed to delete remote post:", err);
+      // Do not swallow remote deletion failures: the UI must not say
+      // "deleted" when Firebase still contains the post.
+      throw err instanceof Error ? err : new Error("Remote post deletion failed.");
     }
   }
 }
