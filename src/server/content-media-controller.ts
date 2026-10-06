@@ -139,9 +139,10 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
 
   try {
     await fs.writeFile(inputPath, Buffer.from(await file.arrayBuffer()));
-    await runFfmpeg(inputPath, outputPath);
-    const compressedBytes = (await fs.stat(outputPath)).size;
-    const cloudinary = await uploadToCloudinary(outputPath, "xora/courses/videos");
+    // Preserve the creator's uploaded video instead of re-encoding it with a lossy CRF 24 pass.
+    // Cloudinary remains the storage/CDN layer and can generate optimized delivery renditions.
+    const compressedBytes = file.size;
+    const cloudinary = await uploadToCloudinary(inputPath, "xora/courses/videos");
     const id = `video_${Date.now()}_${crypto.randomBytes(5).toString("hex")}`;
 
     await registerCloudinaryVideo({
@@ -155,7 +156,7 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
       originalBytes: file.size,
       compressedBytes,
       contentType: "video",
-      metadata: { sourceMimeType: file.type, compression: "ffmpeg-crf24", cloudinaryFormat: cloudinary.format || "mp4" },
+      metadata: { sourceMimeType: file.type, compression: "source-preserved", cloudinaryFormat: cloudinary.format || "mp4" },
     });
 
     return new Response(JSON.stringify({
