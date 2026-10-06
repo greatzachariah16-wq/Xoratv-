@@ -10,6 +10,7 @@ import { AppShell } from "@/components/xora/AppShell";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
+import { profilePostsQuery } from "@/lib/api";
 
 export const Route = createFileRoute("/creator-studio")({ component: XChannel });
 
@@ -58,6 +59,7 @@ function XChannel(){
   const [showCommunity,setShowCommunity]=useState(true);
   const [customizeBusy,setCustomizeBusy]=useState(false);
   const {data,isPending,refetch}=useQuery(creatorDashboardQuery(user?.id));
+  const {data:profilePosts=[]}=useQuery(profilePostsQuery(user?.id));
 
   // All hooks must run on every render. Keeping this effect before any
   // conditional return prevents React's "Rendered more hooks" crash when
@@ -73,6 +75,7 @@ function XChannel(){
   const courses=dashboard?.courses||[];
   const publishedCourses=courses.filter((c:any)=>c.status==="published");
   const shorts=dashboard?.shorts||[];
+  const textPosts=profilePosts.filter((post:any)=>post.kind==="text" && post.status==="published").sort((a:any,b:any)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
 
   useEffect(()=>{ if(!creatorInfo)return; setChannelBio(creatorInfo.channelBio||""); setFeaturedTitle(creatorInfo.featuredTitle||"Your channel. Your stories."); setFeaturedDescription(creatorInfo.featuredDescription||"Make your best work the first thing people discover on XoraTV."); setShowCourses(creatorInfo.showCourses!==false); setShowCommunity(creatorInfo.showCommunity!==false); },[creatorInfo]);
 
@@ -192,13 +195,12 @@ function XChannel(){
 
   if(isPending)return <AppShell wide><div className="p-8 text-sm text-muted-foreground">Loading your X Channel…</div></AppShell>;
 
-  const publicTabs:[Section,string][]=[["home","Home"],["videos","Videos"],["shorts","Shorts"],...(showCourses?[["courses","Courses"] as [Section,string]]:[]),...(showCommunity?[["community","Community"] as [Section,string]]:[]),["about","About"]];
+  const publicTabs:[Section,string][]=[["home","Home"],["shorts","Shorts"],...(showCourses?[["courses","Courses"] as [Section,string]]:[]),["community","Posts"],["about","About"]];
   const manageTabs:[Section,string][]=[["manage","Overview"],["analytics","Analytics"],["earnings","Earnings"],["customize","Customize"]];
 
   function PublicContent(){
-    if(section==="videos")return <EmptyContent icon={<Upload/>} title="Your videos" text="Long-form videos published to this X Channel will appear here." action="Upload video" href="/create"/>;
     if(section==="shorts")return shorts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Shorts</p><h2 className="mt-1 font-display text-2xl font-semibold">Published Shorts</h2><p className="mt-1 text-xs text-muted-foreground">Shorts published by this X Channel.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shorts.map((post:any)=><article key={post.id} className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-card"><div className="aspect-[9/16] max-h-[420px] bg-black"><video src={post.stream_url||post.media_path||""} poster={post.poster_path||undefined} controls playsInline preload="metadata" className="size-full object-contain"/></div><div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{post.title||"Untitled Short"}</p><p className="mt-1 text-[11px] text-muted-foreground">{post.views_count||0} views</p></div><button onClick={()=>setDeleteTarget({...post,_type:"short"})} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-destructive/20 px-2.5 py-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10" aria-label="Delete Short"><Trash2 className="size-3.5"/>Delete</button></div></article>)}</div></section>:<EmptyContent icon={<Radio/>} title="Your Shorts" text="Your published Shorts will appear here as your channel grows." action="Open Shorts" href="/shorts"/>;
-    if(section==="community" && showCommunity)return <EmptyContent icon={<Users/>} title="Community" text="Channel announcements, posts and conversations will live here." action="Create post" href="/create"/>;
+    if(section==="community")return textPosts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Posts</p><h2 className="mt-1 font-display text-2xl font-semibold">Thoughts & updates</h2><p className="mt-1 text-xs text-muted-foreground">Text posts published by this creator.</p></div><div className="space-y-3">{textPosts.map((post:any)=><article key={post.id} className="rounded-[22px] border border-border bg-surface p-5 shadow-card"><div className="flex items-center gap-3"><UserAvatar path={avatar} name={displayName} size={38}/><div><p className="text-sm font-semibold">{displayName}</p><p className="text-[10px] text-muted-foreground">{new Date(post.created_at||Date.now()).toLocaleDateString()}</p></div></div>{post.title?<h3 className="mt-4 text-base font-semibold">{post.title}</h3>:null}<p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-foreground/85">{post.caption||" "}</p><div className="mt-4 flex items-center gap-4 text-[10px] text-muted-foreground"><span>{post.likes_count||0} likes</span><span>{post.comments_count||0} comments</span></div></article>)}</div></section>:<EmptyContent icon={<PenLine/>} title="Your posts" text="Share thoughts, announcements and updates directly from your X Channel." action="Create post" href="/create"/>;
     if(section==="about")return <section className="rounded-2xl border border-border bg-surface p-6 shadow-card"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">About this channel</p><h2 className="mt-2 font-display text-xl font-semibold">{displayName}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{publicBio||"Welcome to my XoraTV channel."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Stat label="Subscribers" value={String(dashboard?.stats?.followers||0)}/><Stat label="Courses" value={String(publishedCourses.length)}/><Stat label="Joined" value="XoraTV"/></div></section>;
     if(section==="courses" && showCourses)return <CourseShelf courses={publishedCourses}/>;
     return <div className="space-y-8">
@@ -220,8 +222,8 @@ function XChannel(){
             <h2 className="mt-2 max-w-[15rem] text-xl font-semibold leading-[1.05] tracking-tight sm:mt-4 sm:max-w-xl sm:text-3xl lg:text-4xl">{publicFeaturedTitle}</h2>
             <p className="mt-1.5 max-w-[18rem] text-[10px] leading-4 text-white/70 sm:mt-2 sm:max-w-md sm:text-xs sm:leading-5">{publicFeaturedDescription}</p>
             <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-5 sm:gap-2">
-              <Link to="/create" className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-semibold text-foreground sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-xs"><Upload className="size-3.5"/> Publish a video</Link>
-              <button onClick={()=>setSection("videos")} className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[10px] font-semibold backdrop-blur sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-xs">Explore channel</button>
+              <Link to="/create" className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[10px] font-semibold text-foreground sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-xs"><Upload className="size-3.5"/> Publish content</Link>
+              <button onClick={()=>setSection("shorts")} className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[10px] font-semibold backdrop-blur sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-xs">View Shorts</button>
             </div>
             {featuredError?<p className="mt-3 text-[10px] font-medium text-red-200">{featuredError}</p>:null}
           </div>
@@ -229,8 +231,8 @@ function XChannel(){
         <aside className="flex flex-col justify-between rounded-[26px] border border-border bg-surface p-6 shadow-card">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel note</p>
-            <h3 className="mt-2 font-display text-xl font-semibold">Built for your audience.</h3>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">Videos, Shorts, courses and community can live together under one media identity.</p>
+            <h3 className="mt-2 font-display text-xl font-semibold">Your creator space.</h3>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Shorts, courses and text posts live together under one X Channel identity.</p>
           </div>
           <div className="mt-7 grid grid-cols-2 gap-2">
             <Stat label="Followers" value={Number(dashboard?.stats?.followers||0).toLocaleString()}/>
@@ -239,17 +241,22 @@ function XChannel(){
         </aside>
       </section>
       <section>
-        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Your catalogue</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest from {displayName}</h2></div><button onClick={()=>setSection("videos")} className="text-xs font-semibold text-primary">View videos</button></div>
+        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Creator content</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest from {displayName}</h2></div><button onClick={()=>setSection("shorts")} className="text-xs font-semibold text-primary">View Shorts</button></div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1,2,3].map(i=><div key={i} className="group overflow-hidden rounded-[22px] border border-border bg-surface shadow-sm">
             <div className="relative aspect-video overflow-hidden bg-secondary"><div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-foreground/10"/><div className="absolute bottom-3 left-3 rounded-full bg-ink/75 px-2.5 py-1 text-[9px] font-semibold text-white">Coming soon</div></div>
-            <div className="p-4"><p className="text-sm font-semibold">Your next story</p><p className="mt-1 text-[11px] text-muted-foreground">Publish a video to start filling this shelf.</p></div>
+            <div className="p-4"><p className="text-sm font-semibold">Your next Short</p><p className="mt-1 text-[11px] text-muted-foreground">Publish a Short to start filling your creator shelf.</p></div>
           </div>)}
         </div>
       </section>
       <section>
         <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Learning</p><h2 className="mt-1 font-display text-2xl font-semibold">Courses</h2></div><button onClick={()=>setSection("courses")} className="text-xs font-semibold text-primary">View all</button></div>
         <CourseShelf courses={publishedCourses.slice(0,4)}/>
+      </section>
+      <section>
+        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Posts</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest thoughts</h2></div><button onClick={()=>setSection("community")} className="text-xs font-semibold text-primary">View all</button></div>
+        {textPosts.slice(0,2).map((post:any)=><article key={post.id} className="mt-3 rounded-2xl border border-border bg-surface p-4 shadow-sm"><p className="whitespace-pre-wrap text-sm leading-6">{post.caption}</p><p className="mt-3 text-[10px] text-muted-foreground">{new Date(post.created_at||Date.now()).toLocaleDateString()}</p></article>)}
+        {!textPosts.length?<div className="mt-3 rounded-2xl border border-dashed border-border bg-surface p-6 text-center text-xs text-muted-foreground">No text posts yet.</div>:null}
       </section>
     </div>;
   }
