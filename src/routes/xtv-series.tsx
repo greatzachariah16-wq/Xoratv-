@@ -21,12 +21,11 @@ import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
-
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
+import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
 
 export const Route = createFileRoute("/xtv-series")({
-  head: () =>
-      <LiveTvShelf /> ({
+  head: () => ({
     meta: [
       { title: "X Series — Movies, Series & Cinema | Xora" },
       {
@@ -81,10 +80,6 @@ function toneClass(tone?: string) {
   return "from-[#343534] via-[#202322] to-[#111312]";
 }
 
-/**
- * Same provider-agnostic recommendation and shuffle algorithm as homepage/shorts.
- * Balances user genre learning with exploration jitter to mix every available genre.
- */
 function rankAndShuffleXSeries(
   items: XTvSeriesItem[],
   signals?: UserSignals | null,
@@ -112,8 +107,6 @@ function rankAndShuffleXSeries(
 
   const scored = items.map((item) => {
     let score = 50;
-
-    // 1. User Genre Affinity from tracked signals
     if (signals?.genres) {
       const primaryGenre = item.genre?.toLowerCase() || "";
       if (primaryGenre && signals.genres[primaryGenre]) {
@@ -129,14 +122,9 @@ function rankAndShuffleXSeries(
       }
     }
 
-    // 2. Recency boost
     const yr = item.year || 2026;
     score += (yr - 2000) * 0.2;
-
-    // 3. Seeded Exploration Noise Jitter (-8 to +8) for genre diversity
-    const jitter = (prng() - 0.5) * 16;
-    score += jitter;
-
+    score += (prng() - 0.5) * 16;
     return { item, score };
   });
 
@@ -223,14 +211,12 @@ function XTvSeriesPage() {
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
 
-  // Fetch user interaction signals for learning preferences
   const { data: userSignals } = useQuery({
     queryKey: ["user-signals", user?.id],
     queryFn: () => loadUserSignals(user?.id),
     staleTime: 10_000,
   });
 
-  // Fetch all published titles
   const {
     data: rawAllItems = [],
     isFetching,
@@ -250,22 +236,16 @@ function XTvSeriesPage() {
     });
   }, [rawAllItems]);
 
-  // Calculate categories dynamically from published items and defaults
   const availableCategories = useMemo(() => {
     const cats = new Set<string>(["All"]);
     allItems.forEach((item) => {
       if (item.genre) cats.add(item.genre);
-      if (Array.isArray(item.categories)) {
-        item.categories.forEach((c) => {
-          if (c) cats.add(c);
-        });
-      }
+      if (Array.isArray(item.categories)) item.categories.forEach((c) => c && cats.add(c));
     });
     DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
     return Array.from(cats);
   }, [allItems]);
 
-  // Filter items based on active category button and search term, then apply ranking & shuffling
   const filtered = useMemo(() => {
     let list = allItems;
     if (genre && genre !== "All") {
@@ -289,7 +269,6 @@ function XTvSeriesPage() {
           (item.tag?.toLowerCase().includes("series") ||
             item.genre?.toLowerCase().includes("series") ||
             (item.seasons && item.seasons > 0));
-
         return primaryMatch || tagMatch || catMatch || movieMatch || seriesMatch;
       });
     }
@@ -315,6 +294,7 @@ function XTvSeriesPage() {
     <AppShell wide>
       <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
+        <LiveTvShelf />
 
         <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface px-5 py-7 shadow-sm md:px-8 md:py-9">
           <div className="pointer-events-none absolute right-0 top-0 size-72 -translate-y-1/3 translate-x-1/3 rounded-full bg-primary/10 blur-3xl" />
@@ -354,7 +334,6 @@ function XTvSeriesPage() {
             </div>
           </div>
 
-          {/* Category Filter Buttons */}
           <div
             className="mt-7 flex gap-2 overflow-x-auto pb-1 max-w-full touch-pan-x no-scrollbar"
             style={{ touchAction: "pan-x" }}
@@ -410,10 +389,8 @@ function XTvSeriesPage() {
           </div>
         </section>
 
-        {/* Xora In-House Ad Campaign Placement */}
         <XoraInHouseAd placement="xseries_feed" variant="banner" className="my-2" />
 
-        {/* Featured Section */}
         {featured ? (
           <section id="featured-movie-section">
             <div className="mb-3 flex items-end justify-between gap-4">
@@ -426,7 +403,7 @@ function XTvSeriesPage() {
                 </h2>
               </div>
               <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
-                <CalendarDays className="size-3.5" />{" "}
+                <CalendarDays className="size-3.5" />
                 {isFetching ? "Refreshing..." : "Curated sovereign stream"}
               </span>
             </div>
@@ -453,15 +430,15 @@ function XTvSeriesPage() {
                     id="btn-watch-featured"
                     to="/watch"
                     search={{ id: featured.id }}
-                    onClick={() => {
+                    onClick={() =>
                       trackEvent({
                         type: "open_video",
                         postId: featured.id,
                         genre: featured.genre,
                         feed: "xtv-series",
                         userId: user?.id,
-                      });
-                    }}
+                      })
+                    }
                     className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90"
                   >
                     Watch full movie <ArrowRight className="size-3.5" />
@@ -473,7 +450,6 @@ function XTvSeriesPage() {
           </section>
         ) : null}
 
-        {/* Movie grid and empty state */}
         {shelves.length > 0 ? (
           <section aria-label="More movies and series">
             <div className="mb-3 flex items-center gap-2">
