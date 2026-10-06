@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, FeedTabs } from "@/components/xora/AppShell";
 import { FeedList } from "@/components/xora/FeedList";
 import { TrendingRail } from "@/components/xora/TrendingRail";
-import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,7 +32,6 @@ function Home() {
         <p className="mt-1 text-sm text-muted-foreground">Fresh from the creators you follow.</p>
       </header>
       <FeedTabs active="home" />
-      <LiveTvShelf className="mb-7" />
       <FeedList feed="home" />
     </AppShell>
   );
