@@ -15,6 +15,7 @@ import {
   Wallet,
   Gift,
   Radio,
+  Tv,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
