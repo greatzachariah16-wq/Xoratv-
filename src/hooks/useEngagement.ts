@@ -27,6 +27,7 @@ export function useLikes() {
     likedIds: liked ?? [],
     isLiked: (postId: string) => Boolean(liked?.includes(postId)),
     toggle: mutation.mutate,
+    toggleAsync: mutation.mutateAsync,
     pending: mutation.isPending,
     canLike: Boolean(user),
   };
