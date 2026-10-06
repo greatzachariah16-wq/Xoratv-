@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Radio, Search, Tv, Play, Heart, RefreshCw } from "lucide-react";
-import { AppShell, FeedTabs } from "@/components/xora/AppShell";
+import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { cn } from "@/lib/utils";
 
@@ -81,29 +81,6 @@ function LiveTvPage() {
       setLoadingStream(false);
     }
   };
-
-  useEffect(() => {
-    if (!selected || streamUrl) return;
-    let cancelled = false;
-    const timer = window.setInterval(async () => {
-      try {
-        const url = await resolveStream(selected.id);
-        if (!cancelled) {
-          setStreamUrl(url);
-          setStreamError("");
-          setLoadingStream(false);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setStreamError(error instanceof Error ? error.message : "Waiting for a live stream…");
-        }
-      }
-    }, 15_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [selected, streamUrl]);
 
   return (
     <AppShell wide>
