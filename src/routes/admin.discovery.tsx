@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin/discovery")({
       { title: "Provider Discovery Engine — Admin — Xora" },
       {
         name: "description",
-        content: "Automated ingestion pipeline for YouTube, Vimeo, FAOTV, and RSS sources.",
+        content: "Automated ingestion pipeline for YouTube, Vimeo, IPTV-org, and RSS sources.",
       },
       { name: "robots", content: "noindex" },
     ],
