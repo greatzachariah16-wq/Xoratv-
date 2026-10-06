@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
+  { to: "/tv", label: "Live TV", icon: Tv },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
