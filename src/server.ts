@@ -16,7 +16,7 @@ import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runne
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
-import { fetchFaoTvChannels, getFaoTvStreamUrl } from "./integrations/providers/faotv";
+import { getFaoTvStreamUrl } from "./integrations/providers/faotv";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 
@@ -800,26 +800,6 @@ export default {
         const msg = err instanceof Error ? err.message : "Vimeo search error";
         return new Response(JSON.stringify({ ok: false, count: 0, candidates: [], error: msg }), {
           status: 500,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
-      }
-    }
-
-    // Xora Live TV channel catalogue (FaoTV-backed)
-    if (url.pathname === "/api/tv/channels" && request.method === "GET") {
-      try {
-        const query = url.searchParams.get("q") || "";
-        const group = url.searchParams.get("group") || "";
-        const limit = Math.min(60, Math.max(1, Number(url.searchParams.get("limit") || 40)));
-        const result = await fetchFaoTvChannels({ query, group, limit });
-        return new Response(JSON.stringify(result), {
-          status: result.ok ? 200 : 502,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" },
-        });
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Live TV channel error";
-        return new Response(JSON.stringify({ ok: false, total: 0, channels: [], error: msg }), {
-          status: 502,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
       }
