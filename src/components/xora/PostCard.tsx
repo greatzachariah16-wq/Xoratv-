@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,6 +15,8 @@ import {
   deletePost,
   markNotInterestedAction,
   hideCreatorAction,
+  recordPostView,
+  recordPostShare,
   type PostWithAuthor,
 } from "@/lib/api";
 import { compactNumber, duration, timeAgo } from "@/lib/format";
@@ -34,9 +36,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLikes, useFollows } from "@/hooks/useEngagement";
+import { useLikes, useSubscriptions } from "@/hooks/useEngagement";
 import { useAuth } from "@/hooks/useAuth";
 import { trackEvent } from "@/lib/events";
+import { getOrCreateSessionId } from "@/lib/ranking";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
 import { cn } from "@/lib/utils";
@@ -50,13 +53,38 @@ type Props = {
 
 export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
   const likes = useLikes();
-  const follows = useFollows();
+  const subscriptions = useSubscriptions();
   const { user } = useAuth();
   const liked = likes.isLiked(post.id);
   const author = post.author;
   const isOwn = user?.id === post.author_id;
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const viewRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (post.kind !== "video" || typeof IntersectionObserver === "undefined") return;
+    const node = viewRef.current;
+    if (!node) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5);
+      if (visible && !timer) {
+        timer = setTimeout(() => {
+          void recordPostView(post.id, user?.id || getOrCreateSessionId());
+          timer = null;
+        }, 2000);
+      } else if (!visible && timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }, { threshold: [0.5] });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, [post.id, post.kind, user?.id]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deletePost(post.id, post.feed),
@@ -107,7 +135,7 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
 
   return (
     <>
-      <article className="rise overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow duration-200 hover:shadow-lift">
+      <article ref={viewRef} className="rise overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow duration-200 hover:shadow-lift">
         <header className="flex items-center gap-3 px-3 pt-3">
           <Link
             to="/profile/$username"
@@ -138,16 +166,16 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
           {!isOwn && author ? (
             <button
               type="button"
-              onClick={() => follows.toggle(author.id)}
-              disabled={follows.pending}
+              onClick={() => subscriptions.toggle(author.id)}
+              disabled={subscriptions.pending}
               className={cn(
                 "press ml-auto shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-60",
-                follows.isFollowing(author.id)
+                subscriptions.isSubscribed(author.id)
                   ? "bg-secondary text-secondary-foreground"
                   : "bg-primary text-primary-foreground",
               )}
             >
-              {follows.isFollowing(author.id) ? "Following" : "Follow"}
+              {subscriptions.isSubscribed(author.id) ? "Subscribed" : "Subscribe"}
             </button>
           ) : null}
 
@@ -330,7 +358,7 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
               className="press flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
             >
               <Share2 className="size-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Share</span>
+              <span className="tabular-nums">{compactNumber(post.share_count ?? 0)}</span>
             </button>
           </div>
         </div>
