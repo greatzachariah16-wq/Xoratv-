@@ -26,6 +26,10 @@ import {
   getUserLikedPosts,
   getFollowsForUser,
   toggleFollowRtdb,
+  getSubscriptionsForUser,
+  toggleSubscriptionRtdb,
+  recordPostViewRtdb,
+  incrementPostShareRtdb,
   getNotificationsForUser,
   addNotificationForUser,
   markNotificationsReadRtdb,
@@ -579,15 +583,15 @@ export function myLikesQuery(userId: string | null | undefined) {
   });
 }
 
-export function myFollowsQuery(userId: string | null | undefined) {
+export function mySubscriptionsQuery(userId: string | null | undefined) {
   return queryOptions({
-    queryKey: ["my-follows", userId],
+    queryKey: ["my-subscriptions", userId],
     enabled: Boolean(userId),
     queryFn: async (): Promise<string[]> => {
       if (!userId) return [];
       if (isFirebaseConfigured()) {
         try {
-          const follows = await getFollowsForUser(userId);
+          const follows = await getSubscriptionsForUser(userId);
           if (follows.length > 0) return follows;
         } catch (err) {
           console.warn("[RealtimeDB] Follows query fallback:", err);
@@ -603,6 +607,33 @@ export function myFollowsQuery(userId: string | null | undefined) {
       return follows;
     },
   });
+}
+
+export async function toggleSubscription(targetId: string, userId: string, subscribed: boolean) {
+  if (!userId || !targetId || userId === targetId) throw new Error("Invalid subscription");
+  const key = `${userId}:${targetId}`;
+  if (subscribed) localFollows.delete(key);
+  else localFollows.add(key);
+  if (isFirebaseConfigured()) await toggleSubscriptionRtdb(userId, targetId, subscribed);
+}
+
+export async function recordPostView(postId: string, userId?: string | null) {
+  if (!isFirebaseConfigured() || !userId || !postId) return false;
+  try {
+    return await recordPostViewRtdb(postId, userId);
+  } catch (err) {
+    console.warn("[RealtimeDB] Record view note:", err);
+    return false;
+  }
+}
+
+export async function recordPostShare(postId: string) {
+  if (!isFirebaseConfigured() || !postId) return;
+  try {
+    await incrementPostShareRtdb(postId);
+  } catch (err) {
+    console.warn("[RealtimeDB] Record share note:", err);
+  }
 }
 
 export type NotificationRow = NotificationRecord & {
