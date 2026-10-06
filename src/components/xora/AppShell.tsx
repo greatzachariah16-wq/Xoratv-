@@ -11,7 +11,6 @@ import {
   Settings,
   Shield,
   Clapperboard,
-  Tv,
   User,
   Wallet,
   Gift,
@@ -29,7 +28,6 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
-  { to: "/tv", label: "Live TV", icon: Tv },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
@@ -346,10 +344,10 @@ export function AppShell({
           </li>
           <li>
             <Link
-              to={NAV[4].to}
+              to="/creator-studio"
               className={cn(
                 "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                pathname.startsWith(NAV[4].to) ? "text-primary" : "text-muted-foreground",
+                pathname.startsWith("/creator-studio") ? "text-primary" : "text-muted-foreground",
               )}
             >
               <Radio className="size-5" aria-hidden="true" />
