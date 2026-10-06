@@ -1,7 +1,4 @@
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { registerCloudinaryVideo } from "./content-repository";
 
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
@@ -44,16 +41,15 @@ export async function deleteCloudinaryVideo(publicId: string): Promise<void> {
   }
 }
 
-async function uploadToCloudinary(filePath: string, folder: string) {
+async function uploadToCloudinary(file: File, folder: string) {
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
   const timestamp = Math.round(Date.now() / 1000);
   const signature = crypto.createHash("sha1")
     .update(`folder=${folder}&timestamp=${timestamp}${apiSecret}`)
     .digest("hex");
 
-  const buffer = await fs.readFile(filePath);
   const form = new FormData();
-  form.append("file", new Blob([buffer], { type: "video/mp4" }), path.basename(filePath));
+  form.append("file", file, file.name || "xora-video");
   form.append("api_key", apiKey);
   form.append("timestamp", String(timestamp));
   form.append("signature", signature);
@@ -104,15 +100,11 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
   if (!file.type.startsWith("video/")) return new Response(JSON.stringify({ ok: false, error: "Only video uploads are accepted." }), { status: 400 });
   if (file.size > MAX_UPLOAD_BYTES) return new Response(JSON.stringify({ ok: false, error: "Video is larger than the 250MB upload limit." }), { status: 413 });
 
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "xora-video-"));
-  const inputPath = path.join(tempDir, "input");
-
   try {
-    await fs.writeFile(inputPath, Buffer.from(await file.arrayBuffer()));
-    // Preserve the creator's uploaded video instead of re-encoding it with a lossy CRF 24 pass.
-    // Cloudinary remains the storage/CDN layer and can generate optimized delivery renditions.
+    // Cloudinary is the permanent video store. Do not write creator uploads to a
+    // temporary server file or re-encode them before storage.
     const compressedBytes = file.size;
-    const cloudinary = await uploadToCloudinary(inputPath, "xora/courses/videos");
+    const cloudinary = await uploadToCloudinary(file, "xora/courses/videos");
     const id = `video_${Date.now()}_${crypto.randomBytes(5).toString("hex")}`;
 
     await registerCloudinaryVideo({
@@ -146,7 +138,4 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
     return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : "Video processing failed." }), {
       status: 500, headers: { "Content-Type": "application/json" },
     });
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
   }
-}
