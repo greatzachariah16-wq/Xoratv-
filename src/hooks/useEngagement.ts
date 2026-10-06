@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { myFollowsQuery, myLikesQuery, toggleFollow, toggleLike } from "@/lib/api";
+import { mySubscriptionsQuery, myLikesQuery, toggleSubscription, toggleLike } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useLikes() {
@@ -32,33 +32,32 @@ export function useLikes() {
   };
 }
 
-export function useFollows() {
+export function useSubscriptions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: following } = useQuery(myFollowsQuery(user?.id));
+  const { data: subscriptions } = useQuery(mySubscriptionsQuery(user?.id));
 
   const mutation = useMutation({
     mutationFn: async (targetId: string) => {
       if (!user) throw new Error("auth");
-      await toggleFollow(targetId, user.id, Boolean(following?.includes(targetId)));
-      return Boolean(following?.includes(targetId));
+      const subscribed = Boolean(subscriptions?.includes(targetId));
+      await toggleSubscription(targetId, user.id, subscribed);
+      return subscribed;
     },
-    onSuccess: (wasFollowing) => {
-      queryClient.invalidateQueries({ queryKey: ["my-follows"] });
+    onSuccess: (wasSubscribed) => {
+      queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success(wasFollowing ? "Unfollowed" : "Following");
+      toast.success(wasSubscribed ? "Unsubscribed" : "Subscribed");
     },
     onError: (error) => {
-      toast.error(
-        error.message === "auth" ? "Sign in to follow creators" : "Couldn't update follow",
-      );
+      toast.error(error.message === "auth" ? "Sign in to subscribe" : "Couldn't update subscription");
     },
   });
 
   return {
-    isFollowing: (id: string) => Boolean(following?.includes(id)),
+    isSubscribed: (id: string) => Boolean(subscriptions?.includes(id)),
     toggle: mutation.mutate,
     pending: mutation.isPending,
-    canFollow: Boolean(user),
+    canSubscribe: Boolean(user),
   };
 }
