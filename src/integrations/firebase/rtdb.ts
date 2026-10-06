@@ -269,10 +269,12 @@ export async function addCommentToPost(comment: CommentRecord): Promise<void> {
   const safePostId = pathSafe(comment.post_id);
   const safeCommentId = pathSafe(comment.id);
   await set(ref(rtdb, `comments/${safePostId}/${safeCommentId}`), sanitizeForRtdb(comment));
+  await runTransaction(ref(rtdb, `posts/${safePostId}`), (current) => current ? { ...current, comment_count: Number(current.comment_count || 0) + 1 } : current);
 }
 
 export async function removeCommentFromPost(postId: string, commentId: string): Promise<void> {
   await remove(ref(rtdb, `comments/${pathSafe(postId)}/${pathSafe(commentId)}`));
+  await runTransaction(ref(rtdb, `posts/${pathSafe(postId)}`), (current) => current ? { ...current, comment_count: Math.max(0, Number(current.comment_count || 0) - 1) } : current);
 }
 
 // --- LIKES ---
