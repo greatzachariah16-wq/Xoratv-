@@ -362,12 +362,11 @@ export function AppShell({
   );
 }
 
-export function FeedTabs({ active }: { active: "home" | "shorts" | "xtv-series" | "learn" | "tv" }) {
+export function FeedTabs({ active }: { active: "home" | "shorts" | "xtv-series" | "learn" }) {
   const tabs = [
     { key: "home", label: "Home", to: "/" },
     { key: "shorts", label: "Shorts", to: "/shorts" },
     { key: "xtv-series", label: "Series", to: "/xtv-series" },
-    { key: "tv", label: "Live TV", to: "/tv" },
     { key: "learn", label: "Learn", to: "/learn" },
   ] as const;
   return (
