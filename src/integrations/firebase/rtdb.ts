@@ -10,6 +10,7 @@ import {
   equalTo,
   limitToLast,
   onValue,
+  runTransaction,
   type DatabaseReference,
   type QueryConstraint,
 } from "firebase/database";
@@ -26,7 +27,7 @@ import type {
 } from "./types";
 
 // Re-export core RTDB functions for convenience
-export { ref, get, set, update, remove, push, query, orderByChild, equalTo, limitToLast, onValue };
+export { ref, get, set, update, remove, push, query, orderByChild, equalTo, limitToLast, onValue, runTransaction };
 
 /**
  * Firebase RTDB keys cannot contain ".", "#", "$", "[", "]", or "/"
@@ -206,6 +207,7 @@ export async function deletePostRecord(postId: string, feed: FeedType = "home"):
   await remove(ref(rtdb, `postsByFeed/${feed}/${safeId}`));
   await remove(ref(rtdb, `comments/${safeId}`));
   await remove(ref(rtdb, `likes/${safeId}`));
+  await remove(ref(rtdb, `postViews/${safeId}`));
 }
 
 export async function getAllPosts(): Promise<PostRecord[]> {
@@ -285,10 +287,21 @@ export async function toggleLikeRtdb(postId: string, uid: string, liked: boolean
   const safePostId = pathSafe(postId);
   const safeUid = pathSafe(uid);
   const likeRef = ref(rtdb, `likes/${safePostId}/${safeUid}`);
+  const postRef = ref(rtdb, `posts/${safePostId}`);
   if (liked) {
     await remove(likeRef);
+    await runTransaction(postRef, (current) => {
+      if (!current) return current;
+      return { ...current, like_count: Math.max(0, Number(current.like_count || 0) - 1) };
+    });
   } else {
+    const existing = await get(likeRef);
+    if (existing.exists()) return;
     await set(likeRef, { created_at: new Date().toISOString() });
+    await runTransaction(postRef, (current) => {
+      if (!current) return current;
+      return { ...current, like_count: Number(current.like_count || 0) + 1 };
+    });
   }
 }
 
@@ -304,6 +317,49 @@ export async function getUserLikedPosts(uid: string): Promise<string[]> {
     }
   }
   return liked;
+}
+
+// --- SUBSCRIPTIONS ---
+export async function getSubscriptionsForUser(uid: string): Promise<string[]> {
+  const snap = await get(ref(rtdb, `subscriptions/${pathSafe(uid)}`));
+  if (!snap.exists()) return [];
+  return Object.keys(snap.val() || {});
+}
+
+export async function toggleSubscriptionRtdb(subscriberId: string, creatorId: string, subscribed: boolean): Promise<void> {
+  const safeSubscriber = pathSafe(subscriberId);
+  const safeCreator = pathSafe(creatorId);
+  const subscriptionRef = ref(rtdb, `subscriptions/${safeSubscriber}/${safeCreator}`);
+  const creatorSubscriberRef = ref(rtdb, `creatorSubscribers/${safeCreator}/${safeSubscriber}`);
+  const creatorRef = ref(rtdb, `profiles/${safeCreator}`);
+  if (subscribed) {
+    await remove(subscriptionRef);
+    await remove(creatorSubscriberRef);
+    await runTransaction(creatorRef, (current) => current ? { ...current, subscriber_count: Math.max(0, Number(current.subscriber_count || 0) - 1) } : current);
+  } else {
+    const existing = await get(subscriptionRef);
+    if (existing.exists()) return;
+    const now = new Date().toISOString();
+    await set(subscriptionRef, { created_at: now });
+    await set(creatorSubscriberRef, { created_at: now });
+    await runTransaction(creatorRef, (current) => current ? { ...current, subscriber_count: Number(current.subscriber_count || 0) + 1 } : current);
+  }
+}
+
+export async function recordPostViewRtdb(postId: string, viewerId: string): Promise<boolean> {
+  const safePostId = pathSafe(postId);
+  const safeViewer = pathSafe(viewerId);
+  const day = new Date().toISOString().slice(0, 10);
+  const viewRef = ref(rtdb, `postViews/${safePostId}/${safeViewer}/${day}`);
+  const existing = await get(viewRef);
+  if (existing.exists()) return false;
+  await set(viewRef, { created_at: new Date().toISOString() });
+  await runTransaction(ref(rtdb, `posts/${safePostId}`), (current) => current ? { ...current, view_count: Number(current.view_count || 0) + 1 } : current);
+  return true;
+}
+
+export async function incrementPostShareRtdb(postId: string): Promise<void> {
+  await runTransaction(ref(rtdb, `posts/${pathSafe(postId)}`), (current) => current ? { ...current, share_count: Number(current.share_count || 0) + 1 } : current);
 }
 
 // --- FOLLOWS ---
