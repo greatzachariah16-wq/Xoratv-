@@ -201,7 +201,7 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     id: "discovery",
     title: "Provider Discovery Engine",
     category: "content",
-    description: "Automated ingestion pipeline for YouTube, Vimeo, FAOTV, and RSS sources.",
+    description: "Automated ingestion pipeline for YouTube, Vimeo, IPTV-org, and RSS sources.",
     icon: Compass,
     href: "/admin/discovery",
     accentColor: "text-cyan-500",
