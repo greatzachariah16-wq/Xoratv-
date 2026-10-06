@@ -42,6 +42,7 @@ import { trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
+import { SpiritualLikeMoment } from "./SpiritualLikeMoment";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -60,7 +61,14 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
   const isOwn = user?.id === post.author_id;
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [likeMoment, setLikeMoment] = useState(false);
   const viewRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!likeMoment) return;
+    const timer = window.setTimeout(() => setLikeMoment(false), 1650);
+    return () => window.clearTimeout(timer);
+  }, [likeMoment]);
 
   useEffect(() => {
     if (post.kind !== "video" || typeof IntersectionObserver === "undefined") return;
@@ -320,14 +328,25 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
             </p>
           ) : null}
 
-          <div className="mt-3 flex items-center gap-1 border-t border-border pt-2.5">
-            <button
-              type="button"
-              onClick={() => likes.toggle(post.id)}
-              aria-pressed={liked}
-              aria-label={liked ? "Unlike" : "Like"}
-              className="press flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
-            >
+          <div className="relative mt-3 border-t border-border pt-2.5">
+            <SpiritualLikeMoment active={likeMoment} />
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (liked) {
+                    likes.toggle(post.id);
+                    return;
+                  }
+                  likes.toggle(post.id, {
+                    onSuccess: () => setLikeMoment(true),
+                  });
+                }}
+                disabled={likes.pending}
+                aria-pressed={liked}
+                aria-label={liked ? "Unlike" : "Like"}
+                className="press flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary disabled:opacity-60"
+              >
               <Heart
                 className={cn("size-4", liked ? "pop fill-primary text-primary" : "")}
                 aria-hidden="true"
@@ -362,7 +381,8 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
             >
               <Share2 className="size-4" aria-hidden="true" />
               <span className="tabular-nums">{compactNumber(post.share_count ?? 0)}</span>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </article>
