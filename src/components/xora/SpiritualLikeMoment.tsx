@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+import { SPIRITUAL_LIKE_MOMENT_WEBP_BASE64 } from "@/assets/xoraSpiritualLikeMoment";
+
 type Props = {
   active: boolean;
   onDone?: () => void;
@@ -20,7 +22,7 @@ export function SpiritualLikeMoment({ active, onDone }: Props) {
       aria-hidden="true"
     >
       <img
-        src="/assets/xora/spiritual-like-moment.webp"
+        src={`data:image/webp;base64,${SPIRITUAL_LIKE_MOMENT_WEBP_BASE64}`}
         alt=""
         className="block aspect-[16/9] w-full object-cover animate-[xoraSpiritBreath_1650ms_ease-in-out_forwards]"
       />
