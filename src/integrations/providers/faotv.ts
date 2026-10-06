@@ -130,54 +130,81 @@ export async function fetchFaoTvChannels(options?: {
   const group = options?.group?.trim() || "";
   const limit = Math.min(60, Math.max(1, options?.limit || 30));
   const key = getApiKey();
-  const params = new URLSearchParams();
+  const query = new URLSearchParams();
+  if (q) query.set("q", q);
+  if (group) query.set("group", group);
+  query.set("limit", String(limit));
+  if (key) query.set("api_key", key);
 
-  if (q) params.set("q", q);
-  if (group) params.set("group", group);
-  params.set("limit", String(limit));
-  if (key) params.set("api_key", key);
+  const base = getApiBase().replace(/\\/+$/, "");
+  const configured = process.env.FAOTV_CHANNELS?.trim();
+  const endpoints = [
+    configured,
+    base + "/channels",
+    base + "/channels.json",
+    base + "/api/channels",
+    base + "/api/channels.json",
+    "https://teamraven.online/api/channels",
+    "https://teamraven.online/api/channels.json",
+  ].filter((url, index, list): url is string => Boolean(url) && list.indexOf(url) === index);
 
-  try {
-    const response = await fetch(
-      getChannelsUrl().replace(/\/+$/, "") + "?" + params.toString(),
-      { headers: buildHeaders(), signal: AbortSignal.timeout(8000) },
-    );
+  for (const endpoint of endpoints) {
+    try {
+      const separator = endpoint.includes("?") ? "&" : "?";
+      const response = await fetch(
+        endpoint + separator + query.toString(),
+        { headers: buildHeaders(), signal: AbortSignal.timeout(8000) },
+      );
 
-    if (response.ok) {
-      const channels = extractChannels(await response.json()).slice(0, limit);
+      if (!response.ok) {
+        console.warn("[FaoTV] channel endpoint", endpoint, "returned", response.status);
+        continue;
+      }
+
+      const payload = await response.json();
+      const channels = extractChannels(payload).slice(0, limit);
       if (channels.length) {
         return { ok: true, total: channels.length, channels };
       }
-    } else {
-      console.warn("[FaoTV] channel API returned", response.status);
+    } catch (error) {
+      console.warn("[FaoTV] channel endpoint failed", endpoint, error);
     }
-  } catch (error) {
-    console.warn("[FaoTV] channel API request failed", error);
   }
 
-  // Keep the legacy search fallback only when the configured API did not
-  // return a usable channel list.
+  // Some FaoTV builds expose the catalogue through the public web page rather
+  // than the JSON endpoint. Keep this as a compatibility fallback so XoraTV
+  // can still discover the same public channel directory.
   try {
-    const searchUrl =
-      getApiBase().replace(/\/+$/, "") +
-      "/search?" +
-      new URLSearchParams({
-        ...(group ? { group } : {}),
-        ...(q || !group ? { q: q || "live" } : {}),
-        limit: String(limit),
-      }).toString();
-
-    const response = await fetch(searchUrl, {
-      headers: buildHeaders(),
-      signal: AbortSignal.timeout(8000),
+    const response = await fetch("https://teamraven.online/", {
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (compatible; XoraTV/1.0; Live TV)",
+      },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (response.ok) {
-      const channels = extractChannels(await response.json()).slice(0, limit);
-      if (channels.length) return { ok: true, total: channels.length, channels };
+      const html = await response.text();
+      const channels: FaoTvChannel[] = [];
+      const seen = new Set<string>();
+      const pattern = /href=["']\\/watch\\/([^"'?\\/]+)[^"']*["'][^>]*>([\\s\\S]{0,300}?)<\\/a>/gi;
+
+      for (const match of html.matchAll(pattern)) {
+        const id = match[1]?.trim();
+        const rawLabel = match[2]?.replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+        if (!id || !rawLabel || seen.has(id)) continue;
+        if (q && !rawLabel.toLowerCase().includes(q.toLowerCase())) continue;
+        seen.add(id);
+        channels.push({ id, name: rawLabel });
+        if (channels.length >= limit) break;
+      }
+
+      if (channels.length) {
+        return { ok: true, total: channels.length, channels };
+      }
     }
   } catch (error) {
-    console.warn("[FaoTV] search fallback failed", error);
+    console.warn("[FaoTV] public catalogue fallback failed", error);
   }
 
   return {
