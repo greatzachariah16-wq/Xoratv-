@@ -264,11 +264,11 @@ export async function fetchRankedFeed(
   }
 
   // 1. If following mode requested on Home feed
-  if (feed === "home" && mode === "following") {
+  if ((feed === "home" || feed === "shorts") && mode === "following") {
     let follows: string[] = [];
     if (userId) {
       if (typeof window !== "undefined" && isFirebaseConfigured()) {
-        follows = await getFollowsForUser(userId).catch(() => []);
+        follows = await getSubscriptionsForUser(userId).catch(() => []);
       }
       if (follows.length === 0) {
         const userPrefix = `${userId}:`;
