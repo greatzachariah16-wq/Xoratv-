@@ -556,8 +556,8 @@ export function myLikesQuery(userId: string | null | undefined) {
       if (!userId) return [];
       if (isFirebaseConfigured()) {
         try {
-          // Firebase is authoritative here. An empty Firebase result means
-          // the user has no likes; do not resurrect stale local likes.
+          // Firebase is authoritative. An empty Firebase result means the user
+          // has no persisted likes; do not resurrect stale local preview likes.
           return await getUserLikedPosts(userId);
         } catch (err) {
           console.warn("[RealtimeDB] Likes query fallback:", err);
