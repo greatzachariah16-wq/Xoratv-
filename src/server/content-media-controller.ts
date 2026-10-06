@@ -139,3 +139,5 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
       status: 500, headers: { "Content-Type": "application/json" },
     });
   }
+
+}
