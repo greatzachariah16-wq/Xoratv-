@@ -333,14 +333,18 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (liked) {
                     likes.toggle(post.id);
                     return;
                   }
-                  likes.toggle(post.id, {
-                    onSuccess: () => setLikeMoment(true),
-                  });
+                  try {
+                    await likes.toggleAsync(post.id);
+                    setLikeMoment(false);
+                    requestAnimationFrame(() => setLikeMoment(true));
+                  } catch {
+                    // The mutation hook shows the error; do not play the animation on failure.
+                  }
                 }}
                 disabled={likes.pending}
                 aria-pressed={liked}
