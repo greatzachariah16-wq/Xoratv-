@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Upload, Lock, Film, CheckCircle2 } from "lucide-react";
 import { addLocalPost } from "@/lib/api";
 import {
-  uploadMedia,
   uploadToCloudinary,
   isCloudinaryConfigured,
   resolveMediaUrl,
@@ -124,15 +123,18 @@ function CreatePage() {
         }
         durationSeconds = measured;
 
-        // Upload creator videos through Sparkle Hub Storage first.
-        // uploadMedia keeps Cloudinary/Render as fallbacks if Sparkle Storage
-        // is not configured yet.
+        // Store creator Shorts permanently in Cloudinary. Keep the durable
+        // public_id as media_path and the permanent Cloudinary URL as stream_url.
         setProgress(5);
-        streamUrl = await uploadMedia("videos", user.id, video, setProgress, {
+        const uploaded = await uploadToCloudinary(video, {
+          resourceType: "video",
+          creatorId: user.id,
           title: title.trim(),
           description: caption.trim(),
+          onProgress: setProgress,
         });
-        mediaPath = streamUrl;
+        streamUrl = uploaded.url || uploaded.playbackUrl || null;
+        mediaPath = uploaded.publicId || streamUrl;
 
         if (poster) {
           if (isCloudinaryConfigured()) {
@@ -263,7 +265,7 @@ function CreatePage() {
                 {video ? video.name : "Choose a video file"}
               </span>
               <span className="mt-1 text-xs text-muted-foreground">
-                Max 30 minutes · delivered in 240p · max ~100MB
+                Max 30 minutes · original upload preserved · max ~100MB
               </span>
               {video && videoDuration !== null ? (
                 <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
