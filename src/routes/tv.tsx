@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Radio, Search, Tv, Play, Heart, RefreshCw } from "lucide-react";
-import { AppShell } from "@/components/xora/AppShell";
+import { AppShell, FeedTabs } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +54,11 @@ function LiveTvPage() {
   const query = useQuery({
     queryKey: ["live-tv-channels", search, group],
     queryFn: () => fetchChannels({ q: search, group }),
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    retry: 5,
   });
 
   const channels = query.data?.channels ?? [];
@@ -78,19 +82,41 @@ function LiveTvPage() {
     }
   };
 
+  useEffect(() => {
+    if (!selected || streamUrl) return;
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const url = await resolveStream(selected.id);
+        if (!cancelled) {
+          setStreamUrl(url);
+          setStreamError("");
+          setLoadingStream(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStreamError(error instanceof Error ? error.message : "Waiting for a live stream…");
+        }
+      }
+    }, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [selected, streamUrl]);
+
   return (
     <AppShell wide>
-      <main id="main" className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-[28px] border border-border/60 bg-surface shadow-card">
+        <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface shadow-sm">
           <div className="border-b border-border/50 bg-gradient-to-br from-clay-soft via-background to-secondary/30 p-5 sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 text-primary"><Radio className="size-4" /><span className="text-xs font-bold uppercase tracking-[0.18em]">Xora Live</span></div>
-                <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Live TV</h1>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Switch channels instantly and watch live streams inside XoraTV.</p>
+                <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.03em] sm:text-5xl">Television, <span className="text-primary">inside Xora.</span></h1>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Browse live channels the same way you browse X Series: featured first, then curated shelves you can switch between instantly.</p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3 text-right backdrop-blur-sm">
-                <p className="text-2xl font-bold">{query.data?.total ?? "—"}</p><p className="text-[11px] text-muted-foreground">channels available</p>
+                <p className="text-2xl font-bold">{query.data?.total ?? "—"}</p><p className="text-[11px] text-muted-foreground">live channels indexed</p>
               </div>
             </div>
           </div>
@@ -118,19 +144,22 @@ function LiveTvPage() {
               </section>
             )}
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="mt-6">
+              <div className="mb-3"><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Channel guide</p><h2 className="font-display text-xl font-semibold tracking-tight">Explore live TV</h2></div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {channels.map((channel) => (
                 <button key={channel.id} type="button" onClick={() => void playChannel(channel)} className={cn("group overflow-hidden rounded-2xl border bg-background text-left transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md", selected?.id === channel.id ? "border-primary" : "border-border/60")}>
                   <div className="relative grid aspect-video place-items-center bg-secondary/50 p-4">{channel.logo ? <img src={channel.logo} alt="" loading="lazy" className="max-h-14 max-w-[75%] object-contain transition group-hover:scale-105" /> : <Tv className="size-8 text-muted-foreground" />}<span className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition group-hover:opacity-100"><Play className="size-3.5 fill-current" /></span></div>
                   <div className="p-3"><p className="line-clamp-1 text-xs font-semibold">{channel.name}</p><p className="mt-1 line-clamp-1 text-[10px] text-muted-foreground">{channel.group || "Live"}</p></div>
                 </button>
               ))}
+              </div>
             </div>
 
             {!query.isFetching && channels.length === 0 && <div className="py-16 text-center"><Tv className="mx-auto size-10 text-muted-foreground/40" /><p className="mt-3 font-semibold">No channels found</p><p className="mt-1 text-sm text-muted-foreground">Try another search or category.</p></div>}
           </div>
         </section>
-      </main>
+      </div>
     </AppShell>
   );
 }
