@@ -16,7 +16,7 @@ const PETALS = [
 export function LikePetalBurst({ active, origin, onDone }: Props) {
   useEffect(() => {
     if (!active || !origin) return;
-    const timer = window.setTimeout(() => onDone?.(), 1800);
+    const timer = window.setTimeout(() => onDone?.(), 10000);
     return () => window.clearTimeout(timer);
   }, [active, origin, onDone]);
 
@@ -61,7 +61,7 @@ export function LikePetalBurst({ active, origin, onDone }: Props) {
 
       <div
         className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,.22),transparent_45%)]"
-        style={{ animation: "xoraLikeFlash 1500ms ease-out both" }}
+        style={{ animation: "xoraLikeFlash 9000ms ease-out both" }}
       />
 
       <div
@@ -69,16 +69,16 @@ export function LikePetalBurst({ active, origin, onDone }: Props) {
         style={{
           left: origin.x,
           top: origin.y,
-          animation: "xoraLikeRing 1200ms cubic-bezier(.15,.75,.2,1) both",
+          animation: "xoraLikeRing 8000ms cubic-bezier(.15,.75,.2,1) both",
         }}
       />
 
       <div
-        className="absolute text-7xl font-black leading-none text-primary drop-shadow-[0_0_30px_rgba(255,255,255,.8)]"
+        className="absolute text-9xl font-black leading-none text-primary drop-shadow-[0_0_30px_rgba(255,255,255,.8)]"
         style={{
           left: origin.x,
           top: origin.y,
-          animation: "xoraLikeHeart 1400ms cubic-bezier(.2,.8,.2,1) both",
+          animation: "xoraLikeHeart 8500ms cubic-bezier(.2,.8,.2,1) both",
         }}
       >
         ♥
@@ -95,7 +95,7 @@ export function LikePetalBurst({ active, origin, onDone }: Props) {
             "--y": `${y}vh`,
             "--r": `${rotate}deg`,
             "--s": scale,
-            animation: `xoraLikePetal 1500ms cubic-bezier(.12,.72,.18,1) ${index * 12}ms both`,
+            animation: `xoraLikePetal 9000ms cubic-bezier(.12,.72,.18,1) ${index * 12}ms both`,
           } as React.CSSProperties}
         />
       ))}
@@ -109,7 +109,7 @@ export function LikePetalBurst({ active, origin, onDone }: Props) {
             top: origin.y,
             "--x": `${x * 1.05}vw`,
             "--y": `${y * 1.05}vh`,
-            animation: `xoraLikeSpark 1300ms cubic-bezier(.2,.7,.2,1) ${80 + index * 22}ms both`,
+            animation: `xoraLikeSpark 8000ms cubic-bezier(.2,.7,.2,1) ${80 + index * 22}ms both`,
           } as React.CSSProperties}
         />
       ))}
