@@ -11,11 +11,11 @@ import {
   Settings,
   Shield,
   Clapperboard,
+  Tv,
   User,
   Wallet,
   Gift,
   Radio,
-  Tv,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -345,10 +345,10 @@ export function AppShell({
           </li>
           <li>
             <Link
-              to="/creator-studio"
+              to={NAV[4].to}
               className={cn(
                 "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                pathname.startsWith("/creator-studio") ? "text-primary" : "text-muted-foreground",
+                pathname.startsWith(NAV[4].to) ? "text-primary" : "text-muted-foreground",
               )}
             >
               <Radio className="size-5" aria-hidden="true" />
