@@ -29,7 +29,7 @@ export function LiveTvShelf({ className }: { className?: string }) {
   });
 
   return (
-    <section className={cn("space-y-3", className)} aria-label="Live TV">
+    <section className={cn("space-y-3", className)} id="live-tv" aria-label="Live TV">
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-primary">
