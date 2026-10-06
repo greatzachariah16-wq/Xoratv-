@@ -314,14 +314,6 @@ export async function fetchRankedFeed(
         // fallback
       }
     }
-    if (follows.length === 0) {
-      const userPrefix = `${userId}:`;
-      localFollows.forEach((entry) => {
-        if (entry.startsWith(userPrefix)) {
-          follows.push(entry.substring(userPrefix.length));
-        }
-      });
-    }
     if (likedPostIds.length === 0) {
       const userPrefix = `${userId}:`;
       localLikes.forEach((entry) => {
