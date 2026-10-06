@@ -1,135 +1,128 @@
 /**
  * IPTV-org provider for XoraTV Live TV.
  *
- * Uses the documented IPTV-org API datasets:
- * channels.json, feeds.json, logos.json, streams.json and blocklist.json.
- * Channel IDs are the canonical identity; streams are linked by channel/feed.
+ * Uses IPTV-org's generated public M3U playlists. These playlists contain
+ * the best available stream per channel and are much lighter to consume
+ * than downloading every API dataset on every Render request.
  */
 
 import type { XTvSeriesItem } from "../firebase/rtdb";
 
-const API_BASE = "https://iptv-org.github.io/api";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const IPTV_BASE = "https://iptv-org.github.io/iptv";
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
-type Channel = {
+// Start with Xora's core African market plus major international TV sources.
+// IPTV-org publishes these playlists officially and regenerates them daily.
+const PLAYLISTS = [
+  "regions/afr.m3u",
+  "countries/ng.m3u",
+  "countries/gh.m3u",
+  "countries/ke.m3u",
+  "countries/za.m3u",
+  "countries/gb.m3u",
+  "countries/us.m3u",
+];
+
+type Parsed = {
   id: string;
   name: string;
-  alt_names?: string[];
-  network?: string | null;
+  logo?: string;
+  group?: string;
   country?: string;
-  categories?: string[];
-  is_nsfw?: boolean;
-  closed?: string | null;
-  replaced_by?: string | null;
-  website?: string | null;
+  streamUrl: string;
+  quality?: string;
 };
 
-type Feed = {
-  channel: string;
-  id: string;
-  name: string;
-  is_main?: boolean;
-  broadcast_area?: string[];
-  timezones?: string[];
-  languages?: string[];
-  format?: string;
-};
+let cache: { channels: Parsed[]; expiresAt: number } | null = null;
+let loading: Promise<Parsed[]> | null = null;
 
-type Logo = {
-  channel: string;
-  feed?: string | null;
-  in_use?: boolean;
-  tags?: string[];
-  width?: number;
-  height?: number;
-  url: string;
-};
-
-type Stream = {
-  channel?: string | null;
-  feed?: string | null;
-  title: string;
-  url: string;
-  referrer?: string | null;
-  user_agent?: string | null;
-  quality?: string | null;
-  labels?: string[];
-};
-
-type ApiData = {
-  channels: Channel[];
-  feeds: Feed[];
-  logos: Logo[];
-  streams: Stream[];
-  blocklist: Array<{ channel: string; reason?: string }>;
-};
-
-let cache: { data: ApiData; expiresAt: number } | null = null;
-let loading: Promise<ApiData> | null = null;
-
-async function fetchJson<T>(name: string): Promise<T> {
-  const res = await fetch(`${API_BASE}/${name}.json`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!res.ok) throw new Error(`IPTV-org ${name} request failed: ${res.status}`);
-  return (await res.json()) as T;
+function parseAttributes(line: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const re = /([\w-]+)="([^"]*)"/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(line))) out[match[1]] = match[2];
+  return out;
 }
 
-async function loadData(): Promise<ApiData> {
-  if (cache && cache.expiresAt > Date.now()) return cache.data;
-  if (loading) return loading;
-
-  loading = Promise.all([
-    fetchJson<Channel[]>("channels"),
-    fetchJson<Feed[]>("feeds"),
-    fetchJson<Logo[]>("logos"),
-    fetchJson<Stream[]>("streams"),
-    fetchJson<Array<{ channel: string; reason?: string }>>("blocklist"),
-  ]).then(([channels, feeds, logos, streams, blocklist]) => {
-    const data = { channels, feeds, logos, streams, blocklist };
-    cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
-    loading = null;
-    return data;
-  }).catch((err) => {
-    loading = null;
-    throw err;
-  });
-
-  return loading;
+function inferCountry(group = "", id = ""): string | undefined {
+  const code = id.match(/\.([a-z]{2})(?:@|$)/i)?.[1] || group.match(/(?:^|\s)([A-Z]{2})(?:\s|$)/)?.[1];
+  return code?.toUpperCase();
 }
 
-function qualityScore(quality?: string | null): number {
-  if (!quality) return 0;
-  const match = quality.match(/(\d{3,4})p/i);
+function qualityScore(channel: Parsed): number {
+  const match = channel.quality?.match(/(\d{3,4})p/i);
   return match ? Number(match[1]) : 0;
 }
 
-function streamScore(stream: Stream): number {
-  const labels = new Set((stream.labels || []).map((x) => x.toLowerCase()));
-  let score = qualityScore(stream.quality);
+function parseM3U(text: string): Parsed[] {
+  const lines = text.split(/\r?\n/);
+  const result: Parsed[] = [];
 
-  if (labels.has("geo-blocked")) score -= 100000;
-  if (labels.has("not 24/7")) score -= 1000;
-  if (stream.url.startsWith("https://")) score += 20;
-  if (/\.m3u8(?:[?#]|$)/i.test(stream.url)) score += 10;
-  return score;
+  for (let i = 0; i < lines.length; i++) {
+    const info = lines[i]?.trim();
+    if (!info?.startsWith("#EXTINF:")) continue;
+
+    const url = lines[i + 1]?.trim();
+    if (!url || url.startsWith("#") || !/^https?:\/\//i.test(url)) continue;
+
+    const attrs = parseAttributes(info);
+    const comma = info.indexOf(",");
+    const name = (comma >= 0 ? info.slice(comma + 1).trim() : attrs["tvg-name"] || "").trim();
+    const id = (attrs["tvg-id"] || name).trim();
+    if (!name || !id) continue;
+
+    const group = attrs["group-title"] || undefined;
+    const quality = name.match(/\((\d{3,4}p)\)/i)?.[1];
+
+    result.push({
+      id,
+      name,
+      logo: attrs["tvg-logo"] || undefined,
+      group,
+      country: inferCountry(group, id),
+      streamUrl: url,
+      quality,
+    });
+  }
+
+  return result;
 }
 
-function pickLogo(channelId: string, feedId: string | null, logos: Logo[]): string | undefined {
-  const candidates = logos.filter(
-    (logo) =>
-      logo.channel === channelId &&
-      (!feedId || logo.feed === feedId || logo.feed == null),
-  );
-
-  candidates.sort((a, b) => {
-    const aScore = (a.feed === feedId ? 100 : 0) + (a.in_use ? 20 : 0) + (a.width || 0);
-    const bScore = (b.feed === feedId ? 100 : 0) + (b.in_use ? 20 : 0) + (b.width || 0);
-    return bScore - aScore;
+async function fetchPlaylist(path: string): Promise<Parsed[]> {
+  const res = await fetch(`${IPTV_BASE}/${path}`, {
+    headers: { Accept: "audio/x-mpegurl,text/plain;q=0.9,*/*;q=0.8" },
+    signal: AbortSignal.timeout(20000),
   });
+  if (!res.ok) throw new Error(`IPTV-org playlist request failed: ${res.status}`);
+  return parseM3U(await res.text());
+}
 
-  return candidates[0]?.url;
+async function loadChannels(): Promise<Parsed[]> {
+  if (cache && cache.expiresAt > Date.now()) return cache.channels;
+  if (loading) return loading;
+
+  loading = Promise.all(PLAYLISTS.map((path) => fetchPlaylist(path)))
+    .then((lists) => {
+      const byId = new Map<string, Parsed>();
+
+      for (const list of lists.flat()) {
+        const existing = byId.get(list.id);
+        if (!existing || qualityScore(list) > qualityScore(existing)) {
+          byId.set(list.id, list);
+        }
+      }
+
+      const channels = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+      cache = { channels, expiresAt: Date.now() + CACHE_TTL_MS };
+      loading = null;
+      return channels;
+    })
+    .catch((err) => {
+      loading = null;
+      throw err;
+    });
+
+  return loading;
 }
 
 export interface IptvChannel {
@@ -149,6 +142,16 @@ export interface IptvChannel {
   labels: string[];
 }
 
+function categoryFromGroup(group?: string): string {
+  const value = (group || "").toLowerCase();
+  if (value.includes("news")) return "news";
+  if (value.includes("sport")) return "sports";
+  if (value.includes("movie") || value.includes("film")) return "movies";
+  if (value.includes("music")) return "music";
+  if (value.includes("kids") || value.includes("children")) return "kids";
+  return "general";
+}
+
 export async function fetchIptvChannels(options?: {
   query?: string;
   country?: string;
@@ -156,80 +159,37 @@ export async function fetchIptvChannels(options?: {
   limit?: number;
 }): Promise<{ ok: boolean; total: number; channels: IptvChannel[]; error?: string }> {
   try {
-    const data = await loadData();
+    const channels = await loadChannels();
     const query = options?.query?.trim().toLowerCase() || "";
     const country = options?.country?.trim().toUpperCase() || "";
     const category = options?.category?.trim().toLowerCase() || "";
     const limit = Math.min(Math.max(options?.limit || 30, 1), 100);
 
-    const blocked = new Set(data.blocklist.map((item) => item.channel));
-    const feedsByChannel = new Map<string, Feed[]>();
-    const logosByChannel = new Map<string, Logo[]>();
-    const streamsByChannel = new Map<string, Stream[]>();
+    const filtered = channels.filter((channel) => {
+      if (query && !channel.name.toLowerCase().includes(query) && !channel.id.toLowerCase().includes(query)) {
+        return false;
+      }
+      if (country && channel.country !== country) return false;
+      if (category && categoryFromGroup(channel.group) !== category) return false;
+      return true;
+    });
 
-    for (const feed of data.feeds) {
-      const list = feedsByChannel.get(feed.channel) || [];
-      list.push(feed);
-      feedsByChannel.set(feed.channel, list);
-    }
-    for (const logo of data.logos) {
-      const list = logosByChannel.get(logo.channel) || [];
-      list.push(logo);
-      logosByChannel.set(logo.channel, list);
-    }
-    for (const stream of data.streams) {
-      if (!stream.channel || !stream.url) continue;
-      const list = streamsByChannel.get(stream.channel) || [];
-      list.push(stream);
-      streamsByChannel.set(stream.channel, list);
-    }
+    const result: IptvChannel[] = filtered.slice(0, limit).map((channel) => ({
+      id: channel.id,
+      name: channel.name,
+      country: channel.country,
+      categories: [categoryFromGroup(channel.group)],
+      network: null,
+      logo: channel.logo,
+      streamUrl: channel.streamUrl,
+      streamTitle: channel.name,
+      quality: channel.quality,
+      referrer: null,
+      userAgent: null,
+      labels: [],
+    }));
 
-    const result: IptvChannel[] = [];
-
-    for (const channel of data.channels) {
-      if (channel.is_nsfw || channel.closed || blocked.has(channel.id)) continue;
-      const streams = streamsByChannel.get(channel.id) || [];
-      if (!streams.length) continue;
-
-      const searchable = [channel.name, ...(channel.alt_names || []), channel.network || ""]
-        .join(" ")
-        .toLowerCase();
-      if (query && !searchable.includes(query)) continue;
-      if (country && channel.country !== country) continue;
-      if (category && !(channel.categories || []).some((x) => x.toLowerCase() === category)) continue;
-
-      const available = streams
-        .filter((stream) => stream.url.startsWith("http"))
-        .filter((stream) => !(stream.labels || []).some((label) => label.toLowerCase() === "geo-blocked"))
-        .sort((a, b) => streamScore(b) - streamScore(a));
-
-      const selected = available[0];
-      if (!selected) continue;
-
-      const feed = (feedsByChannel.get(channel.id) || []).find(
-        (item) => item.id === selected.feed,
-      ) || (feedsByChannel.get(channel.id) || []).find((item) => item.is_main);
-
-      result.push({
-        id: channel.id,
-        name: channel.name,
-        country: channel.country,
-        categories: channel.categories || [],
-        network: channel.network,
-        logo: pickLogo(channel.id, selected.feed || null, logosByChannel.get(channel.id) || []),
-        feedId: selected.feed || feed?.id,
-        feedName: feed?.name,
-        streamUrl: selected.url,
-        streamTitle: selected.title,
-        quality: selected.quality,
-        referrer: selected.referrer,
-        userAgent: selected.user_agent,
-        labels: selected.labels || [],
-      });
-    }
-
-    result.sort((a, b) => a.name.localeCompare(b.name));
-    return { ok: true, total: result.length, channels: result.slice(0, limit) };
+    return { ok: true, total: filtered.length, channels: result };
   } catch (err) {
     return {
       ok: false,
@@ -241,11 +201,8 @@ export async function fetchIptvChannels(options?: {
 }
 
 export async function getIptvChannel(channelId: string): Promise<IptvChannel | null> {
-  const data = await loadData();
-  const channel = data.channels.find((item) => item.id === channelId);
-  if (!channel) return null;
-  const result = await fetchIptvChannels({ query: channel.name, limit: 100 });
-  return result.channels.find((item) => item.id === channelId) || null;
+  const result = await fetchIptvChannels({ query: channelId, limit: 100 });
+  return result.channels.find((channel) => channel.id === channelId) || null;
 }
 
 export async function discoverIptvChannels(): Promise<XTvSeriesItem[]> {
@@ -260,7 +217,7 @@ export async function discoverIptvChannels(): Promise<XTvSeriesItem[]> {
     year: new Date().getFullYear(),
     seasons: 1,
     episodesCount: 1,
-    tag: channel.network || "Live TV",
+    tag: "Live TV",
     tone: tones[index % tones.length],
     videoUrl: channel.streamUrl,
     thumbnailUrl: channel.logo,
