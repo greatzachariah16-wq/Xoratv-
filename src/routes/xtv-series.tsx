@@ -21,7 +21,6 @@ import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
-import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
 
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
 
@@ -412,8 +411,6 @@ function XTvSeriesPage() {
 
         {/* Xora In-House Ad Campaign Placement */}
         <XoraInHouseAd placement="xseries_feed" variant="banner" className="my-2" />
-
-        <LiveTvShelf />
 
         {/* Featured Section */}
         {featured ? (
