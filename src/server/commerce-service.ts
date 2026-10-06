@@ -1375,12 +1375,12 @@ export async function deleteCreatorShort(postId: string, creatorId: string): Pro
 
   let mediaDeleted = false;
   const mediaUrl = String(post.media_path || post.stream_url || "");
-  const cloudinaryMatch = mediaUrl.match(/^(https?:\/\/res\\.cloudinary\\.com\/[^/]+\/video\/upload\/)(.*)$/);
+  const cloudinaryMatch = mediaUrl.match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)$/);
   if (cloudinaryMatch) {
     const parts = cloudinaryMatch[2].split("/").filter(Boolean);
     while (parts.length > 0) {
       const first = parts[0];
-      const isVersion = /^v\\d+$/.test(first);
+      const isVersion = /^v\d+$/.test(first);
       const looksLikeTransformation = !isVersion && (
         first.includes(",") || first.startsWith("h_") || first.startsWith("w_") ||
         first.startsWith("c_") || first.startsWith("q_") || first.startsWith("f_") ||
@@ -1390,7 +1390,7 @@ export async function deleteCreatorShort(postId: string, creatorId: string): Pro
       if (!looksLikeTransformation) break;
       parts.shift();
     }
-    const publicId = parts.join("/").replace(/\\.[a-zA-Z0-9]+$/, "");
+    const publicId = parts.join("/").replace(/\.[a-zA-Z0-9]+$/, "");
     if (publicId) {
       try {
         await deleteCloudinaryVideo(publicId);
