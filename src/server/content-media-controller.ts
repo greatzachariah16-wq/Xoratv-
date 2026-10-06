@@ -2,12 +2,6 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
-
-// ffmpeg-static is CommonJS and expects __dirname. Keep it external to Nitro's ESM bundle.
-const require = createRequire(import.meta.url);
-const ffmpegPath = require("ffmpeg-static") as string | null;
 import { registerCloudinaryVideo } from "./content-repository";
 
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
@@ -48,29 +42,6 @@ export async function deleteCloudinaryVideo(publicId: string): Promise<void> {
   if (!response.ok || (body?.result && !["ok", "not found"].includes(String(body.result)))) {
     throw new Error(body?.error?.message || `Cloudinary video deletion failed (${response.status}).`);
   }
-}
-
-async function runFfmpeg(input: string, output: string) {
-  if (!ffmpegPath) throw new Error("FFmpeg binary is unavailable on this server.");
-  await new Promise<void>((resolve, reject) => {
-    const args = [
-      "-y", "-i", input,
-      "-map", "0:v:0", "-map", "0:a:0?",
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
-      "-c:a", "aac", "-b:a", "128k",
-      "-movflags", "+faststart",
-      "-pix_fmt", "yuv420p",
-      output,
-    ];
-    const child = spawn(ffmpegPath as string, args, { stdio: ["ignore", "ignore", "pipe"] });
-    let stderr = "";
-    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`FFmpeg compression failed (${code}): ${stderr.slice(-1200)}`));
-    });
-  });
 }
 
 async function uploadToCloudinary(filePath: string, folder: string) {
@@ -135,7 +106,6 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "xora-video-"));
   const inputPath = path.join(tempDir, "input");
-  const outputPath = path.join(tempDir, "compressed.mp4");
 
   try {
     await fs.writeFile(inputPath, Buffer.from(await file.arrayBuffer()));
