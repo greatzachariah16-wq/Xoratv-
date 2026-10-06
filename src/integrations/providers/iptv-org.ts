@@ -101,7 +101,7 @@ async function loadData(): Promise<ApiData> {
 
 function qualityScore(quality?: string | null): number {
   if (!quality) return 0;
-  const match = quality.match(/(\\d{3,4})p/i);
+  const match = quality.match(/(\d{3,4})p/i);
   return match ? Number(match[1]) : 0;
 }
 
@@ -112,7 +112,7 @@ function streamScore(stream: Stream): number {
   if (labels.has("geo-blocked")) score -= 100000;
   if (labels.has("not 24/7")) score -= 1000;
   if (stream.url.startsWith("https://")) score += 20;
-  if (/\\.m3u8(?:[?#]|$)/i.test(stream.url)) score += 10;
+  if (/\.m3u8(?:[?#]|$)/i.test(stream.url)) score += 10;
   return score;
 }
 
