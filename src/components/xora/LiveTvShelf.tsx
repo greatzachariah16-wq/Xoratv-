@@ -28,6 +28,8 @@ export function LiveTvShelf({ className }: { className?: string }) {
     retry: 5,
   });
 
+  if (channels.length === 0) return null;
+
   return (
     <section className={cn("space-y-3", className)} id="live-tv" aria-label="Live TV">
       <div className="flex items-end justify-between gap-3">
@@ -39,11 +41,7 @@ export function LiveTvShelf({ className }: { className?: string }) {
           <h2 className="mt-1 font-display text-xl font-semibold tracking-tight">Live TV</h2>
         </div>
         <Link
-          to="/xtv-series" hash="live-tv"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground"
-        >
-          View all <ArrowRight className="size-3.5" />
-        </Link>
+          <span />
       </div>
 
       {channels.length > 0 ? (
@@ -71,12 +69,6 @@ export function LiveTvShelf({ className }: { className?: string }) {
             </Link>
           ))}
         </div>
-      ) : (
-        <Link to="/xtv-series" hash="live-tv" className="block rounded-2xl border border-border/60 bg-surface p-5 text-center hover:border-primary/40">
-          <Tv className="mx-auto size-7 text-primary" />
-          <p className="mt-2 text-sm font-semibold">Open Live TV</p>
-          <p className="mt-1 text-xs text-muted-foreground">Discover available live channels.</p>
-        </Link>
       )}
     </section>
   );
