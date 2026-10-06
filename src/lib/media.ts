@@ -5,7 +5,7 @@ import { auth } from "@/integrations/firebase/config";
 import {
   uploadToCloudinary,
   isCloudinaryConfigured,
-  get240pDeliveryUrl,
+  getOriginalVideoUrl,
   type CloudinaryUploadResult,
   type CloudinaryUploadOptions,
 } from "./cloudinary";
@@ -89,7 +89,7 @@ export function resolveMediaUrl(
   // If already an absolute HTTP/HTTPS URL (e.g. Cloudinary, YouTube, external)
   if (/^https?:\/\//i.test(trimmed)) {
     if (bucket === "videos" && trimmed.includes("res.cloudinary.com")) {
-      return get240pDeliveryUrl(trimmed);
+      return getOriginalVideoUrl(trimmed);
     }
     return trimmed;
   }
@@ -99,7 +99,7 @@ export function resolveMediaUrl(
 
   // If bucket is videos and path is a Cloudinary public_id (e.g. xora/videos/...)
   if (bucket === "videos" && isCloudinaryConfigured() && !cleanPath.startsWith("videos/")) {
-    const cloudinaryDelivery = get240pDeliveryUrl("", cleanPath);
+    const cloudinaryDelivery = getOriginalVideoUrl(cleanPath);
     if (cloudinaryDelivery) {
       return cloudinaryDelivery;
     }
@@ -160,7 +160,7 @@ export async function uploadMedia(
       onProgress,
     });
 
-    const finalUrl = res.deliveryUrl240p || res.playbackUrl;
+    // Creator uploads must preserve their full-quality Cloudinary MP4. Do not save the 240p rendition as the canonical stream URL.\n    const finalUrl = res.playbackUrl || res.url;
     const finalPath = res.publicId || res.url;
 
     if (isFirebaseConfigured()) {
