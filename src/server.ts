@@ -908,7 +908,7 @@ export default {
     }
 
     // IPTV-org playback proxy: supplies required Referer/User-Agent headers and rewrites HLS playlists
-    if (url.pathname === "/api/tv/stream" && request.method === "GET") {
+    if ((url.pathname === "/api/tv/stream" || url.pathname.startsWith("/api/tv/stream/")) && request.method === "GET") {
       try {
         const channelId = url.searchParams.get("channel");
         const requestedUrl = url.searchParams.get("url");
