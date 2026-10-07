@@ -118,6 +118,7 @@ function LiveTvPage() {
       </header>
 
       {selected ? (
+        <>
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
           <NativeVideoPlayer
             streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?provider=nexus&channel=${encodeURIComponent(selected.id)}`}
@@ -182,6 +183,7 @@ function LiveTvPage() {
             <div className="p-5 text-center text-xs text-muted-foreground">{guide.isLoading ? "Loading programme schedule..." : "No EPG schedule is available for this channel right now."}</div>
           )}
         </section>
+        </>
       ) : (
         <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
           {query.isLoading ? "Loading live channels..." : "No playable channels found."}
