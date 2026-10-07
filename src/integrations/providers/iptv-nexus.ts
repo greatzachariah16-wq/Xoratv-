@@ -232,13 +232,13 @@ export async function getNexusGuide(channelId: string, hours = 12): Promise<Nexu
   if (programmes.length === 0 && channel.country) {
     const globalXml = await loadGuide();
     const globalProgrammes: NexusProgramme[] = [];
-    const globalPattern = /<programme\\b[^>]*\\bchannel=["']([^"']+)["'][^>]*>[\\s\\S]*?<\\/programme>/gi;
+    const globalPattern = /<programme\b[^>]*\bchannel=["']([^"']+)["'][^>]*>[\s\S]*?<\/programme>/gi;
     let globalMatch: RegExpExecArray | null;
     while ((globalMatch = globalPattern.exec(globalXml))) {
       if (globalMatch[1] !== channelId) continue;
       const block = globalMatch[0];
-      const startRaw = block.match(/\\bstart=["']([^"']+)["']/i)?.[1] || "";
-      const stopRaw = block.match(/\\bstop=["']([^"']+)["']/i)?.[1] || "";
+      const startRaw = block.match(/\bstart=["']([^"']+)["']/i)?.[1] || "";
+      const stopRaw = block.match(/\bstop=["']([^"']+)["']/i)?.[1] || "";
       const start = xmlTvDate(startRaw);
       const stop = xmlTvDate(stopRaw);
       if (!start || !stop || stop.getTime() < now || start.getTime() > end) continue;
