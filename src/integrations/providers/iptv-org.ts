@@ -14,7 +14,7 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 // Use IPTV-org's main generated playlist so XoraTV can discover the
 // complete public catalogue. It already selects the best public stream
 // available for each channel, avoiding duplicate regional downloads.
-const PLAYLISTS = ["index.m3u"];
+const PLAYLISTS = ["index.m3u", "categories/kids.m3u"];
 
 type Parsed = {
   id: string;
@@ -105,7 +105,7 @@ async function loadChannels(): Promise<Parsed[]> {
 
         for (const channel of result.value) {
           const existing = byId.get(channel.id);
-          if (!existing || qualityScore(channel) > qualityScore(existing)) {
+          if (!existing || qualityScore(channel) > qualityScore(existing) || (categoryFromGroup(channel.group) === "kids" && categoryFromGroup(existing.group) !== "kids")) {
             byId.set(channel.id, channel);
           }
         }
