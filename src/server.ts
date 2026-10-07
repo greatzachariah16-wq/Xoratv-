@@ -17,6 +17,7 @@ import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo } from "./integrations/providers/iptv-org";
+import { fetchNexusChannels, getNexusChannel, getNexusGuide } from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 
@@ -885,10 +886,11 @@ export default {
       }
     }
 
-    // IPTV-org Live TV catalogue endpoint
+    // IPTV Nexus Live TV catalogue endpoint for XoraTV's main TV experience.
+    // Xora Kids remains on its existing provider until a dedicated cartoon provider is approved.
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
       try {
-        const result = await fetchIptvChannels({
+        const result = await fetchNexusChannels({
           query: url.searchParams.get("q") || undefined,
           country: url.searchParams.get("country") || undefined,
           category: url.searchParams.get("category") || undefined,
@@ -907,12 +909,13 @@ export default {
       }
     }
 
-    // IPTV-org playback proxy: handles both HLS manifests and media segments server-side.
+    // IPTV playback proxy: Nexus is used by main TV; IPTV-org remains available for existing Xora Kids/X-Series paths.
     // IPTV-org publishes per-stream Referer/User-Agent requirements in streams.json.
     if ((url.pathname === "/api/tv/stream" || url.pathname.startsWith("/api/tv/stream/")) && request.method === "GET") {
       try {
         const channelId = url.searchParams.get("channel");
         const requestedUrl = url.searchParams.get("url");
+        const provider = url.searchParams.get("provider") || "iptv-org";
         if (!channelId) {
           return new Response(JSON.stringify({ ok: false, error: "Channel is required." }), {
             status: 400,
@@ -920,7 +923,13 @@ export default {
           });
         }
 
-        const playback = await getIptvPlaybackInfo(channelId);
+        const playback = provider === "nexus"
+          ? await getNexusChannel(channelId).then((channel) => channel ? {
+              streamUrl: channel.streamUrl,
+              referrer: channel.referrer,
+              userAgent: channel.userAgent,
+            } : null)
+          : await getIptvPlaybackInfo(channelId);
         if (!playback) {
           return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
             status: 404,
@@ -964,7 +973,7 @@ export default {
           const body = await upstream.text();
           const base = new URL(targetUrl);
           const proxyUrl = (absolute: string) =>
-            `/api/tv/stream?channel=${encodeURIComponent(channelId)}&url=${encodeURIComponent(absolute)}`;
+            `/api/tv/stream?provider=${encodeURIComponent(provider)}&channel=${encodeURIComponent(channelId)}&url=${encodeURIComponent(absolute)}`;
 
           const rewritten = body
             .split(/\r?\n/)
@@ -1008,6 +1017,35 @@ export default {
         const msg = err instanceof Error ? err.message : "IPTV playback proxy error";
         console.error("[IPTV Proxy] Playback error:", msg);
         return new Response(JSON.stringify({ ok: false, error: msg }), {
+          status: 502,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // XoraTV EPG endpoint: NOW / NEXT / upcoming programmes from IPTV Nexus.
+    if (url.pathname === "/api/tv/guide" && request.method === "GET") {
+      try {
+        const channelId = url.searchParams.get("channel");
+        const hours = Number(url.searchParams.get("hours") || "12");
+        if (!channelId) {
+          return new Response(JSON.stringify({ ok: false, programmes: [], error: "Channel is required." }), {
+            status: 400,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
+        }
+        const programmes = await getNexusGuide(channelId, hours);
+        return new Response(JSON.stringify({ ok: true, channelId, programmes }), {
+          status: 200,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=300",
+          },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "TV guide error";
+        return new Response(JSON.stringify({ ok: false, programmes: [], error: msg }), {
           status: 502,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
