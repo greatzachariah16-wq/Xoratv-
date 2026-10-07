@@ -315,6 +315,7 @@ export function NativeVideoPlayer({
         let retryTimer: ReturnType<typeof setTimeout> | null = null;
         let recovered = false;
         let networkRecoveryCount = 0;
+        let liveTvFailoverAttempt = 0;
 
         import("hls.js")
           .then(({ default: Hls }) => {
@@ -352,7 +353,12 @@ export function NativeVideoPlayer({
                   setFailed(false);
                   retryTimer = setTimeout(() => {
                     retryTimer = null;
-                    if (networkRecoveryCount >= 2) {
+                    if (networkRecoveryCount >= 2 && liveTv) {
+                      liveTvFailoverAttempt = Math.min(liveTvFailoverAttempt + 1, 2);
+                      const separator = src.includes("?") ? "&" : "?";
+                      hlsInstance?.loadSource(`${src}${separator}attempt=${liveTvFailoverAttempt}&retry=${Date.now()}`);
+                      networkRecoveryCount = 0;
+                    } else if (networkRecoveryCount >= 2) {
                       const separator = src.includes("?") ? "&" : "?";
                       hlsInstance?.loadSource(`${src}${separator}retry=${Date.now()}`);
                     } else {
@@ -391,7 +397,7 @@ export function NativeVideoPlayer({
       video.removeAttribute("src");
       video.load();
     };
-  }, [src, feed, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
+  }, [src, feed, liveTv, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
