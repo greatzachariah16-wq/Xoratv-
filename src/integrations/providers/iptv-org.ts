@@ -184,17 +184,43 @@ export async function fetchIptvChannels(options?: {
       return true;
     });
 
-    const candidatesToVerify = filtered.slice(0, Math.min(filtered.length, IPTV_HEALTH_CHECK_BUDGET));
+    // Sample across the full filtered catalogue instead of checking only the
+    // alphabetically first channels. This gives XoraTV a much better chance
+    // of finding playable stations while keeping verification bounded.
+    const budget = Math.min(filtered.length, Math.max(IPTV_HEALTH_CHECK_BUDGET, limit));
+    const candidatesToVerify: Parsed[] = [];
+    if (filtered.length <= budget) {
+      candidatesToVerify.push(...filtered);
+    } else {
+      const stride = filtered.length / budget;
+      for (let i = 0; i < budget; i += 1) {
+        candidatesToVerify.push(filtered[Math.min(filtered.length - 1, Math.floor(i * stride))]);
+      }
+    }
+
     const verified: Array<{
       channel: Parsed;
       playback: NonNullable<Awaited<ReturnType<typeof getIptvPlaybackInfo>>>;
     }> = [];
 
-    for (const channel of candidatesToVerify) {
-      if (verified.length >= limit) break;
-      const playback = await getIptvPlaybackInfo(channel.id);
-      if (playback) verified.push({ channel, playback });
+    for (let start = 0; start < candidatesToVerify.length && verified.length < limit; start += IPTV_HEALTH_CHECK_CONCURRENCY) {
+      const batch = candidatesToVerify.slice(start, start + IPTV_HEALTH_CHECK_CONCURRENCY);
+      const results = await Promise.all(
+        batch.map(async (channel) => ({
+          channel,
+          playback: await getIptvPlaybackInfo(channel.id),
+        })),
+      );
+
+      for (const result of results) {
+        if (result.playback) verified.push(result as {
+          channel: Parsed;
+          playback: NonNullable<Awaited<ReturnType<typeof getIptvPlaybackInfo>>>;
+        });
+        if (verified.length >= limit) break;
+      }
     }
+
     const playable = verified;
 
     const result: IptvChannel[] = playable.slice(0, limit).map(({ channel, playback }) => ({
@@ -278,7 +304,8 @@ type IptvPlaybackCandidate = {
 
 const playbackHealthCache = new Map<string, { ok: boolean; expiresAt: number }>();
 const PLAYBACK_HEALTH_TTL_MS = 5 * 60 * 1000;
-const IPTV_HEALTH_CHECK_BUDGET = 12;
+const IPTV_HEALTH_CHECK_BUDGET = 40;
+const IPTV_HEALTH_CHECK_CONCURRENCY = 8;
 
 async function getIptvPlaybackCandidates(channelId: string): Promise<IptvPlaybackCandidate[]> {
   const channels = await loadChannels();
@@ -299,7 +326,7 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
   if (cached && cached.expiresAt > Date.now()) return cached.ok;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 3000);
 
   try {
     const headers = new Headers({
