@@ -90,7 +90,7 @@ export function NativeVideoPlayer({
   // The previous URL rewriting could turn an otherwise valid rendition into a
   // URL the Android WebView could not decode. We still keep the original URL
   // available as a native-player retry below.
-  const src = effectiveStream || signedSrc;
+  const src = effectiveStream || signedSrc;\n  const [liveStreamIndex, setLiveStreamIndex] = useState(0);\n  const activeSrc = liveTv && streamCandidates.length > 0\n    ? streamCandidates[Math.min(liveStreamIndex, streamCandidates.length - 1)]\n    : src;\n  const failoverLiveStream = useCallback(() => {\n    if (!liveTv || liveStreamIndex >= streamCandidates.length - 1) {\n      setFailed(true);\n      return;\n    }\n    setFailed(false);\n    setWaiting(true);\n    setPlaying(false);\n    setLiveStreamIndex((index) => index + 1);\n  }, [liveTv, liveStreamIndex, streamCandidates.length]);
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
@@ -131,14 +131,14 @@ export function NativeVideoPlayer({
     trackedStart.current = false;
     tracked3s.current = false;
     trackedComplete.current = false;
-    shortsRetriedOriginal.current = false;
+    shortsRetriedOriginal.current = false;\n    setLiveStreamIndex(0);
     sessionRef.current = null;
     lastHeartbeatTimeRef.current = 0;
     if (timer3sRef.current) {
       clearTimeout(timer3sRef.current);
       timer3sRef.current = null;
     }
-  }, [mediaPath, externalUrl, streamUrl, postId]);
+  }, [mediaPath, externalUrl, streamUrl, postId, streamCandidates.join("|")]);
 
   // Production-Ready Xora Engagement Handshake & Heartbeat Loop
   useEffect(() => {
@@ -297,7 +297,7 @@ export function NativeVideoPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (!src) return;
+    if (!activeSrc) return;
 
     const telemetryId = postId || `${title}-${src}`;
     startPlaybackTelemetry(telemetryId, src);
@@ -305,11 +305,11 @@ export function NativeVideoPlayer({
     // Only Shorts use this direct native path. Homepage keeps the existing
     // provider/HLS handling below.
     if (feed === "shorts") {
-      video.src = src;
+      video.src = activeSrc;
       video.load();
     } else if (/\.m3u8(?:[?#]|$)/i.test(src)) {
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = src;
+        video.src = activeSrc;
       } else {
         let hlsInstance: import("hls.js").default | null = null;
         let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -358,13 +358,13 @@ export function NativeVideoPlayer({
                 setFailed(true);
               });
               hlsInstance.attachMedia(videoRef.current);
-              hlsInstance.loadSource(src);
+              hlsInstance.loadSource(activeSrc);
               return;
             }
-            videoRef.current.src = src;
+            videoRef.current.src = activeSrc;
           })
           .catch(() => {
-            if (videoRef.current) videoRef.current.src = src;
+            if (videoRef.current) videoRef.current.src = activeSrc;
           });
 
         return () => {
@@ -386,7 +386,7 @@ export function NativeVideoPlayer({
       video.removeAttribute("src");
       video.load();
     };
-  }, [src, feed, liveTv, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
+  }, [activeSrc, feed, liveTv, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
@@ -484,7 +484,7 @@ export function NativeVideoPlayer({
 
   const toggle = useCallback(() => {
     const video = videoRef.current;
-    if (!video || !src) return;
+    if (!video || !activeSrc) return;
     if (video.paused || video.ended) {
       const attempt = video.play();
       if (attempt) {
@@ -498,7 +498,7 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [src]);
+  }, [activeSrc]);
 
   const seekTo = useCallback((seconds: number) => {
     const video = videoRef.current;
@@ -528,7 +528,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, src]);
+  }, [autoPlay, activeSrc]);
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
@@ -575,7 +575,7 @@ export function NativeVideoPlayer({
     >
       {src ? (
         <video
-          key={src}
+          key={activeSrc}
           ref={videoRef}
           src={/\.m3u8(?:[?#]|$)/i.test(src) ? undefined : src}
           poster={poster ?? undefined}
