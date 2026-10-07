@@ -246,6 +246,7 @@ type IptvStreamMeta = {
   url: string;
   referrer: string | null;
   user_agent: string | null;
+  labels?: string[];
 };
 
 let streamMetaCache: { streams: IptvStreamMeta[]; expiresAt: number } | null = null;
@@ -271,30 +272,116 @@ async function loadStreamMetadata(): Promise<IptvStreamMeta[]> {
   return streamMetaLoading;
 }
 
+type IptvPlaybackCandidate = {
+  streamUrl: string;
+  referrer: string | null;
+  userAgent: string | null;
+  quality: string | null;
+  labels: string[];
+};
+
+const playbackHealthCache = new Map<string, { ok: boolean; expiresAt: number }>();
+const PLAYBACK_HEALTH_TTL_MS = 5 * 60 * 1000;
+
+function candidateScore(stream: IptvStreamMeta, preferredUrl: string): number {
+  let score = stream.url === preferredUrl ? 1000 : 0;
+  const labels = stream.labels || [];
+  if (!labels.includes("Geo-blocked")) score += 100;
+  if (!labels.includes("Not 24/7")) score += 20;
+  const quality = stream.quality?.match(/(\\d{3,4})p/i)?.[1];
+  score += quality ? Number(quality) / 100 : 0;
+  return score;
+}
+
+async function getIptvPlaybackCandidates(channelId: string): Promise<IptvPlaybackCandidate[]> {
+  const channel = await getIptvChannel(channelId);
+  if (!channel) return [];
+  const streams = await loadStreamMetadata();
+  const baseId = channelId.split("@")[0];
+  return streams
+    .filter((s) => s.channel === channelId || s.channel === baseId)
+    .filter((s) => /^https?:\\/\\//i.test(s.url))
+    .map((s) => ({
+      streamUrl: s.url,
+      referrer: s.referrer || null,
+      userAgent: s.user_agent || null,
+      quality: s.quality || null,
+      labels: s.labels || [],
+      _score: candidateScore(s, channel.streamUrl),
+    }))
+    .sort((a, b) => b._score - a._score)
+    .map(({ _score, ...candidate }) => candidate);
+}
+
+async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolean> {
+  const cached = playbackHealthCache.get(candidate.streamUrl);
+  if (cached && cached.expiresAt > Date.now()) return cached.ok;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const headers = new Headers({
+      Accept: "*/*",
+      "User-Agent": candidate.userAgent || "Mozilla/5.0",
+    });
+    if (candidate.referrer) headers.set("Referer", candidate.referrer);
+
+    const response = await fetch(candidate.streamUrl, {
+      headers,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      playbackHealthCache.set(candidate.streamUrl, { ok: false, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
+      return false;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    const looksLikeHls =
+      /mpegurl/i.test(contentType) || /\\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
+    let ok = looksLikeHls || /video\\//i.test(contentType) || /octet-stream/i.test(contentType);
+
+    if (looksLikeHls) {
+      const text = await response.text();
+      ok = ok && text.includes("#EXTM3U");
+    } else {
+      // Avoid downloading an entire video just to verify it responds.
+      try { await response.body?.cancel(); } catch {}
+    }
+
+    playbackHealthCache.set(candidate.streamUrl, { ok, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
+    return ok;
+  } catch {
+    playbackHealthCache.set(candidate.streamUrl, { ok: false, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function getIptvPlaybackInfo(channelId: string): Promise<{
   streamUrl: string;
   referrer: string | null;
   userAgent: string | null;
 } | null> {
-  const channel = await getIptvChannel(channelId);
-  if (!channel) return null;
   try {
-    const streams = await loadStreamMetadata();
-    const baseId = channelId.split("@")[0];
-    // Prefer the exact URL selected from IPTV-org's generated playlist.
-    // A channel can have several feeds/streams; taking the first channel match
-    // can select a completely different (and sometimes blocked) endpoint.
-    const match = streams.find((s) => s.channel === channelId && s.url === channel.streamUrl) ||
-      streams.find((s) => s.channel === baseId && s.url === channel.streamUrl) ||
-      streams.find((s) => s.channel === channelId) ||
-      streams.find((s) => s.channel === baseId);
-    return {
-      streamUrl: match?.url || channel.streamUrl,
-      referrer: match?.referrer || null,
-      userAgent: match?.user_agent || null,
-    };
+    const candidates = await getIptvPlaybackCandidates(channelId);
+    for (const candidate of candidates) {
+      // Labels are advisory, not an automatic rejection: a stream can still
+      // work from XoraTV's Render region, so health-check the actual endpoint.
+      if (await probeIptvStream(candidate)) {
+        return {
+          streamUrl: candidate.streamUrl,
+          referrer: candidate.referrer,
+          userAgent: candidate.userAgent,
+        };
+      }
+    }
+    return null;
   } catch {
-    return { streamUrl: channel.streamUrl, referrer: null, userAgent: null };
+    const channel = await getIptvChannel(channelId);
+    return channel
+      ? { streamUrl: channel.streamUrl, referrer: null, userAgent: null }
+      : null;
   }
 }
 
