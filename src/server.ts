@@ -916,6 +916,7 @@ export default {
         const channelId = url.searchParams.get("channel");
         const requestedUrl = url.searchParams.get("url");
         const provider = url.searchParams.get("provider") || "iptv-org";
+        const attempt = Math.max(0, Math.min(Number(url.searchParams.get("attempt") || "0"), 2));
         if (!channelId) {
           return new Response(JSON.stringify({ ok: false, error: "Channel is required." }), {
             status: 400,
@@ -924,7 +925,7 @@ export default {
         }
 
         const playback = provider === "nexus"
-          ? await getNexusChannel(channelId).then((channel) => channel ? {
+          ? (await getNexusPlaybackCandidates(channelId, 3))[attempt] || await getNexusChannel(channelId).then((channel) => channel ? {
               streamUrl: channel.streamUrl,
               referrer: channel.referrer,
               userAgent: channel.userAgent,
@@ -973,7 +974,7 @@ export default {
           const body = await upstream.text();
           const base = new URL(targetUrl);
           const proxyUrl = (absolute: string) =>
-            `/api/tv/stream?provider=${encodeURIComponent(provider)}&channel=${encodeURIComponent(channelId)}&url=${encodeURIComponent(absolute)}`;
+            `/api/tv/stream?provider=${encodeURIComponent(provider)}&channel=${encodeURIComponent(channelId)}&attempt=${attempt}&url=${encodeURIComponent(absolute)}`;
 
           const rewritten = body
             .split(/\r?\n/)
