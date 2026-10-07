@@ -308,7 +308,7 @@ export function NativeVideoPlayer({
     if (feed === "shorts") {
       video.src = activeSrc;
       video.load();
-    } else if (liveTv || /\.m3u8(?:[?#]|$)/i.test(src)) {
+    } else if (/\.m3u8(?:[?#]|$)/i.test(src)) {
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = activeSrc;
       } else {
