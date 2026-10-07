@@ -120,7 +120,7 @@ function bestStream(channel: NexusChannel): NexusStream | null {
 
 function toChannel(channel: NexusChannel): NexusTvChannel | null {
   const stream = bestStream(channel);
-  if (!stream?.url || !/^https?:\\/\\//i.test(stream.url)) return null;
+  if (!stream?.url || !/^https?:\/\//i.test(stream.url)) return null;
   return {
     id: channel.id,
     name: channel.name,
