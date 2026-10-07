@@ -281,8 +281,12 @@ export async function getIptvPlaybackInfo(channelId: string): Promise<{
   try {
     const streams = await loadStreamMetadata();
     const baseId = channelId.split("@")[0];
-    const match = streams.find((s) => s.channel === channelId) ||
+    // Prefer the exact URL selected from IPTV-org's generated playlist.
+    // A channel can have several feeds/streams; taking the first channel match
+    // can select a completely different (and sometimes blocked) endpoint.
+    const match = streams.find((s) => s.channel === channelId && s.url === channel.streamUrl) ||
       streams.find((s) => s.channel === baseId && s.url === channel.streamUrl) ||
+      streams.find((s) => s.channel === channelId) ||
       streams.find((s) => s.channel === baseId);
     return {
       streamUrl: match?.url || channel.streamUrl,
