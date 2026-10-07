@@ -193,6 +193,12 @@ export async function getNexusGuide(channelId: string, hours = 12): Promise<Nexu
   if (!channel) return [];
 
   // Country shards keep memory and bandwidth much lower than the global guide.
+  // Prefer the smaller country shard. Some Nexus channels are matched into
+  // the merged guide but not their country shard, so fall back to the global
+  // guide when the country shard contains no programmes for this channel.
+  // Prefer the smaller country shard. Some Nexus channels are matched into
+  // the merged guide but not their country shard, so fall back to the global
+  // guide when the country shard contains no programmes for this channel.
   const xml = await loadGuide(channel.country);
   const now = Date.now();
   const end = now + Math.min(Math.max(hours, 1), 24) * 60 * 60 * 1000;
@@ -221,6 +227,33 @@ export async function getNexusGuide(channelId: string, hours = 12): Promise<Nexu
       isLive: start.getTime() <= now && stop.getTime() > now,
     });
     if (programmes.length >= 24) break;
+  }
+
+  if (programmes.length === 0 && channel.country) {
+    const globalXml = await loadGuide();
+    const globalProgrammes: NexusProgramme[] = [];
+    const globalPattern = /<programme\\b[^>]*\\bchannel=["']([^"']+)["'][^>]*>[\\s\\S]*?<\\/programme>/gi;
+    let globalMatch: RegExpExecArray | null;
+    while ((globalMatch = globalPattern.exec(globalXml))) {
+      if (globalMatch[1] !== channelId) continue;
+      const block = globalMatch[0];
+      const startRaw = block.match(/\\bstart=["']([^"']+)["']/i)?.[1] || "";
+      const stopRaw = block.match(/\\bstop=["']([^"']+)["']/i)?.[1] || "";
+      const start = xmlTvDate(startRaw);
+      const stop = xmlTvDate(stopRaw);
+      if (!start || !stop || stop.getTime() < now || start.getTime() > end) continue;
+      globalProgrammes.push({
+        id: channelId + "-" + start.toISOString(),
+        channelId,
+        title: xmlTag(block, "title") || "Programme",
+        description: xmlTag(block, "desc") || undefined,
+        start: start.toISOString(),
+        stop: stop.toISOString(),
+        isLive: start.getTime() <= now && stop.getTime() > now,
+      });
+      if (globalProgrammes.length >= 24) break;
+    }
+    return globalProgrammes.sort((a, b) => a.start.localeCompare(b.start));
   }
 
   return programmes.sort((a, b) => a.start.localeCompare(b.start));
