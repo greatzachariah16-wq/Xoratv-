@@ -109,7 +109,7 @@ async function loadChannels(): Promise<NexusChannel[]> {
 
       const parseAttrs = (line: string) => {
         const attrs: Record<string, string> = {};
-        const re = /(\\w[\\w-]*)="([^"]*)"/g;
+        const re = /([A-Za-z][A-Za-z0-9-]*)="([^"]*)"/g;
         let match: RegExpExecArray | null;
         while ((match = re.exec(line))) attrs[match[1]] = match[2];
         return attrs;
@@ -130,7 +130,7 @@ async function loadChannels(): Promise<NexusChannel[]> {
           requiresHeaders = true;
           continue;
         }
-        if (!line.startsWith("#") && pending?.["tvg-id"] && /^https?:\\/\\//i.test(line)) {
+        if (!line.startsWith("#") && pending?.["tvg-id"] && /^https?:\/\//i.test(line)) {
           if (!requiresHeaders) {
             const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
             channels.push({
