@@ -95,58 +95,67 @@ async function loadChannels(): Promise<NexusChannel[]> {
   if (channelsCache && channelsCache.expiresAt > Date.now()) return channelsCache.channels;
   if (channelsLoading) return channelsLoading;
 
-  channelsLoading = fetch(`${NEXUS_BASE}/api/v1/search.json`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(20000),
+  channelsLoading = fetch(NEXUS_BASE + "/playlists/best.m3u", {
+    headers: { Accept: "text/plain,*/*" },
+    signal: AbortSignal.timeout(30000),
   })
     .then(async (response) => {
-      if (!response.ok) throw new Error(`IPTV Nexus search request failed: ${response.status}`);
-      const data = (await response.json()) as {
-        fields?: string[];
-        channels?: unknown[][];
+      if (!response.ok) throw new Error("IPTV Nexus playlist request failed: " + response.status);
+      const text = await response.text();
+      const lines = text.split(/\r?\n/);
+      const channels: NexusChannel[] = [];
+      let pending: Record<string, string> | null = null;
+      let requiresHeaders = false;
+
+      const parseAttrs = (line: string) => {
+        const attrs: Record<string, string> = {};
+        const re = /(\\w[\\w-]*)="([^"]*)"/g;
+        let match: RegExpExecArray | null;
+        while ((match = re.exec(line))) attrs[match[1]] = match[2];
+        return attrs;
       };
 
-      const fields = Array.isArray(data.fields) ? data.fields : [];
-      const rows = Array.isArray(data.channels) ? data.channels : [];
-      const index = new Map(fields.map((field, i) => [field, i]));
-      const get = (row: unknown[], field: string) => row[index.get(field) ?? -1];
-
-      const candidates = rows
-        .filter((row) => Array.isArray(row) && Boolean(get(row, "id")))
-        .filter((row) => Boolean(get(row, "online")))
-        .slice(0, 24);
-
-      const details = await Promise.all(
-        candidates.map(async (row) => {
-          const id = String(get(row, "id"));
-          try {
-            const detailResponse = await fetch(`${NEXUS_BASE}/api/v1/channels/${encodeURIComponent(id)}.json`, {
-              headers: { Accept: "application/json" },
-              signal: AbortSignal.timeout(10000),
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        if (line.startsWith("#EXTINF:")) {
+          pending = parseAttrs(line);
+          requiresHeaders = false;
+          const comma = line.indexOf(",");
+          const displayName = comma >= 0 ? line.slice(comma + 1).trim() : "";
+          if (displayName && pending) pending.name = displayName;
+          continue;
+        }
+        if (line.startsWith("#EXTVLCOPT:http-referrer:") || line.startsWith("#EXTVLCOPT:http-user-agent:")) {
+          requiresHeaders = true;
+          continue;
+        }
+        if (!line.startsWith("#") && pending?.["tvg-id"] && /^https?:\\/\\//i.test(line)) {
+          if (!requiresHeaders) {
+            const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
+            channels.push({
+              id: pending["tvg-id"],
+              name: pending.name || pending["tvg-name"] || pending["tvg-id"],
+              country: pending["tvg-country"] || undefined,
+              categories,
+              languages: pending["tvg-language"] ? pending["tvg-language"].split(/[;,]/).map((item) => item.trim()) : undefined,
+              logo: pending["tvg-logo"] || undefined,
+              score: Number(pending["nexus-score"] || 0) || undefined,
+              online: true,
+              best_quality: pending["nexus-quality"] || undefined,
+              streams: [{ url: line, rank: 0, health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 } }],
             });
-            if (!detailResponse.ok) return null;
-            return (await detailResponse.json()) as NexusChannel;
-          } catch {
-            return null;
           }
-        }),
-      );
-
-      const channels = details.filter(
-        (channel): channel is NexusChannel =>
-          Boolean(channel?.id && channel.name && channel.online !== false && bestStream(channel)),
-      );
-
+          pending = null;
+        }
+      }
       channelsCache = { channels, expiresAt: Date.now() + CHANNELS_TTL_MS };
       return channels;
     })
-    .finally(() => {
-      channelsLoading = null;
-    });
+    .finally(() => { channelsLoading = null; });
 
   return channelsLoading;
-}
-function bestStream(channel: NexusChannel): NexusStream | null {
+}function bestStream(channel: NexusChannel): NexusStream | null {
   const streams = (channel.streams || []).filter(
     (stream) =>
       stream?.url &&
@@ -236,18 +245,28 @@ async function loadGuide(country?: string): Promise<string> {
   const key = country?.toLowerCase() || "global";
   const cached = guideCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.xml;
-
-  const path = country ? `/epg/${country.toLowerCase()}.xml` : "/epg/guide.xml";
-  const response = await fetch(NEXUS_BASE + path, {
-    headers: { Accept: "application/xml,text/xml;q=0.9,*/*;q=0.8" },
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!response.ok) throw new Error(`IPTV Nexus EPG request failed: ${response.status}`);
-  const xml = await response.text();
-  guideCache.set(key, { xml, expiresAt: Date.now() + GUIDE_TTL_MS });
-  return xml;
+  const basePath = country ? "/epg/" + country.toLowerCase() + ".xml" : "/epg/guide.xml";
+  let lastError: unknown = null;
+  for (const guidePath of [basePath, basePath + ".gz"]) {
+    try {
+      const response = await fetch(NEXUS_BASE + guidePath, {
+        headers: { Accept: "application/xml,text/xml,application/gzip,*/*;q=0.8" },
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!response.ok) { lastError = new Error("IPTV Nexus EPG request failed: " + response.status); continue; }
+      if (guidePath.endsWith(".gz")) {
+        const { gunzipSync } = await import("node:zlib");
+        const xml = gunzipSync(Buffer.from(await response.arrayBuffer())).toString("utf8");
+        guideCache.set(key, { xml, expiresAt: Date.now() + GUIDE_TTL_MS });
+        return xml;
+      }
+      const xml = await response.text();
+      guideCache.set(key, { xml, expiresAt: Date.now() + GUIDE_TTL_MS });
+      return xml;
+    } catch (error) { lastError = error; }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Unable to load IPTV Nexus EPG");
 }
-
 export async function getNexusGuide(channelId: string, hours = 12): Promise<NexusProgramme[]> {
   const channel = await getNexusChannel(channelId);
   if (!channel) return [];
