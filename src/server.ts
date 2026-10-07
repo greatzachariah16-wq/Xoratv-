@@ -887,7 +887,27 @@ export default {
 
     // IPTV-org Live TV catalogue endpoint
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
-      try {\n        const result = await fetchIptvChannels({\n          query: url.searchParams.get("q") || undefined,\n          country: url.searchParams.get("country") || undefined,\n          category: url.searchParams.get("category") || undefined,\n          limit: Number(url.searchParams.get("limit") || "30"),\n        });\n        return new Response(JSON.stringify(result), {\n          status: result.ok ? 200 : 502,\n          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },\n        });\n      } catch (err) {\n        const msg = err instanceof Error ? err.message : "IPTV catalogue error";\n        return new Response(JSON.stringify({ ok: false, total: 0, channels: [], error: msg }), {\n          status: 502,\n          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },\n        });\n      }\n    }\n\n    // XTv playback endpoint. Resolves IPTV-org channels or X Series media streams
+      try {
+        const result = await fetchIptvChannels({
+          query: url.searchParams.get("q") || undefined,
+          country: url.searchParams.get("country") || undefined,
+          category: url.searchParams.get("category") || undefined,
+          limit: Number(url.searchParams.get("limit") || "30"),
+        });
+        return new Response(JSON.stringify(result), {
+          status: result.ok ? 200 : 502,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "IPTV catalogue error";
+        return new Response(JSON.stringify({ ok: false, total: 0, channels: [], error: msg }), {
+          status: 502,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // XTv playback endpoint. Resolves IPTV-org channels or X Series media streams
     if (
       (url.pathname === "/api/xtv-series/stream" ||
         url.pathname.startsWith("/api/xtv-series/stream/")) &&
