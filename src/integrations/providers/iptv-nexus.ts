@@ -150,7 +150,7 @@ function bestStream(channel: NexusChannel): NexusStream | null {
   const streams = (channel.streams || []).filter(
     (stream) =>
       stream?.url &&
-      /^https?:\\/\\//i.test(stream.url) &&
+      /^https?:\/\//i.test(stream.url) &&
       (stream.health?.status === undefined || stream.health.status === "online"),
   );
   return streams.sort((a, b) => {
