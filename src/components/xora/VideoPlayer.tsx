@@ -335,8 +335,6 @@ export function NativeVideoPlayer({
                 manifestLoadingMaxRetry: 4,
                 levelLoadingMaxRetry: 4,
               });
-              hlsInstance.loadSource(src);
-              hlsInstance.attachMedia(videoRef.current);
               hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
                 if (!data.fatal) return;
 
@@ -359,6 +357,8 @@ export function NativeVideoPlayer({
 
                 setFailed(true);
               });
+              hlsInstance.attachMedia(videoRef.current);
+              hlsInstance.loadSource(src);
               return;
             }
             videoRef.current.src = src;
