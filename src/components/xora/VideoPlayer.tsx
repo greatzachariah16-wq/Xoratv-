@@ -323,8 +323,8 @@ export function NativeVideoPlayer({
             if (Hls.isSupported()) {
               hlsInstance = new Hls({
                 enableWorker: true,
-                lowLatencyMode: !liveTv,
-                backBufferLength: liveTv ? 10 : 4,
+                lowLatencyMode: liveTv ? true : false,
+                backBufferLength: liveTv ? 30 : 4,
                 maxBitrate: liveTv ? 0 : dataSaver.maxBitrateKbps * 1000,
                 maxBufferLength: liveTv ? 30 : Math.max(dataSaver.maxBufferLengthSeconds, 12),
                 maxMaxBufferLength: liveTv ? 60 : Math.max(dataSaver.maxBufferLengthSeconds * 2, 24),
