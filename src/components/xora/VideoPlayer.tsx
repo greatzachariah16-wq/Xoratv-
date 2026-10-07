@@ -49,8 +49,6 @@ type Props = {
   feed?: FeedType;
   /** Use the more forgiving buffering/recovery profile for live TV HLS streams. */
   liveTv?: boolean;
-  /** Ordered fallback URLs for live TV streams. */
-  streamCandidates?: string[];
 };
 
 export function NativeVideoPlayer({
@@ -69,7 +67,6 @@ export function NativeVideoPlayer({
   genre,
   feed,
   liveTv = false,
-  streamCandidates = [],
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -94,20 +91,7 @@ export function NativeVideoPlayer({
   // URL the Android WebView could not decode. We still keep the original URL
   // available as a native-player retry below.
   const src = effectiveStream || signedSrc;
-  const [liveStreamIndex, setLiveStreamIndex] = useState(0);
-  const activeSrc = liveTv && streamCandidates.length > 0
-    ? streamCandidates[Math.min(liveStreamIndex, streamCandidates.length - 1)]
-    : src;
-  const failoverLiveStream = useCallback(() => {
-    if (!liveTv || liveStreamIndex >= streamCandidates.length - 1) {
-      setFailed(true);
-      return;
-    }
-    setFailed(false);
-    setWaiting(true);
-    setPlaying(false);
-    setLiveStreamIndex((index) => index + 1);
-  }, [liveTv, liveStreamIndex, streamCandidates.length]);
+  const activeSrc = src;
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
@@ -149,14 +133,13 @@ export function NativeVideoPlayer({
     tracked3s.current = false;
     trackedComplete.current = false;
     shortsRetriedOriginal.current = false;
-    setLiveStreamIndex(0);
     sessionRef.current = null;
     lastHeartbeatTimeRef.current = 0;
     if (timer3sRef.current) {
       clearTimeout(timer3sRef.current);
       timer3sRef.current = null;
     }
-  }, [mediaPath, externalUrl, streamUrl, postId, streamCandidates.join("|")]);
+  }, [mediaPath, externalUrl, streamUrl, postId]);
 
   // Production-Ready Xora Engagement Handshake & Heartbeat Loop
   useEffect(() => {
