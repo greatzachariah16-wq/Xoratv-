@@ -117,6 +117,10 @@ function LiveTvPage() {
         </div>
       </header>
 
+      <div className="mb-5 rounded-2xl border border-primary/15 bg-primary/[0.06] px-4 py-3 text-xs leading-5 text-muted-foreground">
+        <span className="font-semibold text-foreground">Live TV notice:</span> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams that are compatible with our player.
+      </div>
+
       {selected ? (
         <>
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
