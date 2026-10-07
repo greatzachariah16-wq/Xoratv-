@@ -300,7 +300,7 @@ function candidateScore(stream: IptvStreamMeta, preferredUrl: string): number {
   const labels = stream.labels || [];
   if (!labels.includes("Geo-blocked")) score += 100;
   if (!labels.includes("Not 24/7")) score += 20;
-  const quality = stream.quality?.match(/(\\d{3,4})p/i)?.[1];
+  const quality = stream.quality?.match(/(\d{3,4})p/i)?.[1];
   score += quality ? Number(quality) / 100 : 0;
   return score;
 }
@@ -312,7 +312,7 @@ async function getIptvPlaybackCandidates(channelId: string): Promise<IptvPlaybac
   const baseId = channelId.split("@")[0];
   return streams
     .filter((s) => s.channel === channelId || s.channel === baseId)
-    .filter((s) => /^https?:\\/\\//i.test(s.url))
+    .filter((s) => /^https?:\/\//i.test(s.url))
     .map((s) => ({
       streamUrl: s.url,
       referrer: s.referrer || null,
@@ -349,8 +349,8 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
 
     const contentType = response.headers.get("content-type") || "";
     const looksLikeHls =
-      /mpegurl/i.test(contentType) || /\\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
-    let ok = looksLikeHls || /video\\//i.test(contentType) || /octet-stream/i.test(contentType);
+      /mpegurl/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
+    let ok = looksLikeHls || /video\//i.test(contentType) || /octet-stream/i.test(contentType);
 
     if (looksLikeHls) {
       const text = await response.text();
