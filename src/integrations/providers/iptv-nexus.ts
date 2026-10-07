@@ -83,7 +83,7 @@ function xmlAttr(tag: string, name: string): string {
 }
 
 function xmlTvDate(value: string): Date | null {
-  const match = value.trim().match(/^(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(?:\\d{2})?(?:\\s+([+-]\\d{4}))?/);
+  const match = value.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(?:\d{2})?(?:\s+([+-]\d{4}))?/);
   if (!match) return null;
   const [, y, mo, d, h, mi, offset] = match;
   const iso = `${y}-${mo}-${d}T${h}:${mi}:00${offset ? `${offset.slice(0, 3)}:${offset.slice(3)}` : "Z"}`;
@@ -198,13 +198,13 @@ export async function getNexusGuide(channelId: string, hours = 12): Promise<Nexu
   const end = now + Math.min(Math.max(hours, 1), 24) * 60 * 60 * 1000;
   const programmes: NexusProgramme[] = [];
 
-  const pattern = /<programme\\b[^>]*\\bchannel=["']([^"']+)["'][^>]*>[^]*?<\\/programme>/gi;
+  const pattern = /<programme\b[^>]*\bchannel=["']([^"']+)["'][^>]*>[\s\S]*?<\/programme>/gi;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(xml))) {
     if (match[1] !== channelId) continue;
     const block = match[0];
-    const startRaw = block.match(/\\bstart=["']([^"']+)["']/i)?.[1] || "";
-    const stopRaw = block.match(/\\bstop=["']([^"']+)["']/i)?.[1] || "";
+    const startRaw = block.match(/\bstart=["']([^"']+)["']/i)?.[1] || "";
+    const stopRaw = block.match(/\bstop=["']([^"']+)["']/i)?.[1] || "";
     const start = xmlTvDate(startRaw);
     const stop = xmlTvDate(stopRaw);
     if (!start || !stop || stop.getTime() < now || start.getTime() > end) continue;
