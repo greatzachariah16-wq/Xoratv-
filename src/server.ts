@@ -907,37 +907,110 @@ export default {
       }
     }
 
-    // IPTV-org playback proxy: supplies required Referer/User-Agent headers and rewrites HLS playlists
+    // IPTV-org playback proxy: handles both HLS manifests and media segments server-side.
+    // IPTV-org publishes per-stream Referer/User-Agent requirements in streams.json.
     if ((url.pathname === "/api/tv/stream" || url.pathname.startsWith("/api/tv/stream/")) && request.method === "GET") {
       try {
         const channelId = url.searchParams.get("channel");
         const requestedUrl = url.searchParams.get("url");
-        if (!channelId) return new Response(JSON.stringify({ ok: false, error: "Channel is required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-        const playback = await getIptvPlaybackInfo(channelId);
-        if (!playback) return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), { status: 404, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-        const target = requestedUrl || playback.streamUrl;
-        const headers = new Headers({ Accept: "*/*", "User-Agent": playback.userAgent || "Mozilla/5.0" });
-        if (playback.referrer) headers.set("Referer", playback.referrer);
-        const upstream = await fetch(target, { headers, signal: request.signal });
-        if (!upstream.ok) return new Response(JSON.stringify({ ok: false, error: `Upstream returned HTTP ${upstream.status}` }), { status: upstream.status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-        const contentType = upstream.headers.get("content-type") || "";
-        if (/mpegurl|\.m3u8/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(target)) {
-          const body = await upstream.text();
-          const base = new URL(target);
-          const rewritten = body.split(/\\r?\\n/).map((line) => {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith("#")) return line;
-            try {
-              const absolute = new URL(trimmed, base).toString();
-              return `/api/tv/stream?channel=${encodeURIComponent(channelId)}&url=${encodeURIComponent(absolute)}`;
-            } catch { return line; }
-          }).join("\\n");
-          return new Response(rewritten, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/vnd.apple.mpegurl", "Cache-Control": "no-store" } });
+        if (!channelId) {
+          return new Response(JSON.stringify({ ok: false, error: "Channel is required." }), {
+            status: 400,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
         }
-        return new Response(upstream.body, { status: upstream.status, headers: { ...CORS_HEADERS, "Content-Type": contentType || "application/octet-stream", "Cache-Control": "no-store" } });
+
+        const playback = await getIptvPlaybackInfo(channelId);
+        if (!playback) {
+          return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
+            status: 404,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
+        }
+
+        const target = requestedUrl || playback.streamUrl;
+        let targetUrl: URL;
+        try {
+          targetUrl = new URL(target);
+          if (!/^https?:$/.test(targetUrl.protocol)) throw new Error("Unsupported protocol");
+        } catch {
+          return new Response(JSON.stringify({ ok: false, error: "Invalid IPTV stream URL." }), {
+            status: 400,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
+        }
+
+        const headers = new Headers({
+          Accept: "*/*",
+          "User-Agent": playback.userAgent || "Mozilla/5.0",
+        });
+        if (playback.referrer) headers.set("Referer", playback.referrer);
+
+        const upstream = await fetch(targetUrl.toString(), { headers, signal: request.signal });
+        if (!upstream.ok) {
+          console.error("[IPTV Proxy] Upstream failed", channelId, upstream.status, targetUrl.hostname);
+          return new Response(
+            JSON.stringify({ ok: false, error: `Upstream returned HTTP ${upstream.status}` }),
+            { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+          );
+        }
+
+        const contentType = upstream.headers.get("content-type") || "";
+        const isHls =
+          /mpegurl/i.test(contentType) ||
+          /\.m3u8(?:[?#]|$)/i.test(targetUrl.pathname + targetUrl.search);
+
+        if (isHls) {
+          const body = await upstream.text();
+          const base = new URL(targetUrl);
+          const proxyUrl = (absolute: string) =>
+            `/api/tv/stream?channel=${encodeURIComponent(channelId)}&url=${encodeURIComponent(absolute)}`;
+
+          const rewritten = body
+            .split(/\r?\n/)
+            .map((line) => {
+              const trimmed = line.trim();
+              if (!trimmed) return line;
+
+              if (trimmed.startsWith("#")) {
+                return line.replace(/URI="([^"]+)"/g, (_match, uri: string) => {
+                  try {
+                    return `URI="${proxyUrl(new URL(uri, base).toString())}"`;
+                  } catch {
+                    return `URI="${uri}"`;
+                  }
+                });
+              }
+
+              try {
+                return proxyUrl(new URL(trimmed, base).toString());
+              } catch {
+                return line;
+              }
+            })
+            .join("\n");
+
+          return new Response(rewritten, {
+            status: 200,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/vnd.apple.mpegurl",
+              "Cache-Control": "no-store, no-cache, must-revalidate",
+            },
+          });
+        }
+
+        const responseHeaders = new Headers(CORS_HEADERS);
+        responseHeaders.set("Content-Type", contentType || "application/octet-stream");
+        responseHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate");
+        return new Response(upstream.body, { status: 200, headers: responseHeaders });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "IPTV playback proxy error";
-        return new Response(JSON.stringify({ ok: false, error: msg }), { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+        console.error("[IPTV Proxy] Playback error:", msg);
+        return new Response(JSON.stringify({ ok: false, error: msg }), {
+          status: 502,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
       }
     }
 
