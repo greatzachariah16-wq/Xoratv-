@@ -35,7 +35,7 @@ export const Route = createFileRoute("/tv")({
   head: () => ({
     meta: [
       { title: "Live TV | Xora" },
-      { name: "description", content: "Live television channels powered by IPTV-org." },
+      { name: "description", content: "Live television powered by IPTV Nexus." },
     ],
   }),
   component: LiveTvPage,
@@ -124,7 +124,6 @@ function LiveTvPage() {
             streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/${/\.m3u8(?:[?#]|$)/i.test(selected.streamUrl) ? "index.m3u8" : "index.mp4"}?provider=nexus&channel=${encodeURIComponent(selected.id)}`}
             externalPoster={selected.logo}
             title={selected.name}
-            autoPlay
             className="aspect-video w-full"
           />
           <div className="bg-card px-4 py-4">
