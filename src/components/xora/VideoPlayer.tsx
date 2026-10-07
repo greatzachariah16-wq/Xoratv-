@@ -47,6 +47,8 @@ type Props = {
   authorId?: string | null;
   genre?: string | null;
   feed?: FeedType;
+  /** Use the more forgiving buffering/recovery profile for live TV HLS streams. */
+  liveTv?: boolean;
 };
 
 export function NativeVideoPlayer({
@@ -64,6 +66,7 @@ export function NativeVideoPlayer({
   authorId,
   genre,
   feed,
+  liveTv = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -311,6 +314,7 @@ export function NativeVideoPlayer({
         let hlsInstance: import("hls.js").default | null = null;
         let retryTimer: ReturnType<typeof setTimeout> | null = null;
         let recovered = false;
+        let networkRecoveryCount = 0;
 
         import("hls.js")
           .then(({ default: Hls }) => {
@@ -318,12 +322,14 @@ export function NativeVideoPlayer({
             if (Hls.isSupported()) {
               hlsInstance = new Hls({
                 enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 4,
-                maxBitrate: dataSaver.maxBitrateKbps * 1000,
-                maxBufferLength: Math.max(dataSaver.maxBufferLengthSeconds, 12),
-                maxMaxBufferLength: Math.max(dataSaver.maxBufferLengthSeconds * 2, 24),
-                maxBufferSize: dataSaver.maxBufferSizeMb * 1024 * 1024,
+                lowLatencyMode: !liveTv,
+                backBufferLength: liveTv ? 10 : 4,
+                maxBitrate: liveTv ? 0 : dataSaver.maxBitrateKbps * 1000,
+                maxBufferLength: liveTv ? 30 : Math.max(dataSaver.maxBufferLengthSeconds, 12),
+                maxMaxBufferLength: liveTv ? 60 : Math.max(dataSaver.maxBufferLengthSeconds * 2, 24),
+                maxBufferSize: liveTv ? 16 * 1024 * 1024 : dataSaver.maxBufferSizeMb * 1024 * 1024,
+                liveSyncDurationCount: liveTv ? 4 : undefined,
+                liveMaxLatencyDurationCount: liveTv ? 12 : undefined,
                 capLevelToPlayerSize: true,
                 fragLoadingMaxRetry: 4,
                 manifestLoadingMaxRetry: 4,
@@ -341,12 +347,18 @@ export function NativeVideoPlayer({
                   return;
                 }
 
-                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsInstance && !retryTimer) {
+                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsInstance && networkRecoveryCount < 2 && !retryTimer) {
+                  networkRecoveryCount += 1;
                   setFailed(false);
                   retryTimer = setTimeout(() => {
                     retryTimer = null;
-                    hlsInstance?.startLoad();
-                  }, 1000);
+                    if (networkRecoveryCount >= 2) {
+                      const separator = src.includes("?") ? "&" : "?";
+                      hlsInstance?.loadSource(`${src}${separator}retry=${Date.now()}`);
+                    } else {
+                      hlsInstance?.startLoad();
+                    }
+                  }, 1200);
                   return;
                 }
 
