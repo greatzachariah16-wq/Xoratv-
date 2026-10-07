@@ -95,14 +95,48 @@ async function loadChannels(): Promise<NexusChannel[]> {
   if (channelsCache && channelsCache.expiresAt > Date.now()) return channelsCache.channels;
   if (channelsLoading) return channelsLoading;
 
-  channelsLoading = fetch(`${NEXUS_BASE}/api/v1/channels.online.json`, {
+  channelsLoading = fetch(`${NEXUS_BASE}/api/v1/search.json`, {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(20000),
   })
     .then(async (response) => {
-      if (!response.ok) throw new Error(`IPTV Nexus channel request failed: ${response.status}`);
-      const data = (await response.json()) as NexusChannel[];
-      const channels = Array.isArray(data) ? data.filter((channel) => channel?.id && channel.online !== false) : [];
+      if (!response.ok) throw new Error(`IPTV Nexus search request failed: ${response.status}`);
+      const data = (await response.json()) as {
+        fields?: string[];
+        channels?: unknown[][];
+      };
+
+      const fields = Array.isArray(data.fields) ? data.fields : [];
+      const rows = Array.isArray(data.channels) ? data.channels : [];
+      const index = new Map(fields.map((field, i) => [field, i]));
+      const get = (row: unknown[], field: string) => row[index.get(field) ?? -1];
+
+      const candidates = rows
+        .filter((row) => Array.isArray(row) && Boolean(get(row, "id")))
+        .filter((row) => Boolean(get(row, "online")))
+        .slice(0, 24);
+
+      const details = await Promise.all(
+        candidates.map(async (row) => {
+          const id = String(get(row, "id"));
+          try {
+            const detailResponse = await fetch(`${NEXUS_BASE}/api/v1/channels/${encodeURIComponent(id)}.json`, {
+              headers: { Accept: "application/json" },
+              signal: AbortSignal.timeout(10000),
+            });
+            if (!detailResponse.ok) return null;
+            return (await detailResponse.json()) as NexusChannel;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      const channels = details.filter(
+        (channel): channel is NexusChannel =>
+          Boolean(channel?.id && channel.name && channel.online !== false && bestStream(channel)),
+      );
+
       channelsCache = { channels, expiresAt: Date.now() + CHANNELS_TTL_MS };
       return channels;
     })
@@ -112,12 +146,19 @@ async function loadChannels(): Promise<NexusChannel[]> {
 
   return channelsLoading;
 }
-
 function bestStream(channel: NexusChannel): NexusStream | null {
-  const streams = (channel.streams || []).filter((stream) => stream?.url && stream.health?.status !== "offline");
-  return streams.sort((a, b) => (b.rank || 0) - (a.rank || 0))[0] || null;
+  const streams = (channel.streams || []).filter(
+    (stream) =>
+      stream?.url &&
+      /^https?:\\/\\//i.test(stream.url) &&
+      (stream.health?.status === undefined || stream.health.status === "online"),
+  );
+  return streams.sort((a, b) => {
+    const scoreA = a.health?.score || 0;
+    const scoreB = b.health?.score || 0;
+    return scoreB - scoreA || (b.rank || 0) - (a.rank || 0);
+  })[0] || null;
 }
-
 function toChannel(channel: NexusChannel): NexusTvChannel | null {
   const stream = bestStream(channel);
   if (!stream?.url || !/^https?:\/\//i.test(stream.url)) return null;
