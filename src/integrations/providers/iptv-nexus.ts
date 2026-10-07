@@ -198,7 +198,7 @@ export async function fetchNexusChannels(options?: {
     const query = options?.query?.trim().toLowerCase() || "";
     const country = options?.country?.trim().toUpperCase() || "";
     const category = options?.category?.trim().toLowerCase() || "";
-    const limit = Math.min(Math.max(options?.limit || 30, 1), 100);
+    const limit = Math.min(Math.max(options?.limit || 30, 1), 10000);
 
     const filtered = all.filter((channel) => {
       if (query && !channel.name.toLowerCase().includes(query) && !channel.id.toLowerCase().includes(query)) return false;
