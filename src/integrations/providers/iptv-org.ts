@@ -238,6 +238,62 @@ export async function discoverIptvChannels(): Promise<XTvSeriesItem[]> {
   }));
 }
 
+
+
+type IptvStreamMeta = {
+  channel: string | null;
+  feed: string | null;
+  url: string;
+  referrer: string | null;
+  user_agent: string | null;
+};
+
+let streamMetaCache: { streams: IptvStreamMeta[]; expiresAt: number } | null = null;
+let streamMetaLoading: Promise<IptvStreamMeta[]> | null = null;
+
+async function loadStreamMetadata(): Promise<IptvStreamMeta[]> {
+  if (streamMetaCache && streamMetaCache.expiresAt > Date.now()) return streamMetaCache.streams;
+  if (streamMetaLoading) return streamMetaLoading;
+  streamMetaLoading = fetch(`${IPTV_BASE.replace("/iptv", "")}/api/streams.json`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(20000),
+  })
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`IPTV-org streams API failed: ${res.status}`);
+      const data = (await res.json()) as unknown;
+      const streams = Array.isArray(data) ? (data as IptvStreamMeta[]) : [];
+      streamMetaCache = { streams, expiresAt: Date.now() + CACHE_TTL_MS };
+      return streams;
+    })
+    .finally(() => {
+      streamMetaLoading = null;
+    });
+  return streamMetaLoading;
+}
+
+export async function getIptvPlaybackInfo(channelId: string): Promise<{
+  streamUrl: string;
+  referrer: string | null;
+  userAgent: string | null;
+} | null> {
+  const channel = await getIptvChannel(channelId);
+  if (!channel) return null;
+  try {
+    const streams = await loadStreamMetadata();
+    const baseId = channelId.split("@")[0];
+    const match = streams.find((s) => s.channel === channelId) ||
+      streams.find((s) => s.channel === baseId && s.url === channel.streamUrl) ||
+      streams.find((s) => s.channel === baseId);
+    return {
+      streamUrl: match?.url || channel.streamUrl,
+      referrer: match?.referrer || null,
+      userAgent: match?.user_agent || null,
+    };
+  } catch {
+    return { streamUrl: channel.streamUrl, referrer: null, userAgent: null };
+  }
+}
+
 export async function getIptvStreamUrl(channelId: string): Promise<string | null> {
   const channel = await getIptvChannel(channelId.replace(/^iptv_/, ""));
   return channel?.streamUrl || null;
