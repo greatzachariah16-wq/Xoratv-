@@ -304,7 +304,7 @@ export function AppShell({
         style={{ ["--safe-extra" as string]: "0.5rem" }}
       >
         <ul className="grid grid-cols-6">
-          {[NAV[0], NAV[1], NAV[2]].map(({ to, label, icon: Icon }) => {
+          {[NAV[0], NAV[1], NAV[3]].map(({ to, label, icon: Icon }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
             return (
               <li key={to}>
@@ -321,6 +321,18 @@ export function AppShell({
               </li>
             );
           })}
+          <li>
+            <Link
+              to={NAV[2].to}
+              className={cn(
+                "press flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
+                pathname.startsWith(NAV[2].to) ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <Tv className="size-5" aria-hidden="true" />
+              X Series
+            </Link>
+          </li>
           <li className="flex justify-center">
             <Link
               to="/create"
@@ -347,10 +359,10 @@ export function AppShell({
           </li>
           <li>
             <Link
-              to={NAV[4].to}
+              to={NAV[5].to}
               className={cn(
                 "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                pathname.startsWith(NAV[4].to) ? "text-primary" : "text-muted-foreground",
+                pathname.startsWith(NAV[5].to) ? "text-primary" : "text-muted-foreground",
               )}
             >
               <Radio className="size-5" aria-hidden="true" />
