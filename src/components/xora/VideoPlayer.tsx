@@ -308,23 +308,49 @@ export function NativeVideoPlayer({
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
       } else {
+        let hlsInstance: import("hls.js").default | null = null;
+        let retryTimer: ReturnType<typeof setTimeout> | null = null;
+        let recovered = false;
+
         import("hls.js")
           .then(({ default: Hls }) => {
             if (!videoRef.current) return;
             if (Hls.isSupported()) {
-              const hls = new Hls({
+              hlsInstance = new Hls({
                 enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 4,
                 maxBitrate: dataSaver.maxBitrateKbps * 1000,
-                maxBufferLength: dataSaver.maxBufferLengthSeconds,
-                maxMaxBufferLength: dataSaver.maxBufferLengthSeconds * 2,
+                maxBufferLength: Math.max(dataSaver.maxBufferLengthSeconds, 12),
+                maxMaxBufferLength: Math.max(dataSaver.maxBufferLengthSeconds * 2, 24),
                 maxBufferSize: dataSaver.maxBufferSizeMb * 1024 * 1024,
                 capLevelToPlayerSize: true,
-                backBufferLength: 4,
+                fragLoadingMaxRetry: 4,
+                manifestLoadingMaxRetry: 4,
+                levelLoadingMaxRetry: 4,
               });
-              hls.loadSource(src);
-              hls.attachMedia(videoRef.current);
-              hls.on(Hls.Events.ERROR, (_event, data) => {
-                if (data.fatal) setFailed(true);
+              hlsInstance.loadSource(src);
+              hlsInstance.attachMedia(videoRef.current);
+              hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+                if (!data.fatal) return;
+
+                if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered && hlsInstance) {
+                  recovered = true;
+                  setFailed(false);
+                  hlsInstance.recoverMediaError();
+                  return;
+                }
+
+                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsInstance && !retryTimer) {
+                  setFailed(false);
+                  retryTimer = setTimeout(() => {
+                    retryTimer = null;
+                    hlsInstance?.startLoad();
+                  }, 1000);
+                  return;
+                }
+
+                setFailed(true);
               });
               return;
             }
@@ -333,7 +359,16 @@ export function NativeVideoPlayer({
           .catch(() => {
             if (videoRef.current) videoRef.current.src = src;
           });
-        }
+
+        return () => {
+          if (retryTimer) clearTimeout(retryTimer);
+          hlsInstance?.destroy();
+          if (timer3sRef.current) clearTimeout(timer3sRef.current);
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+        };
+      }
     } else {
       video.src = src;
     }
