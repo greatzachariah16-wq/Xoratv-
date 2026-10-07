@@ -124,6 +124,7 @@ function LiveTvPage() {
             streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/${/\.m3u8(?:[?#]|$)/i.test(selected.streamUrl) ? "index.m3u8" : "index.mp4"}?provider=nexus&channel=${encodeURIComponent(selected.id)}`}
             externalPoster={selected.logo}
             title={selected.name}
+            liveTv
             className="aspect-video w-full"
           />
           <div className="bg-card px-4 py-4">
