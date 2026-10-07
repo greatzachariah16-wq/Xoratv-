@@ -323,7 +323,7 @@ export function AppShell({
             </nav>
           </div>
         </div>
-      ) : null;
+      ) : null}
 
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
