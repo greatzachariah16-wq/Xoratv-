@@ -11,17 +11,10 @@ import type { XTvSeriesItem } from "../firebase/rtdb";
 const IPTV_BASE = "https://iptv-org.github.io/iptv";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-// Start with Xora's core African market plus major international TV sources.
-// IPTV-org publishes these playlists officially and regenerates them daily.
-const PLAYLISTS = [
-  "regions/afr.m3u",
-  "countries/ng.m3u",
-  "countries/gh.m3u",
-  "countries/ke.m3u",
-  "countries/za.m3u",
-  "countries/gb.m3u",
-  "countries/us.m3u",
-];
+// Use IPTV-org's main generated playlist so XoraTV can discover the
+// complete public catalogue. It already selects the best public stream
+// available for each channel, avoiding duplicate regional downloads.
+const PLAYLISTS = ["index.m3u"];
 
 type Parsed = {
   id: string;
