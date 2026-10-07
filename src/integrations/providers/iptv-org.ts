@@ -101,15 +101,25 @@ async function loadChannels(): Promise<Parsed[]> {
   if (cache && cache.expiresAt > Date.now()) return cache.channels;
   if (loading) return loading;
 
-  loading = Promise.all(PLAYLISTS.map((path) => fetchPlaylist(path)))
-    .then((lists) => {
+  loading = Promise.allSettled(PLAYLISTS.map((path) => fetchPlaylist(path)))
+    .then((results) => {
       const byId = new Map<string, Parsed>();
+      let successfulPlaylists = 0;
 
-      for (const list of lists.flat()) {
-        const existing = byId.get(list.id);
-        if (!existing || qualityScore(list) > qualityScore(existing)) {
-          byId.set(list.id, list);
+      for (const result of results) {
+        if (result.status !== "fulfilled") continue;
+        successfulPlaylists += 1;
+
+        for (const channel of result.value) {
+          const existing = byId.get(channel.id);
+          if (!existing || qualityScore(channel) > qualityScore(existing)) {
+            byId.set(channel.id, channel);
+          }
         }
+      }
+
+      if (successfulPlaylists === 0) {
+        throw new Error("IPTV-org returned no accessible playlists");
       }
 
       const channels = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
