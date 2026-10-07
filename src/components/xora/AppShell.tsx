@@ -323,7 +323,7 @@ export function AppShell({
             </nav>
           </div>
         </div>
-      ) : null
+      ) : null;
 
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
@@ -359,79 +359,7 @@ export function AppShell({
         </aside>
       ) : null}
 
-      <nav
-        aria-label="Primary"
-        className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-1.5 pt-2 backdrop-blur-md lg:hidden"
-        style={{ ["--safe-extra" as string]: "0.5rem" }}
-      >
-        <ul className="grid grid-cols-6">
-          {[NAV[0], NAV[1], NAV[3]].map(({ to, label, icon: Icon }) => {
-            const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-            return (
-              <li key={to}>
-                <Link
-                  to={to}
-                  className={cn(
-                    "press flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                    active ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  <Icon className="size-5" aria-hidden="true" />
-                  {label}
-                </Link>
-              </li>
-            );
-          })}
-          <li>
-            <Link
-              to={NAV[2].to}
-              className={cn(
-                "press flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                pathname.startsWith(NAV[2].to) ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              <Tv className="size-5" aria-hidden="true" />
-              X Series
-            </Link>
-          </li>
-          <li className="flex justify-center">
-            <Link
-              to="/create"
-              aria-label="Create a post"
-              className="press -mt-6 grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift ring-4 ring-background"
-            >
-              <Plus className="size-6" aria-hidden="true" />
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/rewards"
-              className={cn(
-                "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                pathname.startsWith("/rewards") || pathname.startsWith("/offers")
-                  ? "text-primary"
-                  : "text-muted-foreground",
-              )}
-              aria-label="Rewards"
-            >
-              <Gift className="size-5" aria-hidden="true" />
-              Rewards
-            </Link>
-          </li>
-          <li>
-            <Link
-              to={NAV[5].to}
-              className={cn(
-                "press relative flex flex-col items-center gap-1 py-1.5 text-[9px] font-medium",
-                pathname.startsWith(NAV[5].to) ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              <Radio className="size-5" aria-hidden="true" />
-              X Channel
-            </Link>
-          </li>
-        </ul>
-      </nav>
+
     </div>
   );
 }
