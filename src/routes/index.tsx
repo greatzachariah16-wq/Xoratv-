@@ -3,6 +3,7 @@ import { AppShell, FeedTabs } from "@/components/xora/AppShell";
 import { FeedList } from "@/components/xora/FeedList";
 import { TrendingRail } from "@/components/xora/TrendingRail";
 import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
+import { KidsTvShelf } from "@/components/xora/KidsTvShelf";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,6 +35,7 @@ function Home() {
       </header>
       <FeedTabs active="home" />
       <LiveTvShelf />
+      <KidsTvShelf />
       <FeedList feed="home" />
     </AppShell>
   );
