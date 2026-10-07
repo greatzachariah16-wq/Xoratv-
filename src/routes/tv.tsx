@@ -90,7 +90,7 @@ function LiveTvPage() {
       {selected ? (
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
           <NativeVideoPlayer
-            streamUrl={`/api/tv/stream?channel=${encodeURIComponent(selected.id)}`}
+            streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?channel=${encodeURIComponent(selected.id)}`}
             externalPoster={selected.logo}
             title={selected.name}
             autoPlay
