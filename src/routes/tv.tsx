@@ -122,10 +122,6 @@ function LiveTvPage() {
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
           <NativeVideoPlayer
             streamUrl={selected.streamUrl}
-            streamCandidates={[0, 1, 2].map(
-              (attempt) =>
-                `/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?provider=nexus&channel=${encodeURIComponent(selected.id)}&attempt=${attempt}`,
-            )}
             externalPoster={selected.logo}
             title={selected.name}
             liveTv
