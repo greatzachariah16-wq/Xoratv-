@@ -21,7 +21,7 @@ async function loadChannels(): Promise<Channel[]> {
 
 export function LiveTvShelf() {
   const { data = [], isLoading } = useQuery({
-    queryKey: ["iptv-org-live-tv"],
+    queryKey: ["iptv-nexus-live-tv"],
     queryFn: loadChannels,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
@@ -41,7 +41,7 @@ export function LiveTvShelf() {
             </span>
             <h2 className="font-display text-lg font-semibold tracking-tight">Live TV</h2>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Live channels powered by IPTV-org.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Live channels powered by IPTV Nexus.</p>
         </div>
         <Link
           to="/tv"
