@@ -16,6 +16,7 @@ import {
   Wallet,
   Gift,
   Radio,
+  Baby,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -30,6 +31,7 @@ const NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: Tv },
+  { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
   { to: "/offers", label: "Offers", icon: Gift },
