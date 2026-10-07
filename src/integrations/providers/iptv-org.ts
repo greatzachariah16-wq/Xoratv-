@@ -184,17 +184,18 @@ export async function fetchIptvChannels(options?: {
       return true;
     });
 
-    const candidatesToVerify = filtered.slice(0, Math.min(filtered.length, Math.max(limit * 3, 30)));
-    const verified = await Promise.all(
-      candidatesToVerify.map(async (channel) => {
-        const playback = await getIptvPlaybackInfo(channel.id);
-        return playback ? { channel, playback } : null;
-      }),
-    );
-    const playable = verified.filter(
-      (entry): entry is { channel: Parsed; playback: NonNullable<Awaited<ReturnType<typeof getIptvPlaybackInfo>>> } =>
-        Boolean(entry),
-    );
+    const candidatesToVerify = filtered.slice(0, Math.min(filtered.length, IPTV_HEALTH_CHECK_BUDGET));
+    const verified: Array<{
+      channel: Parsed;
+      playback: NonNullable<Awaited<ReturnType<typeof getIptvPlaybackInfo>>>;
+    }> = [];
+
+    for (const channel of candidatesToVerify) {
+      if (verified.length >= limit) break;
+      const playback = await getIptvPlaybackInfo(channel.id);
+      if (playback) verified.push({ channel, playback });
+    }
+    const playable = verified;
 
     const result: IptvChannel[] = playable.slice(0, limit).map(({ channel, playback }) => ({
       id: channel.id,
@@ -223,8 +224,23 @@ export async function fetchIptvChannels(options?: {
 }
 
 export async function getIptvChannel(channelId: string): Promise<IptvChannel | null> {
-  const result = await fetchIptvChannels({ query: channelId, limit: 100 });
-  return result.channels.find((channel) => channel.id === channelId) || null;
+  const channels = await loadChannels();
+  const channel = channels.find((item) => item.id === channelId);
+  if (!channel) return null;
+  return {
+    id: channel.id,
+    name: channel.name,
+    country: channel.country,
+    categories: [categoryFromGroup(channel.group)],
+    network: null,
+    logo: channel.logo,
+    streamUrl: channel.streamUrl,
+    streamTitle: channel.name,
+    quality: channel.quality || null,
+    referrer: null,
+    userAgent: null,
+    labels: [],
+  };
 }
 
 export async function discoverIptvChannels(): Promise<XTvSeriesItem[]> {
@@ -252,38 +268,6 @@ export async function discoverIptvChannels(): Promise<XTvSeriesItem[]> {
 
 
 
-type IptvStreamMeta = {
-  channel: string | null;
-  feed: string | null;
-  url: string;
-  referrer: string | null;
-  user_agent: string | null;
-  labels?: string[];
-};
-
-let streamMetaCache: { streams: IptvStreamMeta[]; expiresAt: number } | null = null;
-let streamMetaLoading: Promise<IptvStreamMeta[]> | null = null;
-
-async function loadStreamMetadata(): Promise<IptvStreamMeta[]> {
-  if (streamMetaCache && streamMetaCache.expiresAt > Date.now()) return streamMetaCache.streams;
-  if (streamMetaLoading) return streamMetaLoading;
-  streamMetaLoading = fetch(`${IPTV_BASE.replace("/iptv", "")}/api/streams.json`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(20000),
-  })
-    .then(async (res) => {
-      if (!res.ok) throw new Error(`IPTV-org streams API failed: ${res.status}`);
-      const data = (await res.json()) as unknown;
-      const streams = Array.isArray(data) ? (data as IptvStreamMeta[]) : [];
-      streamMetaCache = { streams, expiresAt: Date.now() + CACHE_TTL_MS };
-      return streams;
-    })
-    .finally(() => {
-      streamMetaLoading = null;
-    });
-  return streamMetaLoading;
-}
-
 type IptvPlaybackCandidate = {
   streamUrl: string;
   referrer: string | null;
@@ -294,35 +278,20 @@ type IptvPlaybackCandidate = {
 
 const playbackHealthCache = new Map<string, { ok: boolean; expiresAt: number }>();
 const PLAYBACK_HEALTH_TTL_MS = 5 * 60 * 1000;
-
-function candidateScore(stream: IptvStreamMeta, preferredUrl: string): number {
-  let score = stream.url === preferredUrl ? 1000 : 0;
-  const labels = stream.labels || [];
-  if (!labels.includes("Geo-blocked")) score += 100;
-  if (!labels.includes("Not 24/7")) score += 20;
-  const quality = stream.quality?.match(/(\d{3,4})p/i)?.[1];
-  score += quality ? Number(quality) / 100 : 0;
-  return score;
-}
+const IPTV_HEALTH_CHECK_BUDGET = 12;
 
 async function getIptvPlaybackCandidates(channelId: string): Promise<IptvPlaybackCandidate[]> {
-  const channel = await getIptvChannel(channelId);
-  if (!channel) return [];
-  const streams = await loadStreamMetadata();
-  const baseId = channelId.split("@")[0];
-  return streams
-    .filter((s) => s.channel === channelId || s.channel === baseId)
-    .filter((s) => /^https?:\/\//i.test(s.url))
-    .map((s) => ({
-      streamUrl: s.url,
-      referrer: s.referrer || null,
-      userAgent: s.user_agent || null,
-      quality: s.quality || null,
-      labels: s.labels || [],
-      _score: candidateScore(s, channel.streamUrl),
-    }))
-    .sort((a, b) => b._score - a._score)
-    .map(({ _score, ...candidate }) => candidate);
+  const channels = await loadChannels();
+  const channel = channels.find((item) => item.id === channelId);
+  if (!channel || !/^https?:\/\//i.test(channel.streamUrl)) return [];
+
+  return [{
+    streamUrl: channel.streamUrl,
+    referrer: null,
+    userAgent: null,
+    quality: channel.quality || null,
+    labels: [],
+  }];
 }
 
 async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolean> {
@@ -330,7 +299,8 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
   if (cached && cached.expiresAt > Date.now()) return cached.ok;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 7000);
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
   try {
     const headers = new Headers({
       Accept: "*/*",
@@ -342,6 +312,7 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
       headers,
       signal: controller.signal,
     });
+
     if (!response.ok) {
       playbackHealthCache.set(candidate.streamUrl, { ok: false, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
       return false;
@@ -350,13 +321,13 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
     const contentType = response.headers.get("content-type") || "";
     const looksLikeHls =
       /mpegurl/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
-    let ok = looksLikeHls || /video\//i.test(contentType) || /octet-stream/i.test(contentType);
+
+    let ok = /mpegurl/i.test(contentType) || /video\//i.test(contentType) || /octet-stream/i.test(contentType);
 
     if (looksLikeHls) {
       const text = await response.text();
-      ok = ok && text.includes("#EXTM3U");
+      ok = text.includes("#EXTM3U");
     } else {
-      // Avoid downloading an entire video just to verify it responds.
       try { await response.body?.cancel(); } catch {}
     }
 
@@ -378,8 +349,6 @@ export async function getIptvPlaybackInfo(channelId: string): Promise<{
   try {
     const candidates = await getIptvPlaybackCandidates(channelId);
     for (const candidate of candidates) {
-      // Labels are advisory, not an automatic rejection: a stream can still
-      // work from XoraTV's Render region, so health-check the actual endpoint.
       if (await probeIptvStream(candidate)) {
         return {
           streamUrl: candidate.streamUrl,
@@ -390,10 +359,7 @@ export async function getIptvPlaybackInfo(channelId: string): Promise<{
     }
     return null;
   } catch {
-    const channel = await getIptvChannel(channelId);
-    return channel
-      ? { streamUrl: channel.streamUrl, referrer: null, userAgent: null }
-      : null;
+    return null;
   }
 }
 
