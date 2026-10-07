@@ -42,7 +42,7 @@ export const Route = createFileRoute("/tv")({
 });
 
 async function loadChannels(query: string): Promise<Channel[]> {
-  const params = new URLSearchParams({ limit: "100" });
+  const params = new URLSearchParams({ limit: "10000" });
   if (query.trim()) params.set("q", query.trim());
   const res = await fetch("/api/tv/channels?" + params.toString());
   if (!res.ok) throw new Error("Unable to load live channels");
