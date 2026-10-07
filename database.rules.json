@@ -3,32 +3,44 @@
     "profiles": {
       ".read": true,
       "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid && (!newData.hasChild('id') || newData.child('id').val() === $uid) && (!data.exists() || !newData.hasChild('id') || data.child('id').val() === newData.child('id').val()) && (!newData.hasChild('is_admin') || newData.child('is_admin').val() !== true || root.child('admins').child(auth.uid).val() === true)"
       }
     },
     "usernames": {
       ".read": true,
-      ".write": "auth != null"
+      "$username": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && (!newData.exists() || newData.val() === auth.uid)))"
+      }
     },
     "posts": {
       ".read": true,
+      ".indexOn": ["created_at", "feed", "author_id", "status"],
       "$postId": {
-        ".write": "auth != null"
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('author_id').val() === auth.uid) || (!newData.exists() && data.child('author_id').val() === auth.uid) || (data.exists() && newData.exists() && data.child('author_id').val() === auth.uid && (!newData.hasChild('author_id') || newData.child('author_id').val() === auth.uid)))"
       }
     },
     "postsByFeed": {
       ".read": true,
-      ".write": "auth != null"
+      "$feed": {
+        "$postId": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('posts').child($postId).child('author_id').val() === auth.uid)"
+        }
+      }
     },
     "comments": {
       ".read": true,
       "$postId": {
-        ".write": "auth != null"
+        ".write": "auth != null && (root.child('posts').child($postId).child('author_id').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+        "$commentId": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('author_id').val() === auth.uid) || (!newData.exists() && (data.child('author_id').val() === auth.uid || root.child('posts').child($postId).child('author_id').val() === auth.uid)) || (data.exists() && newData.exists() && data.child('author_id').val() === auth.uid && (!newData.hasChild('author_id') || newData.child('author_id').val() === auth.uid)))",
+          ".validate": "newData.hasChildren(['author_id', 'body']) && newData.child('author_id').isString() && newData.child('body').isString() && newData.child('body').val().length > 0"
+        }
       }
     },
     "likes": {
       ".read": true,
       "$postId": {
+        ".write": "auth != null && (root.child('posts').child($postId).child('author_id').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
         "$uid": {
           ".write": "auth != null && auth.uid == $uid"
         }
@@ -43,41 +55,58 @@
     "notifications": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null"
+        "$notifId": {
+          ".write": "auth != null && (auth.uid == $uid || (!data.exists() && (newData.child('actor_id').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)))",
+          ".validate": "newData.hasChildren(['id', 'user_id', 'actor_id', 'kind', 'read', 'created_at']) && newData.child('user_id').val() === $uid"
+        }
       }
     },
     "mediaIndex": {
       ".read": true,
-      ".write": "auth != null"
+      "$bucket": {
+        "$keyHash": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('ownerId').val() === auth.uid) || (data.exists() && data.child('ownerId').val() === auth.uid))"
+        }
+      }
     },
     "discovery_runs": {
-      ".read": true,
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".indexOn": ["started_at", "source"]
     },
     "movies": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".indexOn": ["genre", "year", "created_at"]
     },
     "crawler": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "candidates": {
+        ".indexOn": ["status", "created_at"]
+      }
     },
     "chatRooms": {
       "$roomId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (data.child('memberIds').child(auth.uid).val() === true || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('created_by').val() === auth.uid && newData.child('memberIds').child(auth.uid).val() === true) || (data.exists() && data.child('memberIds').child(auth.uid).val() === true && (!newData.exists() || (newData.child('memberIds').child(auth.uid).val() === true && newData.child('created_by').val() === data.child('created_by').val() && newData.child('id').val() === data.child('id').val()))))"
       }
     },
     "userChatRooms": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        "$roomId": {
+          ".write": "auth != null && (auth.uid == $uid || root.child('chatRooms').child($roomId).child('memberIds').child(auth.uid).val() === true || root.child('admins').child(auth.uid).val() === true)"
+        }
       }
     },
     "chatMessages": {
       "$roomId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (root.child('chatRooms').child($roomId).child('memberIds').child(auth.uid).val() === true || root.child('admins').child(auth.uid).val() === true)",
+        "$messageId": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (root.child('chatRooms').child($roomId).child('memberIds').child(auth.uid).val() === true && (!newData.exists() || (newData.child('senderId').val() === auth.uid && (!data.exists() || data.child('senderId').val() === auth.uid)))))",
+          ".validate": "newData.hasChildren(['id', 'roomId', 'senderId', 'text', 'created_at']) && newData.child('senderId').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0"
+        }
       }
     },
     "admins": {
@@ -97,7 +126,7 @@
     },
     "xseris": {
       ".read": true,
-      ".write": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "mediaItems": {
         ".indexOn": ["status", "source_provider", "created_at"]
       },
@@ -108,7 +137,7 @@
     },
     "xseries": {
       ".read": true,
-      ".write": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "mediaItems": {
         ".indexOn": ["status", "source_provider", "created_at"]
       },
@@ -119,9 +148,78 @@
     },
     "xtvSeries": {
       ".read": true,
-      ".write": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "items": {
         ".indexOn": ["genre", "tag", "createdAt"]
+      }
+    },
+    "presence": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$sessionId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['sessionId', 'userId', 'displayName', 'startedAt', 'lastSeenAt', 'isOnline']) && newData.child('sessionId').isString() && newData.child('startedAt').isNumber() && newData.child('lastSeenAt').isNumber() && newData.child('isOnline').isBoolean()"
+      }
+    },
+    "presenceHistory": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$sessionId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['sessionId', 'userId', 'durationSeconds', 'endedAt']) && newData.child('durationSeconds').isNumber()"
+      }
+    },
+    "userEvents": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "userSignals": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "fraud": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "heartbeats": {
+        "$session": {
+          "$nonce": {
+            ".read": true,
+            ".write": true
+          }
+        }
+      },
+      "rateLimits": {
+        "$type": {
+          "$key": {
+            "$bucket": {
+              ".read": true,
+              ".write": true
+            }
+          }
+        }
+      },
+      "events": {
+        "$eventId": {
+          ".write": true
+        }
+      },
+      "devices": {
+        "$deviceId": {
+          ".write": true
+        }
+      },
+      "combinedReports": {
+        "$reportId": {
+          ".write": true
+        }
+      },
+      "enforcementDecisions": {
+        "$decisionId": {
+          ".read": true,
+          ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+        }
       }
     }
   }
