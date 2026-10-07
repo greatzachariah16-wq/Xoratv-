@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   Bell,
   BarChart3,
@@ -17,6 +18,8 @@ import {
   Gift,
   Radio,
   Baby,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -56,6 +59,7 @@ export function AppShell({
   const { user, profile, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const unread = useUnreadCount();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: walletData } = useQuery(walletQuery(user?.id));
 
   const currentProfile =
@@ -237,37 +241,94 @@ export function AppShell({
           <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
             <Search className="size-5" aria-hidden="true" />
           </Link>
-          <Link to="/wallet" aria-label={`Xora Wallet${user ? `, ₦${Number(walletData?.wallet?.balance || 0).toLocaleString()}` : ""}`} className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
+          <Link to="/wallet" aria-label="Xora Wallet" className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
             <Wallet className="size-5" aria-hidden="true" />
             {user && Number(walletData?.wallet?.balance || 0) > 0 ? <span className="absolute right-1 top-1 min-w-2 rounded-full bg-primary px-1 text-[8px] font-bold leading-3 text-primary-foreground">{Number(walletData?.wallet?.balance || 0) >= 1000 ? "₦+" : "₦"}</span> : null}
           </Link>
-          <Link
-            to="/notifications"
-            aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-            className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary"
-          >
+          <Link to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
             <Bell className="size-5" aria-hidden="true" />
             {unread > 0 ? <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
           </Link>
-          <Link to="/settings" aria-label="Settings" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <Settings className="size-5" aria-hidden="true" />
-          </Link>
-          {currentProfile ? (
-            <Link to="/profile/$username" params={{ username: currentProfile.username }} aria-label="Your profile" className="press ml-0.5 grid size-11 place-items-center">
-              <UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={32} />
-            </Link>
-          ) : (
-            <Link to="/auth" aria-label="Sign in" className="press ml-0.5 grid size-11 place-items-center">
-              <UserAvatar size={32} />
-            </Link>
-          )}
+          <button
+            type="button"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className={cn(
+              "press grid size-11 place-items-center rounded-2xl border shadow-sm transition-all",
+              mobileMenuOpen
+                ? "border-primary/30 bg-primary text-primary-foreground shadow-card"
+                : "border-primary/15 bg-primary/5 text-primary hover:bg-primary/10",
+            )}
+          >
+            {mobileMenuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
+          </button>
         </div>
       </header>
+
+      {mobileMenuOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
+          <div className="absolute inset-x-3 top-[4.25rem] overflow-hidden rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-2 rounded-[1.1rem] bg-gradient-to-r from-primary/10 via-primary/5 to-secondary p-3">
+              <p className="font-display text-sm font-semibold">Explore XoraTV</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Everything you need, one tap away.</p>
+            </div>
+            <nav aria-label="Mobile navigation" className="grid grid-cols-2 gap-1">
+              {NAV.map(({ to, label, icon: Icon }) => {
+                const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium",
+                      active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary",
+                    )}
+                  >
+                    <span className={cn("grid size-9 place-items-center rounded-xl", active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
+                      <Icon className="size-4.5" aria-hidden="true" />
+                    </span>
+                    {label}
+                  </Link>
+                );
+              })}
+              <Link to="/rewards" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Gift className="size-4.5" aria-hidden="true" /></span>
+                Rewards
+              </Link>
+              <Link to="/search" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Search className="size-4.5" aria-hidden="true" /></span>
+                Search
+              </Link>
+              <Link to="/wallet" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Wallet className="size-4.5" aria-hidden="true" /></span>
+                Xora Wallet
+              </Link>
+              {currentProfile ? (
+                <Link to="/profile/$username" params={{ username: currentProfile.username }} onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                  <span className="grid size-9 place-items-center overflow-hidden rounded-xl bg-secondary"><UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={30} /></span>
+                  Profile
+                </Link>
+              ) : (
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                  <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><User className="size-4.5" aria-hidden="true" /></span>
+                  Sign in
+                </Link>
+              )}
+              <Link to="/settings" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Settings className="size-4.5" aria-hidden="true" /></span>
+                Settings
+              </Link>
+            </nav>
+          </div>
+        </div>
+      ) : null
 
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
           className={cn(
-            "mx-auto px-4 pb-28 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            "mx-auto px-4 pb-20 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
@@ -276,7 +337,7 @@ export function AppShell({
       </main>
 
       {/* Fixed Global Bottom Adsterra Banner — pinned above the mobile navigation and at the bottom on desktop */}
-      <div className="fixed bottom-[68px] left-0 right-0 z-40 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all lg:bottom-0 lg:left-[248px] lg:border-b-0 xl:right-[320px]">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all lg:bottom-0 lg:left-[248px] lg:border-b-0 xl:right-[320px]">
         <div
           className={cn(
             "mx-auto flex min-h-[50px] items-center justify-center",
