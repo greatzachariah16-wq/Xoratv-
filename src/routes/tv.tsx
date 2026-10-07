@@ -125,7 +125,7 @@ function LiveTvPage() {
         <>
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
           <NativeVideoPlayer
-            streamUrl={selected.streamUrl}
+            streamUrl={`/api/tv/stream?provider=nexus&channel=${encodeURIComponent(selected.id)}&url=${encodeURIComponent(selected.streamUrl)}`}
             externalPoster={selected.logo}
             title={selected.name}
             liveTv
