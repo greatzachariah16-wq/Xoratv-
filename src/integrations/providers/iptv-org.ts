@@ -184,22 +184,34 @@ export async function fetchIptvChannels(options?: {
       return true;
     });
 
-    const result: IptvChannel[] = filtered.slice(0, limit).map((channel) => ({
+    const candidatesToVerify = filtered.slice(0, Math.min(filtered.length, Math.max(limit * 3, 30)));
+    const verified = await Promise.all(
+      candidatesToVerify.map(async (channel) => {
+        const playback = await getIptvPlaybackInfo(channel.id);
+        return playback ? { channel, playback } : null;
+      }),
+    );
+    const playable = verified.filter(
+      (entry): entry is { channel: Parsed; playback: NonNullable<Awaited<ReturnType<typeof getIptvPlaybackInfo>>> } =>
+        Boolean(entry),
+    );
+
+    const result: IptvChannel[] = playable.slice(0, limit).map(({ channel, playback }) => ({
       id: channel.id,
       name: channel.name,
       country: channel.country,
       categories: [categoryFromGroup(channel.group)],
       network: null,
       logo: channel.logo,
-      streamUrl: channel.streamUrl,
+      streamUrl: playback.streamUrl,
       streamTitle: channel.name,
       quality: channel.quality,
-      referrer: null,
-      userAgent: null,
+      referrer: playback.referrer,
+      userAgent: playback.userAgent,
       labels: [],
     }));
 
-    return { ok: true, total: filtered.length, channels: result };
+    return { ok: true, total: playable.length, channels: result };
   } catch (err) {
     return {
       ok: false,
