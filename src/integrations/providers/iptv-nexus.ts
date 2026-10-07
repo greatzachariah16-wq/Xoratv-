@@ -213,7 +213,7 @@ export async function getNexusPlaybackCandidates(channelId: string, limit = 3): 
   const channel = all.find((item) => item.id === channelId);
   if (!channel) return [];
   return (channel.streams || [])
-    .filter((stream) => stream?.url && /^https?:\\/\\//i.test(stream.url) && (stream.health?.status === undefined || stream.health.status === "online"))
+    .filter((stream) => stream?.url && /^https?:\/\//i.test(stream.url) && (stream.health?.status === undefined || stream.health.status === "online"))
     .sort((a, b) => (b.health?.score || 0) - (a.health?.score || 0) || (b.rank || 0) - (a.rank || 0))
     .slice(0, Math.max(1, limit))
     .map((stream) => ({ streamUrl: stream.url!, referrer: stream.referrer || null, userAgent: stream.user_agent || null }));
