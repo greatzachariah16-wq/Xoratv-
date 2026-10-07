@@ -121,7 +121,7 @@ function LiveTvPage() {
         <>
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
           <NativeVideoPlayer
-            streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/${/\.m3u8(?:[?#]|$)/i.test(selected.streamUrl) ? "index.m3u8" : "index.mp4"}?provider=nexus&channel=${encodeURIComponent(selected.id)}&attempt=0`}
+            streamUrl={/\.m3u8(?:[?#]|$)/i.test(selected.streamUrl) ? selected.streamUrl : `/api/tv/stream/${encodeURIComponent(selected.id)}/index.mp4?provider=nexus&channel=${encodeURIComponent(selected.id)}&attempt=0`}
             externalPoster={selected.logo}
             title={selected.name}
             liveTv
