@@ -6,6 +6,7 @@ import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
 
 type Channel = {
   id: string;
@@ -90,6 +91,7 @@ function LiveTvPage() {
 
   return (
     <AppShell>
+      <CpxLiveTvGate>
       <header className="mb-5">
         <div className="flex items-center gap-2">
           <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -221,6 +223,7 @@ function LiveTvPage() {
           ))}
         </div>
       </section>
+      </CpxLiveTvGate>
     </AppShell>
   );
 }
