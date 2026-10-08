@@ -20,6 +20,7 @@ import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo } from "./inte
 import { fetchNexusChannels, getNexusChannel, getNexusGuide } from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
+import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
 
 const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
 let shortsVerificationRunning = false;
@@ -463,6 +464,13 @@ export default {
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
+    // CPX Research Live Channels access gate and server-side postback.
+    // This gate is independent from the IPTV player/stream endpoints below.
+    if (url.pathname.startsWith("/api/cpx/live-tv")) {
+      const cpxRes = await handleCpxLiveTvRoute(request, url);
+      if (cpxRes) return cpxRes;
     }
 
     // Direct Root Static Files (sw.js, robots.txt, manifest, etc.)
