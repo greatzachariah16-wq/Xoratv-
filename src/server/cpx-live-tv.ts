@@ -5,7 +5,7 @@ const DEFAULT_DB_URL = "https://xora-tv-default-rtdb.firebaseio.com";
 type Entitlement = {
   unlocked: boolean;
   source: "cpx";
-  unlockedAt: string;
+  unlockedAt?: string;
   updatedAt: string;
   completions?: Record<string, { status: number; completedAt: string }>;
 };
