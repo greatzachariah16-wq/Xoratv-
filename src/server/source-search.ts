@@ -18,6 +18,7 @@ type SourceResult = {
   mediaCandidates: MediaCandidate[];
   playbackCheck: "not-checked" | "media-found" | "request-ok" | "request-failed";
   crawlDepth: number;
+  browserError?: string;
 };
 type IndexedPage = SourceResult & { indexedAt: number; queryTokens: string[] };
 
@@ -305,6 +306,20 @@ async function inspectPages(seeds: SourceResult[], query: string, maxPages: numb
       } finally {
         await page.close().catch(() => {});
       }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[XoraTV Source Lab] headless browser unavailable; returning search-only results:", message);
+    // Keep discovery usable if Render cannot launch Chromium. Search results remain visible,
+    // but are clearly marked as uninspected rather than pretending media was verified.
+    for (const item of queue) {
+      if (visited.has(item.result.url) || inspected.some((result) => result.url === item.result.url)) continue;
+      item.result.inspected = false;
+      item.result.browserError = message.slice(0, 240);
+      item.result.pageKind = "Search result only — headless browser unavailable";
+      item.result.playbackCheck = "not-checked";
+      addToIndex(item.result, query);
+      inspected.push(item.result);
     }
   } finally {
     await browser?.close().catch(() => {});
