@@ -54,8 +54,8 @@ function KidsCartoonWatchPage() {
   const canLoadEpisode = validSeason && validEpisode;
   const playerUrl = item.id
     ? provider === "anilist"
-      ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
-      : `https://embed.vidrift.net/embed/tv/${encodeURIComponent(item.id)}/${loadedSeason}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
+      ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&hide=episodes`
+      : `https://embed.vidrift.net/embed/tv/${encodeURIComponent(item.id)}/${loadedSeason}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&hide=episodes`
     : "";
 
   const loadEpisode = () => {
@@ -127,7 +127,7 @@ function KidsCartoonWatchPage() {
             <div>
               <h2 className="font-display text-base font-semibold">Choose an episode</h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Enter the season and episode, then load your selection in the player without using the embedded episode list.
+                Enter the season and episode, then load your selection in the player.
               </p>
             </div>
             <div className={provider === "anilist" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
