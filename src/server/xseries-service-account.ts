@@ -340,3 +340,38 @@ export async function xseriesDbWrite(
 
   await Promise.all(promises);
 }
+
+
+/**
+ * Authenticated server-only write helper for Firebase Realtime Database.
+ * Unlike the browser SDK, this uses the configured service account and
+ * fails loudly when credentials or database permissions are incorrect.
+ */
+export async function writeFirebaseAdmin(
+  path: string,
+  data: unknown,
+  method: "PUT" | "PATCH" | "DELETE" = "PUT",
+): Promise<unknown> {
+  const base = getCleanDbUrl();
+  const token = await getFirebaseAccessToken();
+  if (!base) throw new Error("Firebase database URL is not configured.");
+  if (!token) throw new Error("Firebase service-account token unavailable; check FIREBASE_SERVICE_ACCOUNT in Render.");
+
+  const cleanPath = path.replace(/^\\/+|\\/+$/g, "");
+  const url = `${base}/${cleanPath}.json`;
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    ...(method === "DELETE" ? {} : { body: JSON.stringify(data) }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => "")).slice(0, 500);
+    throw new Error(`Firebase admin write failed (${response.status}) at /${cleanPath}: ${detail}`);
+  }
+  if (response.status === 204) return null;
+  return response.json().catch(() => null);
+}
