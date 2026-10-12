@@ -164,10 +164,19 @@ async function inspectPages(seeds: SourceResult[], query: string, maxPages: numb
   const inspected: SourceResult[] = [];
   let browser: import("puppeteer").Browser | null = null;
   try {
-    const puppeteer = await import("puppeteer");
+    const [puppeteer, chromiumModule] = await Promise.all([
+      import("puppeteer"),
+      import("@sparticuz/chromium"),
+    ]);
+    const chromium = chromiumModule.default;
+    chromium.setGraphicsMode = false;
+    const executablePath = await chromium.executablePath();
     browser = await puppeteer.default.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+      executablePath,
+      headless: "shell",
+      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+      defaultViewport: chromium.defaultViewport,
+      timeout: 20000,
     });
     while (queue.length && inspected.length < maxPages) {
       const item = queue.shift()!;
@@ -364,10 +373,20 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown discovery error";
+    console.error("[XoraTV Source Lab] discovery failed:", error);
+    const runtimeHint = /executable|enoent|chromium|chrome/i.test(message)
+      ? "Chromium could not start. The serverless Chromium binary or its runtime libraries may be unavailable."
+      : /timed out|abort/i.test(message)
+        ? "The search or page inspection timed out. Try again with a smaller result limit."
+        : "Check the server logs for the recorded browser-runtime error.";
     return Response.json({
-      ok: false, query,
-      error: message.includes("timed out") || message.includes("abort") ? "The web search or page inspection timed out. Try again." : "Could not run the headless discovery pass. Check the browser runtime and try again.",
-      detail: process.env.NODE_ENV === "development" ? message : undefined,
+      ok: false,
+      query,
+      error: /timed out|abort/i.test(message)
+        ? "The web search or page inspection timed out. Try again."
+        : "Could not run the headless discovery pass.",
+      runtimeHint,
+      runtimeError: message.slice(0, 240),
     }, { status: 502 });
   }
 }
