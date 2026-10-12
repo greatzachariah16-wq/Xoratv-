@@ -132,7 +132,7 @@ function KidsPage() {
           {filteredCartoons.length ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {filteredCartoons.map((cartoon) => (
-                <button key={cartoon.id} type="button" onClick={() => { setSelectedCartoon(cartoon); setSeason(1); setEpisode(1); }} className={`group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 hover:shadow-md ${selectedCartoon?.id === cartoon.id ? "border-primary ring-2 ring-primary/15" : "border-border/70"}`}>
+                <button key={cartoon.id} type="button" onClick={() => { setSelectedCartoon(cartoon); setSeason(1); setEpisode(1); setDraftSeason(1); setDraftEpisode(1); }} className={`group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 hover:shadow-md ${selectedCartoon?.id === cartoon.id ? "border-primary ring-2 ring-primary/15" : "border-border/70"}`}>
                   <div className={`relative grid aspect-[4/3] place-items-center overflow-hidden bg-gradient-to-br ${cartoon.artClass} p-4`}>
                     <span className="absolute -right-4 -top-5 size-20 rounded-full bg-white/35 blur-xl" />
                     <span className="relative grid size-14 place-items-center rounded-2xl border border-white/70 bg-white/65 text-primary shadow-sm backdrop-blur"><Baby className="size-7" /></span>
