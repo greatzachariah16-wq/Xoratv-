@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Film, Play, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ type WatchSearch = {
   posterUrl?: string;
 };
 
-export const Route = createFileRoute("/kids/watch")({
+export const Route = createFileRoute("/kids_/watch")({
   validateSearch: (search: Record<string, unknown>): WatchSearch => ({
     id: typeof search.id === "string" ? search.id : undefined,
     provider: typeof search.provider === "string" ? search.provider : undefined,
@@ -38,6 +38,7 @@ export const Route = createFileRoute("/kids/watch")({
 });
 
 function KidsCartoonWatchPage() {
+  const navigate = useNavigate();
   const item = Route.useSearch();
   const title = item.title || "Cartoon";
   const provider = item.provider === "anilist" ? "anilist" : "tmdb";
@@ -55,7 +56,7 @@ function KidsCartoonWatchPage() {
     <AppShell wide>
       <main className="mx-auto w-full max-w-[1440px] space-y-5 pb-10">
         <div className="flex items-center justify-between gap-3">
-          <Button type="button" variant="ghost" className="-ml-2 rounded-full" onClick={() => { window.location.href = "/kids"; }}>
+          <Button type="button" variant="ghost" className="-ml-2 rounded-full" onClick={() => { void navigate({ to: "/kids" }); }}>
             <ArrowLeft className="mr-2 size-4" /> Back to cartoons
           </Button>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
@@ -81,7 +82,7 @@ function KidsCartoonWatchPage() {
               <Film className="size-10 text-violet-300" />
               <p className="font-semibold">Cartoon not found</p>
               <p className="text-sm text-white/65">Return to the library and choose a cartoon to watch.</p>
-              <Button onClick={() => { window.location.href = "/kids"; }} className="mt-2 rounded-xl">
+              <Button onClick={() => { void navigate({ to: "/kids" }); }} className="mt-2 rounded-xl">
                 Browse cartoons
               </Button>
             </div>
