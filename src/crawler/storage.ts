@@ -10,10 +10,9 @@
  */
 
 import type { DiscoveredCandidate, CrawlerRunSummary, CrawlerCategory } from "./types.ts";
-import { ref, get } from "firebase/database";
-import { rtdb, isFirebaseConfigured } from "@/integrations/firebase/config";
+import { isFirebaseConfigured } from "@/integrations/firebase/config";
 import { pathSafe, hashKey, sanitizeForRtdb } from "@/integrations/firebase/rtdb";
-import { writeFirebaseAdmin } from "@/server/xseries-service-account";
+import { queryRtdb, writeFirebaseAdmin } from "@/server/xseries-service-account";
 
 export interface CandidateQueryFilters {
   category?: CrawlerCategory | undefined;
@@ -111,9 +110,9 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
     }
     try {
       const safeId = pathSafe(id);
-      const snap = await get(ref(rtdb, `crawler/candidates/${safeId}`));
-      if (snap.exists()) {
-        return snap.val() as DiscoveredCandidate;
+      const value = await queryRtdb(`crawler/candidates/${safeId}`);
+      if (value && typeof value === "object") {
+        return value as DiscoveredCandidate;
       }
     } catch (err) {
       console.warn("[Crawler RTDB] Get candidate error:", err);
@@ -127,8 +126,8 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
     }
     try {
       const urlHash = hashKey(sourceUrl);
-      const snap = await get(ref(rtdb, `crawler/sourceUrls/${urlHash}`));
-      if (snap.exists()) {
+      const value = await queryRtdb(`crawler/sourceUrls/${urlHash}`);
+      if (value === true || (value !== null && value !== undefined)) {
         return true;
       }
     } catch (err) {
@@ -144,9 +143,8 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
       return this.memoryFallback.listCandidates(filters);
     }
     try {
-      const snap = await get(ref(rtdb, "crawler/candidates"));
-      if (snap.exists()) {
-        const val = snap.val();
+      const val = await queryRtdb("crawler/candidates");
+      if (val && typeof val === "object") {
         let list = Object.values(val) as DiscoveredCandidate[];
 
         if (filters?.category) {
