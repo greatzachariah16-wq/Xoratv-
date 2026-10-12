@@ -75,7 +75,8 @@
     "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2",
     "mongodb": "^6.20.0",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "puppeteer": "^25.10.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -96,7 +97,6 @@
     "nitro": "3.0.260603-beta",
     "postgres": "^3.4.9",
     "prettier": "^3.7.3",
-    "puppeteer": "^25.10.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5"
