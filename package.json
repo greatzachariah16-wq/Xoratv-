@@ -76,7 +76,8 @@
     "zod": "^3.24.2",
     "mongodb": "^6.20.0",
     "ffmpeg-static": "^5.2.0",
-    "puppeteer": "^25.10.0"
+    "puppeteer": "^25.10.0",
+    "@sparticuz/chromium": "153.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
