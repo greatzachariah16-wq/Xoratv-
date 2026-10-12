@@ -162,7 +162,7 @@ async function inspectPages(seeds: SourceResult[], query: string, maxPages: numb
   const queue: Array<{ result: SourceResult; depth: number }> = seeds.slice(0, maxPages).map((result) => ({ result, depth: 0 }));
   const visited = new Set<string>();
   const inspected: SourceResult[] = [];
-  let browser: Awaited<ReturnType<(typeof import("puppeteer"))["default"]["launch"]>> | null = null;
+  let browser: import("puppeteer").Browser | null = null;
   try {
     const puppeteer = await import("puppeteer");
     browser = await puppeteer.default.launch({
@@ -321,7 +321,7 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
   if (url.pathname !== "/api/source-search") return null;
   if (request.method !== "GET") return Response.json({ ok: false, error: "Use GET for source searches." }, { status: 405 });
   const query = (url.searchParams.get("q") || "").trim().slice(0, 180);
-  const limit = Math.min(12, Math.max(1, Number(url.searchParams.get("limit") || "8")));
+  const limit = Math.min(8, Math.max(1, Number(url.searchParams.get("limit") || "8")));
   if (query.length < 2) return Response.json({ ok: false, error: "Enter at least 2 characters to search." }, { status: 400 });
 
   const startedAt = Date.now();
@@ -336,10 +336,10 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
     const combined = new Map<string, SourceResult>();
     for (const result of [...indexedMatches, ...fresh]) if (!combined.has(result.url)) combined.set(result.url, result);
     const seeds = [...combined.values()].slice(0, Math.min(6, limit));
-    const inspected = await inspectPages(seeds, query, Math.min(6, Math.max(3, limit)));
+    const inspected = await inspectPages(seeds, query, Math.min(8, Math.max(3, limit + 2)));
     for (const result of fresh) if (!result.inspected) addToIndex(result, query);
     const all = new Map<string, SourceResult>();
-    for (const result of [...inspected, ...fresh, ...indexedMatches]) {
+    for (const result of inspected) {
       const previous = all.get(result.url);
       if (!previous || (!previous.inspected && result.inspected) || (previous.playbackCheck !== "request-ok" && result.playbackCheck === "request-ok")) all.set(result.url, result);
     }
