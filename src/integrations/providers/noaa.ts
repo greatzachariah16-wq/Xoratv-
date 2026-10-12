@@ -37,6 +37,7 @@ async function getParentMetadata(postId: number): Promise<ParentMetadata | null>
       `https://oceanexplorer.noaa.gov/wp-json/wp/v2/multimedia/${postId}?_embed=1`,
       {
         headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
       },
     );
 
@@ -93,6 +94,7 @@ export async function searchNoaaWithStatus(params: ProviderSearchParams): Promis
         Accept: "application/json",
         "User-Agent": "XoraTV-Discovery/1.0 (Deep-Sea Media Connector)",
       },
+      signal: AbortSignal.timeout(12000),
     });
 
     if (!res.ok) {

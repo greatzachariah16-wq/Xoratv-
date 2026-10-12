@@ -115,7 +115,10 @@ export async function executeVimeoApiSearch(params: ProviderSearchParams): Promi
 
     if (directId) {
       try {
-        const directRes = await fetch(`https://api.vimeo.com/videos/${directId}`, { headers });
+        const directRes = await fetch(`https://api.vimeo.com/videos/${directId}`, {
+          headers,
+          signal: AbortSignal.timeout(12000),
+        });
         if (directRes.ok) {
           const item = (await directRes.json()) as VimeoRawItem;
           const candidate = formatVimeoItem(item);
@@ -137,7 +140,10 @@ export async function executeVimeoApiSearch(params: ProviderSearchParams): Promi
     const searchUrl = `https://api.vimeo.com/videos?query=${encodeURIComponent(query)}&per_page=${limit}`;
 
     try {
-      const res = await fetch(searchUrl, { headers });
+      const res = await fetch(searchUrl, {
+        headers,
+        signal: AbortSignal.timeout(12000),
+      });
 
       if (!res.ok) {
         const errBody = await res.text().catch(() => "");

@@ -135,7 +135,7 @@ function AuthPage() {
         }),
       );
       toast.success("Signed in with Google");
-      window.location.href = "/";
+      void navigate({ to: "/" });
       return;
     }
 
