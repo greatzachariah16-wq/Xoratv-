@@ -1,9 +1,7 @@
 import { spawn } from "node:child_process";
 import type { PostRecord } from "@/integrations/firebase/types";
-import {
-  getAllPosts,
-  setPostRecord,
-} from "@/integrations/firebase/rtdb";
+import { getAllPosts } from "@/integrations/firebase/rtdb";
+import { writeFirebaseAdmin } from "@/server/xseries-service-account";
 import { getAdaptiveStreamingUrl } from "@/lib/cloudinary";
 
 export type ShortsVerificationStatus = "playable" | "unplayable" | "unverified";
@@ -240,13 +238,16 @@ export async function runShortsVerification(): Promise<{
           ? "unplayable"
           : post.playability_status || "unverified";
 
-    await setPostRecord({
-      ...post,
+    // This verifier runs on the server. Persist only the verification fields through
+    // the service-account writer; the browser Firebase SDK is denied for these writes
+    // by the database rules, and a full set() would also rewrite unrelated post fields.
+    const safePostId = post.id.replace(/[.#$\[\]\/]/g, "_");
+    await writeFirebaseAdmin(`posts/${safePostId}`, {
       playability_status: nextStatus,
       playability_checked_at: result.checkedAt,
       playability_failure_count: result.status === "playable" ? 0 : previousFailures + 1,
       playability_error: result.status === "playable" ? null : result.error || null,
-    });
+    }, "PATCH");
   });
 
   return {
