@@ -60,22 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // ignore quota error
           }
         } else {
-          // Check for stored authenticated user or local demo account session
-          const stored =
-            localStorage.getItem("xora_auth_user") || localStorage.getItem("xora_demo_user");
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (parsed?.user?.id) {
-                setSession(parsed);
-              } else {
-                setSession(null);
-              }
-            } catch {
-              setSession(null);
-            }
-          } else {
-            setSession(null);
+          // Firebase Auth is authoritative when Firebase is configured.
+          // A cached profile is not proof of an authenticated Firebase session.
+          setSession(null);
+          try {
+            localStorage.removeItem("xora_auth_user");
+          } catch {
+            // Ignore storage access errors.
           }
         }
         setLoading(false);
