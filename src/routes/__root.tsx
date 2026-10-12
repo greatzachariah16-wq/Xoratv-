@@ -42,12 +42,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
+    // Report the route error, but do not automatically invalidate/reset the
+    // entire router for generic cross-origin script errors from ad providers.
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-    if (error?.message === "Script error." || error?.message?.includes("Script error")) {
-      router.invalidate();
-      reset();
-    }
-  }, [error, reset, router]);
+  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
