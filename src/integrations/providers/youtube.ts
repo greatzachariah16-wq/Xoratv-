@@ -88,7 +88,7 @@ export async function executeYouTubeApiSearch(
 
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`,
-      { headers },
+      { headers, signal: AbortSignal.timeout(12000) },
     );
 
     if (!res.ok) {
@@ -144,7 +144,7 @@ export async function executeYouTubeApiSearch(
         });
         const detailsRes = await fetch(
           `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`,
-          { headers },
+          { headers, signal: AbortSignal.timeout(12000) },
         );
         if (detailsRes.ok) {
           const detailsData = await detailsRes.json();
