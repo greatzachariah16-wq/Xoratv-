@@ -230,7 +230,25 @@ export async function queryRtdb(path: string, init?: RequestInit): Promise<unkno
 
     if (res.status === 401 || res.status === 403) {
       const errText = await res.text().catch(() => "");
-      console.warn(`[Firebase RTDB] Auth error HTTP ${res.status} for ${cleanPath}:`, errText);
+      let safeDetail = errText.slice(0, 700).replace(/\\s+/g, " ").trim();
+      try {
+        const parsed = JSON.parse(errText) as { error?: { code?: number; message?: string; status?: string } | string };
+        safeDetail = typeof parsed.error === "object" && parsed.error
+          ? JSON.stringify({ code: parsed.error.code, message: parsed.error.message, status: parsed.error.status })
+          : typeof parsed.error === "string" ? parsed.error.slice(0, 500) : safeDetail;
+      } catch {
+        // Keep the compact raw response when it isn't JSON.
+      }
+      let databaseHost = "invalid-url";
+      try { databaseHost = new URL(base).host; } catch { /* omit malformed URL */ }
+      console.error("[Firebase RTDB] Request rejected:", {
+        httpStatus: res.status,
+        firebaseDetail: safeDetail,
+        databaseHost,
+        oauthTokenObtained: Boolean(token),
+        serviceAccountParsed: Boolean(parseServiceAccount()),
+        path: cleanPath,
+      });
       // If auth fails, use local fallback instead of crashing
       const fallbackVal = readLocalFallback(cleanPath);
       if (fallbackVal !== null && fallbackVal !== undefined) {
