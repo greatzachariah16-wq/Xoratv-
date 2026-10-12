@@ -158,7 +158,7 @@ export function getLocalStore() {
 // Execute RTDB query with graceful fallback
 export async function queryRtdb(path: string, init?: RequestInit): Promise<unknown> {
   const base = getCleanDbUrl();
-  const cleanPath = path.replace(/^\/+|\/+$/g, "");
+  const cleanPath = path.replace(/^[/]+|[/]+$/g, "");
   const token = await getFirebaseAccessToken();
   const secret = process.env.FIREBASE_DATABASE_SECRET;
 
