@@ -191,7 +191,7 @@ async function inspectPages(seeds: SourceResult[], query: string, maxPages: numb
           }).catch(() => request.abort().catch(() => {}));
         });
         await page.goto(item.result.url, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(450).catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 450));
         const details = await page.evaluate(() => {
           const clean = (value: string | null | undefined) => (value || "").trim();
           const absolute = (value: string) => {
