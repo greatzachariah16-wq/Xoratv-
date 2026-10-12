@@ -357,7 +357,7 @@ export async function writeFirebaseAdmin(
   if (!base) throw new Error("Firebase database URL is not configured.");
   if (!token) throw new Error("Firebase service-account token unavailable; check FIREBASE_SERVICE_ACCOUNT in Render.");
 
-  const cleanPath = path.replace(/^\\/+|\\/+$/g, "");
+  const cleanPath = path.replace(/^[/]+|[/]+$/g, "");
   const url = `${base}/${cleanPath}.json`;
   const response = await fetch(url, {
     method,
