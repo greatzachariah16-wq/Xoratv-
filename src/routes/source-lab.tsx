@@ -8,7 +8,9 @@ type SourceResult = {
   title: string;
   url: string;
   snippet: string;
-  sourceType: "direct-video" | "hls" | "iptv-playlist" | "video-page" | "webpage";
+  sourceType: "direct-video" | "hls" | "iptv-playlist" | "video-page" | "social-video" | "general-webpage";
+  pageKind: string;
+  publishedYear: number | null;
   exactTitleMatch: boolean;
   host: string;
 };
@@ -17,6 +19,7 @@ type SearchResponse = {
   query?: string;
   engine?: string;
   discoveryBackend?: string;
+  yearFocus?: string;
   elapsedMs?: number;
   count?: number;
   results?: SourceResult[];
@@ -40,7 +43,8 @@ const typeInfo: Record<SourceResult["sourceType"], { label: string; icon: typeof
   hls: { label: "HLS playlist (.m3u8)", icon: ListVideo, description: "An HLS playlist URL is visible in the search result." },
   "iptv-playlist": { label: "M3U playlist", icon: ListVideo, description: "An M3U playlist URL is visible in the search result." },
   "video-page": { label: "Video / sharing page", icon: Video, description: "A known video-hosting or sharing page." },
-  webpage: { label: "Webpage — inspect needed", icon: Globe, description: "A page result; playable media has not yet been verified." },
+  "social-video": { label: "Social video page", icon: Video, description: "A social-platform page; check whether playback or embedding is available." },
+  "general-webpage": { label: "General webpage", icon: Globe, description: "Inspect this page for an embedded player or share link." },
 };
 
 function SourceLabPage() {
@@ -93,18 +97,18 @@ function SourceLabPage() {
           <div className="bg-gradient-to-br from-[#f1eaff] via-[#fffaf1] to-[#eaf7f0] p-5 sm:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7c5cfc]">Web discovery test bench</p>
             <h2 className="mt-3 max-w-2xl font-display text-2xl font-semibold tracking-tight sm:text-4xl">Search for a title. Inspect what the web returns.</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#625b70]">Try exact movie names, older films, cartoons, episode titles, or a specific format such as an HLS or M3U playlist. Results show what discovery found—not a promise that every page contains playable video.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#625b70]">Search movies released from 2000 onward. The engine biases results away from silent and black-and-white films, then labels each result by its apparent page or link type. Result metadata is a clue, not proof of playback.</p>
             <form onSubmit={(event) => void runSearch(event)} className="mt-6 flex flex-col gap-2 sm:flex-row">
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#827995]" />
-                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. The 1990s movie title" className="h-12 rounded-xl border-[#ddd4ed] bg-white pl-10 text-base" />
+                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. Inception 2010, Black Panther 2018" className="h-12 rounded-xl border-[#ddd4ed] bg-white pl-10 text-base" />
               </div>
               <Button type="submit" disabled={loading || query.trim().length < 2} className="h-12 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
                 {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Search web
               </Button>
             </form>
             <div className="mt-4 flex flex-wrap gap-2">
-              {["The Mask 1994", "The Mummy 1999", "Tom and Jerry classic cartoon", "public domain feature film"].map((example) => (
+              {["Inception 2010", "Black Panther 2018", "Extraction 2020", "Spider-Man: No Way Home 2021"].map((example) => (
                 <button key={example} type="button" disabled={loading} onClick={() => { setQuery(example); void runSearch(undefined, example); }} className="rounded-full border border-[#e2d9f0] bg-white/75 px-3 py-1.5 text-xs font-medium text-[#51466a] transition hover:border-[#7c5cfc] hover:bg-white disabled:opacity-50">{example}</button>
               ))}
             </div>
@@ -114,7 +118,7 @@ function SourceLabPage() {
             <Metric icon={Search} label="Results found" value={payload ? String(payload.count ?? 0) : "—"} />
             <Metric icon={Clock3} label="Search time" value={payload ? `${payload.elapsedMs ?? 0} ms` : "—"} />
             <Metric icon={CheckCircle2} label="Title matches" value={payload ? String(resultList.filter((item) => item.exactTitleMatch).length) : "—"} />
-            <Metric icon={Film} label="Stream URLs" value={payload ? String(resultList.filter((item) => item.sourceType === "direct-video" || item.sourceType === "hls" || item.sourceType === "iptv-playlist").length) : "—"} />
+            <Metric icon={Film} label="Direct / playlist URLs" value={payload ? String(resultList.filter((item) => item.sourceType === "direct-video" || item.sourceType === "hls" || item.sourceType === "iptv-playlist").length) : "—"} />
           </div>
         </section>
 
@@ -127,7 +131,7 @@ function SourceLabPage() {
               <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7c5cfc]">Search report</p><h2 className="mt-1 font-display text-xl font-semibold">Results for “{submittedQuery}”</h2></div>
               <span className="text-xs text-[#746b83]">{payload.count || 0} results · {payload.discoveryBackend}</span>
             </div>
-            {!resultList.length && <div className="rounded-2xl border border-dashed border-[#d9d0e8] bg-white p-8 text-center"><Search className="mx-auto size-7 text-[#a39ab3]" /><p className="mt-3 font-semibold">No results returned</p><p className="mt-1 text-sm text-[#746b83]">Try a shorter title or add the release year.</p></div>}
+            {!resultList.length && <div className="rounded-2xl border border-dashed border-[#d9d0e8] bg-white p-8 text-center"><Search className="mx-auto size-7 text-[#a39ab3]" /><p className="mt-3 font-semibold">No results returned</p><p className="mt-1 text-sm text-[#746b83]">Try a shorter title, include the release year, or search a different title from 2000 onward.</p></div>}
             <div className="space-y-3">
               {resultList.map((result, index) => {
                 const info = typeInfo[result.sourceType];
@@ -144,6 +148,8 @@ function SourceLabPage() {
                         </div>
                         <h3 className="mt-2 break-words font-semibold leading-6 text-[#292333]">{result.title}</h3>
                         <p className="mt-1 break-all text-xs text-[#7c5cfc]">{result.host}</p>
+                        <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
+                        <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
                         {result.snippet && <p className="mt-2 text-sm leading-6 text-[#625b70]">{result.snippet}</p>}
                         <p className="mt-2 text-xs leading-5 text-[#8b8299]">{info.description}</p>
                         <a href={result.url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#ddd4ed] px-3 py-2 text-xs font-semibold text-[#51466a] transition hover:border-[#7c5cfc] hover:bg-[#f8f5ff]">
@@ -161,7 +167,7 @@ function SourceLabPage() {
         )}
 
         <section className="rounded-2xl border border-[#e5deef] bg-white p-4 sm:p-5">
-          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">It measures web discovery, result quality, title matching, and visible stream-link formats. It does not yet crawl each result page or verify playback. That next stage should be added only after these initial searches return useful candidates.</p></div></div>
+          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">Searches are now biased toward movies from 2000 onward, and each result identifies its host and apparent page type (direct video, HLS, M3U, video-sharing, social video, or general webpage). The year is only detected from visible result text; this version still does not crawl pages or verify playback.</p></div></div>
         </section>
       </div>
     </main>
