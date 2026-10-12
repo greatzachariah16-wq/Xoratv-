@@ -45,6 +45,8 @@ function KidsPage() {
   const [selectedCartoon, setSelectedCartoon] = useState<CartoonSeries | null>(null);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
+  const [draftSeason, setDraftSeason] = useState(1);
+  const [draftEpisode, setDraftEpisode] = useState(1);
   const query = useQuery({
     queryKey: ["iptv-org-kids-page", search],
     queryFn: () => loadKidsChannels(search),
@@ -116,12 +118,12 @@ function KidsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-3 bg-card px-4 py-3">
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">Season
-                  <input type="number" min={1} max={30} value={season} onChange={(event) => setSeason(Math.min(30, Math.max(1, Number(event.target.value) || 1)))} className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
+                  <input type="number" min={1} max={30} value={draftSeason} onChange={(event) => setDraftSeason(Math.min(30, Math.max(1, Number(event.target.value) || 1)))} className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
                 </label>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">Episode
-                  <input type="number" min={1} max={500} value={episode} onChange={(event) => setEpisode(Math.min(500, Math.max(1, Number(event.target.value) || 1)))} className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
+                  <input type="number" min={1} max={500} value={draftEpisode} onChange={(event) => setDraftEpisode(Math.min(500, Math.max(1, Number(event.target.value) || 1)))} className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
                 </label>
-                <Button variant="outline" className="h-9 rounded-lg" onClick={() => setSelectedCartoon({ ...selectedCartoon })}><Play className="mr-2 size-3.5 fill-current" /> Load episode</Button>
+                <Button variant="outline" className="h-9 rounded-lg" onClick={() => { setSeason(draftSeason); setEpisode(draftEpisode); }}><Play className="mr-2 size-3.5 fill-current" /> Load episode</Button>
               </div>
               <p className="bg-card px-4 pb-4 text-[11px] leading-5 text-muted-foreground">Playback depends on the external source being available. If an episode does not load, try another episode or cartoon.</p>
             </div>
