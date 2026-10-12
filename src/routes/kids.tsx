@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Baby, Heart, Play, RefreshCw, Search, Sparkles, Tv, Film, X, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -75,6 +75,7 @@ async function loadKidsChannels(query: string): Promise<Channel[]> {
 }
 
 function KidsPage() {
+  const navigate = useNavigate();
   const { channel: requestedChannel } = Route.useSearch();
   const [search, setSearch] = useState("");
   const [cartoonSearch, setCartoonSearch] = useState("");
@@ -200,7 +201,7 @@ function KidsPage() {
           ) : filteredCartoons.length ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {filteredCartoons.map((cartoon) => (
-                <button key={`${cartoon.provider}-${cartoon.id}`} type="button" onClick={() => { const params = new URLSearchParams({ id: cartoon.id, provider: cartoon.provider, title: cartoon.title, year: String(cartoon.year || 0), description: cartoon.description || "", ageLabel: cartoon.ageLabel, format: cartoon.format || "", episodes: String(cartoon.episodes || 0), posterUrl: cartoon.posterUrl || "" }); window.location.href = `/kids/watch?${params.toString()}`; }} className={`group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 hover:shadow-md ${selectedCartoon?.id === cartoon.id ? "border-primary ring-2 ring-primary/15" : "border-border/70"}`}>
+                <button key={`${cartoon.provider}-${cartoon.id}`} type="button" onClick={() => { void navigate({ to: "/kids/watch", search: { id: cartoon.id, provider: cartoon.provider, title: cartoon.title, year: String(cartoon.year || 0), description: cartoon.description || "", ageLabel: cartoon.ageLabel, format: cartoon.format || "", episodes: String(cartoon.episodes || 0), posterUrl: cartoon.posterUrl || "" } as never }); }} className={`group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 hover:shadow-md ${selectedCartoon?.id === cartoon.id ? "border-primary ring-2 ring-primary/15" : "border-border/70"}`}>
                   <div className={`relative aspect-[3/4] overflow-hidden bg-gradient-to-br ${cartoon.artClass}`}>
                     {cartoon.posterUrl ? <img src={cartoon.posterUrl} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="grid h-full place-items-center p-4"><span className="grid size-14 place-items-center rounded-2xl border border-white/70 bg-white/65 text-primary shadow-sm backdrop-blur"><Baby className="size-7" /></span></div>}
                     <span className="absolute bottom-2 right-2 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition group-hover:opacity-100 group-focus-visible:opacity-100"><Play className="size-3.5 fill-current" /></span>
