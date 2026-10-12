@@ -43,7 +43,8 @@ const typeInfo: Record<SourceResult["sourceType"], { label: string; icon: typeof
   hls: { label: "HLS playlist (.m3u8)", icon: ListVideo, description: "An HLS playlist URL is visible in the search result." },
   "iptv-playlist": { label: "M3U playlist", icon: ListVideo, description: "An M3U playlist URL is visible in the search result." },
   "video-page": { label: "Video / sharing page", icon: Video, description: "A known video-hosting or sharing page." },
-  webpage: { label: "Webpage — inspect needed", icon: Globe, description: "A page result; playable media has not yet been verified." },
+  "social-video": { label: "Social video page", icon: Video, description: "A social-platform page; check whether playback or embedding is available." },
+  "general-webpage": { label: "General webpage", icon: Globe, description: "Inspect this page for an embedded player or share link." },
 };
 
 function SourceLabPage() {
@@ -147,6 +148,7 @@ function SourceLabPage() {
                         </div>
                         <h3 className="mt-2 break-words font-semibold leading-6 text-[#292333]">{result.title}</h3>
                         <p className="mt-1 break-all text-xs text-[#7c5cfc]">{result.host}</p>
+                        <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
                         <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
                         {result.snippet && <p className="mt-2 text-sm leading-6 text-[#625b70]">{result.snippet}</p>}
                         <p className="mt-2 text-xs leading-5 text-[#8b8299]">{info.description}</p>
