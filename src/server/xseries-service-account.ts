@@ -125,7 +125,8 @@ export async function getFirebaseAccessToken(): Promise<string | null> {
     });
 
     if (!res.ok) {
-      console.warn("[Firebase Admin] OAuth token exchange failed with HTTP", res.status);
+      const detail = (await res.text().catch(() => "")).slice(0, 500);
+      console.error("[Firebase Admin] OAuth token exchange failed:", { status: res.status, detail });
       return null;
     }
 
@@ -213,15 +214,17 @@ export async function queryRtdb(path: string, init?: RequestInit): Promise<unkno
 
   // Build target URL
   let url = `${base}/${cleanPath}.json`;
-  if (token) {
-    url += `?access_token=${encodeURIComponent(token)}`;
-  } else if (secret) {
+  if (!token && secret) {
     url += `?auth=${encodeURIComponent(secret)}`;
   }
 
   try {
+    const headers = new Headers(init?.headers);
+    // Send OAuth credentials in the standard header instead of a URL parameter.
+    if (token) headers.set("Authorization", `Bearer ${token}`);
     const res = await fetch(url, {
       ...init,
+      headers,
       signal: AbortSignal.timeout(12000),
     });
 
