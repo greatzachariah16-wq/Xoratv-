@@ -13,6 +13,12 @@ type SourceResult = {
   publishedYear: number | null;
   exactTitleMatch: boolean;
   host: string;
+  inspected: boolean;
+  pageTitle?: string;
+  mediaCandidates: Array<{ url: string; kind: "video" | "hls" | "playlist" | "embed"; title?: string; status?: string }>;
+  playbackCheck: "not-checked" | "media-found" | "request-ok" | "request-failed";
+  crawlDepth: number;
+  indexedFromCache?: boolean;
 };
 type SearchResponse = {
   ok: boolean;
@@ -20,6 +26,9 @@ type SearchResponse = {
   engine?: string;
   discoveryBackend?: string;
   yearFocus?: string;
+  inspectedCount?: number;
+  indexedPageCount?: number;
+  indexPersistence?: string;
   elapsedMs?: number;
   count?: number;
   results?: SourceResult[];
@@ -117,12 +126,12 @@ function SourceLabPage() {
           <div className="grid grid-cols-2 gap-px border-t border-[#eee8f5] bg-[#eee8f5] sm:grid-cols-4">
             <Metric icon={Search} label="Results found" value={payload ? String(payload.count ?? 0) : "—"} />
             <Metric icon={Clock3} label="Search time" value={payload ? `${payload.elapsedMs ?? 0} ms` : "—"} />
-            <Metric icon={CheckCircle2} label="Title matches" value={payload ? String(resultList.filter((item) => item.exactTitleMatch).length) : "—"} />
-            <Metric icon={Film} label="Direct / playlist URLs" value={payload ? String(resultList.filter((item) => item.sourceType === "direct-video" || item.sourceType === "hls" || item.sourceType === "iptv-playlist").length) : "—"} />
+            <Metric icon={CheckCircle2} label="Pages inspected" value={payload ? String(payload.inspectedCount ?? resultList.filter((item) => item.inspected).length) : "—"} />
+            <Metric icon={Film} label="Pages with media hints" value={payload ? String(resultList.filter((item) => item.mediaCandidates?.length).length) : "—"} />
           </div>
         </section>
 
-        {loading && <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#e5deef] bg-white p-8 text-sm text-[#625b70]"><LoaderCircle className="size-5 animate-spin text-[#7c5cfc]" /> Searching the web and collecting result details…</div>}
+        {loading && <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#e5deef] bg-white p-8 text-sm text-[#625b70]"><LoaderCircle className="size-5 animate-spin text-[#7c5cfc]" /> Searching the web, opening pages in a headless browser, and inspecting media…</div>}
         {error && <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><XCircle className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">Search failed</p><p className="mt-1">{error}</p></div></div>}
 
         {payload && (
