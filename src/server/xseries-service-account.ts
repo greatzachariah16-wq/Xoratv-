@@ -358,7 +358,9 @@ export async function writeFirebaseAdmin(
   if (!token) throw new Error("Firebase service-account token unavailable; check FIREBASE_SERVICE_ACCOUNT in Render.");
 
   const cleanPath = path.replace(/^[/]+|[/]+$/g, "");
-  const url = `${base}/${cleanPath}.json`;
+  // Encode each key segment so reserved URL characters cannot truncate Firebase paths.
+  const encodedPath = cleanPath.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+  const url = `${base}/${encodedPath}.json`;
   const response = await fetch(url, {
     method,
     headers: {
