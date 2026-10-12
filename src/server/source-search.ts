@@ -35,7 +35,7 @@ function unwrapDuckDuckGoUrl(raw: string): string | null {
   try {
     const parsed = new URL(raw, "https://html.duckduckgo.com");
     const redirected = parsed.searchParams.get("uddg");
-    const candidate = redirected ? decodeURIComponent(redirected) : parsed.href;
+    const candidate = redirected || parsed.href;
     const url = new URL(candidate);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     if (url.hostname === "html.duckduckgo.com" || url.hostname === "duckduckgo.com") return null;
