@@ -13,8 +13,6 @@ import { runDiscovery } from "../lib/discovery/engine.server";
 import { runCrawlerCycle } from "../crawler/engine";
 import {
   searchAllProvidersWithStatus,
-  autoPublishHighConfidenceCandidates,
-  saveCandidatesBatchToRtdb,
 } from "../integrations/providers";
 
 let isDiscoveryRunning = false;
@@ -76,7 +74,7 @@ export async function runFullAutomatedDiscovery(options?: AutomatedDiscoveryOpti
     // 0. Run Smart Crawler Discovery Engine
     try {
       console.log("[Discovery Runner] Running smart Xora crawler cycle...");
-      const crawlerSummary = await runCrawlerCycle({ autoPublish: true, maxQueriesPerCategory: 2 });
+      const crawlerSummary = await runCrawlerCycle({ autoPublish: false, maxQueriesPerCategory: 2 });
       summary.totalDiscoveredCandidates += crawlerSummary.candidatesFound;
       console.log(
         `[Discovery Runner] Smart crawler finished. Found ${crawlerSummary.candidatesFound} candidates, stored ${crawlerSummary.candidatesStored}.`,
@@ -113,7 +111,7 @@ export async function runFullAutomatedDiscovery(options?: AutomatedDiscoveryOpti
             query,
             limit: limitPerQuery,
             minDurationSeconds: 2400, // 40 minutes upwards for movies
-            autoPublishTrusted: true,
+            autoPublishTrusted: false,
           });
 
           for (const status of res.statuses) {
@@ -132,13 +130,9 @@ export async function runFullAutomatedDiscovery(options?: AutomatedDiscoveryOpti
 
           if (res.candidates.length > 0) {
             allProviderCandidates.push(...res.candidates);
-            // Save candidate backups to /crawler/candidates
-            await saveCandidatesBatchToRtdb(res.candidates).catch(() => {});
-            // Auto-publish all high confidence (NOAA and direct streams)
-            const published = await autoPublishHighConfidenceCandidates(res.candidates, {
-              trustedOnly: false, // In automated mode, publish valid items
-            });
-            summary.totalAutoPublishedPosts += published.length;
+            // Candidate persistence and publication must use the authenticated
+            // server-side writer, never the browser Firebase SDK. The open-video
+            // engine currently owns trusted RTDB publication for this run.
           }
         } catch (queryErr) {
           console.warn(`[Discovery Runner] Query "${query}" execution warning:`, queryErr);

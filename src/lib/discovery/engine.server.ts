@@ -13,13 +13,8 @@ import {
   type RightsStatus,
   type ScoreWeights,
 } from "./types";
-import {
-  setPostRecord,
-  setProfile,
-  getProfile,
-  recordDiscoveryRun,
-  pathSafe,
-} from "@/integrations/firebase/rtdb";
+import { pathSafe, sanitizeForRtdb, hashKey } from "@/integrations/firebase/rtdb";
+import { writeFirebaseAdmin } from "@/server/xseries-service-account";
 import type { PostRecord, DiscoveryRunRecord } from "@/integrations/firebase/types";
 import { resolveFeedByDuration } from "@/integrations/providers";
 
@@ -715,28 +710,50 @@ export async function persistCandidates(
     // Persist non-rejected candidates directly into Firebase RTDB
     if (decision.approval !== "rejected") {
       try {
-        const existingProfile = await getProfile(authorId).catch(() => null);
-        if (!existingProfile) {
-          const sourceName =
-            c.source === "noaa"
-              ? "NOAA Ocean Exploration"
-              : c.source === "internet_archive"
-                ? "Internet Archive"
-                : c.source === "wikimedia_commons"
-                  ? "Wikimedia Commons"
-                  : c.source === "nasa_svs"
-                    ? "NASA Scientific Visualization Studio"
-                    : c.source;
-          await setProfile({
-            id: authorId,
-            username: `archive_${c.source}`.slice(0, 24),
-            display_name: sourceName,
-            avatar_url: c.thumbnail_url || null,
-            bio: `Official open media repository archive for ${sourceName}.`,
-            created_at: new Date().toISOString(),
-          }).catch(() => {});
+        const sourceName =
+          c.source === "noaa"
+            ? "NOAA Ocean Exploration"
+            : c.source === "internet_archive"
+              ? "Internet Archive"
+              : c.source === "wikimedia_commons"
+                ? "Wikimedia Commons"
+                : c.source === "nasa_svs"
+                  ? "NASA Scientific Visualization Studio"
+                  : c.source;
+        const username = `archive_${c.source}`.slice(0, 24);
+        const profile = {
+          id: authorId,
+          username,
+          display_name: sourceName,
+          avatar_url: c.thumbnail_url || null,
+          bio: `Official open media repository archive for ${sourceName}.`,
+          created_at: new Date().toISOString(),
+        };
+        const safePostId = pathSafe(postRecord.id);
+        const safeAuthorId = pathSafe(authorId);
+        const feed = postRecord.feed || "home";
+        const writes: Record<string, unknown> = {
+          [`profiles/${safeAuthorId}`]: sanitizeForRtdb(profile),
+          [`usernames/${pathSafe(username.toLowerCase())}`]: authorId,
+          [`posts/${safePostId}`]: sanitizeForRtdb(postRecord),
+          [`postsByFeed/${feed}/${safePostId}`]: sanitizeForRtdb({
+            created_at: postRecord.created_at,
+            recommendation_score: postRecord.recommendation_score ?? 50,
+            status: postRecord.status,
+            approval_status: postRecord.approval_status,
+          }),
+        };
+        if (postRecord.poster_path) {
+          writes[`mediaIndex/posters/${hashKey(postRecord.poster_path)}`] = sanitizeForRtdb({
+            postId: postRecord.id,
+            objectKey: postRecord.poster_path,
+            renderUrl: postRecord.poster_path,
+            bucket: "posters",
+            ownerId: postRecord.author_id,
+            created_at: postRecord.created_at,
+          });
         }
-        await setPostRecord(postRecord);
+        await writeFirebaseAdmin("", writes, "PATCH");
       } catch (rtdbErr) {
         console.warn(`[Discovery Engine] Failed to write candidate ${postId} to RTDB:`, rtdbErr);
       }
@@ -863,7 +880,9 @@ export async function runDiscovery(only?: ContentSource) {
         {} as DiscoveryRunRecord["source_breakdown"],
       ),
     };
-    await recordDiscoveryRun(runRecord).catch(() => {});
+    await writeFirebaseAdmin(`discovery_runs/${pathSafe(runRecord.id)}`, sanitizeForRtdb(runRecord)).catch((err) => {
+      console.warn("[Discovery Engine] Admin telemetry write failed:", err);
+    });
   } catch (err) {
     console.warn("[Discovery Engine] Failed to record run telemetry:", err);
   }

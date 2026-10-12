@@ -16,7 +16,6 @@ import { toProviderCandidate, isEmbeddableCandidate } from "./toProviderCandidat
 import {
   publishCandidate,
   resolveFeedByDuration,
-  saveCandidateToRtdb,
   searchVimeoWithStatus,
 } from "@/integrations/providers";
 import type { FeedType } from "@/integrations/firebase/types";
@@ -212,8 +211,6 @@ export async function runCrawlerCycle(options: RunCrawlerOptions = {}): Promise<
 
       // 5. Store in RTDB under /crawler/candidates
       await storage.saveCandidate(candidate);
-      const providerCand = toProviderCandidate(candidate);
-      await saveCandidateToRtdb(providerCand).catch(() => {});
 
       summary.candidatesStored++;
       processedCandidates.push(candidate);

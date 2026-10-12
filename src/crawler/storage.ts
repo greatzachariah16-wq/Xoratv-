@@ -10,9 +10,10 @@
  */
 
 import type { DiscoveredCandidate, CrawlerRunSummary, CrawlerCategory } from "./types.ts";
-import { ref, get, set } from "firebase/database";
+import { ref, get } from "firebase/database";
 import { rtdb, isFirebaseConfigured } from "@/integrations/firebase/config";
 import { pathSafe, hashKey, sanitizeForRtdb } from "@/integrations/firebase/rtdb";
+import { writeFirebaseAdmin } from "@/server/xseries-service-account";
 
 export interface CandidateQueryFilters {
   category?: CrawlerCategory | undefined;
@@ -96,8 +97,8 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
       const safeId = pathSafe(candidate.id);
       const urlHash = hashKey(candidate.sourceUrl);
       const sanitizedCandidate = sanitizeForRtdb(candidate);
-      await set(ref(rtdb, `crawler/candidates/${safeId}`), sanitizedCandidate);
-      await set(ref(rtdb, `crawler/sourceUrls/${urlHash}`), true);
+      await writeFirebaseAdmin(`crawler/candidates/${safeId}`, sanitizedCandidate);
+      await writeFirebaseAdmin(`crawler/sourceUrls/${urlHash}`, true);
     } catch (err) {
       console.warn("[Crawler RTDB] Save candidate error, falling back to memory:", err);
       await this.memoryFallback.saveCandidate(candidate);
@@ -175,7 +176,7 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
     try {
       const safeId = pathSafe(summary.runId);
       const sanitizedSummary = sanitizeForRtdb(summary);
-      await set(ref(rtdb, `crawler/runs/${safeId}`), sanitizedSummary);
+      await writeFirebaseAdmin(`crawler/runs/${safeId}`, sanitizedSummary);
     } catch (err) {
       console.warn("[Crawler RTDB] Save run error:", err);
       await this.memoryFallback.saveRunSummary(summary);

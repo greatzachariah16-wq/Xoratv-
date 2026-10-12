@@ -39,7 +39,6 @@ import {
 import { rankPostsForUser, getOrCreateSessionId, getShownPostIds, type RankContext } from "./ranking";
 import { loadUserSignals, trackEvent } from "./events";
 import { SEED_HORROR_MOVIES } from "@/integrations/firebase/movies";
-import { searchRecentYouTubeFeed } from "@/integrations/providers/youtube";
 
 export type { FeedType };
 export type Profile = ProfileRecord;
@@ -203,17 +202,14 @@ export async function fetchRankedFeed(
         (feed !== "shorts" || p.source === "creator" || (p.source === "youtube" && p.playability_status === "playable")) &&
         (feed === "shorts" || Boolean(p.poster_path)),
     );
-    // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
-    if (typeof window !== "undefined" && isFirebaseConfigured() && rawPosts.length > 0) {
-      rawPosts.forEach((post) => {
-        setPostRecord(post).catch(() => {});
-      });
-    }
+    // Demo/local fallback posts are read-only. Do not attempt anonymous RTDB writes
+    // from the homepage; production content must be published by the trusted server path.
   }
 
-  // Dedicated discovery layer: Home may use YouTube discovery.
-  // Shorts are Xora-native only: creator uploads from Firebase/RTDB are the
-  // complete Shorts source. Never query, merge, or persist YouTube Shorts here.
+  // Home feed reads the persisted catalog and cached local fallback only.
+  // Live provider searches belong in the background discovery pipeline, not every
+  // homepage request. This avoids blocking the UI on external provider/API latency.
+  // Shorts remain creator-only.
   if (feed === "shorts") {
     rawPosts = rawPosts.filter(
       (p) =>
@@ -224,43 +220,6 @@ export async function fetchRankedFeed(
         Boolean(p.stream_url || p.media_path) &&
         p.source === "creator",
     );
-  } else {
-    try {
-      const liveYouTube = await searchRecentYouTubeFeed("home", 12);
-      const existingIds = new Set(rawPosts.map((p) => p.id));
-      const livePosts: PostRecord[] = liveYouTube
-        .filter((candidate) => !existingIds.has(candidate.id) && Boolean(candidate.thumbnailUrl))
-        .map((candidate) => ({
-          id: candidate.id,
-          author_id: `youtube-channel-${candidate.channelName || "youtube"}`,
-          title: candidate.title,
-          caption: candidate.description,
-          kind: "video",
-          feed,
-          status: "published",
-          approval_status: "approved",
-          media_path: null,
-          poster_path: candidate.thumbnailUrl,
-          stream_url: candidate.embedUrl,
-          duration_seconds: candidate.durationSeconds,
-          featured: false,
-          recommendation_score: 88,
-          quality_score: candidate.resolution === "HD" ? 95 : 88,
-          is_color: true,
-          rights_status: "unknown",
-          source: "youtube",
-          created_at: candidate.publishedAt || new Date().toISOString(),
-          discovered_at: new Date().toISOString(),
-          year: candidate.publishedAt ? new Date(candidate.publishedAt).getFullYear() : null,
-          genre: "YouTube Discovery",
-          like_count: 0,
-          comment_count: 0,
-          playability_status: "playable",
-        } as PostRecord));
-      rawPosts = [...rawPosts, ...livePosts];
-    } catch (err) {
-      console.warn("[YouTube Discovery] Live home feed layer unavailable:", err);
-    }
   }
 
   // 1. If following mode requested on Home feed
