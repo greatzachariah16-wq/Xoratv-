@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Film, Play, Sparkles } from "lucide-react";
+import { ArrowLeft, Film, ListVideo, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Button } from "@/components/ui/button";
 
@@ -42,14 +41,10 @@ function KidsCartoonWatchPage() {
   const item = Route.useSearch();
   const title = item.title || "Cartoon";
   const provider = item.provider === "anilist" ? "anilist" : "tmdb";
-  const [season, setSeason] = useState(1);
-  const [episode, setEpisode] = useState(1);
-  const [loadedSeason, setLoadedSeason] = useState(1);
-  const [loadedEpisode, setLoadedEpisode] = useState(1);
   const playerUrl = item.id
     ? provider === "anilist"
-      ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
-      : `https://embed.vidrift.net/embed/tv/${encodeURIComponent(item.id)}/${loadedSeason}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
+      ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/1?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&layout=labeled&uiScale=1`
+      : `https://embed.vidrift.net/embed/tv/${encodeURIComponent(item.id)}/1/1?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&layout=labeled&uiScale=1`
     : "";
 
   return (
@@ -109,26 +104,17 @@ function KidsCartoonWatchPage() {
           </section>
 
           <aside className="space-y-4 rounded-2xl border border-border/70 bg-surface p-4 sm:rounded-3xl sm:p-5">
+            <div className="grid size-11 place-items-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
+              <ListVideo className="size-5" />
+            </div>
             <div>
-              <h2 className="font-display text-base font-semibold">Choose an episode</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose a season and episode, then load it in the player.</p>
+              <h2 className="font-display text-base font-semibold">Episodes & seasons</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">Browse the episode guide directly inside the player. Open the <span className="font-semibold text-foreground">Episodes</span> control to choose a season and see available episodes with artwork.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {provider === "tmdb" && (
-                <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-                  Season
-                  <input type="number" min={1} max={30} value={season} onChange={(event) => setSeason(Math.min(30, Math.max(1, Number(event.target.value) || 1)))} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground" />
-                </label>
-              )}
-              <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-                Episode
-                <input type="number" min={1} max={500} value={episode} onChange={(event) => setEpisode(Math.min(500, Math.max(1, Number(event.target.value) || 1)))} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground" />
-              </label>
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-xs leading-5 text-muted-foreground">Your selection loads in the same player, and VidRift keeps the XoraTV branding and playback controls.</p>
             </div>
-            <Button className="w-full rounded-xl" onClick={() => { setLoadedSeason(season); setLoadedEpisode(episode); }}>
-              <Play className="mr-2 size-4 fill-current" /> Load episode
-            </Button>
-            <p className="text-[11px] leading-5 text-muted-foreground">Playback availability depends on the external VidRift source. Some titles or episodes may not be available.</p>
+            <p className="text-[11px] leading-5 text-muted-foreground">Episode lists depend on the metadata available for each title. Some shows may have incomplete listings or unavailable streams.</p>
           </aside>
         </div>
       </main>
