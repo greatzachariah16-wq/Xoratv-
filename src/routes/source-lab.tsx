@@ -13,6 +13,12 @@ type SourceResult = {
   publishedYear: number | null;
   exactTitleMatch: boolean;
   host: string;
+  inspected: boolean;
+  pageTitle?: string;
+  mediaCandidates: Array<{ url: string; kind: "video" | "hls" | "playlist" | "embed"; title?: string; status?: string }>;
+  playbackCheck: "not-checked" | "media-found" | "request-ok" | "request-failed";
+  crawlDepth: number;
+  indexedFromCache?: boolean;
 };
 type SearchResponse = {
   ok: boolean;
@@ -20,6 +26,9 @@ type SearchResponse = {
   engine?: string;
   discoveryBackend?: string;
   yearFocus?: string;
+  inspectedCount?: number;
+  indexedPageCount?: number;
+  indexPersistence?: string;
   elapsedMs?: number;
   count?: number;
   results?: SourceResult[];
@@ -117,12 +126,12 @@ function SourceLabPage() {
           <div className="grid grid-cols-2 gap-px border-t border-[#eee8f5] bg-[#eee8f5] sm:grid-cols-4">
             <Metric icon={Search} label="Results found" value={payload ? String(payload.count ?? 0) : "—"} />
             <Metric icon={Clock3} label="Search time" value={payload ? `${payload.elapsedMs ?? 0} ms` : "—"} />
-            <Metric icon={CheckCircle2} label="Title matches" value={payload ? String(resultList.filter((item) => item.exactTitleMatch).length) : "—"} />
-            <Metric icon={Film} label="Direct / playlist URLs" value={payload ? String(resultList.filter((item) => item.sourceType === "direct-video" || item.sourceType === "hls" || item.sourceType === "iptv-playlist").length) : "—"} />
+            <Metric icon={CheckCircle2} label="Pages inspected" value={payload ? String(payload.inspectedCount ?? resultList.filter((item) => item.inspected).length) : "—"} />
+            <Metric icon={Film} label="Pages with media hints" value={payload ? String(resultList.filter((item) => item.mediaCandidates?.length).length) : "—"} />
           </div>
         </section>
 
-        {loading && <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#e5deef] bg-white p-8 text-sm text-[#625b70]"><LoaderCircle className="size-5 animate-spin text-[#7c5cfc]" /> Searching the web and collecting result details…</div>}
+        {loading && <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#e5deef] bg-white p-8 text-sm text-[#625b70]"><LoaderCircle className="size-5 animate-spin text-[#7c5cfc]" /> Searching the web, opening pages in a headless browser, and inspecting media…</div>}
         {error && <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><XCircle className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">Search failed</p><p className="mt-1">{error}</p></div></div>}
 
         {payload && (
@@ -149,8 +158,10 @@ function SourceLabPage() {
                         <h3 className="mt-2 break-words font-semibold leading-6 text-[#292333]">{result.title}</h3>
                         <p className="mt-1 break-all text-xs text-[#7c5cfc]">{result.host}</p>
                         <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
-                        <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px]"><span className={"rounded-full px-2 py-1 font-semibold " + (result.inspected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{result.inspected ? "Headless browser inspected" : "Search result only"}</span><span className={"rounded-full px-2 py-1 font-semibold " + (result.playbackCheck === "request-ok" ? "bg-emerald-50 text-emerald-700" : result.playbackCheck === "request-failed" ? "bg-red-50 text-red-700" : "bg-[#f4f1f8] text-[#625b70]")}>{result.playbackCheck === "request-ok" ? "Media request responded" : result.playbackCheck === "request-failed" ? "Media request failed" : result.playbackCheck === "media-found" ? "Media URL found, not confirmed" : "Playback not checked"}</span>{result.crawlDepth > 0 && <span className="rounded-full bg-[#f4f1f8] px-2 py-1 text-[#625b70]">Discovered link · depth {result.crawlDepth}</span>}{result.indexedFromCache && <span className="rounded-full bg-[#f4f1f8] px-2 py-1 text-[#625b70]">Index cache</span>}</div>
+                        {result.pageTitle && result.pageTitle !== result.title && <p className="mt-2 text-xs text-[#746b83]">Browser page title: {result.pageTitle}</p>}
                         {result.snippet && <p className="mt-2 text-sm leading-6 text-[#625b70]">{result.snippet}</p>}
+                        {result.mediaCandidates?.length > 0 && <div className="mt-3 rounded-xl border border-[#e5deef] bg-[#fcfbff] p-3"><p className="text-xs font-semibold text-[#51466a]">Media candidates found ({result.mediaCandidates.length})</p><div className="mt-2 space-y-2">{result.mediaCandidates.slice(0, 5).map((media) => <div key={media.url} className="min-w-0"><p className="text-[11px] font-semibold uppercase text-[#827995]">{media.kind}{media.status ? " · " + media.status : ""}</p><a href={media.url} target="_blank" rel="noopener noreferrer" className="mt-0.5 block break-all text-xs text-[#7c5cfc] underline">{media.url}</a></div>)}</div></div>}
                         <p className="mt-2 text-xs leading-5 text-[#8b8299]">{info.description}</p>
                         <a href={result.url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#ddd4ed] px-3 py-2 text-xs font-semibold text-[#51466a] transition hover:border-[#7c5cfc] hover:bg-[#f8f5ff]">
                           Open source page <ExternalLink className="size-3.5" />
@@ -167,7 +178,7 @@ function SourceLabPage() {
         )}
 
         <section className="rounded-2xl border border-[#e5deef] bg-white p-4 sm:p-5">
-          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">Searches are now biased toward movies from 2000 onward, and each result identifies its host and apparent page type (direct video, HLS, M3U, video-sharing, social video, or general webpage). The year is only detected from visible result text; this version still does not crawl pages or verify playback.</p></div></div>
+          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">Searches are now biased toward movies from 2000 onward, and each result identifies its host and apparent page type (direct video, HLS, M3U, video-sharing, social video, or general webpage). The crawler opens a limited number of pages in Puppeteer, inspects rendered page content for video/source tags, embeds, metadata and JSON-LD, follows a few relevant links one level deep, and probes one media URL. A successful HTTP response does not guarantee playback because CORS, cookies, referrers, DRM, codecs and player compatibility can still prevent it.</p></div></div>
         </section>
       </div>
     </main>
