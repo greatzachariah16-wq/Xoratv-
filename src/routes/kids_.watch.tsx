@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Film, ListVideo, Sparkles } from "lucide-react";
+import { ArrowLeft, Film, Play, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Button } from "@/components/ui/button";
 
@@ -41,11 +42,27 @@ function KidsCartoonWatchPage() {
   const item = Route.useSearch();
   const title = item.title || "Cartoon";
   const provider = item.provider === "anilist" ? "anilist" : "tmdb";
+  const [season, setSeason] = useState("1");
+  const [episode, setEpisode] = useState("1");
+  const [loadedSeason, setLoadedSeason] = useState(1);
+  const [loadedEpisode, setLoadedEpisode] = useState(1);
+
+  const parsedSeason = Number(season);
+  const parsedEpisode = Number(episode);
+  const validSeason = provider === "anilist" || (Number.isInteger(parsedSeason) && parsedSeason >= 1 && parsedSeason <= 30);
+  const validEpisode = Number.isInteger(parsedEpisode) && parsedEpisode >= 1 && parsedEpisode <= 500;
+  const canLoadEpisode = validSeason && validEpisode;
   const playerUrl = item.id
     ? provider === "anilist"
-      ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/1?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&layout=labeled&uiScale=1`
-      : `https://embed.vidrift.net/embed/tv/${encodeURIComponent(item.id)}/1/1?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&layout=labeled&uiScale=1`
+      ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
+      : `https://embed.vidrift.net/embed/tv/${encodeURIComponent(item.id)}/${loadedSeason}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
     : "";
+
+  const loadEpisode = () => {
+    if (!canLoadEpisode) return;
+    setLoadedSeason(provider === "anilist" ? 1 : parsedSeason);
+    setLoadedEpisode(parsedEpisode);
+  };
 
   return (
     <AppShell wide>
@@ -84,7 +101,7 @@ function KidsCartoonWatchPage() {
           )}
         </section>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-surface p-4 sm:rounded-3xl sm:p-6">
             <div className="flex items-start gap-3">
               <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-violet-200 via-sky-100 to-emerald-100">
@@ -105,16 +122,54 @@ function KidsCartoonWatchPage() {
 
           <aside className="space-y-4 rounded-2xl border border-border/70 bg-surface p-4 sm:rounded-3xl sm:p-5">
             <div className="grid size-11 place-items-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
-              <ListVideo className="size-5" />
+              <Play className="size-5" />
             </div>
             <div>
-              <h2 className="font-display text-base font-semibold">Episodes & seasons</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">Browse the episode guide directly inside the player. Open the <span className="font-semibold text-foreground">Episodes</span> control to choose a season and see available episodes with artwork.</p>
+              <h2 className="font-display text-base font-semibold">Choose an episode</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Enter the season and episode, then load your selection in the player without using the embedded episode list.
+              </p>
             </div>
-            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
-              <p className="text-xs leading-5 text-muted-foreground">Your selection loads in the same player, and VidRift keeps the XoraTV branding and playback controls.</p>
+            <div className={provider === "anilist" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
+              {provider !== "anilist" && (
+                <label className="space-y-1.5 text-xs font-medium text-foreground">
+                  Season
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={30}
+                    step={1}
+                    value={season}
+                    onChange={(event) => setSeason(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-border bg-background px-3 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    aria-label="Season number"
+                  />
+                </label>
+              )}
+              <label className="space-y-1.5 text-xs font-medium text-foreground">
+                Episode
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={500}
+                  step={1}
+                  value={episode}
+                  onChange={(event) => setEpisode(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-border bg-background px-3 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  aria-label="Episode number"
+                />
+              </label>
             </div>
-            <p className="text-[11px] leading-5 text-muted-foreground">Episode lists depend on the metadata available for each title. Some shows may have incomplete listings or unavailable streams.</p>
+            <Button type="button" onClick={loadEpisode} disabled={!canLoadEpisode || !item.id} className="h-11 w-full rounded-xl">
+              <Play className="mr-2 size-4" /> Load episode
+            </Button>
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              {provider === "anilist"
+                ? "Anime uses an episode number. Enter a number from 1 to 500."
+                : "TV shows use a season (1–30) and episode (1–500). Some episodes may not be available from the streaming provider."}
+            </p>
           </aside>
         </div>
       </main>
