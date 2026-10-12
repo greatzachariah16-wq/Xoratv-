@@ -202,12 +202,8 @@ export async function fetchRankedFeed(
         (feed !== "shorts" || p.source === "creator" || (p.source === "youtube" && p.playability_status === "playable")) &&
         (feed === "shorts" || Boolean(p.poster_path)),
     );
-    // Auto-seed to RTDB so persistent database is initialized with verified baseline catalog
-    if (typeof window !== "undefined" && isFirebaseConfigured() && rawPosts.length > 0) {
-      rawPosts.forEach((post) => {
-        setPostRecord(post).catch(() => {});
-      });
-    }
+    // Demo/local fallback posts are read-only. Do not attempt anonymous RTDB writes
+    // from the homepage; production content must be published by the trusted server path.
   }
 
   // Home feed reads the persisted catalog and cached local fallback only.
