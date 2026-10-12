@@ -99,10 +99,13 @@ function KidsPage() {
     retry: 1,
   });
   const filteredCartoons = useMemo(() => {
+    const staticItems = submittedCartoonSearch
+      ? KIDS_CARTOONS.filter((item) => item.title.toLowerCase().includes(submittedCartoonSearch.toLowerCase()))
+      : KIDS_CARTOONS;
     const byTitle = new Map<string, CartoonSeries>();
-    [...KIDS_CARTOONS, ...(catalogQuery.data?.items || [])].forEach((item) => byTitle.set(item.title.toLowerCase(), item));
+    [...staticItems, ...(catalogQuery.data?.items || [])].forEach((item) => byTitle.set(item.title.toLowerCase(), item));
     return [...byTitle.values()];
-  }, [catalogQuery.data]);
+  }, [catalogQuery.data, submittedCartoonSearch]);
   const cartoonPlayerUrl = selectedCartoon
     ? selectedCartoon.provider === "anilist"
       ? `https://embed.vidrift.net/embed/anilist/${selectedCartoon.id}/${episode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
