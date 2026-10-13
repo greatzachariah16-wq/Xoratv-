@@ -185,12 +185,18 @@ export function startDiscoveryScheduler() {
     `[Discovery Scheduler] Initializing automated discovery every ${intervalMinutes} minutes.`,
   );
 
-  // Initial non-blocking background discovery run after server boot
-  setTimeout(() => {
-    runFullAutomatedDiscovery().catch((err) => {
-      console.warn("[Discovery Scheduler] Initial discovery warning:", err);
-    });
-  }, 10000); // 10s after startup
+  // Avoid launching the expensive full discovery pipeline on every production restart.
+  // Enable the startup run explicitly with DISCOVERY_RUN_ON_START=true when desired.
+  if (process.env.DISCOVERY_RUN_ON_START === "true") {
+    setTimeout(() => {
+      runFullAutomatedDiscovery().catch((err) => {
+        console.warn("[Discovery Scheduler] Initial discovery warning:", err);
+      });
+    }, 10000);
+    console.log("[Discovery Scheduler] Startup discovery enabled by configuration.");
+  } else {
+    console.log("[Discovery Scheduler] Skipping startup discovery; periodic and on-demand runs remain enabled.");
+  }
 
   discoveryIntervalTimer = setInterval(() => {
     runFullAutomatedDiscovery().catch((err) => {
