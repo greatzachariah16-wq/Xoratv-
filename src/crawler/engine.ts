@@ -16,7 +16,6 @@ import { toProviderCandidate, isEmbeddableCandidate } from "./toProviderCandidat
 import {
   publishCandidate,
   resolveFeedByDuration,
-  searchVimeoWithStatus,
 } from "@/integrations/providers";
 import type { FeedType } from "@/integrations/firebase/types";
 import type { CrawlerCategory, CrawlerRunSummary, DiscoveredCandidate } from "./types.ts";
@@ -107,44 +106,7 @@ export async function runCrawlerCycle(options: RunCrawlerOptions = {}): Promise<
         summary.errors.push(msg);
       }
 
-      // 2c. Vimeo Smart Discovery (Movies 40 mins / 1hr+)
-      try {
-        const vimeoRes = await searchVimeoWithStatus({
-          query: q.query,
-          limit: 6,
-          minDurationSeconds: 2400, // strictly 40 minutes upwards
-        });
-        if (vimeoRes.candidates && vimeoRes.candidates.length > 0) {
-          for (const cand of vimeoRes.candidates) {
-            const disc: DiscoveredCandidate = {
-              id: cand.id,
-              title: cand.title,
-              contentType: "movie",
-              releaseYear: 2025,
-              releaseStatus: "released",
-              genres: [q.category],
-              tags: cand.tags || [],
-              description: cand.description || undefined,
-              sourceUrl: cand.watchUrl,
-              sourceName: "Vimeo",
-              discoveryQuery: q.query,
-              discoveryCategory: q.category,
-              discoveryTimestamp: new Date().toISOString(),
-              rawMetadata: {
-                durationSeconds: cand.durationSeconds,
-                embedUrl: cand.embedUrl,
-                thumbnailUrl: cand.thumbnailUrl,
-                channelName: cand.channelName,
-              },
-            };
-            rawDiscovered.push(disc);
-          }
-        }
-      } catch (err) {
-        const msg = `Vimeo discovery error for query "${q.query}": ${err instanceof Error ? err.message : String(err)}`;
-        console.warn(`[Crawler Engine] ${msg}`);
-        summary.errors.push(msg);
-      }
+
     }
 
     summary.candidatesFound = rawDiscovered.length;
