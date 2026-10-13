@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Discover and pin only search results that explicitly expose open-license metadata.
+"""Discover an IPFS media result and return a gateway URL for on-demand playback.
 
-Run this script on the same host as a Kubo daemon, or set KUBO_RPC_URL to a
-trusted Kubo RPC endpoint. Kubo RPC is an administrative API: never expose it
-to the public internet.
+This script does not pin content by default: recursive pinning can fetch and retain
+the entire content DAG, which is not the same as on-the-fly streaming. Run it on
+the same host as the configured IPFS gateway, or set IPFS_GATEWAY_URL accordingly.
 """
 import json
 import os
@@ -16,33 +16,19 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 SEARCH_URL = os.environ.get("IPFS_SEARCH_URL", "https://api.ipfs-search.com/v1/search")
-KUBO_RPC_URL = os.environ.get("KUBO_RPC_URL", "http://127.0.0.1:5001").rstrip("/")
-GATEWAY_URL = os.environ.get("KUBO_GATEWAY_URL", "http://127.0.0.1:8080").rstrip("/")
+GATEWAY_URL = os.environ.get("IPFS_GATEWAY_URL", os.environ.get("KUBO_GATEWAY_URL", "http://127.0.0.1:8080")).rstrip("/")
 TIMEOUT_SECONDS = max(5, min(int(os.environ.get("IPFS_PIPELINE_TIMEOUT", "35")), 90))
-
-# Automated rotation; these Blender Foundation films are distributed under
-# Creative Commons licenses. Search-index metadata must independently confirm
-# an open license before a CID is pinned.
-CATALOG = [
-    {"title": "Big Buck Bunny", "license_family": "Creative Commons", "license_reference": "https://peach.blender.org/about/"},
-    {"title": "Sintel", "license_family": "Creative Commons", "license_reference": "https://durian.blender.org/about/"},
-    {"title": "Tears of Steel", "license_family": "Creative Commons", "license_reference": "https://mango.blender.org/about/"},
-    {"title": "Elephants Dream", "license_family": "Creative Commons", "license_reference": "https://orange.blender.org/about/"},
-]
+DEFAULT_QUERIES = ["animation", "documentary", "short film", "feature film"]
+QUERIES = [q.strip() for q in os.environ.get("IPFS_MEDIA_QUERIES", ";".join(DEFAULT_QUERIES)).split(";") if q.strip()]
 CID_RE = re.compile(r"^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{20,})$")
-OPEN_LICENSE_RE = re.compile(r"creative\s*commons|\bcc0\b|public\s*domain|creativecommons\.org|\bmit\b", re.I)
 
 
 def emit(value):
     print(json.dumps(value, ensure_ascii=False, separators=(",", ":")), flush=True)
 
 
-def request_json(url, method="GET", body=None, timeout=TIMEOUT_SECONDS):
-    data = None if body is None else json.dumps(body).encode("utf-8")
-    headers = {"Accept": "application/json", "User-Agent": "XoraTV-IPFS-MediaLab/1.0"}
-    if data is not None:
-        headers["Content-Type"] = "application/json"
-    req = Request(url, data=data, headers=headers, method=method)
+def request_json(url, timeout=TIMEOUT_SECONDS):
+    req = Request(url, headers={"Accept": "application/json", "User-Agent": "XoraTV-IPFS-MediaLab/1.0"})
     with urlopen(req, timeout=timeout) as response:
         raw = response.read(2_000_000)
         return json.loads(raw.decode("utf-8", "replace"))
@@ -86,59 +72,37 @@ def cid_from(item):
 
 
 def discover():
+    if not QUERIES:
+        raise RuntimeError("No search queries configured. Set IPFS_MEDIA_QUERIES to a semicolon-separated list.")
     day = datetime.now(timezone.utc).timetuple().tm_yday
-    target = CATALOG[(day - 1) % len(CATALOG)]
-    query = urlencode({"q": target["title"]})
+    # Rotate through configured search phrases automatically.
+    query_text = QUERIES[(day - 1) % len(QUERIES)]
+    url = SEARCH_URL + ("&" if "?" in SEARCH_URL else "?") + urlencode({"q": query_text})
     try:
-        payload = request_json(SEARCH_URL + ("&" if "?" in SEARCH_URL else "?") + query)
+        payload = request_json(url)
     except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
         raise RuntimeError("IPFS search index is unavailable: " + str(exc)[:180])
 
-    candidates = []
     for item in walk_dicts(payload):
-        title = field_text(item, ("title", "name", "filename", "file_name", "path"))
-        if target["title"].casefold() not in title.casefold():
-            continue
         cid = cid_from(item)
         if not cid:
             continue
-        license_text = field_text(item, ("license", "licence", "license_name", "license_url", "licence_url", "rights", "license_type"))
-        if not OPEN_LICENSE_RE.search(license_text):
-            continue
-        candidates.append({"cid": cid, "title": title[:240], "license": license_text[:300]})
+        title = field_text(item, ("title", "name", "filename", "file_name", "path")) or query_text
+        return query_text, {"cid": cid, "title": title[:240]}
 
-    if not candidates:
-        raise RuntimeError(
-            "No matching result exposed both a valid CID and explicit open-license metadata. "
-            "Nothing was pinned; refusing to guess a CID or infer a license from the title."
-        )
-    return target, candidates[0]
+    raise RuntimeError("The search index returned no result containing a recognized IPFS CID. Nothing was pinned or downloaded.")
 
 
 def run():
     started = time.monotonic()
-    target, result = discover()
-    # Check that Kubo is actually reachable before mutating its pin set.
-    try:
-        request_json(KUBO_RPC_URL + "/api/v0/id", method="POST", body=None, timeout=5)
-    except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
-        raise RuntimeError("Kubo RPC is unreachable at " + KUBO_RPC_URL + ": " + str(exc)[:160])
-
-    pin_url = KUBO_RPC_URL + "/api/v0/pin/add?" + urlencode({"arg": result["cid"], "recursive": "true", "progress": "false"})
-    try:
-        request_json(pin_url, method="POST", body=None, timeout=TIMEOUT_SECONDS)
-    except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
-        raise RuntimeError("Kubo could not pin the CID: " + str(exc)[:180])
-
+    query_text, result = discover()
     emit({
         "ok": True,
-        "query": target["title"],
+        "query": query_text,
         "title": result["title"],
         "cid": result["cid"],
-        "license": result["license"],
-        "licenseReference": target["license_reference"],
-        "pinned": True,
-        "pinNote": "Recursive pinning may fetch the full file/DAG and use local disk space.",
+        "pinned": False,
+        "pinNote": "On-demand gateway playback requested. This pipeline does not pin the CID or intentionally fetch the complete media file.",
         "streamUrl": GATEWAY_URL + "/ipfs/" + result["cid"],
         "elapsedMs": int((time.monotonic() - started) * 1000),
     })
