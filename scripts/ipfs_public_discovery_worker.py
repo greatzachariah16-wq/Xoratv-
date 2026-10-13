@@ -37,7 +37,7 @@ def search_page(query):
     # DuckDuckGo HTML results only; if blocked, that source is skipped.
     url = "https://html.duckduckgo.com/html/?q=" + quote_plus(query)
     page, _ = get(url, 1_200_000)
-    links = re.findall(r'href=["\\']([^"\\']+)["\\']', page, re.I)
+    links = re.findall(r"""href=["']([^"']+)["']""", page, re.I)
     return [html.unescape(x) for x in links]
 
 def discover():
