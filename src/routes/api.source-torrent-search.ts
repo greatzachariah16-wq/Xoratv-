@@ -85,7 +85,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
           const apiUrl = new URL(API_URL);
           apiUrl.search = new URLSearchParams({ q: query, cat: String(category) }).toString();
           const fetched = await readText(apiUrl.href);
-          let status = fetched.response.status;
+          let status = fetched.status;
           let ok = fetched.response.ok;
           let text = fetched.text;
           let contentType = fetched.response.headers.get("content-type") || "";
@@ -112,7 +112,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
               const siteUrl = new URL(SITE_URL);
               siteUrl.searchParams.set("q", query);
               const site = await readText(siteUrl.href);
-              siteStatus = site.response.status;
+              siteStatus = site.status;
               siteReachable = site.response.ok;
               siteNote = site.response.ok
                 ? "The public search page responded, but its HTML may rely on client-side JavaScript for results."
@@ -137,8 +137,8 @@ export const Route = createFileRoute("/api/source-torrent-search")({
 
           if (!ok) {
             return Response.json({
-              ok: false, query, category, status: response.status,
-              error: "Torrent API returned HTTP " + response.status + ".",
+              ok: false, query, category, status: status,
+              error: "Torrent API returned HTTP " + status + ".",
               bodyPreview: text.slice(0, 300), method, elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
           }
@@ -148,7 +148,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
             payload = JSON.parse(text);
           } catch {
             return Response.json({
-              ok: false, query, category, status: response.status,
+              ok: false, query, category, status: status,
               error: "The API response was not valid JSON.",
               contentType, bodyPreview: text.slice(0, 300), elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
