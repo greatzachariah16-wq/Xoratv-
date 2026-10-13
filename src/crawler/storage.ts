@@ -92,16 +92,14 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
     if (!isFirebaseConfigured()) {
       return this.memoryFallback.saveCandidate(candidate);
     }
-    try {
-      const safeId = pathSafe(candidate.id);
-      const urlHash = hashKey(candidate.sourceUrl);
-      const sanitizedCandidate = sanitizeForRtdb(candidate);
-      await writeFirebaseAdmin(`crawler/candidates/${safeId}`, sanitizedCandidate);
-      await writeFirebaseAdmin(`crawler/sourceUrls/${urlHash}`, true);
-    } catch (err) {
-      console.warn("[Crawler RTDB] Save candidate error, falling back to memory:", err);
-      await this.memoryFallback.saveCandidate(candidate);
-    }
+
+    // In production, never report a candidate as stored if Firebase rejected the write.
+    // The crawler run should surface the error rather than silently keeping data in RAM.
+    const safeId = pathSafe(candidate.id);
+    const urlHash = hashKey(candidate.sourceUrl);
+    const sanitizedCandidate = sanitizeForRtdb(candidate);
+    await writeFirebaseAdmin(`crawler/candidates/${safeId}`, sanitizedCandidate);
+    await writeFirebaseAdmin(`crawler/sourceUrls/${urlHash}`, true);
   }
 
   public async getCandidate(id: string): Promise<DiscoveredCandidate | null> {
@@ -124,16 +122,12 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
     if (!isFirebaseConfigured()) {
       return this.memoryFallback.hasSourceUrl(sourceUrl);
     }
-    try {
-      const urlHash = hashKey(sourceUrl);
-      const value = await queryRtdb(`crawler/sourceUrls/${urlHash}`);
-      if (value === true || (value !== null && value !== undefined)) {
-        return true;
-      }
-    } catch (err) {
-      console.warn("[Crawler RTDB] Check source URL error:", err);
-    }
-    return this.memoryFallback.hasSourceUrl(sourceUrl);
+
+    // Fail closed: a failed remote lookup must not be treated as "URL is new",
+    // otherwise temporary Firebase/network failures can publish duplicates.
+    const urlHash = hashKey(sourceUrl);
+    const value = await queryRtdb(`crawler/sourceUrls/${urlHash}`);
+    return value === true || (value !== null && value !== undefined);
   }
 
   public async listCandidates(
