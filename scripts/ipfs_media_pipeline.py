@@ -22,7 +22,7 @@ for candidate in os.environ.get("IPFS_SEARCH_URLS", os.environ.get("IPFS_SEARCH_
     candidate = candidate.strip().rstrip("/")
     if candidate and candidate not in SEARCH_URLS:
         SEARCH_URLS.append(candidate)
-GATEWAY_URL = os.environ.get("IPFS_GATEWAY_URL", os.environ.get("KUBO_GATEWAY_URL", "http://127.0.0.1:8080")).rstrip("/")
+GATEWAY_URL = os.environ.get("IPFS_GATEWAY_URL", os.environ.get("KUBO_GATEWAY_URL", "https://ipfs.io")).rstrip("/")
 TIMEOUT_SECONDS = max(5, min(int(os.environ.get("IPFS_PIPELINE_TIMEOUT", "35")), 90))
 DEFAULT_QUERIES = ["animation", "documentary", "short film", "feature film"]
 QUERIES = [q.strip() for q in os.environ.get("IPFS_MEDIA_QUERIES", ";".join(DEFAULT_QUERIES)).split(";") if q.strip()]
@@ -84,6 +84,10 @@ def discover(manual_query=""):
         if not QUERIES:
             raise RuntimeError("Enter a title or configure IPFS_MEDIA_QUERIES.")
         query_text = QUERIES[0]
+    direct_cid = cid_from({"cid": query_text})
+    if direct_cid:
+        return query_text, {"cid": direct_cid, "title": "Direct CID input"}
+
     failures = []
     for search_url in SEARCH_URLS:
         url = search_url + ("&" if "?" in search_url else "?") + urlencode({"q": query_text})
