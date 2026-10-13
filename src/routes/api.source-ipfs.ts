@@ -3,15 +3,25 @@ import { resolve } from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
 
 const SCRIPT_PATH = resolve(process.cwd(), "scripts/ipfs_media_pipeline.py");
-const TIMEOUT_MS = 95_000;
+const TIMEOUT_MS = 70_000;
+const MAX_QUERY_LENGTH = 180;
 
 export const Route = createFileRoute("/api/source-ipfs")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
         const startedAt = Date.now();
+        let query = "";
+        try {
+          const body = await request.json() as { query?: unknown; title?: unknown };
+          const candidate = typeof body.query === "string" ? body.query : body.title;
+          if (typeof candidate === "string") query = candidate.trim().slice(0, MAX_QUERY_LENGTH);
+        } catch {
+          // An empty body is allowed; the Python pipeline uses its configured default.
+        }
+
         const python = process.env.PYTHON_PATH || "python3";
-        const child = spawn(python, [SCRIPT_PATH], {
+        const child = spawn(python, [SCRIPT_PATH, query], {
           stdio: ["ignore", "pipe", "pipe"],
           env: { ...process.env, PYTHONUNBUFFERED: "1" },
         });
@@ -28,15 +38,16 @@ export const Route = createFileRoute("/api/source-ipfs")({
           };
           const timer = setTimeout(() => {
             child.kill("SIGKILL");
-            finish(504, { ok: false, error: "The IPFS pipeline timed out. Check the configured search index and gateway URL." });
+            finish(504, { ok: false, error: "Internet Archive search timed out. Try a shorter title." });
           }, TIMEOUT_MS);
 
           child.stdout.setEncoding("utf8");
           child.stderr.setEncoding("utf8");
           child.stdout.on("data", (chunk: string) => { stdout += chunk; });
+          child.stderr.setEncoding("utf8");
           child.stderr.on("data", (chunk: string) => { stderr += chunk; });
           child.on("error", (error) => {
-            finish(502, { ok: false, error: "Could not start the Python IPFS pipeline.", detail: error.message.slice(0, 240) });
+            finish(502, { ok: false, error: "Could not start the Python media pipeline.", detail: error.message.slice(0, 240) });
           });
           child.on("close", (code) => {
             if (settled) return;
@@ -46,7 +57,7 @@ export const Route = createFileRoute("/api/source-ipfs")({
             } catch {
               finish(502, {
                 ok: false,
-                error: "The IPFS pipeline returned an unreadable response.",
+                error: "The media pipeline returned an unreadable response.",
                 detail: (stderr || stdout || `Python exited with code ${code}`).slice(0, 240),
               });
             }
