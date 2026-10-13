@@ -23,7 +23,7 @@ export const Route = createFileRoute("/source-lab")({
 function SourceLabPage() {
   const [loading, setLoading] = useState(false);
   const [indexing, setIndexing] = useState(false);
-  const [query, setQuery] = useState("Big Buck Bunny");
+  const [query, setQuery] = useState("");
   const [seedCid, setSeedCid] = useState("");
   const [seedTitle, setSeedTitle] = useState("");
   const [result, setResult] = useState<PipelineResult | null>(null);
@@ -58,21 +58,6 @@ function SourceLabPage() {
     } finally { setIndexing(false); }
   }
 
-  async function testCid() {
-    if (loading || !query.trim()) return;
-    setLoading(true);
-    setResult(null);
-    try {
-      const response = await fetch("/api/source-ipfs", {
-        method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      setResult((await response.json()) as PipelineResult);
-    } catch (error) {
-      setResult({ ok: false, error: error instanceof Error ? error.message : "Could not contact the direct-CID test." });
-    } finally { setLoading(false); }
-  }
-
   return (
     <main className="min-h-screen bg-[#f8f5ef] px-4 py-6 text-[#211d2c] sm:px-6 sm:py-10">
       <div className="mx-auto max-w-3xl space-y-6">
@@ -81,7 +66,7 @@ function SourceLabPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#7c5cfc]">XoraTV internal test</p>
             <h1 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">IPFS Media Lab</h1>
-            <p className="mt-1 text-sm text-[#625b70]">Search existing IPFS metadata by title, check availability, and stream matches on demand.</p>
+            <p className="mt-1 text-sm text-[#625b70]">Search IPFS metadata by title, check availability, and stream matches on demand.</p>
           </div>
         </header>
 
@@ -90,7 +75,7 @@ function SourceLabPage() {
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f2edff] text-[#6243d8]"><Radar className="size-5" /></div>
             <div>
               <h2 className="font-display text-xl font-semibold">Search an existing IPFS index</h2>
-              <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches an existing IPFS metadata index for your title, checks whether matching video CIDs respond through a gateway, then falls back to XoraTV's local search. You do not need to know the CID. Video files are not downloaded or pinned.</p>
+              <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches an external IPFS metadata index for your title, then checks matching CIDs through IPFS gateways. Video files are not downloaded or pinned. Use the separate CID section only when you already have a CID.</p>
             </div>
           </div>
           <input aria-label="Video title or keyword" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={180} placeholder="Enter video title or keyword" className="mt-5 h-11 w-full rounded-xl border border-[#e5deef] bg-white px-3 text-sm outline-none focus:border-[#7c5cfc]" />
@@ -99,9 +84,7 @@ function SourceLabPage() {
               {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Radar className="size-4" />}
               {loading ? "Searching…" : "Search IPFS index"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => void testCid()} disabled={loading || indexing || !query.trim()} className="h-11 rounded-xl px-5">
-              <Play className="size-4" /> Test direct CID
-            </Button>
+
           </div>
         </section>
 
@@ -151,7 +134,7 @@ function SourceLabPage() {
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
           <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-700" /><div>
             <h2 className="font-semibold text-amber-950">Important</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-900">The external IPFS metadata index is a separate public service and may sometimes be unavailable. If it cannot find a playable match, XoraTV uses its existing fallback search. A CID can exist without being online, so results are checked against IPFS gateways before being shown. Playback streams through a gateway; video files are not downloaded or pinned.</p>
+            <p className="mt-1 text-sm leading-6 text-amber-900">The public IPFS search service previously configured for this lab is currently unavailable. When the metadata index is offline, title search cannot reliably discover new CIDs; the lab must report that clearly rather than pretend the fallback is a real index. A CID can exist without being online, so results are checked against IPFS gateways before being shown. Playback streams through a gateway; video files are not downloaded or pinned.</p>
           </div></div>
         </section>
       </div>
