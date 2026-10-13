@@ -15,7 +15,14 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-SEARCH_URL = os.environ.get("IPFS_SEARCH_URL", "https://api.ipfs-search.com/v1/search")
+# IPFS Search documents this endpoint in its public OpenAPI specification.
+# Additional endpoints may be configured as a semicolon-separated fallback list.
+DEFAULT_SEARCH_URL = "https://api.ipfs-search.com/v1/search"
+SEARCH_URLS = []
+for candidate in os.environ.get("IPFS_SEARCH_URLS", os.environ.get("IPFS_SEARCH_URL", DEFAULT_SEARCH_URL)).split(";"):
+    candidate = candidate.strip().rstrip("/")
+    if candidate and candidate not in SEARCH_URLS:
+        SEARCH_URLS.append(candidate)
 GATEWAY_URL = os.environ.get("IPFS_GATEWAY_URL", os.environ.get("KUBO_GATEWAY_URL", "http://127.0.0.1:8080")).rstrip("/")
 TIMEOUT_SECONDS = max(5, min(int(os.environ.get("IPFS_PIPELINE_TIMEOUT", "35")), 90))
 DEFAULT_QUERIES = ["animation", "documentary", "short film", "feature film"]
@@ -77,20 +84,32 @@ def discover():
     day = datetime.now(timezone.utc).timetuple().tm_yday
     # Rotate through configured search phrases automatically.
     query_text = QUERIES[(day - 1) % len(QUERIES)]
-    url = SEARCH_URL + ("&" if "?" in SEARCH_URL else "?") + urlencode({"q": query_text})
-    try:
-        payload = request_json(url)
-    except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
-        raise RuntimeError("IPFS search index is unavailable: " + str(exc)[:180])
-
-    for item in walk_dicts(payload):
-        cid = cid_from(item)
-        if not cid:
+    failures = []
+    for search_url in SEARCH_URLS:
+        url = search_url + ("&" if "?" in search_url else "?") + urlencode({"q": query_text})
+        try:
+            payload = request_json(url)
+        except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
+            reason = str(exc)
+            if "TLSV1_UNRECOGNIZED_NAME" in reason or "unrecognized name" in reason.lower():
+                reason = "TLS hostname rejected by provider"
+            failures.append(search_url + ": " + reason[:140])
             continue
-        title = field_text(item, ("title", "name", "filename", "file_name", "path")) or query_text
-        return query_text, {"cid": cid, "title": title[:240]}
 
-    raise RuntimeError("The search index returned no result containing a recognized IPFS CID. Nothing was pinned or downloaded.")
+        for item in walk_dicts(payload):
+            cid = cid_from(item)
+            if not cid:
+                continue
+            title = field_text(item, ("title", "name", "filename", "file_name", "path")) or query_text
+            return query_text, {"cid": cid, "title": title[:240]}
+
+        failures.append(search_url + ": response contained no recognized CID")
+    raise RuntimeError(
+        "No configured IPFS keyword-search endpoint returned a usable CID. "
+        "Set IPFS_SEARCH_URLS to one or more semicolon-separated, verified search API URLs. "
+        + " | ".join(failures)[:260]
+        + ". Nothing was pinned or downloaded."
+    )
 
 
 def run():
