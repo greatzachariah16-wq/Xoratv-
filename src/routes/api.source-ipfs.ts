@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/source-ipfs")({
           };
           const timer = setTimeout(() => {
             child.kill("SIGKILL");
-            finish(504, { ok: false, error: "The IPFS pipeline timed out. Check Kubo connectivity and the configured search index." });
+            finish(504, { ok: false, error: "The IPFS pipeline timed out. Check the configured search index and gateway URL." });
           }, TIMEOUT_MS);
 
           child.stdout.setEncoding("utf8");
