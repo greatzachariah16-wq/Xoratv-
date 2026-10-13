@@ -135,6 +135,13 @@ try {
   console.warn("[Server] Could not initialize Xseries discovery scheduler:", e);
 }
 
+// Initialize lightweight IPFS public metadata discovery while this service is awake.
+try {
+  startIpfsPublicDiscoveryScheduler();
+} catch (e) {
+  console.warn("[Server] Could not initialize IPFS discovery scheduler:", e);
+}
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
