@@ -19,6 +19,7 @@ type SourceResult = {
   playbackCheck: "not-checked" | "media-found" | "request-ok" | "request-failed";
   crawlDepth: number;
   browserError?: string;
+  discoverySource?: string;
 };
 type IndexedPage = SourceResult & { indexedAt: number; queryTokens: string[] };
 
@@ -114,50 +115,91 @@ function scoreIndexed(item: IndexedPage, query: string) {
   return score;
 }
 async function fetchSearchResults(query: string, limit: number): Promise<SourceResult[]> {
+  // Deliberately broad discovery: do not assume the title is a recent theatrical movie,
+  // and do not filter out older, silent, black-and-white, foreign-language, or alternate cuts.
   const variants = [
-    "(" + query + ") (movie OR film OR full movie) after:1999 -silent -black-and-white",
-    '"' + query + '" video OR stream OR watch',
+    '"' + query + '"',
+    query + " movie film watch stream",
+    query + " full title video source",
   ];
-  const outputs = await Promise.all(variants.map(async (q) => {
+  const searches = variants.flatMap((q) => [
+    { engine: "DuckDuckGo", url: (() => {
+      const u = new URL("https://html.duckduckgo.com/html/");
+      u.searchParams.set("q", q);
+      u.searchParams.set("kl", "wt-wt");
+      return u;
+    })() },
+    { engine: "Bing", url: (() => {
+      const u = new URL("https://www.bing.com/search");
+      u.searchParams.set("q", q);
+      u.searchParams.set("count", String(Math.min(10, limit)));
+      return u;
+    })() },
+  ]);
+  const outputs = await Promise.all(searches.map(async ({ engine, url: searchUrl }) => {
     try {
-      const searchUrl = new URL("https://html.duckduckgo.com/html/");
-      searchUrl.searchParams.set("q", q);
-      searchUrl.searchParams.set("kl", "wt-wt");
       const response = await fetch(searchUrl, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; XoraTVSourceLab/0.3; +https://xoratv-x.onrender.com/source-lab)",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 XoraTVSourceLab/0.4",
           Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.8",
         },
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(7000),
       });
       if (!response.ok) return [];
       const $ = load(await response.text());
       const found: SourceResult[] = [];
-      $(".result").each((_, element) => {
+      const selector = engine === "Bing" ? "li.b_algo" : ".result";
+      $(selector).each((_, element) => {
         if (found.length >= limit) return false;
-        const anchor = $(element).find(".result__a").first();
+        const anchor = engine === "Bing"
+          ? $(element).find("h2 a").first()
+          : $(element).find(".result__a").first();
         const title = anchor.text().replace(/\s+/g, " ").trim();
         const rawHref = anchor.attr("href");
-        const resolvedUrl = rawHref ? unwrapDuckDuckGoUrl(rawHref) : null;
+        const resolvedUrl = rawHref
+          ? (engine === "Bing" ? (() => {
+              try {
+                const u = new URL(rawHref, "https://www.bing.com");
+                if (!["http:", "https:"].includes(u.protocol)) return null;
+                if (u.hostname === "www.bing.com" && u.pathname === "/ck/a") {
+                  const encoded = u.searchParams.get("u") || "";
+                  const decoded = encoded.startsWith("a1") ? encoded.slice(2) : encoded;
+                  try { return new URL(decoded, "https://www.bing.com").href; } catch { return null; }
+                }
+                return u.href;
+              } catch { return null; }
+            })() : unwrapDuckDuckGoUrl(rawHref))
+          : null;
         if (!title || !resolvedUrl) return;
-        const snippet = $(element).find(".result__snippet").first().text().replace(/\s+/g, " ").trim();
-        let host = "";
-        try { host = new URL(resolvedUrl).hostname.replace(/^www\./, ""); } catch {}
-        const years = (title + " " + snippet).match(/\b(?:19\d{2}|20\d{2})\b/g)?.map(Number) || [];
-        const publishedYear = years.find((year) => year >= 2000 && year <= new Date().getFullYear()) ?? null;
+        let resultHost = "";
+        try { resultHost = new URL(resolvedUrl).hostname.replace(/^www\./, ""); } catch {}
+        // Avoid search engine internal links and malformed redirect URLs.
+        if (!resultHost || /(^|\.)bing\.com$|(^|\.)duckduckgo\.com$/.test(resultHost)) return;
+        const snippet = (engine === "Bing"
+          ? $(element).find(".b_caption p, p").first().text()
+          : $(element).find(".result__snippet").first().text()).replace(/\s+/g, " ").trim();
+        const years = (title + " " + snippet).match(/\b(?:18\d{2}|19\d{2}|20\d{2})\b/g)?.map(Number) || [];
+        const publishedYear = years.find((year) => year >= 1800 && year <= new Date().getFullYear()) ?? null;
         const sourceType = classifySource(resolvedUrl);
         found.push({
-          title, url: resolvedUrl, snippet, host, sourceType, pageKind: pageKindFor(sourceType), publishedYear,
+          title, url: resolvedUrl, snippet, host: resultHost, sourceType, pageKind: pageKindFor(sourceType), publishedYear,
           exactTitleMatch: normalize(title).includes(normalize(query)), inspected: false, mediaCandidates: [],
-          playbackCheck: "not-checked", crawlDepth: 0,
-        });
+          playbackCheck: "not-checked", crawlDepth: 0, discoverySource: engine,
+        } as SourceResult);
       });
       return found;
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   }));
   const unique = new Map<string, SourceResult>();
-  for (const result of outputs.flat()) if (!unique.has(result.url)) unique.set(result.url, result);
-  return [...unique.values()].slice(0, limit);
+  for (const result of outputs.flat()) {
+    const previous = unique.get(result.url);
+    if (!previous || (!previous.snippet && result.snippet)) unique.set(result.url, result);
+  }
+  // Keep diversity across hosts; sorting is applied after media inspection.
+  return [...unique.values()].slice(0, Math.max(limit * 3, 12));
 }
 async function fetchPublicPage(rawUrl: string) {
   let current = new URL(rawUrl);
@@ -354,8 +396,8 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
     const fresh = await fetchSearchResults(query, Math.max(limit, 8));
     const combined = new Map<string, SourceResult>();
     for (const result of [...indexedMatches, ...fresh]) if (!combined.has(result.url)) combined.set(result.url, result);
-    const seeds = [...combined.values()].slice(0, Math.min(6, limit));
-    const inspected = await inspectPages(seeds, query, Math.min(8, Math.max(3, limit + 2)));
+    const seeds = [...combined.values()].slice(0, Math.min(12, Math.max(8, limit * 2)));
+    const inspected = await inspectPages(seeds, query, Math.min(16, Math.max(8, limit * 2)));
     for (const result of fresh) if (!result.inspected) addToIndex(result, query);
     const all = new Map<string, SourceResult>();
     for (const result of inspected) {
@@ -371,15 +413,15 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
       ok: true,
       query,
       engine: "XoraTV HTTP crawler and discovery index",
-      discoveryBackend: "DuckDuckGo seed discovery + Node.js HTTP fetch + Cheerio HTML inspection + XoraTV in-memory page index",
-      yearFocus: "2000 to present (search bias, not authoritative verification)",
+      discoveryBackend: "Parallel DuckDuckGo + Bing search variants, Node.js HTTP fetch, Cheerio HTML inspection, bounded related-link crawl, media URL probes, and XoraTV in-memory page index",
+      yearFocus: "No release-year restriction; results may include older films, alternate cuts, foreign-language releases, and newer titles",
       elapsedMs: Date.now() - startedAt,
       count: results.length,
       inspectedCount: inspected.length,
       indexedPageCount: pageIndex.size,
       indexPersistence: "In-memory with 24-hour TTL; resets when the server restarts or deploys",
       results,
-      note: "XoraTV makes ordinary HTTP requests and inspects returned HTML, video/source tags, iframe/meta and JSON-LD media hints, follows a small number of relevant links one level deep, and probes one candidate media URL. No Chromium or headless browser is used. A successful HTTP response does not guarantee playback; cookies, DRM, referrers, codecs and player compatibility can still prevent playback. Some websites block automated requests or require login.",
+      note: "Searches multiple public search engines with broad title variants, inspects returned HTML, video/source tags, iframe/meta and JSON-LD media hints, follows relevant links one level deep, and probes candidate media URLs. No release-year or open-license-only filter is applied. No Chromium or headless browser is used. A successful HTTP response does not guarantee playback; access controls, cookies, DRM, referrers, codecs and player compatibility can still prevent playback. Some websites block automated requests or require login.",
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown discovery error";
