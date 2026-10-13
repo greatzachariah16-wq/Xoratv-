@@ -1,4 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { join } from "node:path";
+
+const execFileAsync = promisify(execFile);
 
 const API_URL = "https://apibay.org/q.php";
 const SITE_URL = "https://thepiratebay.org/search.php";
@@ -21,7 +26,33 @@ function magnetFor(infoHash: string, name: string) {
 }
 
 function challengePage(text: string, status: number) {
-  return status === 403 && /cloudflare|just a moment|cf_chl_|challenge-platform/i.test(text);
+  return /cloudflare|just a moment|cf_chl_|challenge-platform/i.test(text);
+}
+
+async function readWithCurlCffi(query: string, category: number) {
+  try {
+    const script = join(process.cwd(), "scripts", "source_torrent_search.py");
+    const { stdout } = await execFileAsync(
+      "python3",
+      [script, query, String(category)],
+      { timeout: 20000, maxBuffer: 300_000, windowsHide: true },
+    );
+    const result = JSON.parse(stdout.trim()) as {
+      ok?: boolean;
+      status?: number;
+      contentType?: string;
+      body?: string;
+      error?: string;
+      detail?: string;
+    };
+    return result;
+  } catch (error) {
+    return {
+      ok: false,
+      error: "curl_cffi fallback could not run.",
+      detail: error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
+    };
+  }
 }
 
 async function readText(url: string) {
@@ -53,9 +84,25 @@ export const Route = createFileRoute("/api/source-torrent-search")({
         try {
           const apiUrl = new URL(API_URL);
           apiUrl.search = new URLSearchParams({ q: query, cat: String(category) }).toString();
-          const { response, text } = await readText(apiUrl.href);
-          const contentType = response.headers.get("content-type") || "";
-          if (challengePage(text, response.status)) {
+          const fetched = await readText(apiUrl.href);
+          let status = fetched.response.status;
+          let ok = fetched.response.ok;
+          let text = fetched.text;
+          let contentType = fetched.response.headers.get("content-type") || "";
+          let method = "node-fetch";
+
+          if (challengePage(text, status) || !ok) {
+            const curl = await readWithCurlCffi(query, category);
+            if (curl.ok && curl.status === 200 && typeof curl.body === "string") {
+              status = curl.status;
+              ok = true;
+              text = curl.body;
+              contentType = curl.contentType || "application/json";
+              method = "curl_cffi Chrome impersonation";
+            }
+          }
+
+          if (challengePage(text, status)) {
             // The API response is reported faithfully; do not mistake a Cloudflare
             // challenge document for JSON or claim that results were fetched.
             let siteStatus: number | null = null;
@@ -78,20 +125,21 @@ export const Route = createFileRoute("/api/source-torrent-search")({
               query,
               category,
               provider: "The Pirate Bay API (apibay.org)",
-              status: response.status,
+              status,
               contentType,
               blockedBy: "cloudflare-challenge",
-              error: "apibay.org returned a Cloudflare verification page instead of JSON. This Render request cannot retrieve API results with ordinary HTTP.",
+              error: "Both the ordinary HTTP request and curl_cffi retry failed to return API JSON. Chrome impersonation may not satisfy every Cloudflare challenge.",
+              curlFallback: "The API request was retried with curl_cffi impersonating Chrome.",
               fallback: { url: SITE_URL + "?q=" + encodeURIComponent(query), status: siteStatus, reachable: siteReachable, note: siteNote },
               elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
           }
 
-          if (!response.ok) {
+          if (!ok) {
             return Response.json({
-              ok: false, query, category, status: response.status,
-              error: "Torrent API returned HTTP " + response.status + ".",
-              bodyPreview: text.slice(0, 300), elapsedMs: Date.now() - startedAt,
+              ok: false, query, category, status: status,
+              error: "Torrent API returned HTTP " + status + ".",
+              bodyPreview: text.slice(0, 300), method, elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
           }
 
@@ -100,7 +148,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
             payload = JSON.parse(text);
           } catch {
             return Response.json({
-              ok: false, query, category, status: response.status,
+              ok: false, query, category, status: status,
               error: "The API response was not valid JSON.",
               contentType, bodyPreview: text.slice(0, 300), elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
@@ -132,7 +180,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
 
           return Response.json({
             ok: true, query, category, provider: "The Pirate Bay API (apibay.org)",
-            status: response.status, count: results.length, results,
+            status, method, count: results.length, results,
             elapsedMs: Date.now() - startedAt,
           }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
         } catch (error) {
