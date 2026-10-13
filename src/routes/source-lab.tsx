@@ -13,7 +13,7 @@ type TorrentSearchResponse = {
 type InspectResponse = {
   ok: boolean; infoHash?: string; name?: string;
   files?: Array<{ name: string; path: string; size: number; type: string }>;
-  totalSize?: number; peerCount?: number; elapsedMs?: number; error?: string; detail?: string; code?: string;
+  totalSize?: number; peerCount?: number; downloadedBytes?: number; engine?: string; payloadDownloaded?: boolean; elapsedMs?: number; error?: string; detail?: string; code?: string;
 };
 
 export const Route = createFileRoute("/source-lab")({
@@ -146,6 +146,7 @@ function SourceLabPage() {
                   <p className="flex items-center gap-2 font-semibold text-emerald-800"><CircleCheck className="size-4" /> Torrent metadata resolved</p>
                   <p className="mt-1 break-words text-[#625b70]">Torrent: <span className="font-medium text-[#292333]">{inspection.data.name}</span></p>
                   <p className="mt-1 text-[#625b70]">Files: {inspection.data.files?.length ?? 0} · Total size: {formatSize(inspection.data.totalSize ?? 0)} · Peers observed: {inspection.data.peerCount ?? 0} · {inspection.data.elapsedMs ?? 0} ms</p>
+                  <p className="mt-1 text-xs font-medium text-emerald-800">Engine: {inspection.data.engine || "libtorrent-python"} · Payload downloaded: {formatSize(inspection.data.downloadedBytes ?? 0)} · Video file download: disabled</p>
                   <ul className="mt-2 space-y-1 border-t border-[#e5deef] pt-2">
                     {(inspection.data.files || []).slice(0, 12).map((file, fileIndex) => <li key={file.path + fileIndex} className="break-words text-xs text-[#51466a]">{file.name} <span className="text-[#827995]">({formatSize(file.size)})</span></li>)}
                     {(inspection.data.files?.length || 0) > 12 && <li className="text-xs text-[#827995]">Showing first 12 files.</li>}
