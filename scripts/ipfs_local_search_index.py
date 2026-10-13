@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Small, local IPFS filename index for XoraTV Source Lab.
-
-Only directory listing HTML is fetched. Media files are never downloaded or pinned.
-The index grows from CID seeds submitted by an operator; IPFS has no global
-filename-search protocol, so this cannot discover unindexed content by magic.
+"""XoraTV IPFS search index with automatic public-web CID discovery.
+Search pages and metadata are inspected; media bytes are never downloaded or pinned.
+Public search coverage varies and cannot guarantee that every IPFS file is discoverable.
 """
 import html
 import json
@@ -12,7 +10,7 @@ import re
 import sqlite3
 import sys
 import time
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse, urlencode
 from urllib.request import Request, urlopen
 
 GATEWAY = os.environ.get("IPFS_GATEWAY_URL", "https://ipfs.io").rstrip("/")
@@ -99,6 +97,51 @@ def index_seed(cid, title=""):
     finally:
         db.close()
 
+def discover_from_public_search(query):
+    """Search public web indexes for IPFS gateway links; never fetch candidate media."""
+    found = []
+    search_url = "https://html.duckduckgo.com/html/?" + urlencode({"q": '"' + query + '" (ipfs OR bafy OR Qm) video'})
+    try:
+        req = Request(search_url, headers={"User-Agent": "Mozilla/5.0 (compatible; XoraTVSourceLab/1.0)", "Accept": "text/html"})
+        with urlopen(req, timeout=10) as response:
+            page = response.read(1_500_000).decode("utf-8", "replace")
+        # CID must appear in a gateway path or a URL; a bare CID in random page text is not enough.
+        for match in re.finditer(r'https?://(?:[^/"\\s<>]+/)*(?:ipfs/)?(' + CID_PATTERN + r')(?:/([^"\\s<>?#]*))?', html.unescape(page), re.I):
+            cid = match.group(1)
+            tail = unquote(match.group(2) or "").strip("/")
+            title = tail.rsplit("/", 1)[-1] if tail else query
+            if re.search(r"\.(mp4|webm|m4v|mov|mkv|avi|ogv|m3u8)$", title, re.I):
+                found.append((cid, title[:240], tail, GATEWAY + "/ipfs/" + cid + ("/" + tail if tail else "")))
+    except Exception:
+        pass
+    # Internet Archive is discovery-only: accept records only when metadata explicitly contains an IPFS CID.
+    try:
+        ia_url = "https://archive.org/advancedsearch.php?" + urlencode({
+            "q": query + ' AND (mediatype:movies OR mediatype:movies)',
+            "fl[]": ["identifier"], "rows": "8", "output": "json"
+        }, doseq=True)
+        req = Request(ia_url, headers={"User-Agent": "XoraTVSourceLab/1.0", "Accept": "application/json"})
+        with urlopen(req, timeout=8) as response:
+            records = json.loads(response.read(500_000).decode("utf-8", "replace")).get("response", {}).get("docs", [])
+        for record in records:
+            identifier = record.get("identifier")
+            if not identifier:
+                continue
+            metadata_url = "https://archive.org/metadata/" + identifier
+            req = Request(metadata_url, headers={"User-Agent": "XoraTVSourceLab/1.0", "Accept": "application/json"})
+            with urlopen(req, timeout=6) as response:
+                metadata = json.loads(response.read(700_000).decode("utf-8", "replace"))
+            raw = json.dumps(metadata, ensure_ascii=False)
+            cids = set(re.findall(r"(?<![a-zA-Z0-9])" + CID_PATTERN + r"(?![a-zA-Z0-9])", raw))
+            for cid in cids:
+                found.append((cid, str(identifier)[:240], "", GATEWAY + "/ipfs/" + cid))
+    except Exception:
+        pass
+    unique = {}
+    for item in found:
+        unique[(item[0], item[2])] = item
+    return list(unique.values())[:20]
+
 def search(query):
     terms = [part.lower() for part in re.findall(r"[\w.-]+", query) if len(part) > 1][:8]
     if not terms:
@@ -113,11 +156,23 @@ def search(query):
             if score:
                 ranked.append((score, cid, title, path, gateway_url))
         ranked.sort(key=lambda row: (-row[0], row[2].lower()))
-        results = [{"cid": cid, "title": title, "path": path, "streamUrl": gateway_url, "score": score}
-                   for score, cid, title, path, gateway_url in ranked[:20]]
-        return {"ok": True, "query": query, "results": results, "count": len(results),
-                "indexSize": len(rows), "source": "xoratv-local-index",
-                "message": "Results come from CIDs indexed by XoraTV Source Lab, not a complete search of all IPFS."}
+        results = [{"cid": cid, "title": title, "path": path, "streamUrl": gateway_url, "score": score,
+                    "source": "xoratv-local-index"} for score, cid, title, path, gateway_url in ranked[:20]]
+        source = "xoratv-local-index"
+        if not results:
+            discovered = discover_from_public_search(query)
+            for cid, title, path, stream_url in discovered:
+                db.execute("INSERT INTO media_index (cid,title,path,gateway_url,source_cid,indexed_at) VALUES (?,?,?,?,?,?,?)",
+                           (cid, title, path, stream_url, "automatic-public-discovery", int(time.time())))
+                results.append({"cid": cid, "title": title, "path": path, "streamUrl": stream_url,
+                                "score": 1, "source": "automatic-public-discovery"})
+            db.commit()
+            source = "automatic-public-discovery"
+        return {"ok": True, "query": query, "results": results[:20], "count": len(results),
+                "indexSize": len(rows), "source": source,
+                "message": ("Automatically discovered candidates from public search pages; check playback because availability varies."
+                            if source == "automatic-public-discovery" else
+                            "Results come from XoraTV's local index.") }
     finally:
         db.close()
 
