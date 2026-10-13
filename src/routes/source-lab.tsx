@@ -90,7 +90,7 @@ function SourceLabPage() {
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f2edff] text-[#6243d8]"><Radar className="size-5" /></div>
             <div>
               <h2 className="font-display text-xl font-semibold">Search the XoraTV index</h2>
-              <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches filenames and titles that have been indexed by XoraTV. This is our own index, not a claim that every file on IPFS is searchable. No media is pinned or intentionally downloaded.</p>
+              <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches XoraTV's index first, then automatically checks public search results and metadata for IPFS CIDs. Results depend on what is publicly indexed. No media is pinned or intentionally downloaded.</p>
             </div>
           </div>
           <input aria-label="Video title or keyword" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={180} placeholder="Enter video title or keyword" className="mt-5 h-11 w-full rounded-xl border border-[#e5deef] bg-white px-3 text-sm outline-none focus:border-[#7c5cfc]" />
@@ -151,7 +151,7 @@ function SourceLabPage() {
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
           <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-700" /><div>
             <h2 className="font-semibold text-amber-950">Important</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-900">IPFS does not provide a universal title-search service. This first version builds a local filename index from CID seeds you provide. Render's local disk may reset on redeploy unless a persistent disk is configured. The gateway must be able to serve the CID for playback.</p>
+            <p className="mt-1 text-sm leading-6 text-amber-900">IPFS has no universal title-search service, so automatic discovery checks public web search results and metadata for CID references. It may not find every title, and a discovered CID may no longer be available. Render's local disk may reset on redeploy unless a persistent disk is configured. Playback streams through the IPFS gateway; media is not pinned or downloaded by this search.</p>
           </div></div>
         </section>
       </div>
