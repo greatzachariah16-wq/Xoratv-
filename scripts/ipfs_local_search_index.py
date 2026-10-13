@@ -162,7 +162,7 @@ def search(query):
         if not results:
             discovered = discover_from_public_search(query)
             for cid, title, path, stream_url in discovered:
-                db.execute("INSERT INTO media_index (cid,title,path,gateway_url,source_cid,indexed_at) VALUES (?,?,?,?,?,?,?)",
+                db.execute("INSERT INTO media_index (cid,title,path,gateway_url,source_cid,indexed_at) VALUES (?,?,?,?,?,?)",
                            (cid, title, path, stream_url, "automatic-public-discovery", int(time.time())))
                 results.append({"cid": cid, "title": title, "path": path, "streamUrl": stream_url,
                                 "score": 1, "source": "automatic-public-discovery"})
