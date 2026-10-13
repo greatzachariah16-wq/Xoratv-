@@ -370,7 +370,7 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
     return Response.json({
       ok: true,
       query,
-      engine: "XoraTV headless crawler and discovery index",
+      engine: "XoraTV HTTP crawler and discovery index",
       discoveryBackend: "DuckDuckGo seed discovery + Node.js HTTP fetch + Cheerio HTML inspection + XoraTV in-memory page index",
       yearFocus: "2000 to present (search bias, not authoritative verification)",
       elapsedMs: Date.now() - startedAt,
