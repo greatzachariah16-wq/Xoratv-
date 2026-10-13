@@ -212,8 +212,9 @@ export async function queryRtdb(path: string, init?: RequestInit): Promise<unkno
     }
   }
 
-  // Build target URL
-  let url = `${base}/${cleanPath}.json`;
+  // Encode each path segment so reserved characters cannot alter the RTDB URL.
+  const encodedPath = cleanPath.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+  let url = `${base}/${encodedPath}.json`;
   if (!token && secret) {
     url += `?auth=${encodeURIComponent(secret)}`;
   }
@@ -264,6 +265,23 @@ export async function queryRtdb(path: string, init?: RequestInit): Promise<unkno
     }
 
     if (res.status === 204) return null;
+
+    const contentType = res.headers.get("content-type") || "unknown";
+    if (!contentType.toLowerCase().includes("json")) {
+      const bodyPreview = (await res.text().catch(() => ""))
+        .replace(/\\s+/g, " ")
+        .slice(0, 180);
+      let responseHost = "unknown";
+      try { responseHost = new URL(res.url).host; } catch { /* omit malformed URL */ }
+      console.error("[Firebase RTDB] Expected JSON but received a non-JSON response:", {
+        httpStatus: res.status,
+        contentType,
+        databaseHost: responseHost,
+        path: cleanPath,
+        bodyPreview,
+      });
+      throw new Error(`Firebase RTDB returned non-JSON content (HTTP ${res.status}, ${contentType}). Check FIREBASE_DATABASE_URL and the configured RTDB endpoint.`);
+    }
     return await res.json();
   } catch (e) {
     // If network fails or auth fails and it's a read, attempt fallback
