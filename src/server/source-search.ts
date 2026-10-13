@@ -384,11 +384,9 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown discovery error";
     console.error("[XoraTV Source Lab] discovery failed:", error);
-    const runtimeHint = /executable|enoent|chromium|chrome/i.test(message)
-      ? "The HTTP inspection runtime could not complete the request."
-      : /timed out|abort/i.test(message)
-        ? "The HTTP request timed out. Try again with a smaller result limit."
-        : "Check the server logs for the recorded browser-runtime error.";
+    const runtimeHint = /timed out|abort/i.test(message)
+      ? "The HTTP request timed out. Try again with a smaller result limit."
+      : "Check the server logs for the recorded HTTP request error.";
     return Response.json({
       ok: false,
       query,
