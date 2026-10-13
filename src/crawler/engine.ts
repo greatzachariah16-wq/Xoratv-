@@ -106,7 +106,10 @@ export async function runCrawlerCycle(options: RunCrawlerOptions = {}): Promise<
         summary.errors.push(msg);
       }
 
-      // 2c. Vimeo Smart atesFound = rawDiscovered.length;
+
+    }
+
+    summary.candidatesFound = rawDiscovered.length;
     summary.categoriesCovered = Array.from(categoriesCoveredSet);
 
     // 3. Filter hard rules, Dedupe, Score, Store
