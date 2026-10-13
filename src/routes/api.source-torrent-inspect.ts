@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const METADATA_TIMEOUT_MS = 28_000;
 const SCRIPT_PATH = resolve(process.cwd(), "scripts/torrent_inspect.py");
+const UV_PATH = resolve(process.env.HOME || "/opt/render", ".local/bin/uv");
 
 type Inspection = {
   ok: boolean;
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
           let stdout = "";
           let stderr = "";
           let settled = false;
-          const child = spawn("python3", [SCRIPT_PATH], { stdio: ["pipe", "pipe", "pipe"] });
+          const child = spawn(UV_PATH, ["run", "--no-project", "--python", "3.13", "--with", "libtorrent==2.1.1", "python", SCRIPT_PATH], { stdio: ["pipe", "pipe", "pipe"] });
           const timeout = setTimeout(() => {
             child.kill("SIGKILL");
             finish({
