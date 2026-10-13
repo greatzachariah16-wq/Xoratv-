@@ -32,7 +32,7 @@ def is_video(name, mime=""):
     return bool(VIDEO_EXT.search(name or "")) or str(mime).lower().split(";", 1)[0].startswith("video/")
 
 def verify(cid, title, path="", mime=""):
-    if not CID_RE.fullmatch(cid) or not is_video(title or path, mime):
+    if not CID_RE.fullmatch(cid) or not (is_video(title, mime) or is_video(path, mime)):
         return None
     for gateway in GATEWAYS:
         url = gateway + "/ipfs/" + cid
@@ -102,12 +102,28 @@ def main():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     result = module.search(query)
+    # Validate fallback candidates too; do not display dead CIDs as playable matches.
+    fallback_rows = result.get("results") if isinstance(result, dict) else []
+    checked_rows = []
+    if isinstance(fallback_rows, list):
+        for row in fallback_rows[:8]:
+            if not isinstance(row, dict):
+                continue
+            cid = str(row.get("cid") or "")
+            title = str(row.get("title") or "")
+            path = str(row.get("path") or "")
+            checked = verify(cid, title, path, "video/*")
+            if checked:
+                checked["source"] = str(row.get("source") or "xoratv-local-index")
+                checked_rows.append(checked)
+    result["results"] = checked_rows
+    result["count"] = len(checked_rows)
     result["providerErrors"] = errors[:3]
     result["source"] = result.get("source") or "xoratv-local-index"
-    if result.get("results"):
-        result["message"] = "External IPFS index was unavailable or had no playable match; showing fallback results. " + str(result.get("message", ""))
+    if checked_rows:
+        result["message"] = "External IPFS index was unavailable or had no playable match; fallback candidates were checked against gateways. " + str(result.get("message", ""))
     else:
-        result["message"] = "No playable match found in the external IPFS index or fallback sources. " + str(result.get("message", ""))
+        result["message"] = "No playable match was confirmed in the external index or fallback sources. " + str(result.get("message", ""))
     emit(result)
 
 if __name__ == "__main__":
