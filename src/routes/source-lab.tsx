@@ -254,7 +254,7 @@ function SourceLabPage() {
         )}
 
         <section className="rounded-2xl border border-[#e5deef] bg-white p-4 sm:p-5">
-          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">Searches are now biased toward movies from 2000 onward, and each result identifies its host and apparent page type (direct video, HLS, M3U, video-sharing, social video, or general webpage). The crawler opens a limited number of pages in Puppeteer, inspects rendered page content for video/source tags, embeds, metadata and JSON-LD, follows a few relevant links one level deep, and probes one media URL. A successful HTTP response does not guarantee playback because CORS, cookies, referrers, DRM, codecs and player compatibility can still prevent it.</p></div></div>
+          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">Searches are now biased toward movies from 2000 onward, and each result identifies its host and apparent page type (direct video, HLS, M3U, video-sharing, social video, or general webpage). The crawler uses ordinary HTTP requests to inspect returned HTML for video/source tags, embeds, metadata and JSON-LD, follows a few relevant links one level deep, and probes one media URL. A successful HTTP response does not guarantee playback because CORS, cookies, referrers, DRM, codecs and player compatibility can still prevent it.</p></div></div>
         </section>
       </div>
     </main>
