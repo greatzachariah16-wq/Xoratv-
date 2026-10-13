@@ -20,7 +20,7 @@ DB_PATH = os.environ.get("IPFS_INDEX_DB", os.path.join(os.getcwd(), "data", "ipf
 CID_PATTERN = r"(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{20,})"
 CID_RE = re.compile(r"^" + CID_PATTERN + r"$")
 LINK_RE = re.compile(r'''href=["']([^"']+)["']''', re.I)
-IPFS_PATH_RE = re.compile(r"/ipfs/(" + CID_PATTERN + r")(?:/([^?#\"']*))?", re.I)
+IPFS_PATH_RE = re.compile(r"/ipfs/(" + CID_PATTERN + r")(?:/([^?#\"']*))?")
 
 def emit(value):
     print(json.dumps(value, ensure_ascii=False, separators=(",", ":")), flush=True)
@@ -29,9 +29,9 @@ def connect():
     os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
     db = sqlite3.connect(DB_PATH, timeout=10)
     db.execute("""CREATE TABLE IF NOT EXISTS media_index (
-        cid TEXT PRIMARY KEY, title TEXT NOT NULL, path TEXT NOT NULL,
-        gateway_url TEXT NOT NULL, source_cid TEXT NOT NULL,
-        indexed_at INTEGER NOT NULL
+        id INTEGER PRIMARY KEY AUTOINCREMENT, cid TEXT NOT NULL, title TEXT NOT NULL,
+        path TEXT NOT NULL, gateway_url TEXT NOT NULL, source_cid TEXT NOT NULL,
+        indexed_at INTEGER NOT NULL, UNIQUE(cid, path)
     )""")
     db.execute("CREATE INDEX IF NOT EXISTS media_title_idx ON media_index(title)")
     return db
@@ -54,18 +54,20 @@ def index_seed(cid, title=""):
     try:
         while queue and len(seen) < 80:
             current, parent_path, depth = queue.pop(0)
-            if current in seen:
+            marker = (current, parent_path)
+            if marker in seen:
                 continue
-            seen.add(current)
-            url = GATEWAY + "/ipfs/" + current
-            label = title.strip() if current == cid and title.strip() else (parent_path.rsplit("/", 1)[-1] or current)
-            db.execute("INSERT OR REPLACE INTO media_index VALUES (?, ?, ?, ?, ?, ?)",
-                       (current, label[:240], parent_path, url, cid, int(time.time())))
+            seen.add(marker)
+            listing_url = GATEWAY + "/ipfs/" + current + ("/" + parent_path if parent_path else "")
+            label = title.strip() if not parent_path and title.strip() else (parent_path.rsplit("/", 1)[-1] or current)
+            db.execute("INSERT INTO media_index (cid,title,path,gateway_url,source_cid,indexed_at) VALUES (?,?,?,?,?,?) "
+                       "ON CONFLICT(cid,path) DO UPDATE SET title=excluded.title,gateway_url=excluded.gateway_url,indexed_at=excluded.indexed_at",
+                       (current, label[:240], parent_path, listing_url, cid, int(time.time())))
             indexed += 1
             if depth >= 3:
                 continue
             try:
-                page, final_url = fetch_listing(url)
+                page, final_url = fetch_listing(listing_url)
             except Exception:
                 continue
             for raw_href in LINK_RE.findall(page):
@@ -79,18 +81,17 @@ def index_seed(cid, title=""):
                     continue
                 child_cid = match.group(1)
                 tail = unquote(match.group(2) or "").strip("/")
-                if child_cid == current or child_cid in seen:
+                if not tail:
                     continue
-                # Gateway directory links usually include child path names; only index video-like
-                # files and directories, without requesting their media bytes.
-                name = tail.rsplit("/", 1)[-1] if tail else ""
-                if name and not name.endswith("/"):
-                    if re.search(r"\.(mp4|webm|m4v|mov|mkv|avi|ogv|m3u8)$", name, re.I):
-                        db.execute("INSERT OR REPLACE INTO media_index VALUES (?, ?, ?, ?, ?, ?)",
-                                   (child_cid, name[:240], tail, GATEWAY + "/ipfs/" + child_cid, cid, int(time.time())))
-                        indexed += 1
-                    elif not re.search(r"\.[a-z0-9]{1,8}$", name, re.I):
-                        queue.append((child_cid, tail, depth + 1))
+                name = tail.rsplit("/", 1)[-1]
+                if re.search(r"\.(mp4|webm|m4v|mov|mkv|avi|ogv|m3u8)$", name, re.I):
+                    stream_url = GATEWAY + "/ipfs/" + child_cid + "/" + tail if child_cid == current else GATEWAY + "/ipfs/" + child_cid + ("/" + name if "/" not in tail else "/" + tail)
+                    db.execute("INSERT INTO media_index (cid,title,path,gateway_url,source_cid,indexed_at) VALUES (?,?,?,?,?,?) "
+                               "ON CONFLICT(cid,path) DO UPDATE SET title=excluded.title,gateway_url=excluded.gateway_url,indexed_at=excluded.indexed_at",
+                               (child_cid, name[:240], tail, stream_url, cid, int(time.time())))
+                    indexed += 1
+                elif depth < 3 and not re.search(r"\.[a-z0-9]{1,8}$", name, re.I):
+                    queue.append((child_cid, tail, depth + 1))
         db.commit()
         return {"ok": True, "seedCid": cid, "indexedCount": indexed, "visitedDirectories": len(seen),
                 "pinned": False, "downloadedMedia": False,
@@ -104,7 +105,7 @@ def search(query):
         raise ValueError("Enter a title or keyword with at least two letters.")
     db = connect()
     try:
-        rows = db.execute("SELECT cid,title,path,gateway_url FROM media_index ORDER BY indexed_at DESC LIMIT 1000").fetchall()
+        rows = db.execute("SELECT cid,title,path,gateway_url FROM media_index ORDER BY indexed_at DESC LIMIT 2000").fetchall()
         ranked = []
         for cid, title, path, gateway_url in rows:
             haystack = (title + " " + path).lower()
