@@ -1,137 +1,128 @@
 #!/usr/bin/env python3
-"""Search Internet Archive metadata and return a directly playable media URL.
+"""Discover an IPFS media result and return a gateway URL for on-demand playback.
 
-This test pipeline searches by keyword and resolves an item's metadata to a
-browser-facing file URL. It does not download or pin media and does not apply
-a license/rights filter. Internet Archive search is a media catalogue, not a
-guarantee that every item is available or playable.
+This script does not pin content by default: recursive pinning can fetch and retain
+the entire content DAG, which is not the same as on-the-fly streaming. Run it on
+the same host as the configured IPFS gateway, or set IPFS_GATEWAY_URL accordingly.
 """
 import json
 import os
 import re
 import sys
 import time
-from urllib.parse import quote, urlencode
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-ARCHIVE_SEARCH_URL = os.environ.get(
-    "INTERNET_ARCHIVE_SEARCH_URL",
-    "https://archive.org/advancedsearch.php",
-).rstrip("/")
-ARCHIVE_METADATA_URL = os.environ.get(
-    "INTERNET_ARCHIVE_METADATA_URL",
-    "https://archive.org/metadata",
-).rstrip("/")
-DEFAULT_QUERY = os.environ.get("IPFS_MEDIA_QUERY", "Big Buck Bunny").strip() or "Big Buck Bunny"
-TIMEOUT_SECONDS = max(5, min(int(os.environ.get("MEDIA_PIPELINE_TIMEOUT", "25")), 60))
-MAX_SEARCH_RESULTS = max(1, min(int(os.environ.get("INTERNET_ARCHIVE_ROWS", "12")), 30))
-PLAYABLE_EXTENSIONS = (".mp4", ".m4v", ".webm", ".ogv", ".ogg")
-PLAYABLE_FORMATS = ("mpeg4", "h.264", "h264", "webm", "ogg video", "quicktime")
+# IPFS Search documents this endpoint in its public OpenAPI specification.
+# Additional endpoints may be configured as a semicolon-separated fallback list.
+DEFAULT_SEARCH_URL = "https://api.ipfs-search.com/v1/search"
+SEARCH_URLS = []
+for candidate in os.environ.get("IPFS_SEARCH_URLS", os.environ.get("IPFS_SEARCH_URL", DEFAULT_SEARCH_URL)).split(";"):
+    candidate = candidate.strip().rstrip("/")
+    if candidate and candidate not in SEARCH_URLS:
+        SEARCH_URLS.append(candidate)
+GATEWAY_URL = os.environ.get("IPFS_GATEWAY_URL", os.environ.get("KUBO_GATEWAY_URL", "http://127.0.0.1:8080")).rstrip("/")
+TIMEOUT_SECONDS = max(5, min(int(os.environ.get("IPFS_PIPELINE_TIMEOUT", "35")), 90))
+DEFAULT_QUERIES = ["animation", "documentary", "short film", "feature film"]
+QUERIES = [q.strip() for q in os.environ.get("IPFS_MEDIA_QUERIES", ";".join(DEFAULT_QUERIES)).split(";") if q.strip()]
+CID_RE = re.compile(r"^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{20,})$")
 
 
 def emit(value):
     print(json.dumps(value, ensure_ascii=False, separators=(",", ":")), flush=True)
 
 
-def request_json(url):
-    req = Request(url, headers={
-        "Accept": "application/json",
-        "User-Agent": "XoraTV-MediaLab/1.0 (Internet Archive metadata test)",
-    })
-    with urlopen(req, timeout=TIMEOUT_SECONDS) as response:
-        raw = response.read(3_000_000)
+def request_json(url, timeout=TIMEOUT_SECONDS):
+    req = Request(url, headers={"Accept": "application/json", "User-Agent": "XoraTV-IPFS-MediaLab/1.0"})
+    with urlopen(req, timeout=timeout) as response:
+        raw = response.read(2_000_000)
         return json.loads(raw.decode("utf-8", "replace"))
 
 
-def search_archive(query):
-    params = {
-        "q": f'mediatype:movies AND (title:("{query}") OR identifier:("{query}"))',
-        "fl[]": ["identifier", "title", "year"],
-        "rows": str(MAX_SEARCH_RESULTS),
-        "page": "1",
-        "output": "json",
-    }
-    # urllib's urlencode supports doseq for repeated fl[] fields.
-    url = ARCHIVE_SEARCH_URL + "?" + urlencode(params, doseq=True)
-    payload = request_json(url)
-    docs = payload.get("response", {}).get("docs", [])
-    if not docs:
-        # Broader fallback, still a title/keyword search and not a rights filter.
-        params["q"] = f'mediatype:movies AND "{query}"'
-        payload = request_json(ARCHIVE_SEARCH_URL + "?" + urlencode(params, doseq=True))
-        docs = payload.get("response", {}).get("docs", [])
-    return docs
+def walk_dicts(value):
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from walk_dicts(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from walk_dicts(child)
 
 
-def choose_media_file(files):
-    candidates = []
-    for item in files if isinstance(files, list) else []:
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name")
-        fmt = str(item.get("format", "")).lower()
-        if not isinstance(name, str) or name.startswith("__MACOSX/"):
-            continue
-        if name.lower().endswith(PLAYABLE_EXTENSIONS) or any(tag in fmt for tag in PLAYABLE_FORMATS):
-            # Prefer MP4, then WebM/OGV, and skip obvious metadata/thumbnail files.
-            lower = name.lower()
-            if lower.endswith((".jpg", ".jpeg", ".png", ".gif", ".xml", ".torrent")):
-                continue
-            rank = 0 if lower.endswith(".mp4") else 1 if lower.endswith(".m4v") else 2 if lower.endswith(".webm") else 3
-            candidates.append((rank, int(item.get("size", 0) or 0), name, item))
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: (x[0], -x[1]))
-    return candidates[0][3]
+def field_text(item, keys):
+    parts = []
+    for key in keys:
+        value = item.get(key)
+        if isinstance(value, str):
+            parts.append(value)
+        elif isinstance(value, dict):
+            parts.extend(str(v) for v in value.values() if isinstance(v, str))
+    return " ".join(parts)
 
 
-def discover(query):
-    docs = search_archive(query)
+def cid_from(item):
+    for key in ("cid", "CID", "hash", "ipfs_hash", "ipfsHash", "content_id"):
+        value = item.get(key)
+        if isinstance(value, str):
+            value = value.removeprefix("/ipfs/").strip()
+            if CID_RE.fullmatch(value):
+                return value
+    for key in ("path", "url", "uri", "ipfs_url"):
+        value = item.get(key)
+        if isinstance(value, str):
+            match = re.search(r"/ipfs/((?:Qm[1-9A-HJ-NP-Za-km-z]{44})|(?:bafy[a-z2-7]{20,}))", value)
+            if match:
+                return match.group(1)
+    return None
+
+
+def discover(manual_query=""):
+    if manual_query.strip():
+        query_text = manual_query.strip()[:180]
+    else:
+        if not QUERIES:
+            raise RuntimeError("Enter a title or configure IPFS_MEDIA_QUERIES.")
+        query_text = QUERIES[0]
     failures = []
-    for doc in docs:
-        identifier = doc.get("identifier")
-        if not isinstance(identifier, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", identifier):
-            continue
+    for search_url in SEARCH_URLS:
+        url = search_url + ("&" if "?" in search_url else "?") + urlencode({"q": query_text})
         try:
-            metadata = request_json(f"{ARCHIVE_METADATA_URL}/{quote(identifier, safe='')}")
-        except Exception as exc:
-            failures.append(f"{identifier}: {str(exc)[:100]}")
+            payload = request_json(url)
+        except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
+            reason = str(exc)
+            if "TLSV1_UNRECOGNIZED_NAME" in reason or "unrecognized name" in reason.lower():
+                reason = "TLS hostname rejected by provider"
+            failures.append(search_url + ": " + reason[:140])
             continue
-        item = choose_media_file(metadata.get("files", []))
-        if not item:
-            continue
-        filename = item.get("name")
-        title = str(doc.get("title") or metadata.get("metadata", {}).get("title") or identifier)
-        media_url = f"https://archive.org/download/{quote(identifier, safe='')}/{quote(filename, safe='/')}"
-        return {
-            "source": "Internet Archive",
-            "identifier": identifier,
-            "title": title[:240],
-            "mediaUrl": media_url,
-            "fileName": filename,
-            "fileSize": item.get("size"),
-            "metadataUrl": f"https://archive.org/details/{quote(identifier, safe='')}",
-        }
-    detail = (" Metadata lookup issues: " + " | ".join(failures[:3])) if failures else ""
+
+        for item in walk_dicts(payload):
+            cid = cid_from(item)
+            if not cid:
+                continue
+            title = field_text(item, ("title", "name", "filename", "file_name", "path")) or query_text
+            return query_text, {"cid": cid, "title": title[:240]}
+
+        failures.append(search_url + ": response contained no recognized CID")
     raise RuntimeError(
-        f'No Internet Archive movie result with a recognized browser-playable file was found for "{query}".'
-        + detail
-        + " No media was downloaded."
+        "No configured IPFS keyword-search endpoint returned a usable CID. "
+        "Set IPFS_SEARCH_URLS to one or more semicolon-separated, verified search API URLs. "
+        + " | ".join(failures)[:260]
+        + ". Nothing was pinned or downloaded."
     )
 
 
 def run():
     started = time.monotonic()
-    query = " ".join(sys.argv[1:]).strip() or DEFAULT_QUERY
-    query = query[:180]
-    result = discover(query)
+    query_text, result = discover(" ".join(sys.argv[1:]))
     emit({
         "ok": True,
-        "query": query,
-        **result,
+        "query": query_text,
+        "title": result["title"],
+        "cid": result["cid"],
         "pinned": False,
-        "pinNote": "Direct on-demand playback URL resolved from Internet Archive metadata. The pipeline did not download or pin the media.",
-        "streamUrl": result["mediaUrl"],
+        "pinNote": "On-demand gateway playback requested. This pipeline does not pin the CID or intentionally fetch the complete media file.",
+        "streamUrl": GATEWAY_URL + "/ipfs/" + result["cid"],
         "elapsedMs": int((time.monotonic() - started) * 1000),
     })
 
