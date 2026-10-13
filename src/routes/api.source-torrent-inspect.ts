@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
             const timeout = setTimeout(() => {
               finish({
                 ok: false,
-                infoHash: xt.slice("urn:btih:".length).toLowerCase(),
+                infoHash,
                 elapsedMs: Date.now() - startedAt,
                 code: "metadata-timeout",
                 error: "Timed out waiting for torrent metadata. The magnet may have no reachable peers or the server may not be able to reach the BitTorrent network.",
@@ -79,7 +79,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
 
             let torrent: any;
             try {
-              torrent = client!.add(magnet, { announce: TRACKERS });
+              torrent = client!.add(canonicalMagnet);
             } catch (error) {
               finish({ ok: false, elapsedMs: Date.now() - startedAt, error: safeError(error), code: "magnet-rejected" });
               return;
@@ -97,7 +97,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
                 finish({
                   ok: true,
                   infoHash: String(torrent.infoHash || xt.slice("urn:btih:".length)).toLowerCase(),
-                  name: String(torrent.name || parsed.searchParams.get("dn") || "Torrent"),
+                  name: String(torrent.name || displayName),
                   files,
                   totalSize: files.reduce((sum: number, file: { size: number }) => sum + file.size, 0),
                   peerCount: Number(torrent.numPeers || 0),
