@@ -1,4 +1,5 @@
 import "./lib/error-capture";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -55,6 +56,63 @@ import { executeVimeoApiSearch } from "./integrations/providers/vimeo";
 import { xseriesDbRead } from "./server/xseries-service-account";
 import type { XserisMediaItem } from "./lib/xseris/types";
 import type { XTvSeriesItem } from "./integrations/firebase/rtdb";
+
+const IPFS_DISCOVERY_INTERVAL_MS = 30 * 60 * 1000;
+let ipfsDiscoveryRunning = false;
+
+function runIpfsPublicDiscoveryOnce() {
+  if (ipfsDiscoveryRunning || !process.env.IPFS_INGEST_TOKEN) return;
+  ipfsDiscoveryRunning = true;
+  const scriptPath = path.resolve(process.cwd(), "scripts/ipfs_public_discovery_worker.py");
+  const child = spawn(process.env.PYTHON_PATH || "python3", [scriptPath], {
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      XORATV_SOURCE_URL: process.env.XORATV_SOURCE_URL || "https://xoratv-x.onrender.com",
+      PYTHONUNBUFFERED: "1",
+    },
+  });
+  let stdout = "";
+  let stderr = "";
+  const timeout = setTimeout(() => child.kill("SIGKILL"), 120_000);
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk: string) => { stdout = (stdout + chunk).slice(-12_000); });
+  child.stderr.on("data", (chunk: string) => { stderr = (stderr + chunk).slice(-4_000); });
+  child.on("error", (error) => {
+    console.warn("[IPFS Discovery] Worker could not start:", error.message);
+  });
+  child.on("close", (code) => {
+    clearTimeout(timeout);
+    ipfsDiscoveryRunning = false;
+    try {
+      const result = JSON.parse(stdout.trim()) as Record<string, unknown>;
+      console.log("[IPFS Discovery] Run finished:", {
+        ok: result.ok === true,
+        discovered: result.discovered ?? 0,
+        note: result.note,
+      });
+    } catch {
+      console.warn("[IPFS Discovery] Worker ended without a valid result:", {
+        code,
+        stderr: stderr.slice(-800),
+        stdout: stdout.slice(-800),
+      });
+    }
+  });
+}
+
+function startIpfsPublicDiscoveryScheduler() {
+  if (!process.env.IPFS_INGEST_TOKEN) {
+    console.warn("[IPFS Discovery] Disabled: IPFS_INGEST_TOKEN is not configured.");
+    return;
+  }
+  // Do not run a costly crawl during boot; start shortly after the server is ready.
+  setTimeout(() => {
+    runIpfsPublicDiscoveryOnce();
+    setInterval(runIpfsPublicDiscoveryOnce, IPFS_DISCOVERY_INTERVAL_MS);
+  }, 90_000);
+}
 
 // Initialize backend-only Shorts playback verification scheduler.
 try {
