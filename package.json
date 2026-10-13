@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "prebuild": "if [ \"$RENDER\" = \"true\" ]; then python3 -m pip install curl_cffi && (curl -LsSf https://astral.sh/uv/install.sh | sh) && export PATH=\"$HOME/.local/bin:$PATH\" UV_PYTHON_DOWNLOADS=automatic && uv python install 3.13 && uv run --no-project --python 3.13 --with libtorrent==2.1.1 python -c \"import libtorrent\"; fi",
+    "prebuild": "if [ \"$RENDER\" = \"true\" ]; then python3 -m pip install curl_cffi && (curl -LsSf https://astral.sh/uv/install.sh | sh) && export PATH=\"$HOME/.local/bin:$PATH\" UV_PYTHON_DOWNLOADS=automatic UV_PYTHON_PREFERENCE=managed && uv python install 3.13 && uv run --no-project --python 3.13 --with libtorrent==2.1.1 python -c \"import libtorrent\"; fi",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "start": "node .output/server/index.mjs",

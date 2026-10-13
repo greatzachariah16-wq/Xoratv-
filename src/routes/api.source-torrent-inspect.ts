@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
           let stdout = "";
           let stderr = "";
           let settled = false;
-          const child = spawn(UV_PATH, ["run", "--no-project", "--python", "3.13", "--with", "libtorrent==2.1.1", "python", SCRIPT_PATH], { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, UV_PYTHON_DOWNLOADS: "automatic" } });
+          const child = spawn(UV_PATH, ["run", "--no-project", "--python", "3.13", "--with", "libtorrent==2.1.1", "python", SCRIPT_PATH], { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, UV_PYTHON_DOWNLOADS: "automatic", UV_PYTHON_PREFERENCE: "managed" } });
           const timeout = setTimeout(() => {
             child.kill("SIGKILL");
             finish({
