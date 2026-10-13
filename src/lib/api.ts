@@ -328,6 +328,10 @@ export function feedInfiniteQuery(
       const start = Number(pageParam) * pageSize;
       return allRanked.slice(start, start + pageSize);
     },
+    // Refresh open feeds so newly published posts appear without requiring a
+    // manual page reload. Keep this interval modest to avoid hammering Firebase.
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 
