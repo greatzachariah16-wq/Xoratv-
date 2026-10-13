@@ -86,6 +86,10 @@ def main():
             time.sleep(0.25)
 
         status = handle.status()
+        try:
+            dht_nodes = int(getattr(session.status(), "dht_nodes", 0))
+        except Exception:
+            dht_nodes = 0
         emit({
             "ok": False,
             "infoHash": str(handle.info_hash()).lower(),
@@ -93,6 +97,7 @@ def main():
             "error": "libtorrent did not receive torrent metadata before the deadline.",
             "peerCount": int(status.num_peers),
             "downloadedBytes": int(status.total_download),
+            "dhtNodes": dht_nodes,
             "elapsedMs": int((time.monotonic() - started) * 1000),
         })
         session.pause()
