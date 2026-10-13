@@ -26,7 +26,7 @@ function magnetFor(infoHash: string, name: string) {
 }
 
 function challengePage(text: string, status: number) {
-  return status === 403 && /cloudflare|just a moment|cf_chl_|challenge-platform/i.test(text);
+  return /cloudflare|just a moment|cf_chl_|challenge-platform/i.test(text);
 }
 
 async function readWithCurlCffi(query: string, category: number) {
@@ -125,10 +125,11 @@ export const Route = createFileRoute("/api/source-torrent-search")({
               query,
               category,
               provider: "The Pirate Bay API (apibay.org)",
-              status: response.status,
+              status,
               contentType,
               blockedBy: "cloudflare-challenge",
-              error: "apibay.org returned a Cloudflare verification page instead of JSON. This Render request cannot retrieve API results with ordinary HTTP.",
+              error: "Both the ordinary HTTP request and curl_cffi retry failed to return API JSON. Chrome impersonation may not satisfy every Cloudflare challenge.",
+              curlFallback: "The API request was retried with curl_cffi impersonating Chrome.",
               fallback: { url: SITE_URL + "?q=" + encodeURIComponent(query), status: siteStatus, reachable: siteReachable, note: siteNote },
               elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
@@ -138,7 +139,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
             return Response.json({
               ok: false, query, category, status: response.status,
               error: "Torrent API returned HTTP " + response.status + ".",
-              bodyPreview: text.slice(0, 300), elapsedMs: Date.now() - startedAt,
+              bodyPreview: text.slice(0, 300), method, elapsedMs: Date.now() - startedAt,
             }, { status: 502, headers: { "Cache-Control": "no-store" } });
           }
 
