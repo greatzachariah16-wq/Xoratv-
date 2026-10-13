@@ -6,7 +6,6 @@ import type {
   MultiProviderSearchResult,
 } from "./types";
 import { searchYouTubeWithStatus } from "./youtube";
-import { searchVimeoWithStatus } from "./vimeo";
 import { searchNoaaWithStatus } from "./noaa";
 import { setPostRecord, setProfile, getProfile, pathSafe } from "@/integrations/firebase/rtdb";
 import { ref, set, get, remove } from "firebase/database";
@@ -16,7 +15,6 @@ import type { FeedType, PostRecord } from "@/integrations/firebase/types";
 export * from "./types";
 export * from "./embed";
 export { searchYouTube, searchYouTubeWithStatus } from "./youtube";
-export { searchVimeo, searchVimeoWithStatus } from "./vimeo";
 export { searchNoaa, searchNoaaWithStatus } from "./noaa";
 
 export interface MultiProviderSearchParams extends ProviderSearchParams {
@@ -30,7 +28,7 @@ export interface MultiProviderSearchParams extends ProviderSearchParams {
 export async function searchAllProvidersWithStatus(
   params: MultiProviderSearchParams,
 ): Promise<MultiProviderSearchResult> {
-  const selected = params.providers || ["noaa", "youtube", "vimeo"];
+  const selected = params.providers || ["noaa", "youtube"];
   const statuses: ProviderExecutionStatus[] = [];
   const candidates: ProviderCandidate[] = [];
 
