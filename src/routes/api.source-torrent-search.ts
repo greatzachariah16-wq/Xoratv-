@@ -85,7 +85,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
           const apiUrl = new URL(API_URL);
           apiUrl.search = new URLSearchParams({ q: query, cat: String(category) }).toString();
           const fetched = await readText(apiUrl.href);
-          let status = fetched.status;
+          let status = fetched.response.status;
           let ok = fetched.response.ok;
           let text = fetched.text;
           let contentType = fetched.response.headers.get("content-type") || "";
@@ -112,7 +112,7 @@ export const Route = createFileRoute("/api/source-torrent-search")({
               const siteUrl = new URL(SITE_URL);
               siteUrl.searchParams.set("q", query);
               const site = await readText(siteUrl.href);
-              siteStatus = site.status;
+              siteStatus = site.response.status;
               siteReachable = site.response.ok;
               siteNote = site.response.ok
                 ? "The public search page responded, but its HTML may rely on client-side JavaScript for results."
