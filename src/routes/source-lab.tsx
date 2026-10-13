@@ -22,12 +22,13 @@ function SourceLabPage() {
   const [query, setQuery] = useState("Big Buck Bunny");
   const [result, setResult] = useState<PipelineResult | null>(null);
 
-  async function runPipeline() {
+  async function runPipeline(route: "search" | "cid") {
     if (loading) return;
     setLoading(true);
     setResult(null);
     try {
-      const response = await fetch("/api/source-ipfs", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
+      const endpoint = route === "search" ? "/api/source-ipfs-search" : "/api/source-ipfs";
+      const response = await fetch(endpoint, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
       setResult((await response.json()) as PipelineResult);
     } catch (error) {
       setResult({ ok: false, error: error instanceof Error ? error.message : "Could not contact the IPFS pipeline." });
@@ -56,10 +57,16 @@ function SourceLabPage() {
             </div>
           </div>
           <input aria-label="Video title or keyword" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={180} placeholder="Enter video title or keyword" className="mt-5 h-11 w-full rounded-xl border border-[#e5deef] bg-white px-3 text-sm outline-none focus:border-[#7c5cfc]" />
-          <Button type="button" onClick={() => void runPipeline()} disabled={loading || !query.trim()} className="mt-5 h-11 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
-            {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Film className="size-4" />}
-            {loading ? "Searching IPFS…" : "Run IPFS pipeline"}
-          </Button>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button type="button" onClick={() => void runPipeline("search")} disabled={loading || !query.trim()} className="h-11 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
+              {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Radar className="size-4" />}
+              {loading ? "Searching…" : "Search by title (TLS test)"}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void runPipeline("cid")} disabled={loading || !query.trim()} className="h-11 rounded-xl px-5">
+              <Play className="size-4" /> Test direct CID
+            </Button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-[#625b70]">Title search uses a separate test route that ignores indexer certificate errors. This is less secure and is for diagnosis only. Direct-CID testing keeps normal TLS behavior and remains separate.</p>
           {loading && <p className="mt-3 text-sm text-[#625b70]">Checking the search index and preparing a gateway URL. Gateway playback still depends on the CID being available from the configured IPFS network.</p>}
           {result && <div className={`mt-5 rounded-2xl border p-4 ${result.ok ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
             <p className={`flex items-center gap-2 font-semibold ${result.ok ? "text-emerald-900" : "text-amber-950"}`}>

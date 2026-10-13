@@ -8,6 +8,7 @@ the same host as the configured IPFS gateway, or set IPFS_GATEWAY_URL accordingl
 import json
 import os
 import re
+import ssl
 import sys
 import time
 from urllib.error import HTTPError, URLError
@@ -35,7 +36,15 @@ def emit(value):
 
 def request_json(url, timeout=TIMEOUT_SECONDS):
     req = Request(url, headers={"Accept": "application/json", "User-Agent": "XoraTV-IPFS-MediaLab/1.0"})
-    with urlopen(req, timeout=timeout) as response:
+    # Only the dedicated keyword-search route sets this opt-in flag. It is intentionally
+    # not enabled for the existing direct-CID route. Disabling verification is insecure:
+    # an intercepted indexer response could return a false CID.
+    if os.environ.get("IPFS_IGNORE_TLS_ERRORS", "").lower() in ("1", "true", "yes"):
+        context = ssl._create_unverified_context()
+        response_context = urlopen(req, timeout=timeout, context=context)
+    else:
+        response_context = urlopen(req, timeout=timeout)
+    with response_context as response:
         raw = response.read(2_000_000)
         return json.loads(raw.decode("utf-8", "replace"))
 
