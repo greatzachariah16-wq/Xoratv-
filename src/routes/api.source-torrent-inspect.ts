@@ -1,13 +1,9 @@
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
 
-const TRACKERS = [
-  "udp://tracker.opentrackr.org:1337/announce",
-  "udp://open.stealth.si:80/announce",
-  "udp://exodus.desync.com:6969/announce",
-  "udp://tracker.torrent.eu.org:451/announce",
-];
 const METADATA_TIMEOUT_MS = 28_000;
-const PEER_SAMPLE_MS = 2_000;
+const SCRIPT_PATH = resolve(process.cwd(), "scripts/torrent_inspect.py");
 
 type Inspection = {
   ok: boolean;
@@ -16,13 +12,15 @@ type Inspection = {
   files?: Array<{ name: string; path: string; size: number; type: string }>;
   totalSize?: number;
   peerCount?: number;
+  downloadedBytes?: number;
   elapsedMs: number;
   error?: string;
   code?: string;
+  detail?: string;
 };
 
-function safeError(error: unknown) {
-  return error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240);
+function safeError(value: unknown) {
+  return value instanceof Error ? value.message.slice(0, 240) : String(value).slice(0, 240);
 }
 
 export const Route = createFileRoute("/api/source-torrent-inspect")({
@@ -41,102 +39,70 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
         if (!magnet || magnet.length > 5000 || !magnet.startsWith("magnet:?")) {
           return Response.json({ ok: false, error: "Provide a valid magnet URI." }, { status: 400 });
         }
-        const parsed = new URL(magnet);
+
+        let parsed: URL;
+        try {
+          parsed = new URL(magnet);
+        } catch {
+          return Response.json({ ok: false, error: "The magnet URI is malformed." }, { status: 400 });
+        }
         const xt = parsed.searchParams.get("xt") || "";
         if (!/^urn:btih:[a-f\d]{40}$/i.test(xt)) {
           return Response.json({ ok: false, error: "Magnet URI must contain a 40-character BitTorrent info hash." }, { status: 400 });
         }
-        // Normalize provider-generated magnets before passing them to WebTorrent.
-        const infoHash = xt.slice("urn:btih:".length).toLowerCase();
-        const displayName = parsed.searchParams.get("dn") || "Torrent";
-        const canonicalMagnet = "magnet:?xt=urn:btih:" + infoHash
-          + "&dn=" + encodeURIComponent(displayName)
-          + TRACKERS.map((tracker) => "&tr=" + encodeURIComponent(tracker)).join("");
 
-        let client: { add: (...args: any[]) => any; on: (...args: any[]) => any; destroy: (callback?: (error?: Error | null) => void) => any } | undefined;
-        try {
-          const imported = await import("webtorrent");
-          const WebTorrent = imported.default;
-          client = new WebTorrent({ dht: true, tracker: true });
-          client.on("error", () => {
-            // Individual torrent errors are handled below; avoid an unhandled client event.
+        const result = await new Promise<Inspection>((resolveResult) => {
+          let stdout = "";
+          let stderr = "";
+          let settled = false;
+          const child = spawn("python3", [SCRIPT_PATH], { stdio: ["pipe", "pipe", "pipe"] });
+          const timeout = setTimeout(() => {
+            child.kill("SIGKILL");
+            finish({
+              ok: false,
+              infoHash: xt.slice("urn:btih:".length).toLowerCase(),
+              elapsedMs: Date.now() - startedAt,
+              code: "metadata-timeout",
+              error: "Timed out waiting for libtorrent metadata. The magnet may have no reachable peers, or outbound BitTorrent traffic may be blocked.",
+            });
+          }, METADATA_TIMEOUT_MS + 3000);
+
+          const finish = (value: Inspection) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            resolveResult({ ...value, elapsedMs: Date.now() - startedAt });
+          };
+
+          child.stdout.setEncoding("utf8");
+          child.stderr.setEncoding("utf8");
+          child.stdout.on("data", (chunk: string) => { stdout += chunk; });
+          child.stderr.on("data", (chunk: string) => { stderr += chunk; });
+          child.on("error", (error) => {
+            finish({ ok: false, elapsedMs: Date.now() - startedAt, code: "engine-start-failed", error: "The Python libtorrent engine could not start.", detail: safeError(error) });
           });
-
-          const result: Inspection = await new Promise((resolve) => {
-            let settled = false;
-            let metadataTimer: ReturnType<typeof setTimeout> | undefined;
-            const timeout = setTimeout(() => {
+          child.on("close", (code) => {
+            if (settled) return;
+            try {
+              const payload = JSON.parse(stdout.trim()) as Inspection;
+              finish(payload);
+            } catch {
               finish({
                 ok: false,
-                infoHash,
                 elapsedMs: Date.now() - startedAt,
-                code: "metadata-timeout",
-                error: "Timed out waiting for torrent metadata. The magnet may have no reachable peers or the server may not be able to reach the BitTorrent network.",
+                code: "engine-invalid-response",
+                error: "The Python libtorrent engine returned an unreadable response.",
+                detail: (stderr || stdout || `process exited with code ${code}`).slice(0, 240),
               });
-            }, METADATA_TIMEOUT_MS);
-
-            const finish = (value: Inspection) => {
-              if (settled) return;
-              settled = true;
-              clearTimeout(timeout);
-              if (metadataTimer) clearTimeout(metadataTimer);
-              resolve({ ...value, elapsedMs: Date.now() - startedAt });
-            };
-
-            let torrent: any;
-            try {
-              torrent = client!.add(canonicalMagnet);
-            } catch (error) {
-              finish({ ok: false, elapsedMs: Date.now() - startedAt, error: safeError(error), code: "magnet-rejected" });
-              return;
             }
-
-            const captureMetadata = () => {
-              if (settled || metadataTimer) return;
-              metadataTimer = setTimeout(() => {
-                const files = (torrent.files || []).map((file: any) => ({
-                  name: String(file.name || file.path || "Unnamed file"),
-                  path: String(file.path || file.name || ""),
-                  size: Number(file.length ?? file.size ?? 0),
-                  type: String(file.type || "application/octet-stream"),
-                }));
-                finish({
-                  ok: true,
-                  infoHash: String(torrent.infoHash || infoHash).toLowerCase(),
-                  name: String(torrent.name || displayName),
-                  files,
-                  totalSize: files.reduce((sum: number, file: { size: number }) => sum + file.size, 0),
-                  peerCount: Number(torrent.numPeers || 0),
-                  elapsedMs: Date.now() - startedAt,
-                });
-              }, PEER_SAMPLE_MS);
-            };
-
-            torrent.on("metadata", captureMetadata);
-            torrent.on("ready", captureMetadata);
-            torrent.on("error", (error: unknown) => {
-              finish({ ok: false, infoHash, elapsedMs: Date.now() - startedAt, code: "torrent-error", error: safeError(error) });
-            });
-            if (torrent.metadata || torrent.files?.length) captureMetadata();
           });
+          child.stdin.end(JSON.stringify({ magnet, timeoutMs: METADATA_TIMEOUT_MS }));
+        });
 
-          client.destroy(() => {});
-          client = undefined;
-          return Response.json(result, {
-            status: result.ok ? 200 : result.code === "metadata-timeout" ? 504 : 502,
-            headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
-          });
-        } catch (error) {
-          if (client) {
-            try { client.destroy(() => {}); } catch { /* best-effort cleanup */ }
-          }
-          return Response.json({
-            ok: false,
-            error: "The torrent inspection engine could not start or resolve this magnet.",
-            detail: safeError(error),
-            elapsedMs: Date.now() - startedAt,
-          }, { status: 502, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
-        }
+        return Response.json(result, {
+          status: result.ok ? 200 : result.code === "metadata-timeout" ? 504 : 502,
+          headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
+        });
       },
     },
   },
