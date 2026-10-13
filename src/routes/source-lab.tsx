@@ -1,351 +1,127 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, CheckCircle2, Clock3, ExternalLink, Film, FileVideo, Globe, ListVideo, LoaderCircle, Search, SearchCheck, Video, XCircle } from "lucide-react";
+import { ExternalLink, Film, LoaderCircle, Search, ShieldAlert, Users, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type SourceResult = {
-  title: string;
-  url: string;
-  snippet: string;
-  sourceType: "direct-video" | "hls" | "iptv-playlist" | "video-page" | "social-video" | "general-webpage";
-  pageKind: string;
-  publishedYear: number | null;
-  exactTitleMatch: boolean;
-  host: string;
-  inspected: boolean;
-  pageTitle?: string;
-  mediaCandidates: Array<{ url: string; kind: "video" | "hls" | "playlist" | "embed"; title?: string; status?: string }>;
-  playbackCheck: "not-checked" | "media-found" | "request-ok" | "request-failed";
-  crawlDepth: number;
-  indexedFromCache?: boolean;
-};
-type HttpTestResponse = {
-  ok: boolean;
-  testedUrl?: string;
-  finalUrl?: string;
-  status?: number;
-  statusText?: string;
-  responseOk?: boolean;
-  contentType?: string;
-  headers?: Record<string, string>;
-  bodyPreview?: string;
-  bodyBytesRead?: number;
-  bodyTruncated?: boolean;
-  redirects?: Array<{ status: number; url: string; location: string }>;
-  elapsedMs?: number;
-  runtime?: { language: string; nodeVersion: string; platform: string; pythonAvailable: boolean; pythonVersion: string | null; note: string };
-  note?: string;
-  error?: string;
-  detail?: string;
-};
 type TorrentResult = { name: string; info_hash: string; seeders: number; leechers: number; size: number; magnet: string };
 type TorrentSearchResponse = {
-  ok: boolean;
-  query?: string;
-  category?: number;
-  provider?: string;
-  status?: number;
-  count?: number;
-  results?: TorrentResult[];
-  error?: string;
-  detail?: string;
-  blockedBy?: string;
-  fallback?: { url: string; status: number | null; reachable: boolean; note: string };
-  elapsedMs?: number;
-};
-type SearchResponse = {
-  ok: boolean;
-  query?: string;
-  engine?: string;
-  discoveryBackend?: string;
-  yearFocus?: string;
-  inspectedCount?: number;
-  indexedPageCount?: number;
-  indexPersistence?: string;
-  elapsedMs?: number;
-  count?: number;
-  results?: SourceResult[];
-  note?: string;
-  error?: string;
+  ok: boolean; query?: string; category?: number; provider?: string; status?: number; method?: string;
+  count?: number; results?: TorrentResult[]; error?: string; detail?: string; blockedBy?: string;
+  fallback?: { url: string; status: number | null; reachable: boolean; note: string }; elapsedMs?: number;
 };
 
 export const Route = createFileRoute("/source-lab")({
-  head: () => ({
-    meta: [
-      { title: "XoraTV Source Engine Lab" },
-      { name: "description", content: "Private test bench for XoraTV web source discovery." },
-      { name: "robots", content: "noindex, nofollow, noarchive" },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "XoraTV Torrent Source Lab" },
+    { name: "description", content: "Internal Pirate Bay torrent discovery and source testing." },
+    { name: "robots", content: "noindex, nofollow, noarchive" },
+  ] }),
   component: SourceLabPage,
 });
 
-const typeInfo: Record<SourceResult["sourceType"], { label: string; icon: typeof Video; description: string }> = {
-  "direct-video": { label: "Direct video URL", icon: FileVideo, description: "A video file URL is visible in the search result." },
-  hls: { label: "HLS playlist (.m3u8)", icon: ListVideo, description: "An HLS playlist URL is visible in the search result." },
-  "iptv-playlist": { label: "M3U playlist", icon: ListVideo, description: "An M3U playlist URL is visible in the search result." },
-  "video-page": { label: "Video / sharing page", icon: Video, description: "A known video-hosting or sharing page." },
-  "social-video": { label: "Social video page", icon: Video, description: "A social-platform page; check whether playback or embedding is available." },
-  "general-webpage": { label: "General webpage", icon: Globe, description: "Inspect this page for an embedded player or share link." },
-};
-
-function formatTorrentSize(bytes: number) {
+function formatSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
   const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unit = 0;
+  let value = bytes, unit = 0;
   while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1; }
   return value.toFixed(2) + " " + units[unit];
 }
 
 function SourceLabPage() {
-  const [query, setQuery] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState("");
-  const [payload, setPayload] = useState<SearchResponse | null>(null);
+  const [query, setQuery] = useState("Big Buck Bunny");
+  const [payload, setPayload] = useState<TorrentSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [httpTarget, setHttpTarget] = useState("");
-  const [httpPayload, setHttpPayload] = useState<HttpTestResponse | null>(null);
-  const [httpLoading, setHttpLoading] = useState(false);
-  const [httpError, setHttpError] = useState("");
-  const [torrentQuery, setTorrentQuery] = useState("Big Buck Bunny");
-  const [torrentCategory, setTorrentCategory] = useState("201");
-  const [torrentPayload, setTorrentPayload] = useState<TorrentSearchResponse | null>(null);
-  const [torrentLoading, setTorrentLoading] = useState(false);
-  const [torrentError, setTorrentError] = useState("");
 
-  async function runTorrentSearch(event?: FormEvent) {
-    event?.preventDefault();
-    const cleaned = torrentQuery.trim();
-    if (cleaned.length < 2 || torrentLoading) return;
-    setTorrentLoading(true);
-    setTorrentError("");
-    setTorrentPayload(null);
-    try {
-      const response = await fetch("/api/source-torrent-search?q=" + encodeURIComponent(cleaned) + "&cat=" + encodeURIComponent(torrentCategory), {
-        headers: { Accept: "application/json" },
-      });
-      const data = (await response.json()) as TorrentSearchResponse;
-      setTorrentPayload(data);
-      if (!response.ok || !data.ok) setTorrentError(data.error || "Torrent search failed.");
-    } catch (cause) {
-      setTorrentError(cause instanceof Error ? cause.message : "Could not run torrent search.");
-    } finally {
-      setTorrentLoading(false);
-    }
-  }
-
-  async function runSearch(event?: FormEvent, nextQuery = query) {
+  async function search(event?: FormEvent, nextQuery = query) {
     event?.preventDefault();
     const cleaned = nextQuery.trim();
     if (cleaned.length < 2 || loading) return;
     setQuery(cleaned);
-    setSubmittedQuery(cleaned);
     setLoading(true);
     setError("");
     setPayload(null);
     try {
-      const response = await fetch("/api/source-search?q=" + encodeURIComponent(cleaned) + "&limit=12", {
+      const response = await fetch("/api/source-torrent-search?q=" + encodeURIComponent(cleaned) + "&cat=201", {
         headers: { Accept: "application/json" },
       });
-      const data = (await response.json()) as SearchResponse;
-      if (!response.ok || !data.ok) throw new Error(data.error || "Search failed.");
+      const data = (await response.json()) as TorrentSearchResponse;
       setPayload(data);
+      if (!response.ok || !data.ok) setError(data.error || "Torrent search failed.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not run the search.");
+      setError(cause instanceof Error ? cause.message : "Could not run the torrent search.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function runHttpTest(event?: FormEvent) {
-    event?.preventDefault();
-    const target = httpTarget.trim();
-    if (target.length < 3 || httpLoading) return;
-    setHttpLoading(true);
-    setHttpError("");
-    setHttpPayload(null);
-    try {
-      const response = await fetch("/api/source-http-test?url=" + encodeURIComponent(target), { headers: { Accept: "application/json" } });
-      const data = (await response.json()) as HttpTestResponse;
-      if (!response.ok && !data.status) throw new Error(data.error || "HTTP test failed.");
-      setHttpPayload(data);
-    } catch (cause) {
-      setHttpError(cause instanceof Error ? cause.message : "Could not run the HTTP test.");
-    } finally {
-      setHttpLoading(false);
-    }
-  }
-
-  const resultList = payload?.results || [];
+  const results = payload?.results || [];
 
   return (
     <main className="min-h-screen bg-[#f8f5ef] px-4 py-6 text-[#211d2c] sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-2xl bg-[#7c5cfc] text-white shadow-sm"><SearchCheck className="size-5" /></div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#7c5cfc]">XoraTV internal test</p>
-              <h1 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">Source Engine Lab</h1>
-            </div>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <header className="flex items-center gap-3">
+          <div className="grid size-11 place-items-center rounded-2xl bg-[#7c5cfc] text-white shadow-sm"><Film className="size-5" /></div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#7c5cfc]">XoraTV internal test</p>
+            <h1 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">Torrent Source Lab</h1>
+            <p className="mt-1 text-sm text-[#625b70]">Pirate Bay torrent discovery and magnet-link diagnostics.</p>
           </div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#e5deef] bg-white/80 px-3 py-1.5 text-xs text-[#625b70]"><span className="size-2 rounded-full bg-amber-400" /> Prototype</span>
         </header>
 
         <section className="overflow-hidden rounded-3xl border border-[#e5deef] bg-white shadow-sm">
-          <div className="border-b border-[#eee8f5] bg-[#fcfbff] p-5 sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7c5cfc]">Independent crawler runtime test</p>
-            <h2 className="mt-2 font-display text-xl font-semibold tracking-tight sm:text-2xl">HTTP connection test</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#625b70]">Test a public domain or URL directly from the XoraTV Render server. This uses ordinary Node.js HTTP requests only—no Chromium, Puppeteer, torrent download, or changes to the existing YouTube/provider crawler.</p>
-            <form onSubmit={(event) => void runHttpTest(event)} className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <Input value={httpTarget} onChange={(event) => setHttpTarget(event.target.value)} placeholder="Enter a domain or URL (e.g. https://example.com)" className="h-12 min-w-0 flex-1 rounded-xl border-[#ddd4ed] bg-white text-base" />
-              <Button type="submit" disabled={httpLoading || httpTarget.trim().length < 3} className="h-12 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
-                {httpLoading ? <LoaderCircle className="size-4 animate-spin" /> : <Globe className="size-4" />} Test HTTP
-              </Button>
-            </form>
-            <p className="mt-2 text-xs text-[#827995]">The test follows a limited number of redirects, blocks private/internal addresses, limits response reading, and times out after 8 seconds.</p>
-          </div>
-          {httpLoading && <div className="flex items-center gap-3 p-5 text-sm text-[#625b70]"><LoaderCircle className="size-4 animate-spin text-[#7c5cfc]" /> Sending request from Render…</div>}
-          {httpError && <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{httpError}</div>}
-          {httpPayload && (
-            <div className="space-y-4 p-4 sm:p-6">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-xl bg-[#f8f5ff] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#827995]">HTTP status</p><p className="mt-1 text-lg font-semibold">{httpPayload.status ? httpPayload.status + (httpPayload.statusText ? " " + httpPayload.statusText : "") : httpPayload.error || "No response"}</p></div>
-                <div className="rounded-xl bg-[#f8f5ff] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#827995]">Response time</p><p className="mt-1 text-lg font-semibold">{httpPayload.elapsedMs ?? "—"}{httpPayload.elapsedMs !== undefined ? " ms" : ""}</p></div>
-                <div className="rounded-xl bg-[#f8f5ff] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#827995]">Content type</p><p className="mt-1 break-words text-sm font-semibold">{httpPayload.contentType || "—"}</p></div>
-                <div className="rounded-xl bg-[#f8f5ff] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#827995]">Bytes read</p><p className="mt-1 text-lg font-semibold">{httpPayload.bodyBytesRead ?? "—"}{httpPayload.bodyTruncated ? "+" : ""}</p></div>
-              </div>
-              {httpPayload.testedUrl && <div className="text-xs leading-5 text-[#625b70]"><p><strong>Requested:</strong> <span className="break-all">{httpPayload.testedUrl}</span></p>{httpPayload.finalUrl && <p className="mt-1"><strong>Final URL:</strong> <span className="break-all">{httpPayload.finalUrl}</span></p>}</div>}
-              {httpPayload.runtime && <div className="rounded-xl border border-[#e5deef] p-3"><p className="font-semibold text-sm">Render runtime</p><p className="mt-1 text-sm text-[#625b70]">{httpPayload.runtime.language} {httpPayload.runtime.nodeVersion} · {httpPayload.runtime.platform}</p><p className="mt-1 text-sm text-[#625b70]">Python: {httpPayload.runtime.pythonAvailable ? "Available (" + httpPayload.runtime.pythonVersion + ")" : "Not detected (not required for HTTP requests)"}</p></div>}
-              {httpPayload.redirects && httpPayload.redirects.length > 0 && <div><p className="text-sm font-semibold">Redirects ({httpPayload.redirects.length})</p><div className="mt-1 space-y-1">{httpPayload.redirects.map((redirect, index) => <p key={index} className="break-all text-xs text-[#625b70]">{redirect.status}: {redirect.url} → {redirect.location}</p>)}</div></div>}
-              {httpPayload.headers && <div><p className="text-sm font-semibold">Response headers</p><pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-xl bg-[#f8f5ff] p-3 text-xs leading-5 text-[#51466a]">{JSON.stringify(httpPayload.headers, null, 2)}</pre></div>}
-              {httpPayload.bodyPreview && <div><p className="text-sm font-semibold">Response body preview</p><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-[#211d2c] p-3 text-xs leading-5 text-white">{httpPayload.bodyPreview}</pre></div>}
-              {httpPayload.detail && <p className="text-xs text-[#746b83]">Technical detail: {httpPayload.detail}</p>}
-              {httpPayload.note && <p className="text-xs leading-5 text-[#746b83]">{httpPayload.note}</p>}
-            </div>
-          )}
-        </section>
-
-        <section className="overflow-hidden rounded-3xl border border-[#e5deef] bg-white shadow-sm">
-          <div className="border-b border-[#eee8f5] bg-[#fcfbff] p-5 sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7c5cfc]">Torrent source adapter · independent test</p>
-            <h2 className="mt-2 font-display text-xl font-semibold tracking-tight sm:text-2xl">The Pirate Bay API search</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#625b70]">Searches apibay.org from the Render server, parses the JSON response, and builds magnet URIs from valid info hashes. This test reports Cloudflare challenges rather than treating challenge HTML as search data.</p>
-            <form onSubmit={(event) => void runTorrentSearch(event)} className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
-              <Input value={torrentQuery} onChange={(event) => setTorrentQuery(event.target.value)} placeholder="Search torrent title" className="h-12 min-w-0 rounded-xl border-[#ddd4ed] bg-white text-base" />
-              <select value={torrentCategory} onChange={(event) => setTorrentCategory(event.target.value)} aria-label="Torrent category" className="h-12 rounded-xl border border-[#ddd4ed] bg-white px-3 text-sm text-[#51466a]">
-                <option value="201">Movies (201)</option>
-                <option value="0">All categories (0)</option>
-              </select>
-              <Button type="submit" disabled={torrentLoading || torrentQuery.trim().length < 2} className="h-12 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
-                {torrentLoading ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Search torrents
-              </Button>
-            </form>
-            {torrentLoading && <p className="mt-3 text-sm text-[#625b70]">Requesting API JSON from Render…</p>}
-            {torrentError && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><p className="font-semibold">{torrentError}</p>{torrentPayload?.status !== undefined && <p className="mt-1">HTTP status: {torrentPayload.status}{torrentPayload.blockedBy ? " · Detected: " + torrentPayload.blockedBy : ""}</p>}{torrentPayload?.detail && <p className="mt-1 break-words text-xs">{torrentPayload.detail}</p>}{torrentPayload?.fallback && <p className="mt-2 text-xs leading-5">{torrentPayload.fallback.note} <a className="break-all font-semibold underline" href={torrentPayload.fallback.url} target="_blank" rel="noopener noreferrer">Open public search page</a></p>}</div>}
-          </div>
-          {torrentPayload?.ok && (
-            <div className="space-y-3 p-4 sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#625b70]"><span>{torrentPayload.count ?? 0} results · HTTP {torrentPayload.status}</span><span>{torrentPayload.elapsedMs ?? 0} ms</span></div>
-              {(torrentPayload.results || []).map((item, index) => (
-                <article key={item.info_hash} className="rounded-xl border border-[#e5deef] p-3 sm:p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#827995]">Result {index + 1}</p>
-                  <h3 className="mt-1 break-words font-semibold text-[#292333]">{item.name}</h3>
-                  <p className="mt-2 text-xs text-[#625b70]">Size: {formatTorrentSize(item.size)} · Seeders: {item.seeders} · Leechers: {item.leechers}</p>
-                  <p className="mt-1 break-all text-[11px] text-[#827995]">Info hash: {item.info_hash}</p>
-                  <a href={item.magnet} className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-[#f2edff] px-3 py-2 text-xs font-semibold text-[#6243d8]">Open magnet link ↗</a>
-                </article>
-              ))}
-              {!torrentPayload.results?.length && <p className="text-sm text-[#625b70]">The API returned no usable results.</p>}
-            </div>
-          )}
-        </section>
-
-        <section className="overflow-hidden rounded-3xl border border-[#e5deef] bg-white shadow-sm">
-          <div className="bg-gradient-to-br from-[#f1eaff] via-[#fffaf1] to-[#eaf7f0] p-5 sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7c5cfc]">Web discovery test bench</p>
-            <h2 className="mt-3 max-w-2xl font-display text-2xl font-semibold tracking-tight sm:text-4xl">Search for a title. Inspect what the web returns.</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#625b70]">Search movies released from 2000 onward. The engine biases results away from silent and black-and-white films, then labels each result by its apparent page or link type. Result metadata is a clue, not proof of playback.</p>
-            <form onSubmit={(event) => void runSearch(event)} className="mt-6 flex flex-col gap-2 sm:flex-row">
-              <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#827995]" />
-                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. Inception 2010, Black Panther 2018" className="h-12 rounded-xl border-[#ddd4ed] bg-white pl-10 text-base" />
-              </div>
+          <div className="bg-[#fcfbff] p-5 sm:p-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7c5cfc]">Torrent provider · The Pirate Bay API</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Find a movie torrent</h2>
+            <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches the connected apibay.org torrent index directly. Results include the info hash, seeders, leechers, file size, and magnet URI. No DuckDuckGo, Bing, or general web search is used.</p>
+            <form onSubmit={(event) => void search(event)} className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Movie title, optionally include year" className="h-12 min-w-0 flex-1 rounded-xl border-[#ddd4ed] bg-white text-base" />
               <Button type="submit" disabled={loading || query.trim().length < 2} className="h-12 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
-                {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Search web
+                {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Search torrents
               </Button>
             </form>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {["Inception 2010", "Black Panther 2018", "Extraction 2020", "Spider-Man: No Way Home 2021"].map((example) => (
-                <button key={example} type="button" disabled={loading} onClick={() => { setQuery(example); void runSearch(undefined, example); }} className="rounded-full border border-[#e2d9f0] bg-white/75 px-3 py-1.5 text-xs font-medium text-[#51466a] transition hover:border-[#7c5cfc] hover:bg-white disabled:opacity-50">{example}</button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["Big Buck Bunny", "Sintel 2010", "Tears of Steel", "Elephants Dream"].map((example) => (
+                <button key={example} type="button" disabled={loading} onClick={() => { setQuery(example); void search(undefined, example); }} className="rounded-full border border-[#e2d9f0] bg-white px-3 py-1.5 text-xs font-medium text-[#51466a] hover:border-[#7c5cfc] disabled:opacity-50">{example}</button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-px border-t border-[#eee8f5] bg-[#eee8f5] sm:grid-cols-4">
-            <Metric icon={Search} label="Results found" value={payload ? String(payload.count ?? 0) : "—"} />
-            <Metric icon={Clock3} label="Search time" value={payload ? `${payload.elapsedMs ?? 0} ms` : "—"} />
-            <Metric icon={CheckCircle2} label="Pages inspected" value={payload ? String(payload.inspectedCount ?? resultList.filter((item) => item.inspected).length) : "—"} />
-            <Metric icon={Film} label="Pages with media hints" value={payload ? String(resultList.filter((item) => item.mediaCandidates?.length).length) : "—"} />
-          </div>
+          {loading && <div className="flex items-center gap-3 border-t border-[#eee8f5] p-5 text-sm text-[#625b70]"><LoaderCircle className="size-4 animate-spin text-[#7c5cfc]" /> Requesting Pirate Bay API results from Render…</div>}
+          {error && <div className="m-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-semibold">{error}</p>
+            {payload?.status !== undefined && <p className="mt-1">HTTP status: {payload.status}{payload.blockedBy ? " · " + payload.blockedBy : ""}</p>}
+            {payload?.detail && <p className="mt-1 break-words text-xs">{payload.detail}</p>}
+            {payload?.fallback && <p className="mt-2 text-xs leading-5">{payload.fallback.note} <a className="break-all font-semibold underline" href={payload.fallback.url} target="_blank" rel="noopener noreferrer">Open Pirate Bay search page</a></p>}
+          </div>}
+
+          {payload?.ok && <div className="space-y-3 border-t border-[#eee8f5] p-4 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#625b70]">
+              <span>{payload.count ?? 0} results · HTTP {payload.status} · {payload.method || "API"}</span>
+              <span>{payload.elapsedMs ?? 0} ms</span>
+            </div>
+            {results.map((item, index) => <article key={item.info_hash} className="rounded-xl border border-[#e5deef] p-3 sm:p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#827995]">Torrent result {index + 1}</p>
+              <h3 className="mt-1 break-words font-semibold text-[#292333]">{item.name}</h3>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#625b70]">
+                <span className="inline-flex items-center gap-1"><HardDrive className="size-3.5" /> {formatSize(item.size)}</span>
+                <span className="inline-flex items-center gap-1"><Users className="size-3.5" /> {item.seeders} seeders · {item.leechers} leechers</span>
+              </div>
+              <p className="mt-2 break-all text-[11px] text-[#827995]">Info hash: {item.info_hash}</p>
+              <a href={item.magnet} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#f2edff] px-3 py-2 text-xs font-semibold text-[#6243d8]">Open magnet link <ExternalLink className="size-3.5" /></a>
+            </article>)}
+            {!results.length && <p className="text-sm text-[#625b70]">The API returned no usable torrent results.</p>}
+          </div>}
         </section>
 
-        {loading && <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#e5deef] bg-white p-8 text-sm text-[#625b70]"><LoaderCircle className="size-5 animate-spin text-[#7c5cfc]" /> Searching the web and inspecting returned HTML over HTTP…</div>}
-        {error && <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><XCircle className="mt-0.5 size-5 shrink-0" /><div><p className="font-semibold">Search failed</p><p className="mt-1">{error}</p></div></div>}
-
-        {payload && (
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7c5cfc]">Search report</p><h2 className="mt-1 font-display text-xl font-semibold">Results for “{submittedQuery}”</h2></div>
-              <span className="text-xs text-[#746b83]">{payload.count || 0} results · {payload.discoveryBackend}</span>
-            </div>
-            {!resultList.length && <div className="rounded-2xl border border-dashed border-[#d9d0e8] bg-white p-8 text-center"><Search className="mx-auto size-7 text-[#a39ab3]" /><p className="mt-3 font-semibold">No results returned</p><p className="mt-1 text-sm text-[#746b83]">Try a shorter title, include the release year, or search a different title from 2000 onward.</p></div>}
-            <div className="space-y-3">
-              {resultList.map((result, index) => {
-                const info = typeInfo[result.sourceType];
-                const Icon = info.icon;
-                return (
-                  <article key={result.url} className="rounded-2xl border border-[#e5deef] bg-white p-4 shadow-sm sm:p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f2edff] text-[#7c5cfc]"><Icon className="size-5" /></div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#887d9d]">Result {index + 1}</span>
-                          {result.exactTitleMatch && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Title phrase matched</span>}
-                          <span className="rounded-full bg-[#f4f1f8] px-2 py-0.5 text-[10px] font-medium text-[#625b70]">{info.label}</span>
-                        </div>
-                        <h3 className="mt-2 break-words font-semibold leading-6 text-[#292333]">{result.title}</h3>
-                        <p className="mt-1 break-all text-xs text-[#7c5cfc]">{result.host}</p>
-                        <p className="mt-2 text-xs font-medium text-[#51466a]">Page type: {result.pageKind}{result.publishedYear ? " · Year mentioned: " + result.publishedYear : " · Year not detected"}</p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-[11px]"><span className={"rounded-full px-2 py-1 font-semibold " + (result.inspected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{result.inspected ? "HTTP page inspected" : "Search result only"}</span><span className={"rounded-full px-2 py-1 font-semibold " + (result.playbackCheck === "request-ok" ? "bg-emerald-50 text-emerald-700" : result.playbackCheck === "request-failed" ? "bg-red-50 text-red-700" : "bg-[#f4f1f8] text-[#625b70]")}>{result.playbackCheck === "request-ok" ? "Media request responded" : result.playbackCheck === "request-failed" ? "Media request failed" : result.playbackCheck === "media-found" ? "Media URL found, not confirmed" : "Playback not checked"}</span>{result.crawlDepth > 0 && <span className="rounded-full bg-[#f4f1f8] px-2 py-1 text-[#625b70]">Discovered link · depth {result.crawlDepth}</span>}{result.indexedFromCache && <span className="rounded-full bg-[#f4f1f8] px-2 py-1 text-[#625b70]">Index cache</span>}</div>
-                        {result.pageTitle && result.pageTitle !== result.title && <p className="mt-2 text-xs text-[#746b83]">Browser page title: {result.pageTitle}</p>}
-                        {result.snippet && <p className="mt-2 text-sm leading-6 text-[#625b70]">{result.snippet}</p>}
-                        {result.mediaCandidates?.length > 0 && <div className="mt-3 rounded-xl border border-[#e5deef] bg-[#fcfbff] p-3"><p className="text-xs font-semibold text-[#51466a]">Media candidates found ({result.mediaCandidates.length})</p><div className="mt-2 space-y-2">{result.mediaCandidates.slice(0, 5).map((media) => <div key={media.url} className="min-w-0"><p className="text-[11px] font-semibold uppercase text-[#827995]">{media.kind}{media.status ? " · " + media.status : ""}</p><a href={media.url} target="_blank" rel="noopener noreferrer" className="mt-0.5 block break-all text-xs text-[#7c5cfc] underline">{media.url}</a></div>)}</div></div>}
-                        <p className="mt-2 text-xs leading-5 text-[#8b8299]">{info.description}</p>
-                        <a href={result.url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#ddd4ed] px-3 py-2 text-xs font-semibold text-[#51466a] transition hover:border-[#7c5cfc] hover:bg-[#f8f5ff]">
-                          Open source page <ExternalLink className="size-3.5" />
-                        </a>
-                      </div>
-                      <span className="hidden shrink-0 text-xs tabular-nums text-[#a39ab3] sm:block">#{index + 1}</span>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-            <p className="rounded-2xl border border-[#e5deef] bg-white p-4 text-xs leading-5 text-[#746b83]">{payload.note}</p>
-          </section>
-        )}
-
-        <section className="rounded-2xl border border-[#e5deef] bg-white p-4 sm:p-5">
-          <div className="flex items-start gap-3"><ArrowUpRight className="mt-0.5 size-5 text-[#7c5cfc]" /><div><h2 className="font-semibold">What this first test proves</h2><p className="mt-1 text-sm leading-6 text-[#625b70]">Searches are now biased toward movies from 2000 onward, and each result identifies its host and apparent page type (direct video, HLS, M3U, video-sharing, social video, or general webpage). The crawler uses ordinary HTTP requests to inspect returned HTML for video/source tags, embeds, metadata and JSON-LD, follows a few relevant links one level deep, and probes one media URL. A successful HTTP response does not guarantee playback because CORS, cookies, referrers, DRM, codecs and player compatibility can still prevent it.</p></div></div>
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
+          <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-700" /><div>
+            <h2 className="font-semibold text-amber-950">License verification is separate from torrent discovery</h2>
+            <p className="mt-1 text-sm leading-6 text-amber-900">The Pirate Bay API returns torrent names, hashes, sizes, and swarm counts; it does not provide reliable license proof. A torrent result must not be labelled open-license just because its title looks familiar. The next filter needs a trusted open-license/public-domain title catalogue, then it can use Pirate Bay only to find matching torrents.</p>
+          </div></div>
         </section>
       </div>
     </main>
   );
-}
-
-function Metric({ icon: Icon, label, value }: { icon: typeof Search; label: string; value: string }) {
-  return <div className="bg-white p-4 sm:p-5"><div className="flex items-center gap-2 text-[#827995]"><Icon className="size-4" /><span className="text-[10px] font-semibold uppercase tracking-[0.12em]">{label}</span></div><p className="mt-2 font-display text-xl font-semibold text-[#292333]">{value}</p></div>;
 }
