@@ -98,8 +98,16 @@ export class RtdbCrawlerStorage implements CrawlerStorage {
     const safeId = pathSafe(candidate.id);
     const urlHash = hashKey(candidate.sourceUrl);
     const sanitizedCandidate = sanitizeForRtdb(candidate);
-    await writeFirebaseAdmin(`crawler/candidates/${safeId}`, sanitizedCandidate);
-    await writeFirebaseAdmin(`crawler/sourceUrls/${urlHash}`, true);
+    // One RTDB PATCH persists the candidate and its dedupe marker together.
+    // Firebase merges these child paths without replacing unrelated crawler data.
+    await writeFirebaseAdmin(
+      "crawler",
+      {
+        candidates: { [safeId]: sanitizedCandidate },
+        sourceUrls: { [urlHash]: true },
+      },
+      "PATCH",
+    );
   }
 
   public async getCandidate(id: string): Promise<DiscoveredCandidate | null> {
