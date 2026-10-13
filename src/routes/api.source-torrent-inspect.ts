@@ -46,6 +46,12 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
         if (!/^urn:btih:[a-f\d]{40}$/i.test(xt)) {
           return Response.json({ ok: false, error: "Magnet URI must contain a 40-character BitTorrent info hash." }, { status: 400 });
         }
+        // Normalize provider-generated magnets before passing them to WebTorrent.
+        const infoHash = xt.slice("urn:btih:".length).toLowerCase();
+        const displayName = parsed.searchParams.get("dn") || "Torrent";
+        const canonicalMagnet = "magnet:?xt=urn:btih:" + infoHash
+          + "&dn=" + encodeURIComponent(displayName)
+          + TRACKERS.map((tracker) => "&tr=" + encodeURIComponent(tracker)).join("");
 
         let client: { add: (...args: any[]) => any; on: (...args: any[]) => any; destroy: (callback?: (error?: Error | null) => void) => any } | undefined;
         try {
@@ -62,7 +68,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
             const timeout = setTimeout(() => {
               finish({
                 ok: false,
-                infoHash: xt.slice("urn:btih:".length).toLowerCase(),
+                infoHash,
                 elapsedMs: Date.now() - startedAt,
                 code: "metadata-timeout",
                 error: "Timed out waiting for torrent metadata. The magnet may have no reachable peers or the server may not be able to reach the BitTorrent network.",
@@ -79,7 +85,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
 
             let torrent: any;
             try {
-              torrent = client!.add(magnet, { announce: TRACKERS });
+              torrent = client!.add(canonicalMagnet);
             } catch (error) {
               finish({ ok: false, elapsedMs: Date.now() - startedAt, error: safeError(error), code: "magnet-rejected" });
               return;
@@ -96,8 +102,8 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
                 }));
                 finish({
                   ok: true,
-                  infoHash: String(torrent.infoHash || xt.slice("urn:btih:".length)).toLowerCase(),
-                  name: String(torrent.name || parsed.searchParams.get("dn") || "Torrent"),
+                  infoHash: String(torrent.infoHash || infoHash).toLowerCase(),
+                  name: String(torrent.name || displayName),
                   files,
                   totalSize: files.reduce((sum: number, file: { size: number }) => sum + file.size, 0),
                   peerCount: Number(torrent.numPeers || 0),
@@ -109,7 +115,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
             torrent.on("metadata", captureMetadata);
             torrent.on("ready", captureMetadata);
             torrent.on("error", (error: unknown) => {
-              finish({ ok: false, infoHash: xt.slice("urn:btih:".length).toLowerCase(), elapsedMs: Date.now() - startedAt, code: "torrent-error", error: safeError(error) });
+              finish({ ok: false, infoHash, elapsedMs: Date.now() - startedAt, code: "torrent-error", error: safeError(error) });
             });
             if (torrent.metadata || torrent.files?.length) captureMetadata();
           });
