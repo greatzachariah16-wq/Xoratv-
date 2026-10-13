@@ -39,6 +39,21 @@ type HttpTestResponse = {
   error?: string;
   detail?: string;
 };
+type TorrentResult = { name: string; info_hash: string; seeders: number; leechers: number; size: number; magnet: string };
+type TorrentSearchResponse = {
+  ok: boolean;
+  query?: string;
+  category?: number;
+  provider?: string;
+  status?: number;
+  count?: number;
+  results?: TorrentResult[];
+  error?: string;
+  detail?: string;
+  blockedBy?: string;
+  fallback?: { url: string; status: number | null; reachable: boolean; note: string };
+  elapsedMs?: number;
+};
 type SearchResponse = {
   ok: boolean;
   query?: string;
@@ -75,6 +90,15 @@ const typeInfo: Record<SourceResult["sourceType"], { label: string; icon: typeof
   "general-webpage": { label: "General webpage", icon: Globe, description: "Inspect this page for an embedded player or share link." },
 };
 
+function formatTorrentSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1; }
+  return value.toFixed(2) + " " + units[unit];
+}
+
 function SourceLabPage() {
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -85,6 +109,32 @@ function SourceLabPage() {
   const [httpPayload, setHttpPayload] = useState<HttpTestResponse | null>(null);
   const [httpLoading, setHttpLoading] = useState(false);
   const [httpError, setHttpError] = useState("");
+  const [torrentQuery, setTorrentQuery] = useState("Big Buck Bunny");
+  const [torrentCategory, setTorrentCategory] = useState("201");
+  const [torrentPayload, setTorrentPayload] = useState<TorrentSearchResponse | null>(null);
+  const [torrentLoading, setTorrentLoading] = useState(false);
+  const [torrentError, setTorrentError] = useState("");
+
+  async function runTorrentSearch(event?: FormEvent) {
+    event?.preventDefault();
+    const cleaned = torrentQuery.trim();
+    if (cleaned.length < 2 || torrentLoading) return;
+    setTorrentLoading(true);
+    setTorrentError("");
+    setTorrentPayload(null);
+    try {
+      const response = await fetch("/api/source-torrent-search?q=" + encodeURIComponent(cleaned) + "&cat=" + encodeURIComponent(torrentCategory), {
+        headers: { Accept: "application/json" },
+      });
+      const data = (await response.json()) as TorrentSearchResponse;
+      setTorrentPayload(data);
+      if (!response.ok || !data.ok) setTorrentError(data.error || "Torrent search failed.");
+    } catch (cause) {
+      setTorrentError(cause instanceof Error ? cause.message : "Could not run torrent search.");
+    } finally {
+      setTorrentLoading(false);
+    }
+  }
 
   async function runSearch(event?: FormEvent, nextQuery = query) {
     event?.preventDefault();
@@ -174,6 +224,41 @@ function SourceLabPage() {
               {httpPayload.bodyPreview && <div><p className="text-sm font-semibold">Response body preview</p><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-[#211d2c] p-3 text-xs leading-5 text-white">{httpPayload.bodyPreview}</pre></div>}
               {httpPayload.detail && <p className="text-xs text-[#746b83]">Technical detail: {httpPayload.detail}</p>}
               {httpPayload.note && <p className="text-xs leading-5 text-[#746b83]">{httpPayload.note}</p>}
+            </div>
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-3xl border border-[#e5deef] bg-white shadow-sm">
+          <div className="border-b border-[#eee8f5] bg-[#fcfbff] p-5 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7c5cfc]">Torrent source adapter · independent test</p>
+            <h2 className="mt-2 font-display text-xl font-semibold tracking-tight sm:text-2xl">The Pirate Bay API search</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#625b70]">Searches apibay.org from the Render server, parses the JSON response, and builds magnet URIs from valid info hashes. This test reports Cloudflare challenges rather than treating challenge HTML as search data.</p>
+            <form onSubmit={(event) => void runTorrentSearch(event)} className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
+              <Input value={torrentQuery} onChange={(event) => setTorrentQuery(event.target.value)} placeholder="Search torrent title" className="h-12 min-w-0 rounded-xl border-[#ddd4ed] bg-white text-base" />
+              <select value={torrentCategory} onChange={(event) => setTorrentCategory(event.target.value)} aria-label="Torrent category" className="h-12 rounded-xl border border-[#ddd4ed] bg-white px-3 text-sm text-[#51466a]">
+                <option value="201">Movies (201)</option>
+                <option value="0">All categories (0)</option>
+              </select>
+              <Button type="submit" disabled={torrentLoading || torrentQuery.trim().length < 2} className="h-12 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
+                {torrentLoading ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />} Search torrents
+              </Button>
+            </form>
+            {torrentLoading && <p className="mt-3 text-sm text-[#625b70]">Requesting API JSON from Render…</p>}
+            {torrentError && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><p className="font-semibold">{torrentError}</p>{torrentPayload?.status !== undefined && <p className="mt-1">HTTP status: {torrentPayload.status}{torrentPayload.blockedBy ? " · Detected: " + torrentPayload.blockedBy : ""}</p>}{torrentPayload?.detail && <p className="mt-1 break-words text-xs">{torrentPayload.detail}</p>}{torrentPayload?.fallback && <p className="mt-2 text-xs leading-5">{torrentPayload.fallback.note} <a className="break-all font-semibold underline" href={torrentPayload.fallback.url} target="_blank" rel="noopener noreferrer">Open public search page</a></p>}</div>}
+          </div>
+          {torrentPayload?.ok && (
+            <div className="space-y-3 p-4 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#625b70]"><span>{torrentPayload.count ?? 0} results · HTTP {torrentPayload.status}</span><span>{torrentPayload.elapsedMs ?? 0} ms</span></div>
+              {(torrentPayload.results || []).map((item, index) => (
+                <article key={item.info_hash} className="rounded-xl border border-[#e5deef] p-3 sm:p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#827995]">Result {index + 1}</p>
+                  <h3 className="mt-1 break-words font-semibold text-[#292333]">{item.name}</h3>
+                  <p className="mt-2 text-xs text-[#625b70]">Size: {formatTorrentSize(item.size)} · Seeders: {item.seeders} · Leechers: {item.leechers}</p>
+                  <p className="mt-1 break-all text-[11px] text-[#827995]">Info hash: {item.info_hash}</p>
+                  <a href={item.magnet} className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-[#f2edff] px-3 py-2 text-xs font-semibold text-[#6243d8]">Open magnet link ↗</a>
+                </article>
+              ))}
+              {!torrentPayload.results?.length && <p className="text-sm text-[#625b70]">The API returned no usable results.</p>}
             </div>
           )}
         </section>
