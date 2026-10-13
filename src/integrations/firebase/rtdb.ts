@@ -218,43 +218,26 @@ export async function getAllPosts(): Promise<PostRecord[]> {
 }
 
 export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
-  const feedSnap = await get(ref(rtdb, `postsByFeed/${feed}`));
-  if (!feedSnap.exists()) {
-    // Fallback: check /posts directly
-    const all = await getAllPosts();
-    return all.filter(
-      (p) =>
-        p.feed === feed &&
-        p.status === "published" &&
-        p.approval_status === "approved" &&
-        (feed !== "shorts" || p.playability_status === "playable"),
-    );
-  }
-
-  const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
-  const postIds = Object.keys(feedMap).filter((id) => {
-    const entry = feedMap[id];
-    const approved = entry.status === "published" && entry.approval_status === "approved";
-    return approved;
-  });
-
-  const posts: PostRecord[] = [];
-  await Promise.all(
-    postIds.map(async (id) => {
-      const p = await getPost(id);
-      if (p) {
-        // Shorts are public only after the backend verifier has confirmed playback.
-        // Other feeds keep their existing publication rules.
-        if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") return;
-        posts.push(p);
+  // Read the posts collection once instead of making one Firebase request per
+  // feed item. The previous index -> N individual post reads caused the homepage
+  // to sit on its loading skeleton as the catalogue grew.
+  const all = await getAllPosts();
+  return all
+    .filter((p) => {
+      if (p.feed !== feed || p.status !== "published" || p.approval_status !== "approved") {
+        return false;
       }
-    }),
-  );
-
-  return posts.sort((a, b) => {
-    if (b.featured !== a.featured) return b.featured ? 1 : -1;
-    return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-  });
+      // Shorts are public only after playback verification (creator uploads keep
+      // their existing path). Other feeds retain their existing publication rules.
+      if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (b.featured !== a.featured) return b.featured ? 1 : -1;
+      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+    });
 }
 
 // --- COMMENTS ---
