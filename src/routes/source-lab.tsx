@@ -153,8 +153,9 @@ function SourceLabPage() {
                   </ul>
                 </> : <>
                   <p className="flex items-center gap-2 font-semibold text-amber-900"><CircleX className="size-4" /> Could not resolve torrent metadata</p>
-                  <p className="mt-1 break-words text-xs leading-5 text-amber-900">{inspection.data.error || inspection.data.detail || "The inspection engine did not return metadata."}</p>
+                  <p className="mt-1 break-words text-xs leading-5 text-amber-900">{inspection.data.error || "The inspection engine did not return metadata."}</p>
                   {inspection.data.code && <p className="mt-1 text-[11px] text-amber-800">Result: {inspection.data.code}</p>}
+                  {inspection.data.detail && <p className="mt-1 break-words rounded-lg bg-amber-100/70 p-2 font-mono text-[11px] leading-5 text-amber-950">Diagnostic detail: {inspection.data.detail}</p>}
                 </>}
               </div>}
             </article>)}
