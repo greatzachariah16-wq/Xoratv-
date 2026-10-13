@@ -14,7 +14,7 @@ type PipelineResult = {
 export const Route = createFileRoute("/source-lab")({
   head: () => ({ meta: [
     { title: "XoraTV IPFS Media Lab" },
-    { name: "description", content: "XoraTV local IPFS filename index and on-demand gateway diagnostics." },
+    { name: "description", content: "Automatic IPFS metadata-index search and gateway availability checks." },
     { name: "robots", content: "noindex, nofollow, noarchive" },
   ] }),
   component: SourceLabPage,
@@ -81,7 +81,7 @@ function SourceLabPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#7c5cfc]">XoraTV internal test</p>
             <h1 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">IPFS Media Lab</h1>
-            <p className="mt-1 text-sm text-[#625b70]">Build a searchable index from IPFS CIDs and stream matches on demand.</p>
+            <p className="mt-1 text-sm text-[#625b70]">Search existing IPFS metadata by title, check availability, and stream matches on demand.</p>
           </div>
         </header>
 
@@ -89,15 +89,15 @@ function SourceLabPage() {
           <div className="flex items-start gap-3">
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f2edff] text-[#6243d8]"><Radar className="size-5" /></div>
             <div>
-              <h2 className="font-display text-xl font-semibold">Search the XoraTV index</h2>
-              <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches XoraTV's index first, then automatically checks public search results and metadata for IPFS CIDs. Results depend on what is publicly indexed. No media is pinned or intentionally downloaded.</p>
+              <h2 className="font-display text-xl font-semibold">Search an existing IPFS index</h2>
+              <p className="mt-2 text-sm leading-6 text-[#625b70]">Searches an existing IPFS metadata index for your title, checks whether matching video CIDs respond through a gateway, then falls back to XoraTV's local search. You do not need to know the CID. Video files are not downloaded or pinned.</p>
             </div>
           </div>
           <input aria-label="Video title or keyword" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={180} placeholder="Enter video title or keyword" className="mt-5 h-11 w-full rounded-xl border border-[#e5deef] bg-white px-3 text-sm outline-none focus:border-[#7c5cfc]" />
           <div className="mt-4 flex flex-wrap gap-3">
             <Button type="button" onClick={() => void runSearch()} disabled={loading || indexing || !query.trim()} className="h-11 rounded-xl bg-[#7c5cfc] px-5 text-white hover:bg-[#6848e8]">
               {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Radar className="size-4" />}
-              {loading ? "Searching…" : "Search local index"}
+              {loading ? "Searching…" : "Search IPFS index"}
             </Button>
             <Button type="button" variant="outline" onClick={() => void testCid()} disabled={loading || indexing || !query.trim()} className="h-11 rounded-xl px-5">
               <Play className="size-4" /> Test direct CID
@@ -126,7 +126,7 @@ function SourceLabPage() {
         {result && <section className={`rounded-2xl border p-4 ${result.ok ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
           <p className={`flex items-center gap-2 font-semibold ${result.ok ? "text-emerald-900" : "text-amber-950"}`}>
             {result.ok ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}
-            {result.ok ? (result.indexedCount !== undefined ? "CID indexing finished" : result.results ? "Local search finished" : "IPFS test finished") : "IPFS task could not complete"}
+            {result.ok ? (result.indexedCount !== undefined ? "CID indexing finished" : result.results ? "Search finished" : "IPFS test finished") : "IPFS task could not complete"}
           </p>
           {result.error && <p className="mt-2 break-words text-sm leading-6 text-amber-950">{result.error}</p>}
           {result.detail && <p className="mt-2 break-words font-mono text-xs text-amber-900">{result.detail}</p>}
@@ -151,7 +151,7 @@ function SourceLabPage() {
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
           <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-700" /><div>
             <h2 className="font-semibold text-amber-950">Important</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-900">IPFS has no universal title-search service, so automatic discovery checks public web search results and metadata for CID references. It may not find every title, and a discovered CID may no longer be available. Render's local disk may reset on redeploy unless a persistent disk is configured. Playback streams through the IPFS gateway; media is not pinned or downloaded by this search.</p>
+            <p className="mt-1 text-sm leading-6 text-amber-900">The external IPFS metadata index is a separate public service and may sometimes be unavailable. If it cannot find a playable match, XoraTV uses its existing fallback search. A CID can exist without being online, so results are checked against IPFS gateways before being shown. Playback streams through a gateway; video files are not downloaded or pinned.</p>
           </div></div>
         </section>
       </div>
