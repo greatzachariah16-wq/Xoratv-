@@ -159,173 +159,168 @@ async function fetchSearchResults(query: string, limit: number): Promise<SourceR
   for (const result of outputs.flat()) if (!unique.has(result.url)) unique.set(result.url, result);
   return [...unique.values()].slice(0, limit);
 }
+async function fetchPublicPage(rawUrl: string) {
+  let current = new URL(rawUrl);
+  for (let hop = 0; hop <= 4; hop++) {
+    if (!(await isPublicHttpUrl(current.href))) throw new Error("Target or redirect resolves to a private or blocked address.");
+    const response = await fetch(current.href, {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; XoraTVSourceLab/HTTP; +https://xoratv-x.onrender.com/source-lab)",
+        Accept: "text/html,application/xhtml+xml,application/json,text/plain;q=0.8,*/*;q=0.5",
+      },
+      signal: AbortSignal.timeout(6500),
+    });
+    const location = response.headers.get("location");
+    if (response.status >= 300 && response.status < 400 && location) {
+      await response.body?.cancel().catch(() => {});
+      if (hop === 4) throw new Error("Redirect limit reached.");
+      current = new URL(location, current);
+      continue;
+    }
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      throw new Error("HTTP " + response.status + " " + response.statusText);
+    }
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    if (reader) {
+      while (size < 500_000) {
+        const { done, value } = await reader.read();
+        if (done || !value) break;
+        const chunk = value.subarray(0, 500_000 - size);
+        chunks.push(chunk);
+        size += chunk.byteLength;
+        if (chunk.byteLength < value.byteLength) break;
+      }
+      await reader.cancel().catch(() => {});
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    return { url: current.href, html: new TextDecoder().decode(bytes) };
+  }
+  throw new Error("Could not follow the source URL.");
+}
+
 async function inspectPages(seeds: SourceResult[], query: string, maxPages: number) {
   const queue: Array<{ result: SourceResult; depth: number }> = seeds.slice(0, maxPages).map((result) => ({ result, depth: 0 }));
   const visited = new Set<string>();
   const inspected: SourceResult[] = [];
-  let browser: import("puppeteer").Browser | null = null;
-  try {
-    const [puppeteer, chromiumModule] = await Promise.all([
-      import("puppeteer"),
-      import("@sparticuz/chromium"),
-    ]);
-    const chromium = chromiumModule.default;
-    chromium.setGraphicsMode = false;
-    const executablePath = await chromium.executablePath();
-    browser = await puppeteer.default.launch({
-      executablePath,
-      headless: "shell",
-      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-      defaultViewport: chromium.defaultViewport,
-      timeout: 20000,
-    });
-    while (queue.length && inspected.length < maxPages) {
-      const item = queue.shift()!;
-      if (visited.has(item.result.url)) continue;
-      visited.add(item.result.url);
-      if (!(await isPublicHttpUrl(item.result.url))) continue;
-      const page = await browser.newPage();
-      try {
-        page.setDefaultNavigationTimeout(6500);
-        page.setDefaultTimeout(2500);
-        await page.setRequestInterception(true);
-        page.on("request", (request) => {
-          const resourceType = request.resourceType();
-          if (["image", "font", "media", "other"].includes(resourceType)) {
-            void request.abort().catch(() => {});
-            return;
-          }
-          void isPublicHttpUrl(request.url()).then((safe) => {
-            if (safe) return request.continue().catch(() => {});
-            return request.abort().catch(() => {});
-          }).catch(() => request.abort().catch(() => {}));
+  while (queue.length && inspected.length < maxPages) {
+    const item = queue.shift()!;
+    if (visited.has(item.result.url)) continue;
+    visited.add(item.result.url);
+    try {
+      const fetched = await fetchPublicPage(item.result.url);
+      const $ = load(fetched.html);
+      const pageTitle = $("title").first().text().replace(/\s+/g, " ").trim();
+      const description = $('meta[name="description"]').attr("content")?.trim() || "";
+      const media: MediaCandidate[] = [];
+      const addMedia = (raw: string | undefined, kind: MediaCandidate["kind"], title?: string) => {
+        if (!raw) return;
+        try {
+          const parsed = new URL(raw, fetched.url);
+          if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return;
+          if (!media.some((candidate) => candidate.url === parsed.href)) media.push({ url: parsed.href, kind, title });
+        } catch {}
+      };
+      $("video").each((_, element) => {
+        const video = $(element);
+        addMedia(video.attr("src") || video.find("source").first().attr("src"), "video", video.attr("title") || video.attr("aria-label"));
+        video.find("source[src]").each((__, source) => {
+          const raw = $(source).attr("src");
+          addMedia(raw, /\.m3u8(?:[?#]|$)/i.test(raw || "") ? "hls" : "video", $(source).attr("type"));
         });
-        await page.goto(item.result.url, { waitUntil: "domcontentloaded" });
-        await new Promise((resolve) => setTimeout(resolve, 450));
-        const details = await page.evaluate(() => {
-          const clean = (value: string | null | undefined) => (value || "").trim();
-          const absolute = (value: string) => {
-            try { return new URL(value, location.href).href; } catch { return ""; }
-          };
-          const media: Array<{ url: string; kind: "video" | "hls" | "playlist" | "embed"; title?: string }> = [];
-          const add = (raw: string, kind: "video" | "hls" | "playlist" | "embed", title?: string) => {
-            const url = absolute(raw);
-            if (!url || media.some((item) => item.url === url)) return;
-            media.push({ url, kind, title });
-          };
-          document.querySelectorAll("video").forEach((video) => {
-            add(video.currentSrc || video.src || video.querySelector("source")?.src || "", "video", clean(video.getAttribute("aria-label") || video.getAttribute("title")));
-            video.querySelectorAll("source").forEach((source) => add(source.src || source.getAttribute("src") || "", /\.m3u8/i.test(source.src) ? "hls" : "video", clean(source.type)));
-          });
-          document.querySelectorAll('source[src], a[href], meta[property="og:video"], meta[name="twitter:player"], iframe[src]').forEach((node) => {
-            const el = node as HTMLAnchorElement;
-            const raw = el instanceof HTMLMetaElement ? el.content : el instanceof HTMLIFrameElement ? el.src : el.getAttribute("href") || el.getAttribute("src") || "";
-            if (!raw) return;
-            if (/\.m3u8(?:[?#]|$)/i.test(raw)) add(raw, "hls");
-            else if (/\.m3u(?:[?#]|$)/i.test(raw)) add(raw, "playlist");
-            else if (/\.(mp4|webm|mov|m4v|ogv|mpd)(?:[?#]|$)/i.test(raw)) add(raw, "video");
-            else if (el instanceof HTMLIFrameElement || el instanceof HTMLMetaElement) add(raw, "embed", clean(el.getAttribute("title") || el.getAttribute("content") || ""));
-          });
-          const links = Array.from(document.querySelectorAll("a[href]")).map((a) => ({
-            url: absolute((a as HTMLAnchorElement).href),
-            text: clean(a.textContent),
-            title: clean((a as HTMLAnchorElement).title),
-          })).filter((a) => a.url && a.text.length > 2);
-          const structured: string[] = [];
-          document.querySelectorAll('script[type="application/ld+json"]').forEach((script) => {
-            const value = script.textContent || "";
-            for (const match of value.matchAll(/"(?:contentUrl|embedUrl|url)"\s*:\s*"([^"]+)"/g)) {
-              try { structured.push(new URL(match[1].replace(/\\\//g, "/"), location.href).href); } catch {}
-            }
-          });
-          structured.forEach((url) => {
-            if (/\.m3u8(?:[?#]|$)/i.test(url)) add(url, "hls");
-            else if (/\.(mp4|webm|mov|m4v|ogv|mpd)(?:[?#]|$)/i.test(url)) add(url, "video");
-            else if (/embed/i.test(url)) add(url, "embed");
-          });
-          return {
-            pageTitle: document.title || "",
-            description: clean(document.querySelector('meta[name="description"]')?.getAttribute("content")),
-            media: media.slice(0, 30),
-            links: links.slice(0, 500),
-            finalUrl: location.href,
-          };
-        });
-        item.result.inspected = true;
-        item.result.pageTitle = details.pageTitle;
-        item.result.snippet = details.description || item.result.snippet;
-        item.result.mediaCandidates = details.media.filter((candidate) => {
+      });
+      $('source[src], a[href], meta[property="og:video"], meta[name="twitter:player"], iframe[src]').each((_, element) => {
+        const node = $(element);
+        const tag = (element as { tagName?: string }).tagName?.toLowerCase() || "";
+        const raw = tag === "meta" ? node.attr("content") : node.attr("href") || node.attr("src");
+        if (!raw) return;
+        if (/\.m3u8(?:[?#]|$)/i.test(raw)) addMedia(raw, "hls");
+        else if (/\.m3u(?:[?#]|$)/i.test(raw)) addMedia(raw, "playlist");
+        else if (/\.(mp4|webm|mov|m4v|ogv|mpd)(?:[?#]|$)/i.test(raw)) addMedia(raw, "video");
+        else if (tag === "iframe" || tag === "meta") addMedia(raw, "embed", node.attr("title") || node.attr("content"));
+      });
+      $('script[type="application/ld+json"]').each((_, element) => {
+        const value = $(element).text();
+        for (const match of value.matchAll(/"(?:contentUrl|embedUrl|url)"\s*:\s*"([^"]+)"/g)) {
           try {
-            const u = new URL(candidate.url);
-            return ["http:", "https:"].includes(u.protocol) && !u.username && !u.password;
-          } catch { return false; }
-        }).slice(0, 12);
-        item.result.crawlDepth = item.depth;
-        if (item.result.mediaCandidates.length) {
-          item.result.playbackCheck = "media-found";
-          const direct = item.result.mediaCandidates.find((candidate) => ["video", "hls", "playlist"].includes(candidate.kind));
-          if (direct) {
-            const ok = await checkMediaUrl(direct.url);
-            item.result.playbackCheck = ok ? "request-ok" : "request-failed";
-            direct.status = ok ? "HTTP response received" : "Media request did not succeed";
-          }
+            const raw = match[1].replace(/\\\//g, "/");
+            if (/\.m3u8(?:[?#]|$)/i.test(raw)) addMedia(raw, "hls");
+            else if (/\.(mp4|webm|mov|m4v|ogv|mpd)(?:[?#]|$)/i.test(raw)) addMedia(raw, "video");
+            else if (/embed/i.test(raw)) addMedia(raw, "embed");
+          } catch {}
         }
-        const allText = normalize([item.result.title, details.pageTitle, details.description].join(" "));
-        item.result.exactTitleMatch = normalize(query).split(" ").filter(Boolean).every((token) => allText.includes(token));
-        item.result.host = (() => { try { return new URL(details.finalUrl).hostname.replace(/^www\./, ""); } catch { return item.result.host; } })();
-        item.result.sourceType = item.result.mediaCandidates.some((candidate) => candidate.kind === "hls") ? "hls" :
-          item.result.mediaCandidates.some((candidate) => candidate.kind === "playlist") ? "iptv-playlist" :
-          item.result.mediaCandidates.some((candidate) => candidate.kind === "video") ? "direct-video" : item.result.sourceType;
-        item.result.pageKind = item.result.mediaCandidates.length ? "Inspected page with " + item.result.mediaCandidates.length + " media candidate(s)" : pageKindFor(item.result.sourceType);
-        inspected.push(item.result);
-        addToIndex(item.result, query);
+      });
+      const links: Array<{ url: string; text: string; title: string }> = [];
+      $("a[href]").each((_, element) => {
+        const node = $(element);
+        const text = node.text().replace(/\s+/g, " ").trim();
+        const title = (node.attr("title") || "").trim();
+        try {
+          const url = new URL(node.attr("href") || "", fetched.url).href;
+          if (text.length > 2 && ["http:", "https:"].includes(new URL(url).protocol)) links.push({ url, text, title });
+        } catch {}
+      });
 
-        // Follow a small number of relevant links, one level deep, to discover linked watch/share pages.
-        if (item.depth < 1 && inspected.length + queue.length < maxPages) {
-          const queryWords = titleTokens(query).filter((word) => word.length >= 4);
-          const related = details.links
-            .filter((link) => link.url !== item.result.url && queryWords.some((word) => normalize(link.text + " " + link.title + " " + link.url).includes(word)))
-            .filter((link) => classifySource(link.url) !== "general-webpage" || /watch|video|player|stream|episode|movie|film/i.test(link.text + " " + link.title + " " + link.url))
-            .slice(0, 2);
-          for (const link of related) {
-            if (queue.length + inspected.length >= maxPages || visited.has(link.url)) break;
-            const type = classifySource(link.url);
-            queue.push({ depth: item.depth + 1, result: {
-              title: link.text || link.title || link.url, url: link.url, snippet: "Discovered by XoraTV while inspecting " + item.result.host,
-              host: (() => { try { return new URL(link.url).hostname.replace(/^www\./, ""); } catch { return ""; } })(),
-              sourceType: type, pageKind: pageKindFor(type), publishedYear: null, exactTitleMatch: false, inspected: false,
-              mediaCandidates: [], playbackCheck: "not-checked", crawlDepth: item.depth + 1,
-            } });
-          }
+      item.result.inspected = true;
+      item.result.url = fetched.url;
+      item.result.pageTitle = pageTitle;
+      item.result.snippet = description || item.result.snippet;
+      item.result.mediaCandidates = media.slice(0, 12);
+      item.result.crawlDepth = item.depth;
+      if (item.result.mediaCandidates.length) {
+        item.result.playbackCheck = "media-found";
+        const direct = item.result.mediaCandidates.find((candidate) => ["video", "hls", "playlist"].includes(candidate.kind));
+        if (direct) {
+          const ok = await checkMediaUrl(direct.url);
+          item.result.playbackCheck = ok ? "request-ok" : "request-failed";
+          direct.status = ok ? "HTTP response received" : "Media request did not succeed";
         }
-      } catch {
-        item.result.inspected = true;
-        item.result.pageKind = "Page could not be fully inspected (timeout, block, or browser error)";
-        addToIndex(item.result, query);
-        inspected.push(item.result);
-      } finally {
-        await page.close().catch(() => {});
       }
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[XoraTV Source Lab] headless browser unavailable; returning search-only results:", message);
-    // Keep discovery usable if Render cannot launch Chromium. Search results remain visible,
-    // but are clearly marked as uninspected rather than pretending media was verified.
-    for (const item of queue) {
-      if (visited.has(item.result.url) || inspected.some((result) => result.url === item.result.url)) continue;
-      item.result.inspected = false;
-      item.result.browserError = message.slice(0, 240);
-      item.result.pageKind = "Search result only — headless browser unavailable";
-      item.result.playbackCheck = "not-checked";
+      const allText = normalize([item.result.title, pageTitle, description].join(" "));
+      item.result.exactTitleMatch = normalize(query).split(" ").filter(Boolean).every((token) => allText.includes(token));
+      item.result.host = (() => { try { return new URL(fetched.url).hostname.replace(/^www\./, ""); } catch { return item.result.host; } })();
+      item.result.sourceType = media.some((candidate) => candidate.kind === "hls") ? "hls" :
+        media.some((candidate) => candidate.kind === "playlist") ? "iptv-playlist" :
+        media.some((candidate) => candidate.kind === "video") ? "direct-video" : item.result.sourceType;
+      item.result.pageKind = media.length ? "HTTP-inspected page with " + media.length + " media candidate(s)" : pageKindFor(item.result.sourceType);
+      inspected.push(item.result);
       addToIndex(item.result, query);
+
+      if (item.depth < 1 && inspected.length + queue.length < maxPages) {
+        const queryWords = titleTokens(query).filter((word) => word.length >= 4);
+        const related = links
+          .filter((link) => link.url !== item.result.url && queryWords.some((word) => normalize(link.text + " " + link.title + " " + link.url).includes(word)))
+          .filter((link) => classifySource(link.url) !== "general-webpage" || /watch|video|player|stream|episode|movie|film/i.test(link.text + " " + link.title + " " + link.url))
+          .slice(0, 2);
+        for (const link of related) {
+          if (queue.length + inspected.length >= maxPages || visited.has(link.url)) break;
+          const type = classifySource(link.url);
+          queue.push({ depth: item.depth + 1, result: {
+            title: link.text || link.title || link.url, url: link.url,
+            snippet: "Discovered by XoraTV while inspecting " + item.result.host,
+            host: (() => { try { return new URL(link.url).hostname.replace(/^www\./, ""); } catch { return ""; } })(),
+            sourceType: type, pageKind: pageKindFor(type), publishedYear: null, exactTitleMatch: false, inspected: false,
+            mediaCandidates: [], playbackCheck: "not-checked", crawlDepth: item.depth + 1,
+          } });
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      item.result.inspected = false;
+      item.result.pageKind = "HTTP request failed: " + message.slice(0, 120);
+      item.result.playbackCheck = "not-checked";
       inspected.push(item.result);
     }
-  } finally {
-    await browser?.close().catch(() => {});
   }
   return inspected;
 }
+
 async function checkMediaUrl(rawUrl: string) {
   if (!(await isPublicHttpUrl(rawUrl))) return false;
   try {
@@ -376,7 +371,7 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
       ok: true,
       query,
       engine: "XoraTV headless crawler and discovery index",
-      discoveryBackend: "DuckDuckGo seed discovery + Puppeteer headless browser + XoraTV in-memory page index",
+      discoveryBackend: "DuckDuckGo seed discovery + Node.js HTTP fetch + Cheerio HTML inspection + XoraTV in-memory page index",
       yearFocus: "2000 to present (search bias, not authoritative verification)",
       elapsedMs: Date.now() - startedAt,
       count: results.length,
@@ -384,22 +379,22 @@ export async function handleSourceSearchRoute(request: Request, url: URL): Promi
       indexedPageCount: pageIndex.size,
       indexPersistence: "In-memory with 24-hour TTL; resets when the server restarts or deploys",
       results,
-      note: "XoraTV now opens a limited number of discovered pages in a headless browser, inspects rendered DOM, video/source tags, iframe/meta and JSON-LD media hints, follows a small number of relevant links one level deep, and probes one candidate media URL. A successful HTTP response is not a guarantee of playback; CORS, cookies, DRM, referrers, codecs and player compatibility can still prevent playback. Some websites block automation or require login.",
+      note: "XoraTV makes ordinary HTTP requests and inspects returned HTML, video/source tags, iframe/meta and JSON-LD media hints, follows a small number of relevant links one level deep, and probes one candidate media URL. No Chromium or headless browser is used. A successful HTTP response does not guarantee playback; cookies, DRM, referrers, codecs and player compatibility can still prevent playback. Some websites block automated requests or require login.",
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown discovery error";
     console.error("[XoraTV Source Lab] discovery failed:", error);
     const runtimeHint = /executable|enoent|chromium|chrome/i.test(message)
-      ? "Chromium could not start. The serverless Chromium binary or its runtime libraries may be unavailable."
+      ? "The HTTP inspection runtime could not complete the request."
       : /timed out|abort/i.test(message)
-        ? "The search or page inspection timed out. Try again with a smaller result limit."
+        ? "The HTTP request timed out. Try again with a smaller result limit."
         : "Check the server logs for the recorded browser-runtime error.";
     return Response.json({
       ok: false,
       query,
       error: /timed out|abort/i.test(message)
-        ? "The web search or page inspection timed out. Try again."
-        : "Could not run the headless discovery pass.",
+        ? "The web search or HTTP page inspection timed out. Try again."
+        : "Could not run the HTTP discovery pass.",
       runtimeHint,
       runtimeError: message.slice(0, 240),
     }, { status: 502 });
