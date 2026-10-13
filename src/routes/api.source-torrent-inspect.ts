@@ -14,6 +14,7 @@ type Inspection = {
   totalSize?: number;
   peerCount?: number;
   downloadedBytes?: number;
+  dhtNodes?: number;
   elapsedMs: number;
   error?: string;
   code?: string;
@@ -69,7 +70,7 @@ export const Route = createFileRoute("/api/source-torrent-inspect")({
               code: "metadata-timeout",
               error: "Timed out waiting for libtorrent metadata. The magnet may have no reachable peers, or outbound BitTorrent traffic may be blocked.",
             });
-          }, METADATA_TIMEOUT_MS + 3000);
+          }, METADATA_TIMEOUT_MS + 18000);
 
           const finish = (value: Inspection) => {
             if (settled) return;
