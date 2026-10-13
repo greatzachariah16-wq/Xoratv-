@@ -12,7 +12,7 @@ import sys
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-CID_PATTERN = r"(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-z2-7]{20,})"
+CID_PATTERN = r"(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{20,})"
 CID_RE = re.compile("^" + CID_PATTERN + "$")
 VIDEO_EXT = re.compile(r"\.(mp4|webm|m4v|mov|mkv|avi|ogv|m3u8|mpg|mpeg|3gp)$", re.I)
 GATEWAY = os.environ.get("IPFS_GATEWAY_URL", "https://ipfs.io").rstrip("/")
