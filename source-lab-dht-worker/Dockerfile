@@ -8,4 +8,4 @@ RUN apk add --no-cache ca-certificates
 COPY --from=build /go/bin/hydra-booster /hydra-booster
 EXPOSE 7779
 ENTRYPOINT ["/hydra-booster"]
-CMD ["-nheads=1", "-httpapi-addr=0.0.0.0:7779", "-db=/data", "-ui-theme=none"]
+CMD ["-nheads=150", "-name=source-lab-dht", "-httpapi-addr=0.0.0.0:7779", "-db=/data", "-ui-theme=none"]
