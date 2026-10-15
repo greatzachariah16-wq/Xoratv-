@@ -252,6 +252,14 @@ export function listenUserRooms(
             new Date(a.lastMessageAt || a.updated_at).getTime(),
         );
 
+        // Backfill older circles into the public directory as their creators open chat.
+        for (const room of rooms) {
+          if (room.type === "group") {
+            void set(ref(rtdb, `chatRooms/_communityDirectory/${pathSafe(room.id)}`), room).catch((err) =>
+              console.warn("[Chat] Could not index community circle:", err),
+            );
+          }
+        }
         callback(rooms);
       } catch (err) {
         console.warn("[Chat] Error resolving real-time rooms:", err);
@@ -379,6 +387,8 @@ export async function createGroupRoom(
   }
 
   await set(ref(rtdb, `chatRooms/${roomId}`), groupRecord);
+  // Public directory index lets other signed-in Xora users discover and join circles.
+  await set(ref(rtdb, `chatRooms/_communityDirectory/${roomId}`), groupRecord);
 
   // Link room to each member
   await Promise.all(
@@ -386,6 +396,58 @@ export async function createGroupRoom(
   );
 
   return roomId;
+}
+
+/**
+ * Real-time directory of discoverable community circles.
+ * Stored below chatRooms so it works with the existing authenticated chatRooms rules.
+ */
+export function listenDiscoverableGroups(
+  callback: (rooms: ChatRoomRecord[]) => void,
+): Unsubscribe {
+  if (!isFirebaseConfigured()) {
+    callback(localRooms.filter((room) => room.type === "group"));
+    return () => {};
+  }
+
+  return onValue(
+    ref(rtdb, "chatRooms/_communityDirectory"),
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback([]);
+        return;
+      }
+      const rooms = Object.values(snapshot.val() as Record<string, ChatRoomRecord>)
+        .filter((room) => room?.type === "group" && Boolean(room.id))
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      callback(rooms);
+    },
+    (error) => {
+      console.error("[Chat] Community directory listener error:", error);
+      callback([]);
+    },
+  );
+}
+
+/** Joins a public circle and adds it to the user's inbox index. */
+export async function joinGroupRoom(uid: string, roomId: string): Promise<void> {
+  if (!uid || !roomId) throw new Error("Sign in to join a community circle.");
+  if (!isFirebaseConfigured()) {
+    const room = localRooms.find((item) => item.id === roomId && item.type === "group");
+    if (!room) throw new Error("This circle could not be found.");
+    room.memberIds = { ...(room.memberIds || {}), [uid]: true };
+    return;
+  }
+
+  const roomSnap = await get(ref(rtdb, `chatRooms/${pathSafe(roomId)}`));
+  if (!roomSnap.exists()) throw new Error("This circle could not be found.");
+  const room = roomSnap.val() as ChatRoomRecord;
+  if (room.type !== "group") throw new Error("Only community circles can be joined this way.");
+
+  await Promise.all([
+    set(ref(rtdb, `chatRooms/${pathSafe(roomId)}/memberIds/${pathSafe(uid)}`), true),
+    set(ref(rtdb, `userChatRooms/${pathSafe(uid)}/${pathSafe(roomId)}`), true),
+  ]);
 }
 
 /**
