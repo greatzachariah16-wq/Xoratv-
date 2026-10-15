@@ -335,9 +335,9 @@ Xora features a real-time Chat system for direct messages, creator discussions, 
    - `/chat`: Inbox, conversation switcher, New DM modal, New Group modal, Watch Experience share.
    - `/chat/$roomId`: Direct link to a specific room or conversation.
 
-2. **Strict 7-Day Message Expiry**:
-   - Every message stores `expiresAt` set to `created_at + 7 days`.
-   - **Client-side prune on room read**: When viewing a room, messages older than 7 days are filtered from view and automatically purged from RTDB.
+2. **30-Day Message Retention**:
+   - Every message stores `expiresAt` set to `created_at + 30 days`.
+   - **Client-side prune on room read**: When viewing a room, messages older than 30 days are filtered from view and automatically purged from RTDB.
    - **Client-side prune on inbox open**: When opening `/chat`, user rooms are opportunistically cleaned.
    - **Server-side purge endpoint**: Optional endpoint `GET /api/chat/purge` removes all expired messages in RTDB.
 
