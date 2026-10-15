@@ -7,7 +7,7 @@ export const Route = createFileRoute("/chat/$roomId")({
       { title: "Conversation — Xora Live Chat" },
       {
         name: "description",
-        content: "Live messaging on Xora. Messages automatically expire and delete after 7 days.",
+        content: "Live messaging on Xora. Messages are automatically deleted after 30 days.",
       },
       { property: "og:title", content: "Conversation — Xora Live Chat" },
       { property: "og:description", content: "Chat in real-time with cinephiles on Xora." },
