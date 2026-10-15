@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose } from "lucide-react";
+import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose, CheckCheck, ChevronDown, Coffee, Info, Leaf, Paperclip, Smile, Sun, Volume2, VolumeX, X } from "lucide-react";
 
 export type ChatRoom = { id: string; type: "dm" | "group"; name: string | null; photo_url: string | null; lastMessage: string | null; lastMessageAt: string | null; memberIds?: Record<string, boolean> };
 export type ChatMessage = { id: string; roomId: string; senderId: string; senderName?: string | null; senderAvatar?: string | null; text: string; created_at: string; type: "text" | "experience"; expiresAt: string };
@@ -60,105 +60,161 @@ export default function ChatPage({
   useEffect(() => { if (activeMessages.length) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activeMessages.length, activeRoomId]);
 
   if (!currentUserId) return (
-    <div className="mx-auto max-w-3xl overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-card">
-      <div className="relative overflow-hidden bg-gradient-to-br from-clay-soft via-surface to-secondary px-6 py-12 sm:px-10 sm:py-16">
-        <div className="absolute -right-12 -top-16 size-56 rounded-full bg-clay/10 blur-2xl" />
-        <div className="relative max-w-xl"><span className="inline-flex items-center gap-2 rounded-full border border-clay/20 bg-surface/75 px-3 py-1.5 text-xs font-semibold text-clay"><UsersRound className="size-3.5" /> Xora community</span>
-          <h1 className="mt-5 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Your people are here.</h1><p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground sm:text-base">Join conversations about films, music, creativity and the things that bring the Xora community together.</p>
-          <button onClick={onSignIn} className="press mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-card">Join the conversation <ArrowUpRight className="size-4" /></button>
-        </div>
-      </div>
-      <div className="grid gap-3 p-4 sm:grid-cols-3 sm:p-6">{[{icon:Music2,title:"Music & culture",detail:"Talk sounds, artists and new finds"},{icon:Film,title:"Film corner",detail:"Share what you're watching"},{icon:BookOpen,title:"Learn together",detail:"Swap tips and creator knowledge"}].map(({icon:Icon,title,detail}) => <div key={title} className="rounded-2xl border border-border/70 bg-background/70 p-4"><Icon className="size-5 text-clay"/><p className="mt-3 font-display text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></div>)}</div>
+    <div className="xora-page">
+      <header className="brand-header">
+        <div className="brand-lockup"><span className="xora-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M8 7c2 0 3 1 5 4l3 4 3-4c2-3 3-4 5-4M8 25c2 0 3-1 5-4l3-4 3 4c2 3 3 4 5 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/><circle cx="25" cy="6" r="2" fill="currentColor"/></svg></span><div><div className="brand-name">Xora <span>Chat</span></div><p className="brand-tagline">A little closer, every day</p></div></div>
+      </header>
+      <main className="xora-login-card">
+        <span className="xora-login-icon"><UsersRound /></span>
+        <p className="xora-eyebrow">XORA COMMUNITY</p>
+        <h1>Your people are here.</h1>
+        <p>Join conversations about films, music, creativity and the things that bring the Xora community together.</p>
+        <button onClick={onSignIn} className="xora-primary-button">Join the conversation <ArrowUpRight className="size-4"/></button>
+        <div className="xora-login-topics"><span><Music2/> Music & culture</span><span><Film/> Film corner</span><span><BookOpen/> Learn together</span></div>
+      </main>
     </div>
   );
 
-  return <div className="mx-auto max-w-7xl space-y-3 pb-2">
-    <header className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-clay/15 bg-[#fbf7f2]/90 px-4 py-3 shadow-[0_12px_32px_-24px_rgba(65,43,59,.45)] backdrop-blur-xl sm:px-5">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="relative grid size-10 shrink-0 place-items-center rounded-[1rem] bg-[#493849] text-white shadow-[0_8px_20px_-10px_rgba(56,36,56,.75)]"><MessageCircle className="size-5"/><span className="absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-[#fbf7f2] bg-[#83a88a]"/></div>
-        <div className="min-w-0"><h1 className="font-display text-lg font-semibold tracking-[-.04em] text-[#392d3b] sm:text-xl">Xora <span className="font-normal">Chat</span></h1><p className="truncate text-[10px] text-[#80727b] sm:text-[11px]">A little closer, every day</p></div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <span className="hidden items-center gap-1.5 rounded-full border border-[#dce7d8] bg-[#edf4e9] px-3 py-1.5 text-[9px] font-bold tracking-[.12em] text-[#527657] sm:inline-flex"><span className="size-1.5 rounded-full bg-[#83a88a]"/> LIVE, TOGETHER</span>
-        {currentProfile ? <div className="flex items-center gap-2 rounded-full border border-[#e8dcd6] bg-white/75 py-1 pl-1 pr-3"><Avatar path={currentProfile.avatar_url} name={currentProfile.display_name || currentProfile.username} size="sm"/><span className="hidden max-w-28 truncate text-xs font-semibold text-[#574657] sm:inline">{currentProfile.display_name || currentProfile.username}</span></div> : <span className="hidden rounded-full border border-[#e8dcd6] bg-white/75 px-3 py-2 text-[10px] text-[#80727b] sm:inline-flex">Community chat</span>}
-      </div>
-    </header>
-    <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-surface shadow-[0_24px_80px_-32px_hsl(var(--foreground)/0.22)] ring-1 ring-border/50 sm:rounded-[1.75rem]">
-    <div className="grid min-h-[min(78vh,780px)] grid-cols-1 lg:grid-cols-[330px_minmax(0,1fr)]">
-      <aside className={`flex min-h-[70vh] flex-col border-r border-border/70 bg-[linear-gradient(180deg,hsl(var(--surface)),hsl(var(--background)/0.92))] lg:min-h-[680px] ${activeRoomId ? "hidden lg:flex" : "flex"}`}>
-        <div className="relative overflow-hidden border-b border-[#e8dcd6] bg-[linear-gradient(145deg,#fffaf6_0%,#f7f0ea_58%,#eee7f3_100%)] px-4 pb-5 pt-5 sm:px-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0"><h2 className="font-display text-lg font-semibold tracking-[-.035em] text-[#392d3b]">Your people</h2><p className="mt-0.5 text-[11px] text-[#80727b]">Conversations & circles</p></div>
-            <div className="flex shrink-0 items-center gap-1.5"><button onClick={onOpenNewDm} title="New message" aria-label="New message" className="press grid size-9 place-items-center rounded-xl border border-[#e6d9d1] bg-white/75 text-[#6e5a6c] shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:text-[#493849]"><MessageCircle className="size-4"/></button><button onClick={onOpenNewGroup} title="Create a circle" aria-label="Create a circle" className="press grid size-9 place-items-center rounded-xl bg-[#493849] text-white shadow-[0_6px_14px_-8px_rgba(56,36,56,.8)] transition hover:-translate-y-0.5 hover:bg-[#604a60]"><Plus className="size-4.5"/></button></div>
-          </div>
-          <label className="relative mt-4 block"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><input value={roomFilter} onChange={(event) => onRoomFilterChange(event.target.value)} placeholder="Find a conversation…" className="w-full rounded-xl bg-transparent py-3 pl-9 pr-3 text-[13px] text-[#392d3b] outline-none placeholder:text-[#a597a0] focus:bg-[#fbf8f5]"/></label>
-          <div className="mt-3 grid grid-cols-4 gap-1 rounded-2xl border border-[#e5d8d0] bg-[#eee5df]/80 p-1">{([{id:"all",label:"All"},{id:"groups",label:"Circles"},{id:"directs",label:"Direct"},{id:"discover",label:"Explore"}] as const).map((tab) => <button key={tab.id} onClick={() => setListTab(tab.id)} className={`flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-all duration-200 ${listTab===tab.id?"bg-surface text-clay shadow-[0_2px_8px_-3px_hsl(var(--foreground)/0.22)] ring-1 ring-border/60":"text-muted-foreground hover:text-foreground"}`}>{tab.label}</button>)}</div>
-        </div>
-        <div className="border-b border-[#e8dcd6] bg-[linear-gradient(145deg,#fffaf6_0%,#fbf6f1_60%,#f1eaf5_100%)] px-4 py-4 sm:px-5">
-          <div className="flex items-center justify-between gap-2"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#80727b]">Your circles</p><button onClick={onOpenNewGroup} className="text-[10px] font-semibold text-[#98718a] transition hover:text-[#493849]">Create new</button></div>
-          <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
-            {rooms.filter((room) => room.type === "group").slice(0, 3).map((room) => { const title = getRoomTitle(room, currentUserId, profileMap); return <button key={room.id} onClick={() => onSelectRoom(room.id)} title={title} className="press flex w-[66px] shrink-0 flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-white/70"><span className={`rounded-full p-[2px] ${room.id === activeRoomId ? "bg-gradient-to-br from-[#98718a] to-[#d8b8a6]" : "bg-transparent"}`}><Avatar path={room.photo_url} name={title} size="md"/></span><span className="w-full truncate text-[10px] font-medium text-[#71656d]">{title}</span></button>; })}
-            <button onClick={onOpenNewGroup} className="press flex w-[66px] shrink-0 flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-white/70"><span className="grid size-11 place-items-center rounded-full border border-dashed border-[#cbb8cf] bg-white/70 text-[#98718a]"><Plus className="size-4"/></span><span className="text-[10px] font-medium text-[#71656d]">Create</span></button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-5"><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{listTab === "discover" ? "Find your community" : "Recent conversations"}</p><span className="text-[10px] tabular-nums text-muted-foreground">{filtered.length}</span></div>
-          {listTab === "discover" && discoverableError && <div role="alert" className="mx-3 my-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-3 text-xs leading-5 text-destructive sm:mx-4"><p className="font-semibold">Circle directory could not refresh</p><p className="mt-1 break-words">{discoverableError}</p><p className="mt-1 text-[10px] opacity-80">The last successfully loaded circles are kept visible. This message will clear when the next refresh succeeds.</p></div>}
-          {filtered.length ? filtered.map((room) => {
-            const title = getRoomTitle(room,currentUserId,profileMap);
-            const otherId = room.type==="dm" ? Object.keys(room.memberIds||{}).find((id)=>id!==currentUserId) : null;
-            const other = otherId ? profileMap[otherId] : null;
-            const selected = room.id === activeRoomId;
-            if (listTab === "discover") {
-              const alreadyJoined = rooms.some((joined) => joined.id === room.id);
-              const memberCount = Object.keys(room.memberIds || {}).length;
-              return <div key={room.id} className="mx-3 my-2 rounded-2xl border border-clay/15 bg-gradient-to-br from-surface to-clay-soft/25 p-3.5 shadow-[0_8px_22px_-20px_hsl(var(--foreground)/0.35)] sm:mx-4">
-                <div className="flex items-center gap-3"><Avatar path={room.photo_url} name={title} size="lg"/><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold">{title}</p><p className="mt-1 text-[11px] text-muted-foreground">{memberCount} {memberCount === 1 ? "member" : "members"} · Community circle</p></div></div>
-                <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">{room.lastMessage || "A place to meet people and start conversations."}</p>
-                <button onClick={() => alreadyJoined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id} className="press mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#493849] px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-[#604a60] disabled:opacity-60">{joiningGroupId === room.id ? <Loader2 className="size-3.5 animate-spin"/> : alreadyJoined ? <MessageCircle className="size-3.5"/> : <Plus className="size-3.5"/>}{joiningGroupId === room.id ? "Joining…" : alreadyJoined ? "Open circle" : "Join circle"}</button>
-              </div>;
-            }
-            return <button key={room.id} onClick={()=>onSelectRoom(room.id)} className={`press group relative flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all duration-200 sm:px-5 ${selected?"bg-gradient-to-r from-clay-soft/90 via-clay-soft/45 to-transparent":"hover:bg-clay-soft/25"}`}>
-              <div className="relative shrink-0"><Avatar path={room.type==="dm"?other?.avatar_url:room.photo_url} name={title} size="lg"/>{room.type==="group"&&<span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-surface bg-sage/20 text-sage"><Users className="size-2.5"/></span>}</div>
-              <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><span className={`truncate text-[13px] ${selected?"font-semibold text-foreground":"font-medium"}`}>{title}</span><span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(room.lastMessageAt)}</span></div><p className={`mt-1 truncate text-xs ${selected?"text-foreground/70":"text-muted-foreground"}`}>{room.lastMessage || (room.type==="group"?"Your circle is ready for a conversation":"Say hello and get things started")}</p></div>
-            </button>;
-          }) : <div className="px-5 py-12 text-center"><div className="mx-auto grid size-12 place-items-center rounded-full bg-clay-soft/70 text-clay"><MessagesSquare className="size-5"/></div><p className="mt-3 text-sm font-semibold">{listTab === "discover" ? (roomFilter.trim() ? "No circles match that search" : "No public circles yet") : roomFilter.trim()?"No matches yet":"No conversations yet"}</p><p className="mx-auto mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground">{listTab === "discover" ? "When someone creates a community circle, it will appear here for everyone to discover and join." : "Start a conversation or create a circle to bring people together."}</p><button onClick={onOpenNewGroup} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"><Plus className="size-3.5"/> Create a circle</button></div>}
-        </div>
-        <div className="border-t border-border/70 px-4 py-3 sm:px-5"><div className="flex items-center gap-2 text-[10px] text-muted-foreground"><Lock className="size-3.5 text-clay"/> Messages are kept for 30 days</div></div>
-      </aside>
+  const tabOptions = [{id:"all",label:"All"},{id:"groups",label:"Circles"},{id:"directs",label:"Direct"},{id:"discover",label:"Explore"}] as const;
+  const roomIcon = (room: ChatRoom) => {
+    const value = (room.name || "").toLowerCase();
+    if (value.includes("film") || value.includes("cinema") || value.includes("movie")) return Film;
+    if (value.includes("music") || value.includes("song")) return Music2;
+    if (value.includes("book") || value.includes("learn")) return BookOpen;
+    if (value.includes("coffee")) return Coffee;
+    if (value.includes("nature") || value.includes("outdoor") || value.includes("slow")) return Leaf;
+    return Sun;
+  };
+  const liveAvatar = (profile: ProfileLite | null | undefined, size = "") => {
+    const name = profile?.display_name || profile?.username || "Xora member";
+    return profile?.avatar_url
+      ? <img src={profile.avatar_url} alt={name} className={\`avatar \${size}\`} />
+      : <span className={\`avatar avatar-fallback \${size}\`} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
+  };
+  const activeMembers = activeRoom ? Object.keys(activeRoom.memberIds || {}).map((id) => profileMap[id]).filter((profile): profile is ProfileLite => Boolean(profile)) : [];
+  const activeTitle = activeRoom ? getRoomTitle(activeRoom, currentUserId, profileMap) : "";
+  const ActiveRoomIcon = activeRoom ? roomIcon(activeRoom) : Sun;
+  const activeSubtitle = activeRoom?.type === "dm" ? "Here for a good conversation" : activeMembers.length ? \`\${activeMembers.length} \${activeMembers.length === 1 ? "member" : "members"} · A little closer, every day\` : "Community circle · A little closer, every day";
 
-      <main className={`relative min-w-0 flex-col overflow-hidden bg-[radial-gradient(ellipse_at_top_right,hsl(var(--clay)/0.13),transparent_45%),radial-gradient(ellipse_at_bottom_left,hsl(var(--sage)/0.10),transparent_42%),hsl(var(--background)/0.92)] ${activeRoomId ? "flex min-h-[75vh]" : "hidden lg:flex"}`}>
-        {!activeRoom ? <div className="relative flex min-h-[680px] flex-1 flex-col items-center justify-center overflow-hidden px-6 py-12 text-center">
-          <div className="pointer-events-none absolute inset-0 opacity-40" style={{backgroundImage:"radial-gradient(circle at 1px 1px, hsl(var(--border)) 1px, transparent 0)",backgroundSize:"24px 24px"}}/>
-          <div className="relative"><div className="mx-auto grid size-20 place-items-center rounded-[1.75rem] border border-clay/15 bg-clay-soft/70 text-clay shadow-card"><MessagesSquare className="size-8"/></div><h2 className="mt-5 font-display text-2xl font-semibold tracking-tight">A little more connected.</h2><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">Choose a conversation to pick up where you left off, or start a new one with your Xora community.</p><div className="mt-6 flex flex-wrap justify-center gap-2"><button onClick={onOpenNewDm} className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold hover:border-clay/30"><MessageCircle className="size-4 text-clay"/> New message</button><button onClick={onOpenNewGroup} className="press inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Plus className="size-4"/> Create a circle</button></div><p className="mt-8 inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-surface/80 px-3 py-1.5 text-[10px] text-muted-foreground"><Heart className="size-3 text-clay"/> Made for shared interests, not just DMs</p></div>
-        </div> : <>
-          <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/60 bg-surface/85 px-3 py-3.5 shadow-[0_8px_24px_-22px_hsl(var(--foreground)/0.35)] backdrop-blur-xl sm:px-5">
-            <button onClick={onBackToList} className="press grid size-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-clay-soft/70 lg:hidden" aria-label="Back to conversations"><ArrowLeft className="size-4.5"/></button>
-            <Avatar path={activeRoom.type==="dm"?activeOther?.avatar_url:activeRoom.photo_url} name={getRoomTitle(activeRoom,currentUserId,profileMap)} size="md"/>
-            <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{getRoomTitle(activeRoom,currentUserId,profileMap)}</h2><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="inline-block size-1.5 rounded-full bg-sage"/>{activeRoom.type==="group"?"Xora community circle":"Direct conversation"} <span className="text-border">·</span> <Lock className="size-3"/> 30-day history</p></div>
-            <button onClick={onBackToList} className="press hidden size-9 place-items-center rounded-xl text-muted-foreground hover:bg-clay-soft/70 lg:grid" title="Back to conversations" aria-label="Back to conversations"><PanelLeftClose className="size-4"/></button>
-            <button className="press grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-clay-soft/70" title="Conversation details" aria-label="Conversation details"><MoreHorizontal className="size-5"/></button>
-          </header>
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 space-y-4 overflow-y-auto px-3 py-5 sm:px-6 sm:py-7" style={{backgroundImage:"radial-gradient(circle at 1px 1px, hsl(var(--border) / 0.35) 1px, transparent 0)",backgroundSize:"22px 22px"}}>
-              <div className="mx-auto mb-6 flex w-fit max-w-full items-center gap-2 rounded-full border border-border/80 bg-surface/90 px-3.5 py-2 text-[10px] text-muted-foreground shadow-sm"><Lock className="size-3 text-clay"/> Messages in Xora Chat automatically expire after 30 days</div>
-              {activeMessages.map((message)=>{const mine=message.senderId===currentUserId;const sender=profileMap[message.senderId];const name=sender?.display_name||message.senderName||"Community member";return <div key={message.id} className={`flex items-end gap-2 ${mine?"justify-end":"justify-start"}`}>{!mine&&activeRoom.type==="group"&&<Avatar path={sender?.avatar_url||message.senderAvatar} name={name} size="sm"/>}<div className={`flex max-w-[88%] flex-col sm:max-w-[72%] ${mine?"items-end":"items-start"}`}>{!mine&&activeRoom.type==="group"&&<span className="mb-1 ml-2 text-[10px] font-semibold text-clay">{name}</span>}<div className={`rounded-[1.25rem] px-3.5 py-2.5 text-[13px] leading-6 shadow-[0_6px_20px_-15px_hsl(var(--foreground)/0.35)] sm:px-4 ${mine?"rounded-br-[0.35rem] bg-gradient-to-br from-primary to-clay text-primary-foreground":"rounded-bl-[0.35rem] border border-white/80 bg-surface/95 text-foreground ring-1 ring-border/50 backdrop-blur-sm"}`}>{message.type==="experience"&&<div className={`mb-2 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold ${mine?"bg-white/15":"bg-clay-soft/70 text-clay"}`}><Clapperboard className="size-3.5"/><Sparkles className="size-3"/> Watch experience</div>}<p className="whitespace-pre-wrap break-words">{message.text}</p><div className={`mt-1 flex items-center justify-end gap-1 text-[9px] ${mine?"text-primary-foreground/70":"text-muted-foreground"}`}>{messageTime(message.created_at)}</div></div></div></div>;})}
-              {!activeMessages.length&&<div className="flex min-h-[260px] flex-1 flex-col items-center justify-center text-center"><div className="grid size-14 place-items-center rounded-full border border-border bg-surface text-clay"><MessageCircle className="size-6"/></div><p className="mt-3 text-sm font-semibold">Say hello 👋</p><p className="mt-1 text-xs text-muted-foreground">Your conversation starts with the first message.</p></div>}
+  return (
+    <div className="xora-page xora-live-page">
+      <header className="brand-header">
+        <div className="brand-lockup">
+          <span className="xora-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M8 7c2 0 3 1 5 4l3 4 3-4c2-3 3-4 5-4M8 25c2 0 3-1 5-4l3-4 3 4c2 3 3 4 5 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/><circle cx="25" cy="6" r="2" fill="currentColor"/></svg></span>
+          <div><div className="brand-name">Xora <span>Chat</span></div><p className="brand-tagline">A little closer, every day</p></div>
+        </div>
+        <div className="brand-actions">
+          <span className="live-label"><span className="online-dot"/> LIVE, TOGETHER</span>
+          {currentProfile && <div className="xora-profile-chip">{liveAvatar(currentProfile)}<span>{currentProfile.display_name || currentProfile.username}</span></div>}
+          <button className="icon-control xora-icon-button" onClick={onOpenNewGroup} aria-label="Create a circle" title="Create a circle"><MoreHorizontal/></button>
+        </div>
+      </header>
+
+      <main className={\`chat-shell \${activeRoomId ? "mobile-chat" : ""}\`}>
+        <aside className="chat-sidebar" aria-label="Conversations">
+          <div className="sidebar-top">
+            <div className="section-heading">
+              <div><h1>Your people</h1><p className="xora-sidebar-subtitle">Conversations & circles</p></div>
+              <div className="xora-action-pair">
+                <button className="icon-control xora-icon-button" onClick={onOpenNewDm} title="New message" aria-label="New message"><MessageCircle/></button>
+                <button className="icon-control xora-icon-button xora-create-button" onClick={onOpenNewGroup} title="Create a circle" aria-label="Create a circle"><Plus/></button>
+              </div>
+            </div>
+            <label className="search-field">
+              <Search/><input value={roomFilter} onChange={(event) => onRoomFilterChange(event.target.value)} placeholder="Find a person or a circle" aria-label="Search conversations"/>
+              {roomFilter && <button type="button" className="xora-clear-search" aria-label="Clear search" onClick={() => onRoomFilterChange("")}><X/></button>}
+            </label>
+            <nav className="chat-tabs" aria-label="Conversation filters">
+              {tabOptions.map((tab) => <button key={tab.id} type="button" className="filter-tab" data-active={listTab === tab.id} aria-pressed={listTab === tab.id} onClick={() => setListTab(tab.id)}>{tab.label}{tab.id === "all" && rooms.some((room) => room.lastMessage) && <span className="tab-count">{rooms.length}</span>}</button>)}
+            </nav>
+          </div>
+
+          <section className="circles-strip" aria-label="Your circles">
+            <div className="section-heading"><h2 className="tiny-heading">Your circles</h2><button type="button" className="xora-text-button" onClick={onOpenNewGroup}>Create new</button></div>
+            <div className="circle-items">
+              {rooms.filter((room) => room.type === "group").slice(0,3).map((room) => {
+                const title = getRoomTitle(room, currentUserId, profileMap);
+                const Icon = roomIcon(room);
+                return <button key={room.id} type="button" className="circle-shortcut" onClick={() => onSelectRoom(room.id)} aria-label={\`Open \${title}\`}><span className={\`circle-art \${room.id === activeRoomId ? "selected" : ""}\`}><Icon/></span><span>{title}</span></button>;
+              })}
+              <button type="button" className="circle-shortcut" onClick={onOpenNewGroup} aria-label="Create circle"><span className="circle-art add"><Plus/></span><span>New circle</span></button>
+            </div>
+          </section>
+
+          <div className="list-label"><h2 className="tiny-heading">{listTab === "discover" ? "Find your circle" : "Conversations"}</h2><span>{listTab === "discover" ? "Made for you" : "Recent"} <ChevronDown className="inline ml-1 h-3 w-3"/></span></div>
+          {listTab === "discover" && <p className="explore-intro">There’s a little corner of the world for everyone. Find yours.</p>}
+          {listTab === "discover" && discoverableError && <div role="alert" className="xora-directory-error"><strong>Circle directory could not refresh</strong><p>{discoverableError}</p></div>}
+          <div className="conversation-list">
+            {filtered.map((room) => {
+              const title = getRoomTitle(room, currentUserId, profileMap);
+              const otherId = room.type === "dm" ? Object.keys(room.memberIds || {}).find((id) => id !== currentUserId) : null;
+              const other = otherId ? profileMap[otherId] : null;
+              const selected = room.id === activeRoomId;
+              const Icon = roomIcon(room);
+              if (listTab === "discover") {
+                const joined = rooms.some((candidate) => candidate.id === room.id);
+                const memberCount = Object.keys(room.memberIds || {}).length;
+                return <article key={room.id} className="xora-discover-card">
+                  <div className="xora-discover-heading">{room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className="circle-art"><Icon/></span>}<div><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"} · Community circle</small></div></div>
+                  <p>{room.lastMessage || "A place to meet people and start conversations."}</p>
+                  <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open circle" : "Join circle"}</button>
+                </article>;
+              }
+              return <button type="button" key={room.id} className="conversation-item" data-active={selected} onClick={() => onSelectRoom(room.id)} aria-label={\`Open \${title}\`}>
+                {room.type === "dm" ? (other ? liveAvatar(other, "large") : <span className="circle-art"><Users/></span>) : room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className={\`circle-art \${room.name?.toLowerCase().includes("nature") ? "sage" : ""}\`}><Icon/></span>}
+                <span className="conversation-details"><span className="conversation-title"><span>{title}</span>{room.type === "group" && <Users className="h-3 w-3 text-muted-foreground"/>}</span><span className="conversation-preview">{room.lastMessage || (room.type === "group" ? "Your circle is ready for a conversation" : "Say hello and get things started")}</span></span>
+                <span className="conversation-meta"><span>{formatTime(room.lastMessageAt)}</span>{selected ? <CheckCheck className="h-3 w-3"/> : <span className="h-[18px]"/>}</span>
+              </button>;
+            })}
+            {!filtered.length && <div className="empty-state"><MessagesSquare/><h3>{listTab === "discover" ? "No public circles yet" : roomFilter ? "No conversations found" : "Every circle begins with a hello."}</h3><p>{listTab === "discover" ? "When someone creates a community circle, it will appear here for everyone to discover and join." : "Start a conversation or create a circle to bring people together."}</p>{listTab !== "discover" && <button type="button" className="xora-text-button" onClick={onOpenNewGroup}>Create a circle</button>}</div>}
+          </div>
+          <div className="sidebar-bottom">
+            {liveAvatar(currentProfile || undefined)}
+            <div><strong className="font-medium">{currentProfile?.display_name || currentProfile?.username || "Your profile"}</strong><small>Here for the little things</small></div><span className="online-dot" aria-label="Available"/>
+          </div>
+        </aside>
+
+        <section className="conversation-pane" aria-label={activeTitle || "Conversation"}>
+          {activeRoom ? <>
+            <header className="conversation-header">
+              <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={onBackToList}><ArrowLeft/></button>
+              {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
+              <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <>{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members <span>·</span><span className="online-dot"/><span className="online-text">Community circle</span></>}</p></div>
+              {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
+              <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Create a circle" aria-label="Create a circle" onClick={onOpenNewGroup}><Plus/></button><button type="button" className="icon-control xora-icon-button" title="New message" aria-label="New message" onClick={onOpenNewDm}><MoreHorizontal/></button></div>
+            </header>
+            {activeRoom.type === "group" && <div className="welcome-banner"><Sun/><div><strong>A little space for your people.</strong><p>Share the everyday, find a little inspiration, and just be yourself.</p></div><Heart className="heart"/></div>}
+            <div className="transcript" ref={endRef} role="log" aria-label="Messages" aria-live="polite">
+              <div className="day-separator">Your conversation</div>
+              {activeMessages.map((message) => {
+                const sender = profileMap[message.senderId];
+                const senderName = message.senderName || sender?.display_name || sender?.username || (message.senderId === currentUserId ? currentProfile?.display_name || "You" : "Xora member");
+                const own = message.senderId === currentUserId;
+                return <article key={message.id} className={\`chat-message \${own ? "own" : ""}\`}>
+                  {sender ? liveAvatar(sender) : <span className="avatar avatar-fallback">{senderName.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>}
+                  <div className="message-body">
+                    {!own && activeRoom.type === "group" && <div className="sender-name">{senderName}</div>}
+                    <div className="message-bubble">{message.type === "experience" && <div className="xora-experience-label"><Clapperboard/> Shared Xora experience</div>}<p>{message.text}</p><span className="message-time">{new Date(message.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}{own && <CheckCheck/>}</span></div>
+                  </div>
+                </article>;
+              })}
+              {!activeMessages.length && <div className="empty-state"><MessageCircle/><h3>Every circle begins with a hello.</h3><p>Make yourself at home. Share the first little moment.</p></div>}
               <div ref={endRef}/>
             </div>
-            <div className="border-t border-white/70 bg-surface/90 p-3 shadow-[0_-12px_32px_-28px_hsl(var(--foreground)/0.3)] backdrop-blur-xl sm:px-5 sm:py-4">
-              {isExperience&&<div className="mb-3 flex items-center gap-2 rounded-xl border border-clay/20 bg-clay-soft/35 px-3 py-2.5"><div className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface text-clay"><Clapperboard className="size-4"/></div><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-clay">Share a watch experience</p><input value={experienceTitle} onChange={(event)=>onExperienceTitleChange(event.target.value)} placeholder="Film or experience title" className="mt-1 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"/></div></div>}
-              <form onSubmit={onSend} className="flex items-end gap-2 rounded-[1.35rem] border border-border/70 bg-background/90 p-2.5 shadow-[0_8px_24px_-20px_hsl(var(--foreground)/0.4)] transition-all focus-within:border-clay/50 focus-within:bg-surface focus-within:shadow-[0_0_0_4px_hsl(var(--clay)/0.08)]">
-                <button type="button" onClick={onToggleExperience} aria-label="Share a watch experience" title="Share a watch experience" className={`press mb-0.5 grid size-9 shrink-0 place-items-center rounded-xl transition ${isExperience?"bg-clay-soft text-clay":"text-muted-foreground hover:bg-clay-soft/60 hover:text-clay"}`}><Clapperboard className="size-4.5"/></button>
-                <textarea rows={1} value={inputText} onChange={(event)=>onInputTextChange(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(inputText.trim()||experienceTitle.trim()){event.currentTarget.form?.requestSubmit();}}}} placeholder="Write a message…" disabled={isSending} maxLength={2000} className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] leading-5 outline-none placeholder:text-muted-foreground disabled:opacity-60"/>
-                <div className="flex shrink-0 items-center gap-1"><span className="hidden text-[9px] tabular-nums text-muted-foreground sm:inline">{inputText.length}/2000</span><button type="submit" disabled={isSending||(!inputText.trim()&&!experienceTitle.trim())} aria-label="Send message" className="press grid size-10 place-items-center rounded-[1rem] bg-gradient-to-br from-primary to-clay text-primary-foreground shadow-[0_6px_16px_-6px_hsl(var(--primary)/0.6)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40">{isSending?<Loader2 className="size-4 animate-spin"/>:<Send className="size-4"/>}</button></div>
+            <div className="composer-area">
+              {isExperience && <div className="xora-experience-editor"><label htmlFor="experience-title">Share an experience</label><input id="experience-title" value={experienceTitle} onChange={(event) => onExperienceTitleChange(event.target.value)} placeholder="What are you watching or sharing?"/></div>}
+              <form className="composer" onSubmit={onSend}>
+                <button type="button" className={\`icon-control xora-icon-button \${isExperience ? "xora-toggle-active" : ""}\`} aria-label="Share an experience" title="Share an experience" onClick={onToggleExperience}><Clapperboard/></button>
+                <input aria-label="Message" enterKeyHint="send" placeholder={isExperience ? "Add a note about this experience…" : activeRoom.type === "dm" ? "A little hello…" : "Share a little something…"} value={inputText} onChange={(event) => onInputTextChange(event.target.value)}/>
+                <button type="button" className="icon-control xora-icon-button" aria-label="Add a kind emoji" title="Add a kind emoji" onClick={() => onInputTextChange(inputText + " 🤍")}><Smile/></button>
+                <button type="submit" className="send-control" aria-label="Send message" title="Send message" disabled={isSending || (!inputText.trim() && !(isExperience && experienceTitle.trim()))}>{isSending ? <Loader2 className="animate-spin"/> : <Send/>}</button>
               </form>
-              <p className="mt-2 flex items-center justify-between gap-2 px-1 text-[10px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Sparkles className="size-3 text-clay"/> Keep it kind. Make room for everyone.</span><span className="inline-flex shrink-0 items-center gap-1"><Clock className="size-3"/> 30-day retention</span></p>
+              <p className="composer-note"><Heart/>A little kindness goes a long way.</p>
             </div>
-          </div>
-        </>}
+          </> : <div className="xora-empty-pane"><span className="xora-empty-mark"><MessageCircle/></span><p className="xora-eyebrow">YOUR PEOPLE, YOUR SPACE</p><h2>A little closer, every day.</h2><p>Choose a conversation or explore circles to find your people.</p><button type="button" className="xora-primary-button" onClick={() => setListTab("discover")}>Explore communities <ArrowUpRight/></button></div>}
+        </section>
       </main>
+      <footer className="page-footer"><span className="footer-brand">Xora<span>TV</span> <span className="ml-2 text-[9px] text-muted-foreground">Life is better, shared.</span></span><span className="footer-right">Made for real connection <Heart className="h-3 w-3 text-clay"/></span></footer>
     </div>
-    </section>
-  </div>;
+  );
 }
