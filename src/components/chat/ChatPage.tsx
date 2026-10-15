@@ -72,42 +72,34 @@ export default function ChatPage({
     </div>
   );
 
-  return <div className="mx-auto max-w-7xl space-y-4 pb-2">
-    <section className="relative isolate overflow-hidden rounded-[1.7rem] border border-clay/15 bg-[#f7f0e8] text-[#342c35] shadow-[0_22px_60px_-34px_rgba(65,43,59,.42)]">
-      <div className="pointer-events-none absolute -right-12 -top-24 size-72 rounded-full bg-[#d9c7e7]/70 blur-3xl"/>
-      <div className="pointer-events-none absolute -bottom-28 left-[28%] size-64 rounded-full bg-[#e7c2a8]/65 blur-3xl"/>
-      <div className="relative grid gap-6 px-5 py-6 sm:px-8 sm:py-8 md:grid-cols-[1fr_auto] md:items-end">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#d7c2b6] bg-white/65 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-[#7e5c6d]"><span className="size-1.5 rounded-full bg-[#7f9c83]"/> The Xora community</div>
-          <h1 className="mt-4 max-w-xl font-display text-3xl font-semibold leading-[1.08] tracking-[-.04em] sm:text-4xl">Good conversations<br className="hidden sm:block"/> start <span className="font-normal italic text-[#98718a]">with us.</span></h1>
-          <p className="mt-3 max-w-lg text-sm leading-6 text-[#71656d]">Find your people, trade recommendations, and share the things you love. This is your corner of Xora.</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e1cfc5] bg-white/70 px-3 py-2 text-xs font-medium"><Music2 className="size-3.5 text-[#98718a]"/> Music & culture</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e1cfc5] bg-white/70 px-3 py-2 text-xs font-medium"><Film className="size-3.5 text-[#98718a]"/> Film talk</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e1cfc5] bg-white/70 px-3 py-2 text-xs font-medium"><BookOpen className="size-3.5 text-[#98718a]"/> Creator corner</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 md:justify-end">
-          <div className="hidden -space-x-2 sm:flex">
-            <div className="grid size-10 place-items-center rounded-full border-2 border-[#f7f0e8] bg-[#e3c3b1] text-xs font-bold text-[#674b55]">X</div>
-            <div className="grid size-10 place-items-center rounded-full border-2 border-[#f7f0e8] bg-[#d8c9e8] text-xs font-bold text-[#624d75]">✦</div>
-            <div className="grid size-10 place-items-center rounded-full border-2 border-[#f7f0e8] bg-[#c9d8c8] text-xs font-bold text-[#46624a]">+</div>
-          </div>
-          <button onClick={onOpenNewGroup} className="press inline-flex items-center gap-2 rounded-full bg-[#493849] px-4 py-3 text-xs font-semibold text-white shadow-[0_8px_20px_-10px_rgba(44,29,45,.7)] transition hover:-translate-y-0.5 hover:bg-[#604a60]"><UsersRound className="size-4"/> Start a circle <ArrowUpRight className="size-3.5"/></button>
-        </div>
+  return <div className="mx-auto max-w-7xl space-y-3 pb-2">
+    <header className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-clay/15 bg-[#fbf7f2]/90 px-4 py-3 shadow-[0_12px_32px_-24px_rgba(65,43,59,.45)] backdrop-blur-xl sm:px-5">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="relative grid size-10 shrink-0 place-items-center rounded-[1rem] bg-[#493849] text-white shadow-[0_8px_20px_-10px_rgba(56,36,56,.75)]"><MessageCircle className="size-5"/><span className="absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-[#fbf7f2] bg-[#83a88a]"/></div>
+        <div className="min-w-0"><h1 className="font-display text-lg font-semibold tracking-[-.04em] text-[#392d3b] sm:text-xl">Xora <span className="font-normal">Chat</span></h1><p className="truncate text-[10px] text-[#80727b] sm:text-[11px]">A little closer, every day</p></div>
       </div>
-      <div className="relative flex flex-wrap items-center justify-between gap-2 border-t border-[#e4d5cc] bg-white/30 px-5 py-3 text-[10px] text-[#786a70] sm:px-8"><span className="inline-flex items-center gap-2"><span className="size-1.5 rounded-full bg-[#7f9c83]"/> Your community, your conversations</span><span className="inline-flex items-center gap-1.5"><Lock className="size-3"/> Messages automatically clear after 30 days</span></div>
-    </section>
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <span className="hidden items-center gap-1.5 rounded-full border border-[#dce7d8] bg-[#edf4e9] px-3 py-1.5 text-[9px] font-bold tracking-[.12em] text-[#527657] sm:inline-flex"><span className="size-1.5 rounded-full bg-[#83a88a]"/> LIVE, TOGETHER</span>
+        {currentProfile ? <div className="flex items-center gap-2 rounded-full border border-[#e8dcd6] bg-white/75 py-1 pl-1 pr-3"><Avatar path={currentProfile.avatar_url} name={currentProfile.display_name || currentProfile.username} size="sm"/><span className="hidden max-w-28 truncate text-xs font-semibold text-[#574657] sm:inline">{currentProfile.display_name || currentProfile.username}</span></div> : <span className="hidden rounded-full border border-[#e8dcd6] bg-white/75 px-3 py-2 text-[10px] text-[#80727b] sm:inline-flex">Community chat</span>}
+      </div>
+    </header>
     <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-surface shadow-[0_24px_80px_-32px_hsl(var(--foreground)/0.22)] ring-1 ring-border/50 sm:rounded-[1.75rem]">
     <div className="grid min-h-[min(78vh,780px)] grid-cols-1 lg:grid-cols-[330px_minmax(0,1fr)]">
       <aside className={`flex min-h-[70vh] flex-col border-r border-border/70 bg-[linear-gradient(180deg,hsl(var(--surface)),hsl(var(--background)/0.92))] lg:min-h-[680px] ${activeRoomId ? "hidden lg:flex" : "flex"}`}>
         <div className="relative overflow-hidden border-b border-[#e8dcd6] bg-[linear-gradient(145deg,#fffaf6_0%,#f7f0ea_58%,#eee7f3_100%)] px-4 pb-5 pt-5 sm:px-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3"><div className="relative grid size-12 shrink-0 place-items-center rounded-[1.15rem] bg-[#493849] text-white shadow-[0_10px_24px_-12px_rgba(56,36,56,.7)]"><MessageCircle className="size-5"/><span className="absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-[#f7f0ea] bg-[#83a88a]"/></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="font-display text-xl font-semibold tracking-[-.04em] text-[#392d3b]">Xora Chat</h1><span className="rounded-full border border-[#b8cdb9] bg-[#e8f0e6] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.14em] text-[#527657]">Live</span></div><p className="mt-0.5 text-[11px] text-[#80727b]">A little closer, every day</p></div></div>
-            <div className="flex items-center gap-1"><button onClick={onOpenNewDm} title="New message" aria-label="New message" className="press grid size-9 place-items-center rounded-xl border border-[#e6d9d1] bg-white/75 text-[#6e5a6c] shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:text-[#493849]"><MessageCircle className="size-4"/></button><button onClick={onOpenNewGroup} title="Create a circle" aria-label="Create a circle" className="press grid size-9 place-items-center rounded-xl bg-[#493849] text-white shadow-[0_6px_14px_-8px_rgba(56,36,56,.8)] transition hover:-translate-y-0.5 hover:bg-[#604a60]"><Plus className="size-4.5"/></button></div>
+            <div className="min-w-0"><h2 className="font-display text-lg font-semibold tracking-[-.035em] text-[#392d3b]">Your people</h2><p className="mt-0.5 text-[11px] text-[#80727b]">Conversations & circles</p></div>
+            <div className="flex shrink-0 items-center gap-1.5"><button onClick={onOpenNewDm} title="New message" aria-label="New message" className="press grid size-9 place-items-center rounded-xl border border-[#e6d9d1] bg-white/75 text-[#6e5a6c] shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:text-[#493849]"><MessageCircle className="size-4"/></button><button onClick={onOpenNewGroup} title="Create a circle" aria-label="Create a circle" className="press grid size-9 place-items-center rounded-xl bg-[#493849] text-white shadow-[0_6px_14px_-8px_rgba(56,36,56,.8)] transition hover:-translate-y-0.5 hover:bg-[#604a60]"><Plus className="size-4.5"/></button></div>
           </div>
           <label className="relative mt-4 block"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><input value={roomFilter} onChange={(event) => onRoomFilterChange(event.target.value)} placeholder="Find a conversation…" className="w-full rounded-xl bg-transparent py-3 pl-9 pr-3 text-[13px] text-[#392d3b] outline-none placeholder:text-[#a597a0] focus:bg-[#fbf8f5]"/></label>
           <div className="mt-3 grid grid-cols-4 gap-1 rounded-2xl border border-[#e5d8d0] bg-[#eee5df]/80 p-1">{([{id:"all",label:"All"},{id:"groups",label:"Circles"},{id:"directs",label:"Direct"},{id:"discover",label:"Explore"}] as const).map((tab) => <button key={tab.id} onClick={() => setListTab(tab.id)} className={`flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-all duration-200 ${listTab===tab.id?"bg-surface text-clay shadow-[0_2px_8px_-3px_hsl(var(--foreground)/0.22)] ring-1 ring-border/60":"text-muted-foreground hover:text-foreground"}`}>{tab.label}</button>)}</div>
+        </div>
+        <div className="border-b border-[#e8dcd6] bg-[linear-gradient(145deg,#fffaf6_0%,#fbf6f1_60%,#f1eaf5_100%)] px-4 py-4 sm:px-5">
+          <div className="flex items-center justify-between gap-2"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#80727b]">Your circles</p><button onClick={onOpenNewGroup} className="text-[10px] font-semibold text-[#98718a] transition hover:text-[#493849]">Create new</button></div>
+          <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+            {rooms.filter((room) => room.type === "group").slice(0, 3).map((room) => { const title = getRoomTitle(room, currentUserId, profileMap); return <button key={room.id} onClick={() => onSelectRoom(room.id)} title={title} className="press flex w-[66px] shrink-0 flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-white/70"><span className={`rounded-full p-[2px] ${room.id === activeRoomId ? "bg-gradient-to-br from-[#98718a] to-[#d8b8a6]" : "bg-transparent"}`}><Avatar path={room.photo_url} name={title} size="md"/></span><span className="w-full truncate text-[10px] font-medium text-[#71656d]">{title}</span></button>; })}
+            <button onClick={onOpenNewGroup} className="press flex w-[66px] shrink-0 flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-white/70"><span className="grid size-11 place-items-center rounded-full border border-dashed border-[#cbb8cf] bg-white/70 text-[#98718a]"><Plus className="size-4"/></span><span className="text-[10px] font-medium text-[#71656d]">Create</span></button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-5"><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{listTab === "discover" ? "Find your community" : "Recent conversations"}</p><span className="text-[10px] tabular-nums text-muted-foreground">{filtered.length}</span></div>
