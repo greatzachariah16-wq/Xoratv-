@@ -72,7 +72,33 @@ export default function ChatPage({
     </div>
   );
 
-  return <section className="mx-auto max-w-7xl overflow-hidden rounded-[1.35rem] border border-white/70 bg-surface shadow-[0_24px_80px_-32px_hsl(var(--foreground)/0.22)] ring-1 ring-border/60 sm:rounded-[1.75rem]">
+  return <div className="mx-auto max-w-7xl space-y-4 pb-2">
+    <section className="relative isolate overflow-hidden rounded-[1.7rem] border border-clay/15 bg-[#f7f0e8] text-[#342c35] shadow-[0_22px_60px_-34px_rgba(65,43,59,.42)]">
+      <div className="pointer-events-none absolute -right-12 -top-24 size-72 rounded-full bg-[#d9c7e7]/70 blur-3xl"/>
+      <div className="pointer-events-none absolute -bottom-28 left-[28%] size-64 rounded-full bg-[#e7c2a8]/65 blur-3xl"/>
+      <div className="relative grid gap-6 px-5 py-6 sm:px-8 sm:py-8 md:grid-cols-[1fr_auto] md:items-end">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#d7c2b6] bg-white/65 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-[#7e5c6d]"><span className="size-1.5 rounded-full bg-[#7f9c83]"/> The Xora community</div>
+          <h1 className="mt-4 max-w-xl font-display text-3xl font-semibold leading-[1.08] tracking-[-.04em] sm:text-4xl">Good conversations<br className="hidden sm:block"/> start <span className="font-normal italic text-[#98718a]">with us.</span></h1>
+          <p className="mt-3 max-w-lg text-sm leading-6 text-[#71656d]">Find your people, trade recommendations, and share the things you love. This is your corner of Xora.</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e1cfc5] bg-white/70 px-3 py-2 text-xs font-medium"><Music2 className="size-3.5 text-[#98718a]"/> Music & culture</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e1cfc5] bg-white/70 px-3 py-2 text-xs font-medium"><Film className="size-3.5 text-[#98718a]"/> Film talk</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e1cfc5] bg-white/70 px-3 py-2 text-xs font-medium"><BookOpen className="size-3.5 text-[#98718a]"/> Creator corner</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 md:justify-end">
+          <div className="hidden -space-x-2 sm:flex">
+            <div className="grid size-10 place-items-center rounded-full border-2 border-[#f7f0e8] bg-[#e3c3b1] text-xs font-bold text-[#674b55]">X</div>
+            <div className="grid size-10 place-items-center rounded-full border-2 border-[#f7f0e8] bg-[#d8c9e8] text-xs font-bold text-[#624d75]">✦</div>
+            <div className="grid size-10 place-items-center rounded-full border-2 border-[#f7f0e8] bg-[#c9d8c8] text-xs font-bold text-[#46624a]">+</div>
+          </div>
+          <button onClick={onOpenNewGroup} className="press inline-flex items-center gap-2 rounded-full bg-[#493849] px-4 py-3 text-xs font-semibold text-white shadow-[0_8px_20px_-10px_rgba(44,29,45,.7)] transition hover:-translate-y-0.5 hover:bg-[#604a60]"><UsersRound className="size-4"/> Start a circle <ArrowUpRight className="size-3.5"/></button>
+        </div>
+      </div>
+      <div className="relative flex flex-wrap items-center justify-between gap-2 border-t border-[#e4d5cc] bg-white/30 px-5 py-3 text-[10px] text-[#786a70] sm:px-8"><span className="inline-flex items-center gap-2"><span className="size-1.5 rounded-full bg-[#7f9c83]"/> Your community, your conversations</span><span className="inline-flex items-center gap-1.5"><Lock className="size-3"/> Messages automatically clear after 30 days</span></div>
+    </section>
+    <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-surface shadow-[0_24px_80px_-32px_hsl(var(--foreground)/0.22)] ring-1 ring-border/50 sm:rounded-[1.75rem]">
     <div className="grid min-h-[min(78vh,780px)] grid-cols-1 lg:grid-cols-[330px_minmax(0,1fr)]">
       <aside className={`flex min-h-[70vh] flex-col border-r border-border/70 bg-[linear-gradient(180deg,hsl(var(--surface)),hsl(var(--background)/0.92))] lg:min-h-[680px] ${activeRoomId ? "hidden lg:flex" : "flex"}`}>
         <div className="relative overflow-hidden border-b border-border/70 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--clay)/0.15),transparent_62%)] px-4 pb-4 pt-5 sm:px-5">
@@ -131,5 +157,6 @@ export default function ChatPage({
         </>}
       </main>
     </div>
-  </section>;
+    </section>
+  </div>;
 }
