@@ -88,13 +88,13 @@ export default function ChatPage({
   const liveAvatar = (profile: ProfileLite | null | undefined, size = "") => {
     const name = profile?.display_name || profile?.username || "Xora member";
     return profile?.avatar_url
-      ? <img src={profile.avatar_url} alt={name} className={\`avatar \${size}\`} />
-      : <span className={\`avatar avatar-fallback \${size}\`} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
+      ? <img src={profile.avatar_url} alt={name} className={`avatar ${size}`} />
+      : <span className={`avatar avatar-fallback ${size}`} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
   };
   const activeMembers = activeRoom ? Object.keys(activeRoom.memberIds || {}).map((id) => profileMap[id]).filter((profile): profile is ProfileLite => Boolean(profile)) : [];
   const activeTitle = activeRoom ? getRoomTitle(activeRoom, currentUserId, profileMap) : "";
   const ActiveRoomIcon = activeRoom ? roomIcon(activeRoom) : Sun;
-  const activeSubtitle = activeRoom?.type === "dm" ? "Here for a good conversation" : activeMembers.length ? \`\${activeMembers.length} \${activeMembers.length === 1 ? "member" : "members"} · A little closer, every day\` : "Community circle · A little closer, every day";
+  const activeSubtitle = activeRoom?.type === "dm" ? "Here for a good conversation" : activeMembers.length ? `${activeMembers.length} ${activeMembers.length === 1 ? "member" : "members"} · A little closer, every day` : "Community circle · A little closer, every day";
 
   return (
     <div className="xora-page xora-live-page">
@@ -110,7 +110,7 @@ export default function ChatPage({
         </div>
       </header>
 
-      <main className={\`chat-shell \${activeRoomId ? "mobile-chat" : ""}\`}>
+      <main className={`chat-shell ${activeRoomId ? "mobile-chat" : ""}`}>
         <aside className="chat-sidebar" aria-label="Conversations">
           <div className="sidebar-top">
             <div className="section-heading">
@@ -135,7 +135,7 @@ export default function ChatPage({
               {rooms.filter((room) => room.type === "group").slice(0,3).map((room) => {
                 const title = getRoomTitle(room, currentUserId, profileMap);
                 const Icon = roomIcon(room);
-                return <button key={room.id} type="button" className="circle-shortcut" onClick={() => onSelectRoom(room.id)} aria-label={\`Open \${title}\`}><span className={\`circle-art \${room.id === activeRoomId ? "selected" : ""}\`}><Icon/></span><span>{title}</span></button>;
+                return <button key={room.id} type="button" className="circle-shortcut" onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}><span className={`circle-art ${room.id === activeRoomId ? "selected" : ""}`}><Icon/></span><span>{title}</span></button>;
               })}
               <button type="button" className="circle-shortcut" onClick={onOpenNewGroup} aria-label="Create circle"><span className="circle-art add"><Plus/></span><span>New circle</span></button>
             </div>
@@ -160,8 +160,8 @@ export default function ChatPage({
                   <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open circle" : "Join circle"}</button>
                 </article>;
               }
-              return <button type="button" key={room.id} className="conversation-item" data-active={selected} onClick={() => onSelectRoom(room.id)} aria-label={\`Open \${title}\`}>
-                {room.type === "dm" ? (other ? liveAvatar(other, "large") : <span className="circle-art"><Users/></span>) : room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className={\`circle-art \${room.name?.toLowerCase().includes("nature") ? "sage" : ""}\`}><Icon/></span>}
+              return <button type="button" key={room.id} className="conversation-item" data-active={selected} onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}>
+                {room.type === "dm" ? (other ? liveAvatar(other, "large") : <span className="circle-art"><Users/></span>) : room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className={`circle-art ${room.name?.toLowerCase().includes("nature") ? "sage" : ""}`}><Icon/></span>}
                 <span className="conversation-details"><span className="conversation-title"><span>{title}</span>{room.type === "group" && <Users className="h-3 w-3 text-muted-foreground"/>}</span><span className="conversation-preview">{room.lastMessage || (room.type === "group" ? "Your circle is ready for a conversation" : "Say hello and get things started")}</span></span>
                 <span className="conversation-meta"><span>{formatTime(room.lastMessageAt)}</span>{selected ? <CheckCheck className="h-3 w-3"/> : <span className="h-[18px]"/>}</span>
               </button>;
@@ -190,7 +190,7 @@ export default function ChatPage({
                 const sender = profileMap[message.senderId];
                 const senderName = message.senderName || sender?.display_name || sender?.username || (message.senderId === currentUserId ? currentProfile?.display_name || "You" : "Xora member");
                 const own = message.senderId === currentUserId;
-                return <article key={message.id} className={\`chat-message \${own ? "own" : ""}\`}>
+                return <article key={message.id} className={`chat-message ${own ? "own" : ""}`}>
                   {sender ? liveAvatar(sender) : <span className="avatar avatar-fallback">{senderName.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>}
                   <div className="message-body">
                     {!own && activeRoom.type === "group" && <div className="sender-name">{senderName}</div>}
@@ -204,7 +204,7 @@ export default function ChatPage({
             <div className="composer-area">
               {isExperience && <div className="xora-experience-editor"><label htmlFor="experience-title">Share an experience</label><input id="experience-title" value={experienceTitle} onChange={(event) => onExperienceTitleChange(event.target.value)} placeholder="What are you watching or sharing?"/></div>}
               <form className="composer" onSubmit={onSend}>
-                <button type="button" className={\`icon-control xora-icon-button \${isExperience ? "xora-toggle-active" : ""}\`} aria-label="Share an experience" title="Share an experience" onClick={onToggleExperience}><Clapperboard/></button>
+                <button type="button" className={`icon-control xora-icon-button ${isExperience ? "xora-toggle-active" : ""}`} aria-label="Share an experience" title="Share an experience" onClick={onToggleExperience}><Clapperboard/></button>
                 <input aria-label="Message" enterKeyHint="send" placeholder={isExperience ? "Add a note about this experience…" : activeRoom.type === "dm" ? "A little hello…" : "Share a little something…"} value={inputText} onChange={(event) => onInputTextChange(event.target.value)}/>
                 <button type="button" className="icon-control xora-icon-button" aria-label="Add a kind emoji" title="Add a kind emoji" onClick={() => onInputTextChange(inputText + " 🤍")}><Smile/></button>
                 <button type="submit" className="send-control" aria-label="Send message" title="Send message" disabled={isSending || (!inputText.trim() && !(isExperience && experienceTitle.trim()))}>{isSending ? <Loader2 className="animate-spin"/> : <Send/>}</button>
