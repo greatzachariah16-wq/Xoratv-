@@ -29,7 +29,7 @@ export const Route = createFileRoute("/chat")({
       {
         name: "description",
         content:
-          "Chat in real-time with creators and horror cinephiles on Xora. Messages auto-delete after 7 days.",
+          "Chat in real-time with creators and horror cinephiles on Xora. Messages are automatically deleted after 30 days.",
       },
       { property: "og:title", content: "Live Chat — Xora" },
       {
