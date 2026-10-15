@@ -439,9 +439,11 @@ export async function joinGroupRoom(uid: string, roomId: string): Promise<void> 
     return;
   }
 
-  const roomSnap = await get(ref(rtdb, `chatRooms/${pathSafe(roomId)}`));
-  if (!roomSnap.exists()) throw new Error("This circle could not be found.");
-  const room = roomSnap.val() as ChatRoomRecord;
+  // Non-members cannot read the private room record. Verify the public directory
+  // entry first; Firebase rules separately authorize adding only your own membership.
+  const directorySnap = await get(ref(rtdb, `chatRooms/_communityDirectory/${pathSafe(roomId)}`));
+  if (!directorySnap.exists()) throw new Error("This circle is not currently discoverable.");
+  const room = directorySnap.val() as ChatRoomRecord;
   if (room.type !== "group") throw new Error("Only community circles can be joined this way.");
 
   await Promise.all([
