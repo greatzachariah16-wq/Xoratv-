@@ -17,6 +17,8 @@ import {
   sendMessage,
   createDmRoom,
   createGroupRoom,
+  listenDiscoverableGroups,
+  joinGroupRoom,
   pruneUserExpiredMessages,
 } from "@/integrations/firebase/chat";
 import { getProfileByUsername, getProfile } from "@/integrations/firebase/rtdb";
@@ -46,6 +48,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const navigate = useNavigate();
 
   const [rawRooms, setRawRooms] = useState<ChatRoomRecord[]>([]);
+  const [rawDiscoverableRooms, setRawDiscoverableRooms] = useState<ChatRoomRecord[]>([]);
+  const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
   const [rawMessages, setRawMessages] = useState<ChatMessageRecord[]>([]);
   const [inputText, setInputText] = useState("");
@@ -93,6 +97,16 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
 
     return () => unsubscribe();
   }, [user, initialRoomId]);
+
+  // Keep the public circle directory synced for every signed-in account.
+  useEffect(() => {
+    if (!user) {
+      setRawDiscoverableRooms([]);
+      return;
+    }
+    const unsubscribe = listenDiscoverableGroups(setRawDiscoverableRooms);
+    return () => unsubscribe();
+  }, [user]);
 
   // Listen to messages for active room
   useEffect(() => {
@@ -180,6 +194,18 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     lastMessageAt: r.lastMessageAt ?? null,
     memberIds: r.memberIds,
   }));
+
+  const discoverableRooms: ChatRoom[] = rawDiscoverableRooms
+    .filter((r) => r.type === "group")
+    .map((r) => ({
+      id: r.id,
+      type: r.type,
+      name: r.name ?? null,
+      photo_url: r.photo_url ?? null,
+      lastMessage: r.lastMessage ?? null,
+      lastMessageAt: r.lastMessageAt ?? null,
+      memberIds: r.memberIds,
+    }));
 
   const messages: ChatMessage[] = rawMessages.map((m) => ({
     id: m.id,
@@ -312,6 +338,24 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     }
   }
 
+  async function handleJoinGroup(roomId: string) {
+    if (!user) {
+      void navigate({ to: "/auth" });
+      return;
+    }
+    setJoiningGroupId(roomId);
+    try {
+      await joinGroupRoom(user.id, roomId);
+      setActiveRoomId(roomId);
+      toast.success("You joined the community circle!");
+      void navigate({ to: "/chat/$roomId", params: { roomId } });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not join this circle");
+    } finally {
+      setJoiningGroupId(null);
+    }
+  }
+
   function handleSelectRoom(roomId: string) {
     setActiveRoomId(roomId);
     void navigate({ to: "/chat/$roomId", params: { roomId } });
@@ -330,6 +374,9 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
           currentUserId={user?.id || null}
           currentProfile={currentProfileLite}
           rooms={rooms}
+          discoverableRooms={discoverableRooms}
+          joiningGroupId={joiningGroupId}
+          onJoinGroup={handleJoinGroup}
           activeRoomId={activeRoomId}
           messages={messages}
           profileMap={profileMap}
