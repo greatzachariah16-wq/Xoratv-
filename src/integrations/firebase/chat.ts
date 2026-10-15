@@ -1,281 +1,129 @@
-import { ref, get, set, remove, update, onValue, type Unsubscribe } from "firebase/database";
-import { rtdb } from "./config";
-import { isFirebaseConfigured } from "./config";
-import { pathSafe, getProfile } from "./rtdb";
+import { auth, isFirebaseConfigured } from "./config";
+import type { Unsubscribe } from "firebase/database";
 import type { ChatRoomRecord, ChatMessageRecord, ProfileRecord } from "./types";
 
-export const CHAT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+export const CHAT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
-// In-memory fallback for demo mode when Firebase is not configured
-const localRooms: ChatRoomRecord[] = [
-  {
-    id: "demo-community-chat",
-    type: "group",
-    name: "Xora Cinephiles & Filmmakers",
-    photo_url:
-      "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=150&auto=format&fit=crop&q=80",
-    created_by: "system",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    updated_at: new Date().toISOString(),
-    memberIds: { "demo-user": true, system: true },
-    lastMessage: "Welcome to Xora live chat! Messages are kept for 30 days.",
-    lastMessageAt: new Date().toISOString(),
-    lastMessageSenderId: "system",
-  },
-];
+const CHAT_API = "https://ygifyoaraxtwixbyranq.supabase.co/functions/v1/xora-chat-api";
+const POLL_INTERVAL_MS = 3000;
+
+const localRooms: ChatRoomRecord[] = [{
+  id: "demo-community-chat",
+  type: "group",
+  name: "Xora Cinephiles & Filmmakers",
+  photo_url: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=150&auto=format&fit=crop&q=80",
+  created_by: "system",
+  created_at: new Date(Date.now() - 3600000).toISOString(),
+  updated_at: new Date().toISOString(),
+  memberIds: { "demo-user": true, system: true },
+  lastMessage: "Welcome to Xora live chat! Messages are kept for 30 days.",
+  lastMessageAt: new Date().toISOString(),
+  lastMessageSenderId: "system",
+}];
 
 const localMessages: Record<string, ChatMessageRecord[]> = {
-  "demo-community-chat": [
-    {
-      id: "msg-welcome-1",
-      roomId: "demo-community-chat",
-      senderId: "system",
-      senderName: "Xora Host",
-      senderAvatar:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      text: "Welcome to Xora live chat! Share horror recommendations, review shorts, or start a watch experience.",
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      type: "text",
-      expiresAt: new Date(Date.now() - 3600000 + CHAT_EXPIRY_MS).toISOString(),
-    },
-    {
-      id: "msg-welcome-2",
-      roomId: "demo-community-chat",
-      senderId: "system",
-      senderName: "Xora Host",
-      senderAvatar:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      text: "Privacy reminder: Chat messages are automatically deleted after 30 days.",
-      created_at: new Date(Date.now() - 1800000).toISOString(),
-      type: "experience",
-      expiresAt: new Date(Date.now() - 1800000 + CHAT_EXPIRY_MS).toISOString(),
-    },
-  ],
+  "demo-community-chat": [{
+    id: "msg-welcome-1", roomId: "demo-community-chat", senderId: "system",
+    senderName: "Xora Host",
+    senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    text: "Welcome to Xora live chat! Share recommendations, talk with creators, or start a watch experience.",
+    created_at: new Date(Date.now() - 3600000).toISOString(), type: "text",
+    expiresAt: new Date(Date.now() - 3600000 + CHAT_EXPIRY_MS).toISOString(),
+  }],
 };
 
-const lastPruneMap = new Map<string, number>();
+function sortRooms(rooms: ChatRoomRecord[]) {
+  return rooms.sort((a, b) =>
+    new Date(b.lastMessageAt || b.updated_at).getTime() -
+    new Date(a.lastMessageAt || a.updated_at).getTime()
+  );
+}
 
-/**
- * Prunes messages older than 30 days from a specific room.
- */
-export async function pruneExpiredMessagesInRoom(
-  roomId: string,
-  rawMessagesSnapshot?: Record<string, ChatMessageRecord> | null,
-): Promise<number> {
+async function api<T>(action: string, method: "GET" | "POST" = "GET", body?: unknown, params?: Record<string, string>): Promise<T> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error("Your Xora session has expired. Please sign in again.");
+  const token = await currentUser.getIdToken();
+  const url = new URL(CHAT_API);
+  url.searchParams.set("action", action);
+  for (const [key, value] of Object.entries(params || {})) url.searchParams.set(key, value);
+  const response = await fetch(url.toString(), {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(method === "POST" ? { "Content-Type": "application/json" } : {}) },
+    ...(method === "POST" ? { body: JSON.stringify(body || {}) } : {}),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Chat service request failed.");
+  return result as T;
+}
+
+function localRoom(roomId: string) {
+  return localRooms.find((room) => room.id === roomId) || null;
+}
+
+export async function pruneExpiredMessagesInRoom(roomId: string, rawMessagesSnapshot?: Record<string, ChatMessageRecord> | null): Promise<number> {
   if (!isFirebaseConfigured()) {
-    const now = Date.now();
     const current = localMessages[roomId] || [];
-    const valid = current.filter(
-      (m) => {
-        const createdAt = new Date(m.created_at).getTime();
-        const expiresAt = new Date(m.expiresAt).getTime();
-        return createdAt > 0
-          ? now - createdAt < CHAT_EXPIRY_MS
-          : expiresAt > now;
-      },
-    );
-    const count = current.length - valid.length;
+    const valid = current.filter((m) => new Date(m.expiresAt).getTime() > Date.now());
     localMessages[roomId] = valid;
-    return count;
+    return current.length - valid.length;
   }
-
-  const safeRoomId = pathSafe(roomId);
-  const now = Date.now();
-
-  // Rate-limit prunes per room to at most once per 60 seconds
-  const lastPrune = lastPruneMap.get(safeRoomId) || 0;
-  if (now - lastPrune < 60000 && !rawMessagesSnapshot) {
-    return 0;
-  }
-  lastPruneMap.set(safeRoomId, now);
-
+  if (rawMessagesSnapshot) return 0;
   try {
-    let messagesMap = rawMessagesSnapshot;
-    if (!messagesMap) {
-      const snap = await get(ref(rtdb, `chatMessages/${safeRoomId}`));
-      if (snap.exists()) {
-        messagesMap = snap.val() as Record<string, ChatMessageRecord>;
-      }
-    }
-
-    if (!messagesMap) return 0;
-
-    let prunedCount = 0;
-    const deletionPromises: Promise<void>[] = [];
-
-    for (const [msgKey, msg] of Object.entries(messagesMap)) {
-      if (!msg) continue;
-      const expiresAtTime = msg.expiresAt ? new Date(msg.expiresAt).getTime() : 0;
-      const createdAtTime = msg.created_at ? new Date(msg.created_at).getTime() : 0;
-      const isExpired = createdAtTime > 0
-        ? now - createdAtTime >= CHAT_EXPIRY_MS
-        : expiresAtTime > 0 && expiresAtTime <= now;
-
-      if (isExpired) {
-        prunedCount++;
-        deletionPromises.push(remove(ref(rtdb, `chatMessages/${safeRoomId}/${pathSafe(msgKey)}`)));
-      }
-    }
-
-    if (deletionPromises.length > 0) {
-      await Promise.all(deletionPromises);
-    }
-
-    return prunedCount;
-  } catch (err) {
-    console.warn("[Chat] Error pruning expired messages:", err);
+    const result = await api<{ deleted: number }>("prune", "POST");
+    return result.deleted;
+  } catch (error) {
+    console.warn("[Chat] Expiry cleanup deferred:", error);
     return 0;
   }
 }
 
-/**
- * Opportunistically prunes expired messages for all rooms a user belongs to.
- */
 export async function pruneUserExpiredMessages(uid: string): Promise<void> {
-  if (!uid) return;
-  if (!isFirebaseConfigured()) return;
-
-  try {
-    const userRoomsSnap = await get(ref(rtdb, `userChatRooms/${pathSafe(uid)}`));
-    if (!userRoomsSnap.exists()) return;
-
-    const roomIds = Object.keys(userRoomsSnap.val());
-    // Process rooms sequentially in background to minimize burst traffic
-    for (const rId of roomIds.slice(0, 10)) {
-      void pruneExpiredMessagesInRoom(rId);
-    }
-  } catch (err) {
-    console.warn("[Chat] Background user prune notice:", err);
-  }
+  if (!uid || !isFirebaseConfigured()) return;
+  try { await api("prune", "POST"); }
+  catch (error) { console.warn("[Chat] Expiry cleanup deferred:", error); }
 }
 
-/**
- * Retrieves single room metadata by ID.
- */
 export async function getRoom(roomId: string): Promise<ChatRoomRecord | null> {
-  if (!isFirebaseConfigured()) {
-    return localRooms.find((r) => r.id === roomId) || null;
-  }
-
+  if (!isFirebaseConfigured()) return localRoom(roomId);
   try {
-    const snap = await get(ref(rtdb, `chatRooms/${pathSafe(roomId)}`));
-    if (snap.exists()) {
-      return snap.val() as ChatRoomRecord;
-    }
-  } catch (err) {
-    console.warn("[Chat] Error getting room:", err);
+    const result = await api<{ rooms: ChatRoomRecord[] }>("rooms");
+    return result.rooms.find((room) => room.id === roomId) || null;
+  } catch (error) {
+    console.warn("[Chat] Could not retrieve room:", error);
+    return null;
   }
-  return null;
 }
 
-/**
- * Lists all chat rooms the user belongs to.
- */
 export async function listUserRooms(uid: string): Promise<ChatRoomRecord[]> {
   if (!uid) return [];
-
-  if (!isFirebaseConfigured()) {
-    return [...localRooms].sort(
-      (a, b) =>
-        new Date(b.lastMessageAt || b.updated_at).getTime() -
-        new Date(a.lastMessageAt || a.updated_at).getTime(),
-    );
-  }
-
-  try {
-    const safeUid = pathSafe(uid);
-    const userRoomsSnap = await get(ref(rtdb, `userChatRooms/${safeUid}`));
-    if (!userRoomsSnap.exists()) return [];
-
-    const roomIds = Object.keys(userRoomsSnap.val());
-    const roomPromises = roomIds.map(async (roomId) => {
-      const snap = await get(ref(rtdb, `chatRooms/${pathSafe(roomId)}`));
-      return snap.exists() ? (snap.val() as ChatRoomRecord) : null;
-    });
-
-    const rooms = (await Promise.all(roomPromises)).filter(
-      (r): r is ChatRoomRecord => r !== null && r.memberIds?.[uid] === true,
-    );
-
-    return rooms.sort(
-      (a, b) =>
-        new Date(b.lastMessageAt || b.updated_at).getTime() -
-        new Date(a.lastMessageAt || a.updated_at).getTime(),
-    );
-  } catch (err) {
-    console.warn("[Chat] Error listing user rooms:", err);
-    return [];
-  }
+  if (!isFirebaseConfigured()) return sortRooms([...localRooms]);
+  const result = await api<{ rooms: ChatRoomRecord[] }>("rooms");
+  return sortRooms(result.rooms || []);
 }
 
-/**
- * Subscribes to real-time updates for a user's rooms.
- */
-export function listenUserRooms(
-  uid: string,
-  callback: (rooms: ChatRoomRecord[]) => void,
-): Unsubscribe {
-  if (!uid) {
-    callback([]);
-    return () => {};
-  }
-
-  if (!isFirebaseConfigured()) {
-    callback(localRooms);
-    return () => {};
-  }
-
-  const safeUid = pathSafe(uid);
-  const userRoomsRef = ref(rtdb, `userChatRooms/${safeUid}`);
-
-  const unsubscribe = onValue(
-    userRoomsRef,
-    async (snapshot) => {
-      if (!snapshot.exists()) {
-        callback([]);
-        return;
-      }
-      const roomIds = Object.keys(snapshot.val());
-      try {
-        const roomPromises = roomIds.map(async (roomId) => {
-          const rSnap = await get(ref(rtdb, `chatRooms/${pathSafe(roomId)}`));
-          return rSnap.exists() ? (rSnap.val() as ChatRoomRecord) : null;
-        });
-
-        const rooms = (await Promise.all(roomPromises)).filter(
-          (r): r is ChatRoomRecord => r !== null && r.memberIds?.[uid] === true,
-        );
-
-        rooms.sort(
-          (a, b) =>
-            new Date(b.lastMessageAt || b.updated_at).getTime() -
-            new Date(a.lastMessageAt || a.updated_at).getTime(),
-        );
-
-        // Backfill older circles into the public directory as their creators open chat.
-        for (const room of rooms) {
-          if (room.type === "group") {
-            void set(ref(rtdb, `chatRooms/_communityDirectory/${pathSafe(room.id)}`), room).catch((err) =>
-              console.warn("[Chat] Could not index community circle:", err),
-            );
-          }
-        }
-        callback(rooms);
-      } catch (err) {
-        console.warn("[Chat] Error resolving real-time rooms:", err);
-      }
-    },
-    (error) => {
-      console.error("[Chat] listenUserRooms error:", error);
-    },
-  );
-
-  return unsubscribe;
+export function listenUserRooms(uid: string, callback: (rooms: ChatRoomRecord[]) => void): Unsubscribe {
+  if (!uid) { callback([]); return () => {}; }
+  if (!isFirebaseConfigured()) { callback(sortRooms([...localRooms])); return () => {}; }
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let busy = false;
+  const refresh = async () => {
+    if (stopped || busy) return;
+    busy = true;
+    try {
+      const result = await api<{ rooms: ChatRoomRecord[] }>("rooms");
+      if (!stopped) callback(sortRooms(result.rooms || []));
+    } catch (error) {
+      console.warn("[Chat] Room refresh failed:", error);
+    } finally {
+      busy = false;
+      if (!stopped) timer = setTimeout(refresh, POLL_INTERVAL_MS);
+    }
+  };
+  void refresh();
+  return () => { stopped = true; if (timer) clearTimeout(timer); };
 }
 
-/**
- * Creates or retrieves a deterministic DM room between two users.
- */
 export async function createDmRoom(
   uidA: string,
   uidB: string,
@@ -284,319 +132,128 @@ export async function createDmRoom(
     userB?: { display_name?: string | null; username?: string | null; avatar_url?: string | null };
   },
 ): Promise<string> {
-  if (!uidA || !uidB) throw new Error("Both user IDs are required to start a chat.");
-
-  const sortedUids = [uidA, uidB].sort();
-  const roomId = `dm_${pathSafe(sortedUids[0])}__${pathSafe(sortedUids[1])}`;
-
-  const now = new Date().toISOString();
-
+  if (!uidA || !uidB || uidA === uidB) throw new Error("Two different user IDs are required to start a chat.");
   if (!isFirebaseConfigured()) {
-    let existing = localRooms.find((r) => r.id === roomId);
-    if (!existing) {
-      existing = {
-        id: roomId,
-        type: "dm",
-        name: options?.userB?.display_name || options?.userB?.username || "Direct Message",
-        photo_url: options?.userB?.avatar_url || null,
-        created_by: uidA,
-        created_at: now,
-        updated_at: now,
-        memberIds: { [uidA]: true, [uidB]: true },
-        lastMessage: null,
-        lastMessageAt: null,
-      };
-      localRooms.unshift(existing);
-    }
+    const roomId = `dm_${[uidA, uidB].sort().join("__")}`;
+    if (!localRoom(roomId)) localRooms.unshift({
+      id: roomId, type: "dm", name: options?.userB?.display_name || options?.userB?.username || "Direct Message",
+      photo_url: options?.userB?.avatar_url || null, created_by: uidA, created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(), memberIds: { [uidA]: true, [uidB]: true },
+      lastMessage: null, lastMessageAt: null,
+    });
     return roomId;
   }
-
-  const roomRef = ref(rtdb, `chatRooms/${roomId}`);
-  const snap = await get(roomRef);
-
-  if (!snap.exists()) {
-    const roomRecord: ChatRoomRecord = {
-      id: roomId,
-      type: "dm",
-      name: null, // DMs dynamically show the other participant's profile
-      photo_url: null,
-      created_by: uidA,
-      created_at: now,
-      updated_at: now,
-      memberIds: {
-        [uidA]: true,
-        [uidB]: true,
-      },
-      lastMessage: null,
-      lastMessageAt: null,
-      lastMessageSenderId: null,
-    };
-
-    await set(roomRef, roomRecord);
-  }
-
-  // Ensure index entries in userChatRooms
-  await Promise.all([
-    set(ref(rtdb, `userChatRooms/${pathSafe(uidA)}/${roomId}`), true),
-    set(ref(rtdb, `userChatRooms/${pathSafe(uidB)}/${roomId}`), true),
-  ]);
-
-  return roomId;
+  const result = await api<{ roomId: string }>("create-dm", "POST", { targetId: uidB });
+  return result.roomId;
 }
 
-/**
- * Creates a group chat room with a given name and members.
- */
-export async function createGroupRoom(
-  creatorId: string,
-  name: string,
-  memberIds: string[],
-  photo_url?: string | null,
-): Promise<string> {
+export async function createGroupRoom(creatorId: string, name: string, memberIds: string[], photo_url?: string | null): Promise<string> {
   if (!creatorId) throw new Error("Creator ID is required.");
   if (!name.trim()) throw new Error("Group name is required.");
-
-  const allMembers = Array.from(new Set([creatorId, ...memberIds.filter(Boolean)]));
-  const memberMap: Record<string, boolean> = {};
-  for (const id of allMembers) {
-    memberMap[id] = true;
-  }
-
-  const roomId = `group_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const now = new Date().toISOString();
-
-  const groupRecord: ChatRoomRecord = {
-    id: roomId,
-    type: "group",
-    name: name.trim(),
-    photo_url:
-      photo_url ||
-      "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=150&auto=format&fit=crop&q=80",
-    created_by: creatorId,
-    created_at: now,
-    updated_at: now,
-    memberIds: memberMap,
-    lastMessage: `Group "${name.trim()}" created`,
-    lastMessageAt: now,
-    lastMessageSenderId: creatorId,
-  };
-
   if (!isFirebaseConfigured()) {
-    localRooms.unshift(groupRecord);
+    const now = new Date().toISOString();
+    const roomId = `group_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    localRooms.unshift({
+      id: roomId, type: "group", name: name.trim(),
+      photo_url: photo_url || "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=150&auto=format&fit=crop&q=80",
+      created_by: creatorId, created_at: now, updated_at: now,
+      memberIds: Object.fromEntries([...new Set([creatorId, ...memberIds])].map((id) => [id, true])),
+      lastMessage: `Group "${name.trim()}" created`, lastMessageAt: now, lastMessageSenderId: creatorId,
+    });
     return roomId;
   }
-
-  await set(ref(rtdb, `chatRooms/${roomId}`), groupRecord);
-  // Public directory index lets other signed-in Xora users discover and join circles.
-  await set(ref(rtdb, `chatRooms/_communityDirectory/${roomId}`), groupRecord);
-
-  // Link room to each member
-  await Promise.all(
-    allMembers.map((mId) => set(ref(rtdb, `userChatRooms/${pathSafe(mId)}/${roomId}`), true)),
-  );
-
-  return roomId;
+  const result = await api<{ roomId: string }>("create-group", "POST", { name: name.trim(), memberIds, photo_url });
+  return result.roomId;
 }
 
-/**
- * Real-time directory of discoverable community circles.
- * Stored below chatRooms so it works with the existing authenticated chatRooms rules.
- */
-export function listenDiscoverableGroups(
-  callback: (rooms: ChatRoomRecord[]) => void,
-): Unsubscribe {
+export function listenDiscoverableGroups(callback: (rooms: ChatRoomRecord[]) => void): Unsubscribe {
   if (!isFirebaseConfigured()) {
     callback(localRooms.filter((room) => room.type === "group"));
     return () => {};
   }
-
-  return onValue(
-    ref(rtdb, "chatRooms/_communityDirectory"),
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        callback([]);
-        return;
-      }
-      const rooms = Object.values(snapshot.val() as Record<string, ChatRoomRecord>)
-        .filter((room) => room?.type === "group" && Boolean(room.id))
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-      callback(rooms);
-    },
-    (error) => {
-      console.error("[Chat] Community directory listener error:", error);
-      callback([]);
-    },
-  );
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let busy = false;
+  const refresh = async () => {
+    if (stopped || busy) return;
+    busy = true;
+    try {
+      const result = await api<{ rooms: ChatRoomRecord[] }>("discoverable");
+      if (!stopped) callback(result.rooms || []);
+    } catch (error) {
+      console.warn("[Chat] Community directory refresh failed:", error);
+      if (!stopped) callback([]);
+    } finally {
+      busy = false;
+      if (!stopped) timer = setTimeout(refresh, POLL_INTERVAL_MS * 2);
+    }
+  };
+  void refresh();
+  return () => { stopped = true; if (timer) clearTimeout(timer); };
 }
 
-/** Joins a public circle and adds it to the user's inbox index. */
 export async function joinGroupRoom(uid: string, roomId: string): Promise<void> {
   if (!uid || !roomId) throw new Error("Sign in to join a community circle.");
   if (!isFirebaseConfigured()) {
-    const room = localRooms.find((item) => item.id === roomId && item.type === "group");
-    if (!room) throw new Error("This circle could not be found.");
+    const room = localRoom(roomId);
+    if (!room || room.type !== "group") throw new Error("This circle could not be found.");
     room.memberIds = { ...(room.memberIds || {}), [uid]: true };
     return;
   }
-
-  const roomSnap = await get(ref(rtdb, `chatRooms/${pathSafe(roomId)}`));
-  if (!roomSnap.exists()) throw new Error("This circle could not be found.");
-  const room = roomSnap.val() as ChatRoomRecord;
-  if (room.type !== "group") throw new Error("Only community circles can be joined this way.");
-
-  await Promise.all([
-    set(ref(rtdb, `chatRooms/${pathSafe(roomId)}/memberIds/${pathSafe(uid)}`), true),
-    set(ref(rtdb, `userChatRooms/${pathSafe(uid)}/${pathSafe(roomId)}`), true),
-  ]);
+  await api("join", "POST", { roomId });
 }
 
-/**
- * Sends a message in a room. Sets expiresAt to 30 days in the future.
- */
 export async function sendMessage(
   roomId: string,
   senderId: string,
   text: string,
-  options?: {
-    type?: "text" | "experience";
-    experiencePostId?: string | null;
-    senderName?: string | null;
-    senderAvatar?: string | null;
-  },
+  options?: { type?: "text" | "experience"; experiencePostId?: string | null; senderName?: string | null; senderAvatar?: string | null },
 ): Promise<ChatMessageRecord> {
   const cleanText = text.trim();
   if (!cleanText) throw new Error("Message text cannot be empty.");
   if (cleanText.length > 2000) throw new Error("Messages must be 2,000 characters or fewer.");
-
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + CHAT_EXPIRY_MS).toISOString();
-  const messageId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-  const messageRecord: ChatMessageRecord = {
-    id: messageId,
-    roomId,
-    senderId,
-    senderName: options?.senderName || null,
-    senderAvatar: options?.senderAvatar || null,
-    text: cleanText,
-    created_at: now.toISOString(),
-    type: options?.type || "text",
-    experiencePostId: options?.experiencePostId || null,
-    expiresAt,
-  };
-
   if (!isFirebaseConfigured()) {
-    if (!localMessages[roomId]) localMessages[roomId] = [];
-    localMessages[roomId].push(messageRecord);
-
-    const room = localRooms.find((r) => r.id === roomId);
-    if (room) {
-      room.lastMessage = cleanText.slice(0, 100);
-      room.lastMessageAt = now.toISOString();
-      room.lastMessageSenderId = senderId;
-      room.updated_at = now.toISOString();
-    }
-    return messageRecord;
+    const now = new Date();
+    const message: ChatMessageRecord = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, roomId, senderId,
+      senderName: options?.senderName || null, senderAvatar: options?.senderAvatar || null,
+      text: cleanText, created_at: now.toISOString(), type: options?.type || "text",
+      experiencePostId: options?.experiencePostId || null,
+      expiresAt: new Date(now.getTime() + CHAT_EXPIRY_MS).toISOString(),
+    };
+    (localMessages[roomId] ||= []).push(message);
+    const room = localRoom(roomId);
+    if (room) { room.lastMessage = cleanText.slice(0, 100); room.lastMessageAt = now.toISOString(); room.lastMessageSenderId = senderId; room.updated_at = now.toISOString(); }
+    return message;
   }
-
-  const safeRoomId = pathSafe(roomId);
-
-  // Write message
-  await set(ref(rtdb, `chatMessages/${safeRoomId}/${messageId}`), messageRecord);
-
-  // Update room lastMessage metadata
-  const roomUpdates: Partial<ChatRoomRecord> = {
-    lastMessage: cleanText.slice(0, 100),
-    lastMessageAt: now.toISOString(),
-    lastMessageSenderId: senderId,
-    updated_at: now.toISOString(),
-  };
-
-  await update(ref(rtdb, `chatRooms/${safeRoomId}`), roomUpdates);
-
-  return messageRecord;
+  const result = await api<{ message: ChatMessageRecord }>("send", "POST", {
+    roomId, text: cleanText, type: options?.type, senderName: options?.senderName, senderAvatar: options?.senderAvatar,
+  });
+  return result.message;
 }
 
-/**
- * Subscribes to real-time messages in a room.
- * Filters messages older than 30 days and triggers background prune.
- */
-export function listenMessages(
-  roomId: string,
-  callback: (messages: ChatMessageRecord[]) => void,
-): Unsubscribe {
-  if (!roomId) {
-    callback([]);
-    return () => {};
-  }
-
+export function listenMessages(roomId: string, callback: (messages: ChatMessageRecord[]) => void): Unsubscribe {
+  if (!roomId) { callback([]); return () => {}; }
   if (!isFirebaseConfigured()) {
-    const list = localMessages[roomId] || [];
-    const now = Date.now();
-    const valid = list.filter(
-      (m) => {
-        const createdAt = new Date(m.created_at).getTime();
-        const expiresAt = new Date(m.expiresAt).getTime();
-        return createdAt > 0
-          ? now - createdAt < CHAT_EXPIRY_MS
-          : expiresAt > now;
-      },
-    );
-    callback(valid);
+    callback((localMessages[roomId] || []).filter((m) => new Date(m.expiresAt).getTime() > Date.now()));
     return () => {};
   }
-
-  const safeRoomId = pathSafe(roomId);
-  const messagesRef = ref(rtdb, `chatMessages/${safeRoomId}`);
-
-  const unsubscribe = onValue(
-    messagesRef,
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        callback([]);
-        return;
-      }
-
-      const raw = snapshot.val() as Record<string, ChatMessageRecord>;
-      const now = Date.now();
-      const validMessages: ChatMessageRecord[] = [];
-      let hasExpired = false;
-
-      for (const [key, msg] of Object.entries(raw)) {
-        if (!msg) continue;
-        const fullMsg: ChatMessageRecord = {
-          ...msg,
-          id: msg.id || key,
-        };
-        const expiresAtTime = fullMsg.expiresAt ? new Date(fullMsg.expiresAt).getTime() : 0;
-        const createdAtTime = fullMsg.created_at ? new Date(fullMsg.created_at).getTime() : 0;
-        const isExpired = createdAtTime > 0
-          ? now - createdAtTime >= CHAT_EXPIRY_MS
-          : expiresAtTime > 0 && expiresAtTime <= now;
-
-        if (isExpired) {
-          hasExpired = true;
-        } else {
-          validMessages.push(fullMsg);
-        }
-      }
-
-      // Sort chronological ascending
-      validMessages.sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      );
-
-      callback(validMessages);
-
-      // If expired messages were detected, trigger background prune
-      if (hasExpired) {
-        void pruneExpiredMessagesInRoom(roomId, raw);
-      }
-    },
-    (error) => {
-      console.error("[Chat] listenMessages error:", error);
-    },
-  );
-
-  return unsubscribe;
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let busy = false;
+  const refresh = async () => {
+    if (stopped || busy) return;
+    busy = true;
+    try {
+      const result = await api<{ messages: ChatMessageRecord[] }>("messages", "GET", undefined, { roomId });
+      if (!stopped) callback(result.messages || []);
+    } catch (error) {
+      console.warn("[Chat] Message refresh failed:", error);
+    } finally {
+      busy = false;
+      if (!stopped) timer = setTimeout(refresh, POLL_INTERVAL_MS);
+    }
+  };
+  void refresh();
+  return () => { stopped = true; if (timer) clearTimeout(timer); };
 }
