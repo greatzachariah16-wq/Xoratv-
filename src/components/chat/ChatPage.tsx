@@ -91,8 +91,9 @@ export default function ChatPage({
       ? <img src={profile.avatar_url} alt={name} className={\`avatar \${size}\`} />
       : <span className={\`avatar avatar-fallback \${size}\`} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
   };
-  const activeMembers = activeRoom ? Object.keys(activeRoom.memberIds || {}).map((id) => profileMap[id]).filter(Boolean) : [];
+  const activeMembers = activeRoom ? Object.keys(activeRoom.memberIds || {}).map((id) => profileMap[id]).filter((profile): profile is ProfileLite => Boolean(profile)) : [];
   const activeTitle = activeRoom ? getRoomTitle(activeRoom, currentUserId, profileMap) : "";
+  const ActiveRoomIcon = activeRoom ? roomIcon(activeRoom) : Sun;
   const activeSubtitle = activeRoom?.type === "dm" ? "Here for a good conversation" : activeMembers.length ? \`\${activeMembers.length} \${activeMembers.length === 1 ? "member" : "members"} · A little closer, every day\` : "Community circle · A little closer, every day";
 
   return (
@@ -177,7 +178,7 @@ export default function ChatPage({
           {activeRoom ? <>
             <header className="conversation-header">
               <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={onBackToList}><ArrowLeft/></button>
-              {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><>{React.createElement(roomIcon(activeRoom))}</></span>}
+              {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
               <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <>{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members <span>·</span><span className="online-dot"/><span className="online-text">Community circle</span></>}</p></div>
               {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
               <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Create a circle" aria-label="Create a circle" onClick={onOpenNewGroup}><Plus/></button><button type="button" className="icon-control xora-icon-button" title="New message" aria-label="New message" onClick={onOpenNewDm}><MoreHorizontal/></button></div>
