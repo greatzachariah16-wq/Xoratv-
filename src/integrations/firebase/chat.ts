@@ -4,7 +4,7 @@ import { isFirebaseConfigured } from "./config";
 import { pathSafe, getProfile } from "./rtdb";
 import type { ChatRoomRecord, ChatMessageRecord, ProfileRecord } from "./types";
 
-export const CHAT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+export const CHAT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
 // In-memory fallback for demo mode when Firebase is not configured
 const localRooms: ChatRoomRecord[] = [
@@ -18,7 +18,7 @@ const localRooms: ChatRoomRecord[] = [
     created_at: new Date(Date.now() - 3600000).toISOString(),
     updated_at: new Date().toISOString(),
     memberIds: { "demo-user": true, system: true },
-    lastMessage: "Welcome to Xora live chat! Messages automatically delete after 7 days.",
+    lastMessage: "Welcome to Xora live chat! Messages are kept for 30 days.",
     lastMessageAt: new Date().toISOString(),
     lastMessageSenderId: "system",
   },
@@ -45,7 +45,7 @@ const localMessages: Record<string, ChatMessageRecord[]> = {
       senderName: "Xora Host",
       senderAvatar:
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      text: "Privacy reminder: All messages in direct messages and groups automatically delete after 7 days.",
+      text: "Privacy reminder: Chat messages are automatically deleted after 30 days.",
       created_at: new Date(Date.now() - 1800000).toISOString(),
       type: "experience",
       expiresAt: new Date(Date.now() - 1800000 + CHAT_EXPIRY_MS).toISOString(),
@@ -56,7 +56,7 @@ const localMessages: Record<string, ChatMessageRecord[]> = {
 const lastPruneMap = new Map<string, number>();
 
 /**
- * Prunes expired messages (> 7 days) from a specific room.
+ * Prunes messages older than 30 days from a specific room.
  */
 export async function pruneExpiredMessagesInRoom(
   roomId: string,
@@ -66,9 +66,13 @@ export async function pruneExpiredMessagesInRoom(
     const now = Date.now();
     const current = localMessages[roomId] || [];
     const valid = current.filter(
-      (m) =>
-        new Date(m.expiresAt).getTime() > now &&
-        now - new Date(m.created_at).getTime() < CHAT_EXPIRY_MS,
+      (m) => {
+        const createdAt = new Date(m.created_at).getTime();
+        const expiresAt = new Date(m.expiresAt).getTime();
+        return createdAt > 0
+          ? now - createdAt < CHAT_EXPIRY_MS
+          : expiresAt > now;
+      },
     );
     const count = current.length - valid.length;
     localMessages[roomId] = valid;
@@ -103,9 +107,9 @@ export async function pruneExpiredMessagesInRoom(
       if (!msg) continue;
       const expiresAtTime = msg.expiresAt ? new Date(msg.expiresAt).getTime() : 0;
       const createdAtTime = msg.created_at ? new Date(msg.created_at).getTime() : 0;
-      const isExpired =
-        (expiresAtTime > 0 && expiresAtTime <= now) ||
-        (createdAtTime > 0 && now - createdAtTime >= CHAT_EXPIRY_MS);
+      const isExpired = createdAtTime > 0
+        ? now - createdAtTime >= CHAT_EXPIRY_MS
+        : expiresAtTime > 0 && expiresAtTime <= now;
 
       if (isExpired) {
         prunedCount++;
@@ -385,7 +389,7 @@ export async function createGroupRoom(
 }
 
 /**
- * Sends a message in a room. Sets expiresAt to 7 days in the future.
+ * Sends a message in a room. Sets expiresAt to 30 days in the future.
  */
 export async function sendMessage(
   roomId: string,
@@ -400,6 +404,7 @@ export async function sendMessage(
 ): Promise<ChatMessageRecord> {
   const cleanText = text.trim();
   if (!cleanText) throw new Error("Message text cannot be empty.");
+  if (cleanText.length > 2000) throw new Error("Messages must be 2,000 characters or fewer.");
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + CHAT_EXPIRY_MS).toISOString();
@@ -452,7 +457,7 @@ export async function sendMessage(
 
 /**
  * Subscribes to real-time messages in a room.
- * Filters out expired messages (> 7 days) and triggers background prune.
+ * Filters messages older than 30 days and triggers background prune.
  */
 export function listenMessages(
   roomId: string,
@@ -467,9 +472,13 @@ export function listenMessages(
     const list = localMessages[roomId] || [];
     const now = Date.now();
     const valid = list.filter(
-      (m) =>
-        new Date(m.expiresAt).getTime() > now &&
-        now - new Date(m.created_at).getTime() < CHAT_EXPIRY_MS,
+      (m) => {
+        const createdAt = new Date(m.created_at).getTime();
+        const expiresAt = new Date(m.expiresAt).getTime();
+        return createdAt > 0
+          ? now - createdAt < CHAT_EXPIRY_MS
+          : expiresAt > now;
+      },
     );
     callback(valid);
     return () => {};
@@ -499,9 +508,9 @@ export function listenMessages(
         };
         const expiresAtTime = fullMsg.expiresAt ? new Date(fullMsg.expiresAt).getTime() : 0;
         const createdAtTime = fullMsg.created_at ? new Date(fullMsg.created_at).getTime() : 0;
-        const isExpired =
-          (expiresAtTime > 0 && expiresAtTime <= now) ||
-          (createdAtTime > 0 && now - createdAtTime >= CHAT_EXPIRY_MS);
+        const isExpired = createdAtTime > 0
+          ? now - createdAtTime >= CHAT_EXPIRY_MS
+          : expiresAtTime > 0 && expiresAtTime <= now;
 
         if (isExpired) {
           hasExpired = true;
