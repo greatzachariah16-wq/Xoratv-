@@ -40,10 +40,10 @@ const EmptyState = ({ icon: Icon, title, description, action }: { icon: React.El
 );
 
 export interface ChatPageProps {
-  currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; discoverableRooms: ChatRoom[]; joiningGroupId: string | null; onJoinGroup: (roomId: string) => void; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
+  currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; discoverableRooms: ChatRoom[]; discoverableError?: string | null; joiningGroupId: string | null; onJoinGroup: (roomId: string) => void; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
 }
 export default function ChatPage({
-  currentUserId, currentProfile, rooms, discoverableRooms, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
+  currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
 }: ChatPageProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
@@ -111,6 +111,7 @@ export default function ChatPage({
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-5"><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{listTab === "discover" ? "Find your community" : "Recent conversations"}</p><span className="text-[10px] tabular-nums text-muted-foreground">{filtered.length}</span></div>
+          {listTab === "discover" && discoverableError && <div role="alert" className="mx-3 my-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-3 text-xs leading-5 text-destructive sm:mx-4"><p className="font-semibold">Circle directory could not refresh</p><p className="mt-1 break-words">{discoverableError}</p><p className="mt-1 text-[10px] opacity-80">The last successfully loaded circles are kept visible. This message will clear when the next refresh succeeds.</p></div>}
           {filtered.length ? filtered.map((room) => {
             const title = getRoomTitle(room,currentUserId,profileMap);
             const otherId = room.type==="dm" ? Object.keys(room.memberIds||{}).find((id)=>id!==currentUserId) : null;
