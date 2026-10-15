@@ -19,6 +19,7 @@ import {
   Radio,
   Baby,
   Menu,
+  MessageCircle,
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +37,7 @@ const NAV = [
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
+  { to: "/chat", label: "Community Chat", icon: MessageCircle },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
   { to: "/offers", label: "Offers", icon: Gift },
 ] as const;
