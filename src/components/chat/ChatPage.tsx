@@ -1,485 +1,90 @@
 import React, { useEffect, useRef } from "react";
-import {
-  MessageCircle,
-  Plus,
-  Users,
-  Send,
-  Search,
-  ArrowLeft,
-  Clock,
-  Clapperboard,
-  Sparkles,
-  Lock,
-  Loader2,
-} from "lucide-react";
+import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Coffee, Film, Music2, BookOpen, Heart } from "lucide-react";
 
-// --- Types ---
-export type ChatRoom = {
-  id: string;
-  type: "dm" | "group";
-  name: string | null;
-  photo_url: string | null;
-  lastMessage: string | null;
-  lastMessageAt: string | null;
-  memberIds?: Record<string, boolean>;
-};
+export type ChatRoom = { id: string; type: "dm" | "group"; name: string | null; photo_url: string | null; lastMessage: string | null; lastMessageAt: string | null; memberIds?: Record<string, boolean> };
+export type ChatMessage = { id: string; roomId: string; senderId: string; senderName?: string | null; senderAvatar?: string | null; text: string; created_at: string; type: "text" | "experience"; expiresAt: string };
+export type ProfileLite = { id: string; username: string; display_name: string; avatar_url: string | null };
 
-export type ChatMessage = {
-  id: string;
-  roomId: string;
-  senderId: string;
-  senderName?: string | null;
-  senderAvatar?: string | null;
-  text: string;
-  created_at: string;
-  type: "text" | "experience";
-  expiresAt: string;
-};
-
-export type ProfileLite = {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url: string | null;
-};
-
-// --- Helpers ---
 export function formatTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  if (diffMs < 0) return "just now";
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h`;
+  const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h`;
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
-
-export function getRoomTitle(
-  room: ChatRoom,
-  currentUserId: string | null,
-  profileMap: Record<string, ProfileLite>,
-): string {
+export function getRoomTitle(room: ChatRoom, currentUserId: string | null, profileMap: Record<string, ProfileLite>): string {
   if (room.type === "group" && room.name) return room.name;
   if (room.type === "dm" && room.memberIds && currentUserId) {
-    const otherId = Object.keys(room.memberIds).find((id) => id !== currentUserId);
-    if (otherId && profileMap[otherId]) {
-      return profileMap[otherId].display_name || profileMap[otherId].username;
-    }
+    const other = Object.keys(room.memberIds).find((id) => id !== currentUserId);
+    if (other && profileMap[other]) return profileMap[other].display_name || profileMap[other].username;
   }
-  return room.name || "Unknown Chat";
+  return room.name || "Xora conversation";
 }
-
-// --- Simple Equivalent Components ---
-const UserAvatar = ({
-  path,
-  name,
-  size = "md",
-}: {
-  path?: string | null;
-  name: string;
-  size?: "sm" | "md" | "lg";
-}) => {
-  const sizeClasses = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-12 h-12 text-base" };
-  const initials =
-    (name || "?")
-      .split(" ")
-      .map((n) => n[0])
-      .filter(Boolean)
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "?";
-
-  return (
-    <div
-      className={`${sizeClasses[size]} rounded-full bg-surface-2 border border-border flex items-center justify-center text-muted-foreground font-display overflow-hidden shrink-0`}
-    >
-      {path ? (
-        <img src={path} alt={name} className="w-full h-full object-cover" />
-      ) : (
-        <span>{initials}</span>
-      )}
-    </div>
-  );
+const Avatar = ({ path, name, size = "md" }: { path?: string | null; name: string; size?: "sm" | "md" | "lg" }) => {
+  const sizes = { sm: "size-9 text-xs", md: "size-11 text-sm", lg: "size-14 text-base" };
+  const initials = (name || "?").split(" ").map((part) => part[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "?";
+  return <div className={`${sizes[size]} grid shrink-0 place-items-center overflow-hidden rounded-2xl border border-border/70 bg-clay-soft font-display font-semibold text-clay`}>{path ? <img src={path} alt={name} className="size-full object-cover" /> : initials}</div>;
 };
-
-const EmptyState = ({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) => (
-  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-    <div className="w-16 h-16 rounded-full bg-surface-2 border border-border flex items-center justify-center mb-4 text-muted-foreground">
-      <Icon className="w-8 h-8" />
-    </div>
-    <h3 className="font-display text-lg text-foreground mb-2">{title}</h3>
-    <p className="text-sm text-muted-foreground max-w-xs mb-6">{description}</p>
-    {action}
+const EmptyState = ({ icon: Icon, title, description, action }: { icon: React.ElementType; title: string; description: string; action?: React.ReactNode }) => (
+  <div className="flex min-h-[260px] flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="mb-4 grid size-16 place-items-center rounded-[1.4rem] border border-clay/15 bg-clay-soft/70 text-clay shadow-card"><Icon className="size-7" /></div>
+    <h3 className="font-display text-lg font-semibold tracking-tight">{title}</h3><p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{description}</p>{action && <div className="mt-5">{action}</div>}
   </div>
 );
 
-// --- Main Component ---
 export interface ChatPageProps {
-  currentUserId: string | null;
-  currentProfile: ProfileLite | null;
-  rooms: ChatRoom[];
-  activeRoomId: string | null;
-  messages: ChatMessage[];
-  profileMap: Record<string, ProfileLite>;
-  isSending: boolean;
-  roomFilter: string;
-  onRoomFilterChange: (v: string) => void;
-  onSelectRoom: (roomId: string) => void;
-  onBackToList: () => void;
-  onOpenNewDm: () => void;
-  onOpenNewGroup: () => void;
-  inputText: string;
-  onInputTextChange: (v: string) => void;
-  isExperience: boolean;
-  onToggleExperience: () => void;
-  experienceTitle: string;
-  onExperienceTitleChange: (v: string) => void;
-  onSend: (e: React.FormEvent) => void;
-  onSignIn: () => void;
+  currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
 }
-
 export default function ChatPage({
-  currentUserId,
-  currentProfile: _currentProfile,
-  rooms,
-  activeRoomId,
-  messages,
-  profileMap,
-  isSending,
-  roomFilter,
-  onRoomFilterChange,
-  onSelectRoom,
-  onBackToList,
-  onOpenNewDm,
-  onOpenNewGroup,
-  inputText,
-  onInputTextChange,
-  isExperience,
-  onToggleExperience,
-  experienceTitle,
-  onExperienceTitleChange,
-  onSend,
-  onSignIn,
+  currentUserId, currentProfile: _currentProfile, rooms, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
 }: ChatPageProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const activeRoom = rooms.find((r) => r.id === activeRoomId) || null;
-  const activeMessages = messages.filter((m) => m.roomId === activeRoomId);
-
-  // Auto-scroll when messages update
-  useEffect(() => {
-    if (activeMessages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [activeMessages.length, activeRoomId]);
-
-  if (!currentUserId) {
-    return (
-      <EmptyState
-        icon={Lock}
-        title="Sign in to chat"
-        description="Join the conversation. For your privacy, all messages and chats automatically delete after 7 days."
-        action={
-          <button
-            onClick={onSignIn}
-            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-display active:scale-[0.98] transition-transform"
-          >
-            Sign in
-          </button>
-        }
-      />
-    );
-  }
-
-  const filteredRooms = rooms.filter((room) => {
-    const title = getRoomTitle(room, currentUserId, profileMap);
-    return (
-      title.toLowerCase().includes(roomFilter.toLowerCase()) ||
-      (room.lastMessage || "").toLowerCase().includes(roomFilter.toLowerCase())
-    );
+  const endRef = useRef<HTMLDivElement>(null);
+  const activeRoom = rooms.find((room) => room.id === activeRoomId) || null;
+  const activeMessages = messages.filter((message) => message.roomId === activeRoomId);
+  const groups = rooms.filter((room) => room.type === "group");
+  const directs = rooms.filter((room) => room.type === "dm");
+  const filtered = rooms.filter((room) => {
+    const title = getRoomTitle(room, currentUserId, profileMap), q = roomFilter.toLowerCase();
+    return title.toLowerCase().includes(q) || (room.lastMessage || "").toLowerCase().includes(q);
   });
+  useEffect(() => { if (activeMessages.length) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activeMessages.length, activeRoomId]);
 
-  return (
-    <div className="flex flex-col h-full bg-background text-foreground font-sans">
-      {/* Global Header */}
-      <header className="px-4 py-4 border-b border-border bg-surface">
-        <h1 className="font-display text-xl text-foreground">Live Chat & Groups</h1>
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-          <Lock className="w-3 h-3" />
-          Messages auto-delete after 7 days for your privacy.
-        </p>
-      </header>
-
-      {/* Main Panel */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <div className="rounded-2xl border border-border bg-surface shadow-card grid lg:grid-cols-[320px_1fr] min-h-[500px] lg:min-h-[calc(100vh-14rem)] overflow-hidden h-full">
-          {/* LEFT: Inbox */}
-          <div
-            className={`flex flex-col border-r border-border bg-background ${activeRoomId ? "hidden lg:flex" : "flex"}`}
-          >
-            <div className="p-4 border-b border-border flex gap-2">
-              <button
-                onClick={onOpenNewDm}
-                className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface border border-border rounded-xl text-sm font-medium text-foreground active:scale-[0.98] transition-transform"
-              >
-                <Plus className="w-4 h-4" /> New DM
-              </button>
-              <button
-                onClick={onOpenNewGroup}
-                className="flex-1 flex items-center justify-center gap-2 py-2 bg-surface border border-border rounded-xl text-sm font-medium text-foreground active:scale-[0.98] transition-transform"
-              >
-                <Users className="w-4 h-4" /> New Group
-              </button>
-            </div>
-
-            <div className="p-4 pb-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search conversations..."
-                  value={roomFilter}
-                  onChange={(e) => onRoomFilterChange(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {filteredRooms.length === 0 ? (
-                <div className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {roomFilter.trim() ? "No matching conversations." : "No conversations yet."}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Start a New DM or New Group</p>
-                </div>
-              ) : (
-                filteredRooms.map((room) => {
-                  const title = getRoomTitle(room, currentUserId, profileMap);
-                  const otherId =
-                    room.type === "dm"
-                      ? Object.keys(room.memberIds || {}).find((id) => id !== currentUserId)
-                      : null;
-                  const otherProfile = otherId ? profileMap[otherId] : null;
-
-                  return (
-                    <button
-                      key={room.id}
-                      onClick={() => onSelectRoom(room.id)}
-                      className={`w-full flex items-center gap-3 p-4 text-left border-b border-border hover:bg-surface-2/50 active:scale-[0.99] transition-transform ${activeRoomId === room.id ? "bg-surface-2" : ""}`}
-                    >
-                      <UserAvatar
-                        path={room.type === "dm" ? otherProfile?.avatar_url : room.photo_url}
-                        name={title}
-                        size="md"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                          <span className="font-display text-sm text-foreground truncate">
-                            {title}
-                          </span>
-                          {room.lastMessageAt && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
-                              <Clock className="w-3 h-3" /> {formatTime(room.lastMessageAt)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {room.lastMessage || "No messages yet"}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* RIGHT: Conversation */}
-          <div
-            className={`flex flex-col bg-background ${!activeRoomId ? "hidden lg:flex" : "flex"}`}
-          >
-            {!activeRoom ? (
-              <EmptyState
-                icon={MessageCircle}
-                title="Select a conversation"
-                description="Choose a chat from the left to start messaging or sharing watch experiences."
-              />
-            ) : (
-              <>
-                {/* Chat Header */}
-                <div className="flex items-center gap-3 p-4 border-b border-border bg-surface">
-                  <button
-                    onClick={onBackToList}
-                    className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
-                    aria-label="Back to conversations list"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <UserAvatar
-                    path={
-                      activeRoom.type === "dm"
-                        ? profileMap[
-                            Object.keys(activeRoom.memberIds || {}).find(
-                              (id) => id !== currentUserId,
-                            ) || ""
-                          ]?.avatar_url
-                        : activeRoom.photo_url
-                    }
-                    name={getRoomTitle(activeRoom, currentUserId, profileMap)}
-                    size="sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h2 className="font-display text-sm text-foreground truncate">
-                      {getRoomTitle(activeRoom, currentUserId, profileMap)}
-                    </h2>
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> Expires in 7 days
-                    </p>
-                  </div>
-                </div>
-
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
-                  <div className="flex justify-center mb-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-2 border border-border text-[10px] text-muted-foreground font-medium">
-                      <Clock className="w-3 h-3" /> Auto-delete after 7 days
-                    </span>
-                  </div>
-
-                  {activeMessages.map((msg) => {
-                    const isMine = msg.senderId === currentUserId;
-                    const showName = !isMine && activeRoom.type === "group";
-                    const senderProfile = profileMap[msg.senderId];
-
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${isMine ? "items-end" : "items-start"}`}
-                      >
-                        {showName && (
-                          <span className="text-[10px] text-muted-foreground mb-1 ml-1">
-                            {senderProfile?.display_name || msg.senderName || "Unknown"}
-                          </span>
-                        )}
-                        <div
-                          className={`flex gap-2 max-w-[85%] ${isMine ? "flex-row-reverse" : "flex-row"}`}
-                        >
-                          {!isMine && activeRoom.type === "group" && (
-                            <UserAvatar
-                              path={senderProfile?.avatar_url || msg.senderAvatar || null}
-                              name={senderProfile?.display_name || msg.senderName || "?"}
-                              size="sm"
-                            />
-                          )}
-                          <div
-                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                              isMine
-                                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                : "bg-surface border border-border text-foreground rounded-tl-sm"
-                            }`}
-                          >
-                            {msg.type === "experience" && (
-                              <div className="flex items-center gap-1.5 mb-1.5 text-xs font-medium opacity-80">
-                                <Clapperboard className="w-3.5 h-3.5" />
-                                <Sparkles className="w-3 h-3" />
-                                <span>Watch Experience</span>
-                              </div>
-                            )}
-                            <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground mt-1 mx-1">
-                          {formatTime(msg.created_at)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Composer */}
-                <div className="p-4 border-t border-border bg-surface">
-                  {isExperience && (
-                    <div className="mb-3 flex items-center gap-2">
-                      <Clapperboard className="w-4 h-4 text-primary shrink-0" />
-                      <input
-                        type="text"
-                        placeholder="Film or experience title..."
-                        value={experienceTitle}
-                        onChange={(e) => onExperienceTitleChange(e.target.value)}
-                        className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                  )}
-
-                  <form onSubmit={onSend} className="flex items-end gap-2">
-                    <button
-                      type="button"
-                      onClick={onToggleExperience}
-                      className={`p-2.5 rounded-xl border transition-all active:scale-95 ${
-                        isExperience
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-background border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                      title="Toggle Watch Experience"
-                      aria-label="Toggle Watch Experience"
-                    >
-                      <Sparkles className="w-5 h-5" />
-                    </button>
-
-                    <div className="flex-1 relative">
-                      <textarea
-                        rows={1}
-                        placeholder={
-                          isExperience ? "Share your thoughts on this experience..." : "Message..."
-                        }
-                        value={inputText}
-                        onChange={(e) => onInputTextChange(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            onSend(e);
-                          }
-                        }}
-                        className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none max-h-32"
-                        disabled={isSending}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isSending || (!inputText.trim() && !experienceTitle.trim())}
-                      className="p-2.5 bg-primary text-primary-foreground rounded-xl active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="Send message"
-                    >
-                      {isSending ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Send className="w-5 h-5" />
-                      )}
-                    </button>
-                  </form>
-                </div>
-              </>
-            )}
-          </div>
+  if (!currentUserId) return (
+    <div className="mx-auto max-w-3xl overflow-hidden rounded-[2rem] border border-border bg-surface shadow-card">
+      <div className="relative overflow-hidden bg-gradient-to-br from-clay-soft via-surface to-secondary px-6 py-12 sm:px-10 sm:py-16">
+        <div className="absolute -right-12 -top-16 size-56 rounded-full bg-clay/10 blur-2xl" />
+        <div className="relative max-w-xl"><span className="inline-flex items-center gap-2 rounded-full border border-clay/20 bg-surface/75 px-3 py-1.5 text-xs font-semibold text-clay"><UsersRound className="size-3.5" /> Xora community</span>
+          <h1 className="mt-5 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Good conversations start here.</h1><p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground sm:text-base">Find your people, trade ideas, talk films and grow alongside the creators you love.</p>
+          <button onClick={onSignIn} className="press mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-card">Join the conversation <ArrowUpRight className="size-4" /></button>
         </div>
       </div>
+      <div className="grid gap-3 p-4 sm:grid-cols-3 sm:p-6">{[{icon:Music2,title:"Music & culture",detail:"Talk sounds, artists and new finds"},{icon:Film,title:"Film corner",detail:"Share what you're watching"},{icon:BookOpen,title:"Learn together",detail:"Swap tips and creator knowledge"}].map(({icon:Icon,title,detail}) => <div key={title} className="rounded-2xl border border-border/70 bg-background/70 p-4"><Icon className="size-5 text-clay"/><p className="mt-3 font-display text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></div>)}</div>
     </div>
   );
+
+  return <section className="mx-auto max-w-6xl pb-6">
+    {!activeRoomId ? <>
+      <div className="relative isolate overflow-hidden rounded-[1.75rem] border border-clay/15 bg-gradient-to-br from-clay-soft/90 via-surface to-secondary/80 p-5 shadow-card sm:rounded-[2rem] sm:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-14 -z-10 size-56 rounded-full bg-clay/10 blur-3xl"/><div className="pointer-events-none absolute -bottom-16 right-1/4 -z-10 size-40 rounded-full bg-sage/10 blur-3xl"/>
+        <div className="flex items-start justify-between gap-3"><div><span className="inline-flex items-center gap-2 rounded-full border border-clay/20 bg-surface/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-clay"><Sparkles className="size-3.5"/> The Xora community</span>
+          <h1 className="mt-4 max-w-xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">Your people. Your conversations.</h1><p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base">A place to talk about what you love, share watch experiences and make things together.</p></div>
+          <div className="hidden size-16 shrink-0 items-center justify-center rounded-[1.4rem] border border-white/70 bg-surface/65 text-clay shadow-card backdrop-blur sm:flex"><MessagesSquare className="size-7"/></div>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2"><button onClick={onOpenNewGroup} className="press inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-card"><Plus className="size-4"/> Create a circle</button><button onClick={onOpenNewDm} className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-4 py-2.5 text-sm font-semibold hover:bg-surface"><MessageCircle className="size-4"/> Message someone</button></div>
+        <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-clay/10 pt-4 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Users className="size-3.5 text-clay"/>{groups.length} {groups.length === 1 ? "circle" : "circles"}</span><span className="inline-flex items-center gap-1.5"><MessageCircle className="size-3.5 text-clay"/>{directs.length} direct conversations</span><span className="inline-flex items-center gap-1.5"><Heart className="size-3.5 text-clay"/> Made for shared interests</span></div>
+      </div>
+      <div className="mt-7 flex items-end justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-clay">Find your corner</p><h2 className="mt-1 font-display text-xl font-semibold tracking-tight">Your community circles</h2></div><button onClick={onOpenNewGroup} className="press inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-clay hover:bg-clay-soft/50"><Plus className="size-4"/> New circle</button></div>
+      {groups.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{groups.map((room,index) => { const title = getRoomTitle(room,currentUserId,profileMap); const palettes = ["from-clay-soft/80 to-surface","from-secondary to-surface","from-sage/15 to-surface"]; return <button key={room.id} onClick={() => onSelectRoom(room.id)} className="press group overflow-hidden rounded-[1.5rem] border border-border/80 bg-surface text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-lift"><div className={`flex items-start justify-between gap-3 bg-gradient-to-br ${palettes[index%palettes.length]} p-4`}><Avatar path={room.photo_url} name={title} size="lg"/><span className="rounded-full border border-border/70 bg-surface/75 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">Circle</span></div><div className="p-4"><h3 className="font-display text-base font-semibold tracking-tight">{title}</h3><p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">{room.lastMessage || "A shared space to start a conversation."}</p><div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3"><span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"><Users className="size-3.5"/> Shared conversation</span><span className="grid size-8 place-items-center rounded-full bg-clay-soft/70 text-clay transition group-hover:bg-primary group-hover:text-primary-foreground"><ArrowUpRight className="size-4"/></span></div></div></button>;})}</div> : <div className="mt-4 flex flex-col gap-4 rounded-[1.5rem] border border-dashed border-clay/30 bg-surface/70 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-clay-soft text-clay"><Coffee className="size-5"/></div><div><h3 className="font-display text-sm font-semibold">Your first circle starts with you.</h3><p className="mt-1 max-w-lg text-xs leading-5 text-muted-foreground">Create a space for film fans, music lovers, fellow creators or any topic you want to explore together.</p></div></div><button onClick={onOpenNewGroup} className="press inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Plus className="size-4"/> Create a circle</button></div>}
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-clay">Keep in touch</p><h2 className="mt-1 font-display text-xl font-semibold tracking-tight">Your conversations</h2></div><div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><input value={roomFilter} onChange={(event) => onRoomFilterChange(event.target.value)} placeholder="Search conversations" className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-clay/50 focus:ring-2 focus:ring-clay/10"/></div></div>
+      <div className="mt-3 overflow-hidden rounded-[1.5rem] border border-border/80 bg-surface shadow-card">{filtered.length ? filtered.map((room) => { const title=getRoomTitle(room,currentUserId,profileMap); const otherId=room.type==="dm"?Object.keys(room.memberIds||{}).find((id)=>id!==currentUserId):null; const other=otherId?profileMap[otherId]:null; return <button key={room.id} onClick={()=>onSelectRoom(room.id)} className="press flex w-full items-center gap-3 border-b border-border/60 p-3.5 text-left last:border-b-0 hover:bg-background/70 sm:p-4"><div className="relative"><Avatar path={room.type==="dm"?other?.avatar_url:room.photo_url} name={title}/><span className={`absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-surface ${room.type==="group"?"bg-sage/20 text-sage":"bg-clay-soft text-clay"}`}>{room.type==="group"?<Users className="size-2.5"/>:<MessageCircle className="size-2.5"/>}</span></div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-semibold">{title}</span>{room.lastMessageAt&&<span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(room.lastMessageAt)}</span>}</div><p className="mt-1 truncate text-xs text-muted-foreground">{room.lastMessage||(room.type==="group"?"Your circle is ready for a conversation":"Say hello and get things started")}</p></div><ArrowUpRight className="size-4 shrink-0 text-muted-foreground/70"/></button>;}) : <div className="px-5 py-8 text-center"><p className="text-sm font-medium">{roomFilter.trim()?"No conversations match that search.":"No conversations yet."}</p><p className="mt-1 text-xs text-muted-foreground">Start a circle or say hello to someone on Xora.</p></div>}</div>
+    </> : <div className="overflow-hidden rounded-[1.6rem] border border-border/80 bg-surface shadow-card">{!activeRoom ? <EmptyState icon={MessageCircle} title="Conversation unavailable" description="This conversation may have been removed or is no longer available." action={<button onClick={onBackToList} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Back to community</button>}/> : <>
+      <header className="flex items-center gap-3 border-b border-border/70 bg-gradient-to-r from-clay-soft/55 to-surface p-4 sm:px-5"><button onClick={onBackToList} className="press grid size-9 place-items-center rounded-xl border border-border bg-surface text-muted-foreground lg:hidden" aria-label="Back to community"><ArrowLeft className="size-4"/></button><Avatar path={activeRoom.type==="dm"?profileMap[Object.keys(activeRoom.memberIds||{}).find((id)=>id!==currentUserId)||""]?.avatar_url:activeRoom.photo_url} name={getRoomTitle(activeRoom,currentUserId,profileMap)}/><div className="min-w-0 flex-1"><h2 className="truncate font-display text-sm font-semibold">{getRoomTitle(activeRoom,currentUserId,profileMap)}</h2><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Users className="size-3.5 text-clay"/>{activeRoom.type==="group"?"Community circle":"Direct conversation"} <span>·</span><Lock className="size-3"/> Messages expire after 7 days</p></div><button onClick={onBackToList} className="press hidden items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground lg:inline-flex"><Compass className="size-3.5"/> Community</button></header>
+      <div className="flex min-h-[55vh] flex-col"><div className="flex-1 space-y-4 overflow-y-auto bg-background/60 p-4 sm:p-6"><div className="mx-auto mb-5 max-w-sm rounded-2xl border border-clay/10 bg-clay-soft/35 px-4 py-3 text-center"><Sparkles className="mx-auto size-4 text-clay"/><p className="mt-1 text-xs font-semibold">Make yourself at home</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">Be kind, share ideas and keep the conversation welcoming.</p></div>
+        {activeMessages.map((message)=>{const mine=message.senderId===currentUserId;const sender=profileMap[message.senderId];const name=sender?.display_name||message.senderName||"Community member";return <div key={message.id} className={`flex items-end gap-2 ${mine?"justify-end":"justify-start"}`}>{!mine&&activeRoom.type==="group"&&<Avatar path={sender?.avatar_url||message.senderAvatar} name={name} size="sm"/>}<div className={`flex max-w-[86%] flex-col ${mine?"items-end":"items-start"}`}>{!mine&&activeRoom.type==="group"&&<span className="mb-1 ml-1 text-[10px] font-semibold text-clay">{name}</span>}<div className={`rounded-[1.25rem] px-4 py-3 text-sm leading-6 shadow-sm ${mine?"rounded-br-md bg-primary text-primary-foreground":"rounded-bl-md border border-border/70 bg-surface text-foreground"}`}>{message.type==="experience"&&<div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold opacity-80"><Clapperboard className="size-3.5"/><Sparkles className="size-3"/> Watch experience</div>}<p className="whitespace-pre-wrap break-words">{message.text}</p></div><span className="mt-1 px-1 text-[10px] text-muted-foreground">{formatTime(message.created_at)}</span></div></div>;})}<div ref={endRef}/></div>
+        <div className="border-t border-border/70 bg-surface p-3 sm:p-4">{isExperience&&<div className="mb-3 flex items-center gap-2 rounded-xl border border-clay/15 bg-clay-soft/30 px-3 py-2"><Clapperboard className="size-4 shrink-0 text-clay"/><input value={experienceTitle} onChange={(event)=>onExperienceTitleChange(event.target.value)} placeholder="Film or watch experience title" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"/></div>}<form onSubmit={onSend} className="flex items-end gap-2"><button type="button" onClick={onToggleExperience} aria-label="Share a watch experience" title="Share a watch experience" className={`press grid size-10 shrink-0 place-items-center rounded-xl border ${isExperience?"border-clay/30 bg-clay-soft text-clay":"border-border bg-background text-muted-foreground hover:text-clay"}`}><Clapperboard className="size-4.5"/></button><textarea rows={1} value={inputText} onChange={(event)=>onInputTextChange(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();onSend(event);}}} placeholder={isExperience?"Add a thought about what you watched…":"Share something with the group…"} disabled={isSending} className="max-h-32 min-w-0 flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-clay/50 focus:ring-2 focus:ring-clay/10 disabled:opacity-60"/><button type="submit" disabled={isSending||(!inputText.trim()&&!experienceTitle.trim())} aria-label="Send message" className="press grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-card disabled:cursor-not-allowed disabled:opacity-40">{isSending?<Loader2 className="size-4 animate-spin"/>:<Send className="size-4"/>}</button></form><p className="mt-2 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground"><Clock className="size-3"/> Messages automatically expire after 7 days</p></div>
+      </div></>}</div>}
+  </section>;
 }
