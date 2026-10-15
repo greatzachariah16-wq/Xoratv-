@@ -49,6 +49,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
 
   const [rawRooms, setRawRooms] = useState<ChatRoomRecord[]>([]);
   const [rawDiscoverableRooms, setRawDiscoverableRooms] = useState<ChatRoomRecord[]>([]);
+  const [discoverableError, setDiscoverableError] = useState<string | null>(null);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
   const [rawMessages, setRawMessages] = useState<ChatMessageRecord[]>([]);
@@ -102,9 +103,18 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   useEffect(() => {
     if (!user) {
       setRawDiscoverableRooms([]);
+      setDiscoverableError(null);
       return;
     }
-    const unsubscribe = listenDiscoverableGroups(setRawDiscoverableRooms);
+    setDiscoverableError(null);
+    const unsubscribe = listenDiscoverableGroups((updatedRooms, error) => {
+      if (error) {
+        setDiscoverableError(error);
+        return; // Keep the last successful results visible while reporting the refresh failure.
+      }
+      setDiscoverableError(null);
+      setRawDiscoverableRooms(updatedRooms);
+    });
     return () => unsubscribe();
   }, [user]);
 
@@ -375,6 +385,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
           currentProfile={currentProfileLite}
           rooms={rooms}
           discoverableRooms={discoverableRooms}
+          discoverableError={discoverableError}
           joiningGroupId={joiningGroupId}
           onJoinGroup={handleJoinGroup}
           activeRoomId={activeRoomId}
