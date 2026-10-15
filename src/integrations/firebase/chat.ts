@@ -51,8 +51,18 @@ async function api<T>(action: string, method: "GET" | "POST" = "GET", body?: unk
     headers: { Authorization: `Bearer ${token}`, ...(method === "POST" ? { "Content-Type": "application/json" } : {}) },
     ...(method === "POST" ? { body: JSON.stringify(body || {}) } : {}),
   });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Chat service request failed.");
+  const responseText = await response.text();
+  let result: Record<string, unknown> = {};
+  try {
+    result = responseText ? JSON.parse(responseText) as Record<string, unknown> : {};
+  } catch {
+    const preview = responseText.trim().slice(0, 180);
+    throw new Error(`Chat API "${action}" returned invalid JSON (HTTP ${response.status})${preview ? `: ${preview}` : "."}`);
+  }
+  if (!response.ok) {
+    const detail = typeof result.error === "string" ? result.error : responseText.trim().slice(0, 180);
+    throw new Error(`Chat API "${action}" failed (HTTP ${response.status})${detail ? `: ${detail}` : "."}`);
+  }
   return result as T;
 }
 
@@ -166,9 +176,11 @@ export async function createGroupRoom(creatorId: string, name: string, memberIds
   return result.roomId;
 }
 
-export function listenDiscoverableGroups(callback: (rooms: ChatRoomRecord[]) => void): Unsubscribe {
+export function listenDiscoverableGroups(
+  callback: (rooms: ChatRoomRecord[], error?: string | null) => void,
+): Unsubscribe {
   if (!isFirebaseConfigured()) {
-    callback(localRooms.filter((room) => room.type === "group"));
+    callback(localRooms.filter((room) => room.type === "group"), null);
     return () => {};
   }
   let stopped = false;
@@ -178,11 +190,16 @@ export function listenDiscoverableGroups(callback: (rooms: ChatRoomRecord[]) => 
     if (stopped || busy) return;
     busy = true;
     try {
-      const result = await api<{ rooms: ChatRoomRecord[] }>("discoverable");
-      if (!stopped) callback(result.rooms || []);
+      const result = await api<{ rooms?: ChatRoomRecord[] }>("discoverable");
+      if (!Array.isArray(result.rooms)) {
+        throw new Error('The chat API response did not contain a valid "rooms" array.');
+      }
+      if (!stopped) callback(result.rooms, null);
     } catch (error) {
-      console.warn("[Chat] Community directory refresh failed:", error);
-      if (!stopped) callback([]);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[Chat] Community directory refresh failed:", message);
+      // Report the failure without replacing the last known-good directory with [].
+      if (!stopped) callback([], message);
     } finally {
       busy = false;
       if (!stopped) timer = setTimeout(refresh, POLL_INTERVAL_MS * 2);
