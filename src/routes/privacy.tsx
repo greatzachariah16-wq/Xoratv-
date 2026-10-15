@@ -407,7 +407,7 @@ function PrivacyPage() {
                 information and how it is used.
               </p>
               <p className="font-semibold text-primary">
-                Chat messages on XoraTV are automatically deleted after 7 days.
+                Chat messages on XoraTV are automatically deleted after 30 days.
               </p>
             </div>
 
