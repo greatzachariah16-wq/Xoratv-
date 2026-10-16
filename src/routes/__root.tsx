@@ -102,22 +102,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Xora" },
       { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
-        content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
-      },
-      { name: "hilltopads-site-verification", content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5" },
-      { name: "exoclick-site-verification", content: "89cfa11e5cd3529d8d2fee19321fc484" },
-      { name: "89cfa11e5cd3529d8d2fee19321fc484", content: "89cfa11e5cd3529d8d2fee19321fc484" },
-    ].filter((item) =>
-      !PREVIEW_NO_ADS ||
-      ![
-        "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
-        "hilltopads-site-verification",
-        "exoclick-site-verification",
-        "89cfa11e5cd3529d8d2fee19321fc484",
-      ].includes(String(item.name ?? "")),
-    ),
+      ...(PREVIEW_NO_ADS ? [] : [
+        {
+          name: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
+          content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
+        },
+        { name: "hilltopads-site-verification", content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5" },
+        { name: "exoclick-site-verification", content: "89cfa11e5cd3529d8d2fee19321fc484" },
+        { name: "89cfa11e5cd3529d8d2fee19321fc484", content: "89cfa11e5cd3529d8d2fee19321fc484" },
+      ]),
+    ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
