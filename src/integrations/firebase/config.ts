@@ -11,6 +11,20 @@ export const DEFAULT_FIREBASE_DATABASE_URL = "https://xora-tv-default-rtdb.fireb
  * Sourced directly from provisioned firebase-applet-config.json.
  */
 function getFirebaseConfig() {
+  // Preview is deliberately isolated from the live Firebase project.
+  // Configure a dedicated test Firebase project before testing real auth/data flows.
+  if (import.meta.env.VITE_PREVIEW_ISOLATED === "true") {
+    return {
+      apiKey: "AIzaSyPreviewIsolatedPlaceholder",
+      authDomain: "xoratv-preview-isolated.firebaseapp.com",
+      projectId: "xoratv-preview-isolated",
+      databaseURL: "https://xoratv-preview-isolated-default-rtdb.firebaseio.com",
+      storageBucket: "xoratv-preview-isolated.firebasestorage.app",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:preview-isolated",
+      firestoreDatabaseId: "(default)",
+    };
+  }
   const clean = (val?: string): string => {
     if (!val) return "";
     return val.replace(/^[",'\s]+|[",';\s]+$/g, "").trim();
