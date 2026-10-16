@@ -241,6 +241,8 @@ export async function signUpWithEmail(
       id: cred.user.uid,
       username: cleanUsername,
       email: cleanEmail,
+      first_name: cleanFirst,
+      last_name: cleanLast,
       display_name: displayName,
       avatar_url:
         cred.user.photoURL ||
