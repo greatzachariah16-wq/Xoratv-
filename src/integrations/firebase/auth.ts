@@ -499,6 +499,10 @@ export async function checkRedirectAuthResult(): Promise<ProfileRecord | null> {
   try {
     const result = await getRedirectResult(auth);
     if (result && result.user) {
+      if (result.user.email && !result.user.emailVerified) {
+        await firebaseSignOut(auth).catch(() => {});
+        throw new Error("Please verify your email before entering XoraTV. Check your inbox for the verification link.");
+      }
       return await ensureProfileExists(result.user);
     }
   } catch (err) {
