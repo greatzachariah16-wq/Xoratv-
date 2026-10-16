@@ -46,7 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isFirebaseConfigured()) {
       const unsubscribe = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
-        if (fbUser) {
+        if (fbUser && fbUser.email && !fbUser.emailVerified) {
+          // Firebase may restore an old session for an unverified account. End it before
+          // the app can treat the visitor as authenticated.
+          void import("@/integrations/firebase/auth").then(({ signOutCurrentUser }) =>
+            signOutCurrentUser().catch(() => {}),
+          );
+          setSession(null);
+          try {
+            localStorage.removeItem("xora_auth_user");
+          } catch {
+            // Ignore storage access errors.
+          }
+        } else if (fbUser) {
           const userObj: User = {
             id: fbUser.uid,
             email: fbUser.email,

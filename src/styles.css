@@ -1410,3 +1410,30 @@ body,
   .xora-live-page .xora-login-topics { gap:7px; }
   .xora-live-page .xora-login-topics span { padding:10px; }
 }
+
+
+/* XoraTV auth experience — premium two-panel composition using the live warm clay/sage palette. */
+.xora-auth-page {
+  background:
+    radial-gradient(55% 45% at 100% 0%, oklch(0.92 0.035 48 / 0.7), transparent 70%),
+    radial-gradient(50% 40% at 0% 100%, oklch(0.92 0.035 155 / 0.24), transparent 70%),
+    var(--background);
+}
+.xora-auth-brand {
+  min-height: 100dvh;
+  background: linear-gradient(150deg, oklch(0.25 0.025 52), oklch(0.17 0.02 52) 72%);
+}
+.xora-auth-glow { position:absolute; border-radius:999px; filter:blur(1px); pointer-events:none; }
+.xora-auth-glow-one {
+  width:72%; height:55%; right:-16%; top:2%;
+  background:radial-gradient(ellipse at center, oklch(0.65 0.11 42 / .36), oklch(0.45 0.07 42 / .08) 48%, transparent 72%);
+}
+.xora-auth-glow-two {
+  width:68%; height:60%; left:-22%; bottom:-8%;
+  background:radial-gradient(ellipse at center, oklch(0.62 0.07 155 / .22), oklch(0.36 0.04 155 / .07) 50%, transparent 74%);
+}
+.xora-auth-mark { background:var(--primary); color:var(--primary-foreground); box-shadow:inset 0 1px 2px oklch(1 0 0 / .25), 0 8px 24px oklch(0.3 0.05 45 / .24); }
+.xora-auth-avatar { background:var(--clay-soft); color:var(--ink); }
+.xora-auth-pill { backdrop-filter:blur(12px); }
+.xora-auth-card { box-shadow:0 28px 65px -38px oklch(0.3 0.04 52 / .25), 0 0 0 1px oklch(0.5 0.03 55 / .025); }
+@media (max-width: 639px) { .xora-auth-card { border-radius:1.5rem; } }
