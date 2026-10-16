@@ -160,7 +160,6 @@ function AuthPage() {
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingPassword, setPendingPassword] = useState("");
   const [resetEmail, setResetEmail] = useState("");
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   useEffect(() => { if (!loading && user) void navigate({ to: "/" }); }, [user, loading, navigate]);
@@ -170,7 +169,6 @@ function AuthPage() {
     return () => { mounted = false; };
   }, [navigate]);
   const google = async () => {
-    setLoadingGoogle(true);
     try {
       if (!isFirebaseConfigured()) throw new Error("Google sign-in is temporarily unavailable.");
       const result = await signInWithGoogle();
@@ -178,7 +176,6 @@ function AuthPage() {
       if (result.credential?.user && !result.credential.user.emailVerified) { await signOutCurrentUser(); throw new Error("Please verify your email before entering XoraTV."); }
       toast.success("Signed in — welcome to XoraTV!"); void navigate({ to: "/" });
     } catch (error) { toast.error(mapAuthError(error)); }
-    finally { setLoadingGoogle(false); }
   };
   return <div className="xora-auth-page min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
     <aside className="xora-auth-brand relative hidden overflow-hidden lg:block"><div className="xora-auth-glow xora-auth-glow-one" /><div className="xora-auth-glow xora-auth-glow-two" /><div className="relative flex h-full flex-col justify-between p-12 xl:p-16"><Brand light /><div className="max-w-md"><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Stories from everywhere</p><h2 className="text-4xl font-semibold leading-tight text-white xl:text-5xl">Watch, share and create the culture you love.</h2><p className="mt-5 text-base leading-relaxed text-white/70">Join a community of creators and viewers bringing stories, music and entertainment to the world.</p><div className="mt-8 flex items-center gap-3"><div className="flex -space-x-2">{["X","C","T","V"].map((letter,index)=><span key={letter} className="xora-auth-avatar grid h-8 w-8 place-items-center rounded-full border-2 border-ink text-xs font-semibold" style={{ opacity: 1 - index * .12 }}>{letter}</span>)}</div><span className="text-sm text-white/70">Your next favourite story starts here</span></div></div><p className="text-xs text-white/45">A little closer, every day.</p></div></aside>
