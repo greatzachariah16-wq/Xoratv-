@@ -68,7 +68,7 @@ function runIpfsPublicDiscoveryOnce() {
     stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
-      XORATV_SOURCE_URL: process.env.XORATV_SOURCE_URL || "https://xoratv-x.onrender.com",
+      XORATV_SOURCE_URL: process.env.XORATV_SOURCE_URL || process.env.RENDER_EXTERNAL_URL || "https://xoratv-x.onrender.com",
       PYTHONUNBUFFERED: "1",
     },
   });
@@ -116,28 +116,28 @@ function startIpfsPublicDiscoveryScheduler() {
 
 // Initialize backend-only Shorts playback verification scheduler.
 try {
-  startShortsVerificationScheduler();
+  if (process.env.VITE_PREVIEW_ISOLATED !== "true") startShortsVerificationScheduler();
 } catch (e) {
   console.warn("[Server] Could not initialize Shorts verification scheduler:", e);
 }
 
 // Initialize discovery background scheduler on server startup
 try {
-  startDiscoveryScheduler();
+  if (process.env.VITE_PREVIEW_ISOLATED !== "true") startDiscoveryScheduler();
 } catch (e) {
   console.warn("[Server] Could not initialize discovery scheduler:", e);
 }
 
 // Initialize continuous Xseries metadata discovery queue
 try {
-  startXseriesDiscoveryScheduler();
+  if (process.env.VITE_PREVIEW_ISOLATED !== "true") startXseriesDiscoveryScheduler();
 } catch (e) {
   console.warn("[Server] Could not initialize Xseries discovery scheduler:", e);
 }
 
 // Initialize lightweight IPFS public metadata discovery while this service is awake.
 try {
-  startIpfsPublicDiscoveryScheduler();
+  if (process.env.VITE_PREVIEW_ISOLATED !== "true") startIpfsPublicDiscoveryScheduler();
 } catch (e) {
   console.warn("[Server] Could not initialize IPFS discovery scheduler:", e);
 }
@@ -196,6 +196,7 @@ const CORS_HEADERS: Record<string, string> = {
 const DEFAULT_FIREBASE_DATABASE_URL = "https://xora-tv-default-rtdb.firebaseio.com";
 
 function getServerDbUrl(): string | null {
+  if (process.env.VITE_PREVIEW_ISOLATED === "true") return null;
   const raw =
     process.env.VITE_FIREBASE_DATABASE_URL ||
     process.env.FIREBASE_DATABASE_URL ||
@@ -429,6 +430,12 @@ async function handleUpload(request: Request): Promise<Response> {
 async function handleStaticRootFile(request: Request, url: URL): Promise<Response | null> {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const pathname = url.pathname;
+
+  if (process.env.VITE_PREVIEW_ISOLATED === "true" && (
+    pathname.includes("exoclick") || pathname.includes("89cfa11e5cd3529d8d2fee19321fc484") || pathname.includes("4b48232c4ffdb43fa729")
+  )) {
+    return new Response("Not found", { status: 404, headers: { ...CORS_HEADERS, "Content-Type": "text/plain" } });
+  }
 
   if (
     pathname === "/exoclick.txt" ||
