@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 /**
  * HilltopAds In-Page Push Ad Component
  * - Executes the provided Hilltop In-Page Push ad script globally
@@ -7,6 +9,7 @@ import { useEffect } from "react";
  */
 export function HilltopInPagePushAd() {
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (typeof window === "undefined") return;
 
     const SCRIPT_ID = "hilltop-inpage-push-script";
@@ -34,5 +37,6 @@ export function HilltopInPagePushAd() {
     }
   }, []);
 
+  if (PREVIEW_NO_ADS) return null;
   return null;
 }
