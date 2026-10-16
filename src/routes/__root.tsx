@@ -98,10 +98,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Xora" },
       { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
-        content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
-      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -144,8 +140,6 @@ function RootComponent() {
       if (
         event.message === "Script error." ||
         event.message?.includes("Script error") ||
-        event.filename?.includes("highrevenueformat") ||
-        event.filename?.includes("monetag")
       ) {
         event.preventDefault();
         return true;
