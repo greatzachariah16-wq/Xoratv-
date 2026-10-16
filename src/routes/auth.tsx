@@ -115,17 +115,6 @@ function VerifyEmail({ email, username, password, onScreen }: { email: string; u
     } catch (err) { toast.error(mapAuthError(err)); }
     finally { setBusy(false); }
   };
-  const verified = async () => {
-    setBusy(true);
-    try {
-      const profile = await confirmVerifiedEmailAndSignIn(email, "", password);
-      if (profile) { toast.success("Email verified. Welcome to XoraTV!"); window.location.assign("/"); }
-    } catch (err) {
-      const message = mapAuthError(err);
-      if (message.toLowerCase().includes("username")) toast.error("Email verification was checked, but sign-in needs your username. Please sign in after verifying.");
-      else toast.error(message);
-    } finally { setBusy(false); }
-  };
   return <div><div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-accent"><Mail className="h-6 w-6 text-primary" /></div><ScreenHeader title="Check your inbox" subtitle={<>We sent a verification link to <b className="text-foreground">{maskEmail(email)}</b>. Open it to activate your account.</>} /><div className="space-y-3"><Notice><b>Email verification is required.</b> You must confirm your address before entering XoraTV.</Notice>{resent && <Notice tone="success">A new verification link has been sent.</Notice>}</div><div className="mt-6 space-y-3"><PrimaryButton type="button" busy={busy} onClick={continueAfterVerification}>I've verified my email</PrimaryButton><button type="button" disabled={countdown > 0 || busy} onClick={resend} className="press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-input bg-background text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:text-muted-foreground"><RotateCw className="h-4 w-4" />{busy ? "Please wait…" : countdown > 0 ? "Resend email in 0:" + String(countdown).padStart(2, "0") : "Resend email"}</button></div><p className="mt-6 text-center text-sm text-muted-foreground">Wrong address? <TextLink onClick={() => onScreen("signup")}>Change email</TextLink></p><p className="mt-2 text-center text-xs text-muted-foreground">Didn't get it? Check spam or promotions folders.</p></div>;
 }
 
