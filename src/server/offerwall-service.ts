@@ -450,7 +450,7 @@ export async function runCpaPostbackSelfTest(params: { trackingId?: string; offe
     tracking_id: trackingId,
     test: "1",
   });
-  const postbackBase = process.env.VITE_PREVIEW_ISOLATED === "true"
+  const postbackBase = process.env.PREVIEW_ISOLATED === "true"
     ? (process.env.RENDER_EXTERNAL_URL || "https://preview-y2b7.onrender.com")
     : "https://xoratv-x.onrender.com";
   const request = new Request(`${postbackBase}/api/webhooks/cpagrip`, {
