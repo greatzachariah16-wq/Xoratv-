@@ -49,9 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (fbUser && fbUser.email && !fbUser.emailVerified) {
           // Firebase may restore an old session for an unverified account. End it before
           // the app can treat the visitor as authenticated.
-          void import("@/integrations/firebase/auth").then(({ signOutCurrentUser }) =>
-            signOutCurrentUser().catch(() => {}),
-          );
+          void signOutCurrentUser().catch(() => {});
           setSession(null);
           try {
             localStorage.removeItem("xora_auth_user");
