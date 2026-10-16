@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import type { Campaign } from "@/lib/campaigns/types";
 import { cn } from "@/lib/utils";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 interface DeepShadowAdShellProps {
   campaign: Campaign;
   className?: string;
@@ -33,6 +35,7 @@ export function DeepShadowAdShell({
 
   // Track impression once visible in viewport
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (!containerRef.current || impressionRecorded.current) return;
 
     const observer = new IntersectionObserver(
@@ -175,6 +178,7 @@ export function DeepShadowAdShell({
   }
 
   // Default "card" presentation
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div
       ref={containerRef}
