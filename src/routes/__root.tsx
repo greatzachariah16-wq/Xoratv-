@@ -16,6 +16,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 import { HilltopInPagePushAd } from "@/components/ads/HilltopInPagePushAd";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -107,7 +109,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "hilltopads-site-verification", content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5" },
       { name: "exoclick-site-verification", content: "89cfa11e5cd3529d8d2fee19321fc484" },
       { name: "89cfa11e5cd3529d8d2fee19321fc484", content: "89cfa11e5cd3529d8d2fee19321fc484" },
-    ],
+    ].filter((item) =>
+      !PREVIEW_NO_ADS ||
+      ![
+        "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
+        "hilltopads-site-verification",
+        "exoclick-site-verification",
+        "89cfa11e5cd3529d8d2fee19321fc484",
+      ].includes(String(item.name ?? "")),
+    ),
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -120,7 +130,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-    scripts: [
+    scripts: PREVIEW_NO_ADS ? [] : [
       {
         id: "adcash-library",
         src: "https://acscdn.com/script/aclib.js",
@@ -133,7 +143,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         referrerPolicy: "no-referrer-when-downgrade",
       },
     ],
-  }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -182,8 +192,8 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" />
-        <LargeBannerPopupAd />
-        <HilltopInPagePushAd />
+        {!PREVIEW_NO_ADS && <LargeBannerPopupAd />}
+        {!PREVIEW_NO_ADS && <HilltopInPagePushAd />}
       </AuthProvider>
     </QueryClientProvider>
   );
