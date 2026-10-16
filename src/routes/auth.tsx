@@ -52,7 +52,7 @@ function ScreenHeader({ title, subtitle, back }: { title: string; subtitle: Reac
   return <div className="mb-6">{back && <button type="button" onClick={back} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back</button>}<h1 className="text-2xl font-semibold text-foreground sm:text-[28px]">{title}</h1><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{subtitle}</p></div>;
 }
 
-function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; setPending: (email: string, password: string) => void }) {
+function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; setPending: (email: string, password: string, username: string) => void }) {
   const [form, setForm] = useState({ first: "", last: "", username: "", email: "", password: "", confirm: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -76,7 +76,7 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
     if (Object.values(errors).some(Boolean)) return;
     if (!isFirebaseConfigured()) { toast.error("Account registration is temporarily unavailable. Please try again shortly."); return; }
     setBusy(true);
-    try { await signUpWithEmail(form.email, form.password, form.username, form.first, form.last); setPending(form.email.trim().toLowerCase(), form.password); onScreen("verify"); }
+    try { await signUpWithEmail(form.email, form.password, form.username, form.first, form.last); setPending(form.email.trim().toLowerCase(), form.password, form.username.trim().toLowerCase()); onScreen("verify"); }
     catch (err) { toast.error(mapAuthError(err)); }
     finally { setBusy(false); }
   };
@@ -95,7 +95,7 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
   </form>;
 }
 
-function VerifyEmail({ email, password, onScreen }: { email: string; password: string; onScreen: (screen: Screen) => void }) {
+function VerifyEmail({ email, username, password, onScreen }: { email: string; username: string; password: string; onScreen: (screen: Screen) => void }) {
   const [countdown, setCountdown] = useState(30);
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
@@ -104,6 +104,15 @@ function VerifyEmail({ email, password, onScreen }: { email: string; password: s
     setBusy(true);
     try { await resendVerificationEmail(email, password); setResent(true); setCountdown(30); toast.success("Verification email sent. Check your inbox."); }
     catch (err) { toast.error(mapAuthError(err)); }
+    finally { setBusy(false); }
+  };
+  const continueAfterVerification = async () => {
+    setBusy(true);
+    try {
+      await confirmVerifiedEmailAndSignIn(email, username, password);
+      toast.success("Email verified. Welcome to XoraTV!");
+      window.location.assign("/");
+    } catch (err) { toast.error(mapAuthError(err)); }
     finally { setBusy(false); }
   };
   const verified = async () => {
@@ -117,7 +126,7 @@ function VerifyEmail({ email, password, onScreen }: { email: string; password: s
       else toast.error(message);
     } finally { setBusy(false); }
   };
-  return <div><div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-accent"><Mail className="h-6 w-6 text-primary" /></div><ScreenHeader title="Check your inbox" subtitle={<>We sent a verification link to <b className="text-foreground">{maskEmail(email)}</b>. Open it to activate your account.</>} /><div className="space-y-3"><Notice><b>Email verification is required.</b> You must confirm your address before entering XoraTV.</Notice>{resent && <Notice tone="success">A new verification link has been sent.</Notice>}</div><div className="mt-6 space-y-3"><PrimaryButton type="button" busy={busy} onClick={() => { onScreen("signin"); toast.info("After verifying, sign in with your email, username and password."); }}>I've verified my email</PrimaryButton><button type="button" disabled={countdown > 0 || busy} onClick={resend} className="press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-input bg-background text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:text-muted-foreground"><RotateCw className="h-4 w-4" />{busy ? "Please wait…" : countdown > 0 ? "Resend email in 0:" + String(countdown).padStart(2, "0") : "Resend email"}</button></div><p className="mt-6 text-center text-sm text-muted-foreground">Wrong address? <TextLink onClick={() => onScreen("signup")}>Change email</TextLink></p><p className="mt-2 text-center text-xs text-muted-foreground">Didn't get it? Check spam or promotions folders.</p></div>;
+  return <div><div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-accent"><Mail className="h-6 w-6 text-primary" /></div><ScreenHeader title="Check your inbox" subtitle={<>We sent a verification link to <b className="text-foreground">{maskEmail(email)}</b>. Open it to activate your account.</>} /><div className="space-y-3"><Notice><b>Email verification is required.</b> You must confirm your address before entering XoraTV.</Notice>{resent && <Notice tone="success">A new verification link has been sent.</Notice>}</div><div className="mt-6 space-y-3"><PrimaryButton type="button" busy={busy} onClick={continueAfterVerification}>I've verified my email</PrimaryButton><button type="button" disabled={countdown > 0 || busy} onClick={resend} className="press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-input bg-background text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:text-muted-foreground"><RotateCw className="h-4 w-4" />{busy ? "Please wait…" : countdown > 0 ? "Resend email in 0:" + String(countdown).padStart(2, "0") : "Resend email"}</button></div><p className="mt-6 text-center text-sm text-muted-foreground">Wrong address? <TextLink onClick={() => onScreen("signup")}>Change email</TextLink></p><p className="mt-2 text-center text-xs text-muted-foreground">Didn't get it? Check spam or promotions folders.</p></div>;
 }
 
 function SignIn({ onScreen, onGoogle }: { onScreen: (screen: Screen) => void; onGoogle: () => Promise<void> }) {
@@ -159,6 +168,7 @@ function AuthPage() {
   const [screen, setScreen] = useState<Screen>("signin");
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingPassword, setPendingPassword] = useState("");
+  const [pendingUsername, setPendingUsername] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -181,8 +191,8 @@ function AuthPage() {
     <aside className="xora-auth-brand relative hidden overflow-hidden lg:block"><div className="xora-auth-glow xora-auth-glow-one" /><div className="xora-auth-glow xora-auth-glow-two" /><div className="relative flex h-full flex-col justify-between p-12 xl:p-16"><Brand light /><div className="max-w-md"><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Stories from everywhere</p><h2 className="text-4xl font-semibold leading-tight text-white xl:text-5xl">Watch, share and create the culture you love.</h2><p className="mt-5 text-base leading-relaxed text-white/70">Join a community of creators and viewers bringing stories, music and entertainment to the world.</p><div className="mt-8 flex items-center gap-3"><div className="flex -space-x-2">{["X","C","T","V"].map((letter,index)=><span key={letter} className="xora-auth-avatar grid h-8 w-8 place-items-center rounded-full border-2 border-ink text-xs font-semibold" style={{ opacity: 1 - index * .12 }}>{letter}</span>)}</div><span className="text-sm text-white/70">Your next favourite story starts here</span></div></div><p className="text-xs text-white/45">A little closer, every day.</p></div></aside>
     <main className="flex min-h-screen flex-col px-4 py-6 sm:px-8 lg:py-10"><div className="mx-auto flex w-full max-w-[440px] items-center justify-between lg:justify-end"><div className="lg:hidden"><Brand /></div><span className="xora-auth-pill rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Your XoraTV account</span></div>
       <div className="flex flex-1 items-center justify-center py-8"><div key={screen} className="xora-auth-card rise w-full max-w-[440px] rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
-        {screen === "signup" && <SignUp onScreen={setScreen} setPending={(email,password)=>{setPendingEmail(email);setPendingPassword(password);}} />}
-        {screen === "verify" && <VerifyEmail email={pendingEmail} password={pendingPassword} onScreen={setScreen} />}
+        {screen === "signup" && <SignUp onScreen={setScreen} setPending={(email,password,username)=>{setPendingEmail(email);setPendingPassword(password);setPendingUsername(username);}} />}
+        {screen === "verify" && <VerifyEmail email={pendingEmail} username={pendingUsername} password={pendingPassword} onScreen={setScreen} />}
         {screen === "signin" && <SignIn onScreen={setScreen} onGoogle={google} />}
         {screen === "forgot" && <ForgotPassword onScreen={setScreen} setPendingEmail={setResetEmail} />}
         {screen === "forgot-sent" && <ForgotSent email={resetEmail} onScreen={setScreen} />}
