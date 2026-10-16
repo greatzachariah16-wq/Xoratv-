@@ -41,7 +41,7 @@ function resolveCandidateUrl(post: PostRecord): string | null {
   const base =
     process.env.PUBLIC_MEDIA_BASE_URL ||
     process.env.VITE_RENDER_BACKEND_URL ||
-    (process.env.VITE_PREVIEW_ISOLATED === "true"
+    (process.env.PREVIEW_ISOLATED === "true"
       ? (process.env.RENDER_EXTERNAL_URL || "https://preview-y2b7.onrender.com")
       : "https://xoratv-x.onrender.com");
   return `${base.replace(/\/+$/, "")}/${raw.replace(/^\/+/, "").startsWith("videos/")
