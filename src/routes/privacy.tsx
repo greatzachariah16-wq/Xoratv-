@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldCheck, ScrollText, ArrowLeft, ExternalLink, Lock, Trash2, Mail } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 
+const APP_PUBLIC_URL = import.meta.env.VITE_PREVIEW_ISOLATED === "true" ? "https://preview-y2b7.onrender.com" : "https://xoratv-x.onrender.com";
+
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
@@ -42,12 +44,12 @@ function PrivacyPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Last Updated: September 15, 2026 • Website:{" "}
                 <a
-                  href="https://xoratv-x.onrender.com"
+                  href={APP_PUBLIC_URL}
                   target="_blank"
                   rel="noreferrer"
                   className="font-medium text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  https://xoratv-x.onrender.com
+                  {APP_PUBLIC_URL}
                   <ExternalLink className="size-3" />
                 </a>
               </p>
@@ -532,12 +534,12 @@ function PrivacyPage() {
                 <p className="text-muted-foreground">
                   Website:{" "}
                   <a
-                    href="https://xoratv-x.onrender.com"
+                    href={APP_PUBLIC_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary hover:underline"
                   >
-                    https://xoratv-x.onrender.com
+                    {APP_PUBLIC_URL}
                   </a>
                 </p>
                 <p className="text-muted-foreground">Last Updated: September 15, 2026</p>
