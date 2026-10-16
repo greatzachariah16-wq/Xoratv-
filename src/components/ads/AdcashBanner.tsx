@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { isAdcashEnabled } from "@/lib/adcash";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 const ZONE_ID = "12261762";
 
 type AdcashWindow = Window & {
@@ -20,6 +22,7 @@ export function AdcashBanner({
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (!isAdcashEnabled()) return;
     setEnabled(true);
 
@@ -81,6 +84,7 @@ export function AdcashCinemaBanner({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (!isAdcashEnabled()) return;
 
     const handlePlay = (event: Event) => {
@@ -113,6 +117,7 @@ export function AdcashCinemaBanner({
 
   if (!show || !isAdcashEnabled()) return null;
 
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div
       className={`mt-3 w-full rounded-2xl border border-white/10 bg-white/[0.04] p-2 shadow-xl backdrop-blur-md sm:p-3 ${className}`}
