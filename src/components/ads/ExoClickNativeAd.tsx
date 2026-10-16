@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 declare global {
   interface Window {
     AdProvider?: Array<Record<string, unknown>>;
@@ -15,6 +17,7 @@ export function ExoClickNativeAd({ className = "", zoneId = "6037222" }: ExoClic
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     // Dynamically load magsrv ad-provider script if not already present
     let script = document.querySelector<HTMLScriptElement>(
       'script[src="https://a.magsrv.com/ad-provider.js"]',
@@ -37,6 +40,7 @@ export function ExoClickNativeAd({ className = "", zoneId = "6037222" }: ExoClic
     }
   }, [zoneId]);
 
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div
       ref={containerRef}
