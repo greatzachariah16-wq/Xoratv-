@@ -13,8 +13,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
-import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
-import { HilltopInPagePushAd } from "@/components/ads/HilltopInPagePushAd";
 
 function NotFoundComponent() {
   return (
@@ -104,9 +102,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
         content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5",
       },
-      { name: "hilltopads-site-verification", content: "4b48232c4ffdb43fa729a37bf8008b73b97009f5" },
-      { name: "exoclick-site-verification", content: "89cfa11e5cd3529d8d2fee19321fc484" },
-      { name: "89cfa11e5cd3529d8d2fee19321fc484", content: "89cfa11e5cd3529d8d2fee19321fc484" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -119,19 +114,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
-    ],
-    scripts: [
-      {
-        id: "adcash-library",
-        src: "https://acscdn.com/script/aclib.js",
-        async: true,
-      },
-      {
-        id: "hilltop-inpage-push-script",
-        src: "//untimely-hello.com/bIXqV.std/G/lf0qYuWKcK/-exmD9lupZ/UolXkrPmTzcv0/NQTHQ/0VMyTYMGtUN/z/Qy1uNaDCQ_xMNawR",
-        async: true,
-        referrerPolicy: "no-referrer-when-downgrade",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -182,8 +164,6 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" />
-        <LargeBannerPopupAd />
-        <HilltopInPagePushAd />
       </AuthProvider>
     </QueryClientProvider>
   );
