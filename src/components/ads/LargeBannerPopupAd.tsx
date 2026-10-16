@@ -3,6 +3,8 @@ import { X, Sparkles, ExternalLink } from "lucide-react";
 import type { Campaign, CampaignPlacement } from "@/lib/campaigns/types";
 import { cn } from "@/lib/utils";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 interface LargeBannerPopupAdProps {
   placement?: CampaignPlacement;
   delayMs?: number;
@@ -76,6 +78,7 @@ export function LargeBannerPopupAd({
 
   // Initial load
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     let active = true;
     void fetchAndShowAd(false);
     return () => {
@@ -85,6 +88,7 @@ export function LargeBannerPopupAd({
 
   // Dynamic trigger when triggerKey changes (e.g. landscape mode toggled on)
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (triggerKey !== undefined && triggerKey !== lastTriggerRef.current) {
       lastTriggerRef.current = triggerKey;
       if (triggerKey) {
@@ -128,6 +132,7 @@ export function LargeBannerPopupAd({
     handleDismiss();
   };
 
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       <div

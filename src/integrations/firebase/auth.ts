@@ -6,6 +6,8 @@ import {
   signInWithRedirect,
   getRedirectResult,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  reload,
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   type User as FirebaseUser,
@@ -205,92 +207,102 @@ export async function ensureProfileExists(
 }
 
 /**
- * Signs up a new user with Email and Password, automatically deriving username from email
- * (e.g. ericgreat668@gmail.com -> ericgreat) or using an optional custom handle.
+ * Creates an XoraTV profile with Firebase Auth credentials, sends email verification,
+ * and signs the new account out until the address is verified.
  */
 export async function signUpWithEmail(
   email: string,
   pass: string,
   username?: string,
+  firstName = "",
+  lastName = "",
 ): Promise<ProfileRecord> {
-  const cleanEmail = email.trim().toLowerCase();
-  const rawHandle = username?.trim() || extractUsernameFromEmail(cleanEmail);
-  let cleanUsername = normalizeUsername(rawHandle);
-  if (cleanUsername.length < 3) {
-    cleanUsername = extractUsernameFromEmail(cleanEmail);
-  }
-
-  // Pre-check handle availability in RTDB
-  const existing = await getProfileByUsername(cleanUsername);
-  if (existing) {
-    if (username && username.trim()) {
-      throw new Error(`Username @${cleanUsername} is already taken. Please choose another.`);
-    } else {
-      // If auto-derived username is taken, append unique random suffix
-      cleanUsername = `${cleanUsername.slice(0, 18)}_${Math.floor(100 + Math.random() * 900)}`;
-    }
-  }
-
-  // Save local account backup
-  const localAccount: LocalAccount = {
-    id: "user-" + Date.now(),
-    email: cleanEmail,
-    username: cleanUsername,
-    displayName: cleanUsername,
-    password: pass,
-    photoURL: null,
-    createdAt: new Date().toISOString(),
-  };
-  saveLocalAccount(localAccount);
-
   if (!isFirebaseConfigured()) {
+    throw new Error("Account registration is temporarily unavailable. Please try again shortly.");
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanUsername = normalizeUsername(username || "");
+  const cleanFirst = firstName.trim();
+  const cleanLast = lastName.trim();
+  if (!cleanFirst || !cleanLast) throw new Error("Please enter your first and last name.");
+  if (!/^[a-z0-9_]{3,24}$/.test(cleanUsername)) {
+    throw new Error("Username must be 3–24 characters using letters, numbers or underscores.");
+  }
+
+  const existing = await getProfileByUsername(cleanUsername);
+  if (existing) throw new Error("That username is already taken. Please choose another.");
+
+  const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+  const displayName = `${cleanFirst} ${cleanLast}`.trim();
+  try {
+    await updateProfile(cred.user, { displayName });
     const profileRecord: ProfileRecord = {
-      id: localAccount.id,
+      id: cred.user.uid,
       username: cleanUsername,
       email: cleanEmail,
-      display_name: cleanUsername,
+      first_name: cleanFirst,
+      last_name: cleanLast,
+      display_name: displayName,
       avatar_url:
+        cred.user.photoURL ||
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      bio: "Horror cinephile on Xora.",
+      bio: "",
       website: null,
       location: null,
       is_admin: false,
       created_at: new Date().toISOString(),
     };
-    localStorage.setItem(
-      "xora_demo_user",
-      JSON.stringify({
-        user: {
-          id: profileRecord.id,
-          email: profileRecord.email,
-          displayName: profileRecord.display_name,
-          photoURL: profileRecord.avatar_url,
-        },
-      }),
-    );
+    await setProfile(profileRecord);
+    await sendEmailVerification(cred.user);
+    // Keep unverified users out of the authenticated app until they confirm their inbox.
+    await firebaseSignOut(auth);
     return profileRecord;
+  } catch (error) {
+    // Do not leave a half-completed registration signed in.
+    await firebaseSignOut(auth).catch(() => {});
+    throw error;
   }
+}
 
-  const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-  await updateProfile(cred.user, { displayName: cleanUsername }).catch(() => {});
+/**
+ * Resends the verification email, or confirms the address after the user clicks its link.
+ * Password is used only for Firebase reauthentication and is never stored by XoraTV.
+ */
+export async function resendVerificationEmail(email: string, pass: string): Promise<void> {
+  if (!isFirebaseConfigured()) throw new Error("Email verification requires Firebase to be configured.");
+  const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), pass);
+  try {
+    await reload(credential.user);
+    if (credential.user.emailVerified) {
+      await firebaseSignOut(auth);
+      return;
+    }
+    await sendEmailVerification(credential.user);
+  } finally {
+    await firebaseSignOut(auth).catch(() => {});
+  }
+}
 
-  const profileRecord: ProfileRecord = {
-    id: cred.user.uid,
-    username: cleanUsername,
-    email: cleanEmail,
-    display_name: cleanUsername,
-    avatar_url:
-      cred.user.photoURL ||
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    bio: "Horror cinephile on Xora.",
-    website: null,
-    location: null,
-    is_admin: false,
-    created_at: new Date().toISOString(),
-  };
-
-  await setProfile(profileRecord);
-  return profileRecord;
+export async function confirmVerifiedEmailAndSignIn(
+  email: string,
+  username: string,
+  pass: string,
+): Promise<ProfileRecord> {
+  if (!isFirebaseConfigured()) throw new Error("Sign-in requires Firebase to be configured.");
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanUsername = normalizeUsername(username);
+  const profile = await getProfileByUsername(cleanUsername).catch(() => null);
+  if (!profile || !profile.email || profile.email.toLowerCase() !== cleanEmail) {
+    throw new Error("Those details don't match. Check your email and XoraTV username.");
+  }
+  const credential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+  await reload(credential.user);
+  if (!credential.user.emailVerified) {
+    await firebaseSignOut(auth);
+    throw new Error("Please verify your email before entering XoraTV. Check your inbox for the verification link.");
+  }
+  return ensureProfileExists(credential.user, cleanUsername);
 }
 
 /**
@@ -489,6 +501,10 @@ export async function checkRedirectAuthResult(): Promise<ProfileRecord | null> {
   try {
     const result = await getRedirectResult(auth);
     if (result && result.user) {
+      if (result.user.email && !result.user.emailVerified) {
+        await firebaseSignOut(auth).catch(() => {});
+        throw new Error("Please verify your email before entering XoraTV. Check your inbox for the verification link.");
+      }
       return await ensureProfileExists(result.user);
     }
   } catch (err) {

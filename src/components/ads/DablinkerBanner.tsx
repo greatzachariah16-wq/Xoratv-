@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 const DABLINKER_SCRIPT_ID = "dablinker-banner-3na3be";
 const DABLINKER_REF = "bnr45f2f08N2xKdf1H";
 
@@ -167,9 +169,11 @@ export function DablinkerBanner({ className = "" }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     void ensureDablinkerScript();
   }, []);
 
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div
       ref={containerRef}

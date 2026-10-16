@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 interface AdsterraBannerAdProps {
   className?: string;
   adKey?: string;
@@ -27,11 +29,13 @@ export function AdsterraBannerAd({
 
   // Mount guard for SSR to avoid hydration mismatch
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     setIsMounted(true);
   }, []);
 
   // Normal 30-second refresh timer
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (!isMounted) return;
 
     const REFRESH_INTERVAL_MS = 30000; // Normal 30s refresh
@@ -88,6 +92,7 @@ export function AdsterraBannerAd({
 </body>
 </html>`;
 
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div
       ref={containerRef}

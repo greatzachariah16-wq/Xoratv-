@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { Campaign, CampaignPlacement } from "@/lib/campaigns/types";
 import { DeepShadowAdShell } from "./DeepShadowAdShell";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 interface XoraInHouseAdProps {
   placement?: CampaignPlacement;
   variant?: "card" | "banner" | "compact";
@@ -19,6 +21,7 @@ export function XoraInHouseAd({
   const [loading, setLoading] = useState(!initialCampaign);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     if (initialCampaign) {
       setCampaign(initialCampaign);
       return;
@@ -67,5 +70,6 @@ export function XoraInHouseAd({
     return null;
   }
 
+  if (PREVIEW_NO_ADS) return null;
   return <DeepShadowAdShell campaign={campaign} variant={variant} className={className} />;
 }

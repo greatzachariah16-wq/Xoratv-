@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
+
 const AD_KEY = "8e898239b8c0642683edb14583752967";
 const AD_SCRIPT = `https://www.highrevenueformat.com/${AD_KEY}/invoke.js`;
 
@@ -9,6 +11,7 @@ export function AdsterraBanner({ className = "" }: { className?: string }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     const slot = slotRef.current;
     if (!slot || inView) return;
 
@@ -27,6 +30,7 @@ export function AdsterraBanner({ className = "" }: { className?: string }) {
   }, [inView]);
 
   useEffect(() => {
+    if (PREVIEW_NO_ADS) return;
     const slot = slotRef.current;
     if (!slot || !inView || loaded) return;
 
@@ -54,6 +58,7 @@ export function AdsterraBanner({ className = "" }: { className?: string }) {
     };
   }, [inView, loaded]);
 
+  if (PREVIEW_NO_ADS) return null;
   return (
     <div className={`my-4 flex w-full justify-center ${className}`}>
       <div
