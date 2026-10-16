@@ -186,7 +186,7 @@ function AuthPage() {
         {screen === "forgot" && <ForgotPassword onScreen={setScreen} setPendingEmail={setResetEmail} />}
         {screen === "forgot-sent" && <ForgotSent email={resetEmail} onScreen={setScreen} />}
       </div></div>
-      <div className="mx-auto w-full max-w-[440px]"><p className="mb-2 text-center text-[11px] uppercase tracking-wider text-muted-foreground">Quick access</p><div className="flex flex-wrap justify-center gap-1.5">{([{id:"signup",label:"Sign up"},{id:"verify",label:"Verify email"},{id:"signin",label:"Sign in"},{id:"forgot",label:"Forgot password"},{id:"forgot-sent",label:"Reset sent"}] as {id:Screen;label:string}[]).map(item=><button key={item.id} type="button" onClick={()=>setScreen(item.id)} className={"rounded-full px-3 py-1.5 text-xs font-semibold transition " + (screen===item.id ? "bg-ink text-white" : "bg-surface/80 text-muted-foreground hover:text-foreground")}>{item.label}</button>)}</div></div>
+
     </main>
   </div>;
 }
