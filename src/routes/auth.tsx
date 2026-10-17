@@ -2,8 +2,31 @@ import { useEffect, useState, type ReactNode, type InputHTMLAttributes } from "r
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, AtSign, Check, Eye, EyeOff, Info, Loader2, Lock, Mail, Play, RotateCw, ShieldCheck, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
-import { isFirebaseConfigured } from "@/integrations/firebase/config";
-import { checkRedirectAuthResult, confirmVerifiedEmailAndSignIn, resendVerificationEmail, sendPasswordReset, signInWithGoogle, mapAuthError, signOutCurrentUser, signUpWithEmail } from "@/integrations/firebase/auth";
+import { customSignUp, customSignIn, customSignOut, customVerifyEmail, customResendVerification, customRequestPasswordReset } from "@/integrations/custom-auth";
+function mapAuthError(error: unknown): string { return error instanceof Error ? error.message : "Authentication failed. Please try again."; }
+async function signUpWithEmail(email: string, password: string, username: string, first: string, last: string) {
+  return customSignUp(email,password,username,first,last);
+}
+async function confirmVerifiedEmailAndSignIn(email: string, username: string, password: string) {
+  void username;
+  return customSignIn(email,password);
+}
+async function resendVerificationEmail(email: string, _password: string) { await customResendVerification(email); }
+async function sendPasswordReset(email: string) { await customRequestPasswordReset(email); }
+async function signOutCurrentUser() { await customSignOut(); }
+async function checkRedirectAuthResult() {
+  const params = new URLSearchParams(window.location.search);
+  const verify = params.get("verify");
+  if (verify) {
+    try {
+      await customVerifyEmail(verify);
+      window.history.replaceState({}, "", "/auth");
+      toast.success("Email verified successfully. You can now sign in.");
+    } catch (error) { throw error; }
+  }
+  return null;
+}
+async function signInWithGoogle(): Promise<never> { throw new Error("Google sign-in is not available while XoraTV moves to its independent authentication system."); }
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/auth")({
@@ -46,7 +69,7 @@ function Notice({ tone = "info", children }: { tone?: "info" | "success" | "erro
   return <div className={"flex gap-2.5 rounded-xl px-3.5 py-3 text-[13px] leading-relaxed " + styles[tone]}><Icon className="mt-0.5 h-4 w-4 shrink-0" /><div>{children}</div></div>;
 }
 function SecurityNote() {
-  return <div className="mt-6 flex gap-2.5 rounded-xl border border-border bg-secondary/60 px-3.5 py-3 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p>Your password is securely handled by <b className="text-foreground">Firebase Authentication</b>. Your XoraTV username is stored separately as your public profile handle.</p></div>;
+  return <div className="mt-6 flex gap-2.5 rounded-xl border border-border bg-secondary/60 px-3.5 py-3 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p>Your password is securely hashed by XoraTV. Your profile is stored separately from your sign-in credentials.</p></div>;
 }
 function ScreenHeader({ title, subtitle, back }: { title: string; subtitle: ReactNode; back?: () => void }) {
   return <div className="mb-6">{back && <button type="button" onClick={back} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back</button>}<h1 className="text-2xl font-semibold text-foreground sm:text-[28px]">{title}</h1><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{subtitle}</p></div>;
@@ -74,9 +97,9 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setSubmitted(true);
     if (Object.values(errors).some(Boolean)) return;
-    if (!isFirebaseConfigured()) { toast.error("Account registration is temporarily unavailable. Please try again shortly."); return; }
+    
     setBusy(true);
-    try { await signUpWithEmail(form.email, form.password, form.username, form.first, form.last); setPending(form.email.trim().toLowerCase(), form.password, form.username.trim().toLowerCase()); onScreen("verify"); }
+    try { const result = await signUpWithEmail(form.email, form.password, form.username, form.first, form.last); setPending(form.email.trim().toLowerCase(), form.password, form.username.trim().toLowerCase()); if (!result.verificationEmailSent) toast.warning(result.message); else toast.success(result.message); onScreen("verify"); }
     catch (err) { toast.error(mapAuthError(err)); }
     finally { setBusy(false); }
   };
