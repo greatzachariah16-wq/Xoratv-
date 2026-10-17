@@ -88,12 +88,12 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
     last: form.last.trim() ? "" : "Enter your last name",
     username: /^[a-z0-9_]{3,24}$/i.test(form.username.trim()) ? "" : "Use 3–24 letters, numbers or underscores",
     email: emailOk(form.email.trim()) ? "" : "Enter a valid email address",
-    password: form.password.length >= 8 ? "" : "Use at least 8 characters",
+    password: form.password.length >= 10 ? "" : "Use at least 10 characters",
     confirm: form.confirm && form.confirm === form.password ? "" : "Passwords don't match",
     terms: terms ? "" : "Please accept the terms to continue",
   };
   const error = (key: keyof typeof errors) => submitted ? errors[key] : "";
-  const strength = [form.password.length >= 8, /[A-Z]/.test(form.password), /\d/.test(form.password), /[^A-Za-z0-9]/.test(form.password)].filter(Boolean).length;
+  const strength = [form.password.length >= 10, /[A-Z]/.test(form.password), /\d/.test(form.password), /[^A-Za-z0-9]/.test(form.password)].filter(Boolean).length;
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setSubmitted(true);
     if (Object.values(errors).some(Boolean)) return;
@@ -109,7 +109,7 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
       <div className="grid grid-cols-2 gap-3"><Field label="First name" placeholder="Amara" value={form.first} onChange={update("first")} error={error("first")} autoComplete="given-name" /><Field label="Last name" placeholder="Okafor" value={form.last} onChange={update("last")} error={error("last")} autoComplete="family-name" /></div>
       <Field label="Username" icon={<AtSign className="h-4 w-4" />} placeholder="amara_creates" value={form.username} onChange={update("username")} error={error("username")} hint="Your public XoraTV handle. Letters, numbers and underscores." autoComplete="username" />
       <Field label="Email" type="email" icon={<Mail className="h-4 w-4" />} placeholder="you@example.com" value={form.email} onChange={update("email")} error={error("email")} autoComplete="email" />
-      <div><Field label="Password" type={showPassword ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="At least 8 characters" value={form.password} onChange={update("password")} error={error("password")} right={<PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />} autoComplete="new-password" />{form.password && <div className="mt-2 flex gap-1">{[0,1,2,3].map(item => <span key={item} className={"h-1 flex-1 rounded-full " + (item < strength ? (strength >= 3 ? "bg-success" : "bg-primary") : "bg-border")} />)}</div>}</div>
+      <div><Field label="Password" type={showPassword ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="At least 10 characters" value={form.password} onChange={update("password")} error={error("password")} right={<PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />} autoComplete="new-password" />{form.password && <div className="mt-2 flex gap-1">{[0,1,2,3].map(item => <span key={item} className={"h-1 flex-1 rounded-full " + (item < strength ? (strength >= 3 ? "bg-success" : "bg-primary") : "bg-border")} />)}</div>}</div>
       <Field label="Confirm password" type={showConfirm ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="Re-enter password" value={form.confirm} onChange={update("confirm")} error={error("confirm")} right={<PasswordToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />} autoComplete="new-password" />
       <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-muted-foreground"><input type="checkbox" checked={terms} onChange={event => setTerms(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" /><span>I agree to XoraTV's <Link to="/privacy" className="font-medium text-foreground underline underline-offset-2">Terms</Link> and <Link to="/privacy" className="font-medium text-foreground underline underline-offset-2">Privacy Policy</Link>.</span></label>
       {error("terms") && <p className="-mt-2 text-xs text-destructive">{error("terms")}</p>}
@@ -192,7 +192,7 @@ function AuthPage() {
   }, [navigate]);
   const google = async () => {
     try {
-      if (!isFirebaseConfigured()) throw new Error("Google sign-in is temporarily unavailable.");
+      
       const result = await signInWithGoogle();
       if (result.redirected) return;
       if (result.credential?.user && !result.credential.user.emailVerified) { await signOutCurrentUser(); throw new Error("Please verify your email before entering XoraTV."); }
