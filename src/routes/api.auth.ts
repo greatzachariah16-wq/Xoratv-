@@ -50,7 +50,7 @@ async function passwordMatches(password: string, stored: string) {
 function publicUser(account: Row, profile: Row) {
   return {
     id: account.id, email: account.email, emailVerified: Boolean(account.email_verified_at),
-    displayName: profile.display_name, photoURL: profile.avatar_url, profile
+    displayName: profile.display_name, photoURL: profile.avatar_url, profile: { ...profile, email: account.email }
   };
 }
 function validEmail(email: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
