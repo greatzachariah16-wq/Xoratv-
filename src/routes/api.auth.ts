@@ -136,6 +136,18 @@ export const Route = createFileRoute("/api/auth")({
           throw error;
         }
       }
+      if (action === "resend_verification") {
+        const email = String(body.email||"").trim().toLowerCase();
+        if (validEmail(email)) {
+          const accounts = await db(`xora_auth_accounts?email=eq.${encodeURIComponent(email)}&email_verified_at=is.null&disabled_at=is.null&select=id,email`);
+          if (accounts[0]) {
+            const raw = await issueToken(accounts[0].id,"verify_email",VERIFY_MS);
+            const appUrl = (process.env.PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/,"");
+            await sendEmail(email,"Verify your XoraTV email",`<p>Verify your XoraTV email within 24 hours:</p><p><a href="${appUrl}/auth?verify=${encodeURIComponent(raw)}">Verify my email</a></p>`);
+          }
+        }
+        return json({ok:true,message:"If that account is awaiting verification, a new email will be sent."});
+      }
       if (action === "verify_email") {
         const raw = String(body.token||"");
         if (raw.length < 20) return json({ok:false,error:"Invalid or expired verification link."},400);
