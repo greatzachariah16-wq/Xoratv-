@@ -2,8 +2,29 @@ import { useEffect, useState, type ReactNode, type InputHTMLAttributes } from "r
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, AtSign, Check, Eye, EyeOff, Info, Loader2, Lock, Mail, Play, RotateCw, ShieldCheck, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
-import { isFirebaseConfigured } from "@/integrations/firebase/config";
-import { checkRedirectAuthResult, confirmVerifiedEmailAndSignIn, resendVerificationEmail, sendPasswordReset, signInWithGoogle, mapAuthError, signOutCurrentUser, signUpWithEmail } from "@/integrations/firebase/auth";
+import { customSignUp, customSignIn, customVerifyEmail, customResendVerification, customRequestPasswordReset } from "@/integrations/custom-auth";
+function mapAuthError(error: unknown): string { return error instanceof Error ? error.message : "Authentication failed. Please try again."; }
+async function signUpWithEmail(email: string, password: string, username: string, first: string, last: string) {
+  return customSignUp(email,password,username,first,last);
+}
+async function confirmVerifiedEmailAndSignIn(email: string, username: string, password: string) {
+  void username;
+  return customSignIn(email,password);
+}
+async function resendVerificationEmail(email: string, _password: string) { await customResendVerification(email); }
+async function sendPasswordReset(email: string) { await customRequestPasswordReset(email); }
+async function checkRedirectAuthResult() {
+  const params = new URLSearchParams(window.location.search);
+  const verify = params.get("verify");
+  if (verify) {
+    try {
+      await customVerifyEmail(verify);
+      window.history.replaceState({}, "", "/auth");
+      toast.success("Email verified successfully. You can now sign in.");
+    } catch (error) { throw error; }
+  }
+  return null;
+}
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/auth")({
@@ -46,7 +67,7 @@ function Notice({ tone = "info", children }: { tone?: "info" | "success" | "erro
   return <div className={"flex gap-2.5 rounded-xl px-3.5 py-3 text-[13px] leading-relaxed " + styles[tone]}><Icon className="mt-0.5 h-4 w-4 shrink-0" /><div>{children}</div></div>;
 }
 function SecurityNote() {
-  return <div className="mt-6 flex gap-2.5 rounded-xl border border-border bg-secondary/60 px-3.5 py-3 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p>Your password is securely handled by <b className="text-foreground">Firebase Authentication</b>. Your XoraTV username is stored separately as your public profile handle.</p></div>;
+  return <div className="mt-6 flex gap-2.5 rounded-xl border border-border bg-secondary/60 px-3.5 py-3 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p>Your password is securely hashed by XoraTV. Your profile is stored separately from your sign-in credentials.</p></div>;
 }
 function ScreenHeader({ title, subtitle, back }: { title: string; subtitle: ReactNode; back?: () => void }) {
   return <div className="mb-6">{back && <button type="button" onClick={back} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back</button>}<h1 className="text-2xl font-semibold text-foreground sm:text-[28px]">{title}</h1><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{subtitle}</p></div>;
@@ -65,18 +86,18 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
     last: form.last.trim() ? "" : "Enter your last name",
     username: /^[a-z0-9_]{3,24}$/i.test(form.username.trim()) ? "" : "Use 3–24 letters, numbers or underscores",
     email: emailOk(form.email.trim()) ? "" : "Enter a valid email address",
-    password: form.password.length >= 8 ? "" : "Use at least 8 characters",
+    password: form.password.length >= 10 ? "" : "Use at least 10 characters",
     confirm: form.confirm && form.confirm === form.password ? "" : "Passwords don't match",
     terms: terms ? "" : "Please accept the terms to continue",
   };
   const error = (key: keyof typeof errors) => submitted ? errors[key] : "";
-  const strength = [form.password.length >= 8, /[A-Z]/.test(form.password), /\d/.test(form.password), /[^A-Za-z0-9]/.test(form.password)].filter(Boolean).length;
+  const strength = [form.password.length >= 10, /[A-Z]/.test(form.password), /\d/.test(form.password), /[^A-Za-z0-9]/.test(form.password)].filter(Boolean).length;
   const submit = async (event: React.FormEvent) => {
     event.preventDefault(); setSubmitted(true);
     if (Object.values(errors).some(Boolean)) return;
-    if (!isFirebaseConfigured()) { toast.error("Account registration is temporarily unavailable. Please try again shortly."); return; }
+    
     setBusy(true);
-    try { await signUpWithEmail(form.email, form.password, form.username, form.first, form.last); setPending(form.email.trim().toLowerCase(), form.password, form.username.trim().toLowerCase()); onScreen("verify"); }
+    try { const result = await signUpWithEmail(form.email, form.password, form.username, form.first, form.last); setPending(form.email.trim().toLowerCase(), form.password, form.username.trim().toLowerCase()); if (!result.verificationEmailSent) toast.warning(result.message); else toast.success(result.message); onScreen("verify"); }
     catch (err) { toast.error(mapAuthError(err)); }
     finally { setBusy(false); }
   };
@@ -86,7 +107,7 @@ function SignUp({ onScreen, setPending }: { onScreen: (screen: Screen) => void; 
       <div className="grid grid-cols-2 gap-3"><Field label="First name" placeholder="Amara" value={form.first} onChange={update("first")} error={error("first")} autoComplete="given-name" /><Field label="Last name" placeholder="Okafor" value={form.last} onChange={update("last")} error={error("last")} autoComplete="family-name" /></div>
       <Field label="Username" icon={<AtSign className="h-4 w-4" />} placeholder="amara_creates" value={form.username} onChange={update("username")} error={error("username")} hint="Your public XoraTV handle. Letters, numbers and underscores." autoComplete="username" />
       <Field label="Email" type="email" icon={<Mail className="h-4 w-4" />} placeholder="you@example.com" value={form.email} onChange={update("email")} error={error("email")} autoComplete="email" />
-      <div><Field label="Password" type={showPassword ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="At least 8 characters" value={form.password} onChange={update("password")} error={error("password")} right={<PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />} autoComplete="new-password" />{form.password && <div className="mt-2 flex gap-1">{[0,1,2,3].map(item => <span key={item} className={"h-1 flex-1 rounded-full " + (item < strength ? (strength >= 3 ? "bg-success" : "bg-primary") : "bg-border")} />)}</div>}</div>
+      <div><Field label="Password" type={showPassword ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="At least 10 characters" value={form.password} onChange={update("password")} error={error("password")} right={<PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />} autoComplete="new-password" />{form.password && <div className="mt-2 flex gap-1">{[0,1,2,3].map(item => <span key={item} className={"h-1 flex-1 rounded-full " + (item < strength ? (strength >= 3 ? "bg-success" : "bg-primary") : "bg-border")} />)}</div>}</div>
       <Field label="Confirm password" type={showConfirm ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="Re-enter password" value={form.confirm} onChange={update("confirm")} error={error("confirm")} right={<PasswordToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />} autoComplete="new-password" />
       <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-muted-foreground"><input type="checkbox" checked={terms} onChange={event => setTerms(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" /><span>I agree to XoraTV's <Link to="/privacy" className="font-medium text-foreground underline underline-offset-2">Terms</Link> and <Link to="/privacy" className="font-medium text-foreground underline underline-offset-2">Privacy Policy</Link>.</span></label>
       {error("terms") && <p className="-mt-2 text-xs text-destructive">{error("terms")}</p>}
@@ -138,7 +159,7 @@ function SignIn({ onScreen, onGoogle }: { onScreen: (screen: Screen) => void; on
     <div className="rounded-2xl border border-clay/50 bg-accent/50 p-3"><Field label="XoraTV username" icon={<UserRound className="h-4 w-4" />} placeholder="amara_creates" value={form.username} onChange={update("username")} error={error("username")} hint="Your profile handle — separate from your password." autoComplete="username" /></div>
     <div><div className="mb-1.5 flex items-center justify-between"><span className="text-[13px] font-semibold">Password</span><button type="button" onClick={() => onScreen("forgot")} className="text-xs font-semibold text-primary hover:underline">Forgot password?</button></div><Field label="" aria-label="Password" type={showPassword ? "text" : "password"} icon={<Lock className="h-4 w-4" />} placeholder="Your password" value={form.password} onChange={update("password")} error={error("password")} right={<PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />} autoComplete="current-password" /></div>
     <PrimaryButton type="submit" busy={busy}>Sign in</PrimaryButton>
-  </form><div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div><button type="button" onClick={() => void onGoogle()} className="press flex h-11 w-full items-center justify-center rounded-xl border border-border bg-background text-sm font-semibold hover:bg-secondary">Continue with Google</button><SecurityNote /></div>;
+  </form><div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div><button type="button" disabled title="Google sign-in will be added after the independent email/password flow is verified." className="flex h-11 w-full cursor-not-allowed items-center justify-center rounded-xl border border-border bg-background text-sm font-semibold text-muted-foreground opacity-70">Google sign-in temporarily unavailable</button><SecurityNote /></div>;
 }
 
 function ForgotPassword({ onScreen, setPendingEmail }: { onScreen: (screen: Screen) => void; setPendingEmail: (email: string) => void }) {
@@ -167,22 +188,13 @@ function AuthPage() {
     checkRedirectAuthResult().then(profile => { if (mounted && profile) void navigate({ to: "/" }); }).catch(error => { if (mounted) toast.error(mapAuthError(error)); });
     return () => { mounted = false; };
   }, [navigate]);
-  const google = async () => {
-    try {
-      if (!isFirebaseConfigured()) throw new Error("Google sign-in is temporarily unavailable.");
-      const result = await signInWithGoogle();
-      if (result.redirected) return;
-      if (result.credential?.user && !result.credential.user.emailVerified) { await signOutCurrentUser(); throw new Error("Please verify your email before entering XoraTV."); }
-      toast.success("Signed in — welcome to XoraTV!"); void navigate({ to: "/" });
-    } catch (error) { toast.error(mapAuthError(error)); }
-  };
   return <div className="xora-auth-page min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
     <aside className="xora-auth-brand relative hidden overflow-hidden lg:block"><div className="xora-auth-glow xora-auth-glow-one" /><div className="xora-auth-glow xora-auth-glow-two" /><div className="relative flex h-full flex-col justify-between p-12 xl:p-16"><Brand light /><div className="max-w-md"><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Stories from everywhere</p><h2 className="text-4xl font-semibold leading-tight text-white xl:text-5xl">Watch, share and create the culture you love.</h2><p className="mt-5 text-base leading-relaxed text-white/70">Join a community of creators and viewers bringing stories, music and entertainment to the world.</p><div className="mt-8 flex items-center gap-3"><div className="flex -space-x-2">{["X","C","T","V"].map((letter,index)=><span key={letter} className="xora-auth-avatar grid h-8 w-8 place-items-center rounded-full border-2 border-ink text-xs font-semibold" style={{ opacity: 1 - index * .12 }}>{letter}</span>)}</div><span className="text-sm text-white/70">Your next favourite story starts here</span></div></div><p className="text-xs text-white/45">A little closer, every day.</p></div></aside>
     <main className="flex min-h-screen flex-col px-4 py-6 sm:px-8 lg:py-10"><div className="mx-auto flex w-full max-w-[440px] items-center justify-between lg:justify-end"><div className="lg:hidden"><Brand /></div><span className="xora-auth-pill rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Your XoraTV account</span></div>
       <div className="flex flex-1 items-center justify-center py-8"><div key={screen} className="xora-auth-card rise w-full max-w-[440px] rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
         {screen === "signup" && <SignUp onScreen={setScreen} setPending={(email,password,username)=>{setPendingEmail(email);setPendingPassword(password);setPendingUsername(username);}} />}
         {screen === "verify" && <VerifyEmail email={pendingEmail} username={pendingUsername} password={pendingPassword} onScreen={setScreen} />}
-        {screen === "signin" && <SignIn onScreen={setScreen} onGoogle={google} />}
+        {screen === "signin" && <SignIn onScreen={setScreen} />}
         {screen === "forgot" && <ForgotPassword onScreen={setScreen} setPendingEmail={setResetEmail} />}
         {screen === "forgot-sent" && <ForgotSent email={resetEmail} onScreen={setScreen} />}
       </div></div>
