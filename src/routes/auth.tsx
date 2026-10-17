@@ -26,7 +26,7 @@ async function checkRedirectAuthResult() {
   }
   return null;
 }
-async function signInWithGoogle(): Promise<never> { throw new Error("Google sign-in is not available while XoraTV moves to its independent authentication system."); }
+async function signInWithGoogle(): Promise<{ redirected?: boolean; credential?: { user?: { emailVerified: boolean } } }> { throw new Error("Google sign-in is not available while XoraTV moves to its independent authentication system."); }
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/auth")({
