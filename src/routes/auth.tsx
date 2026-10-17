@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode, type InputHTMLAttributes } from "r
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, AtSign, Check, Eye, EyeOff, Info, Loader2, Lock, Mail, Play, RotateCw, ShieldCheck, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
-import { customSignUp, customSignIn, customSignOut, customVerifyEmail, customResendVerification, customRequestPasswordReset } from "@/integrations/custom-auth";
+import { customSignUp, customSignIn, customVerifyEmail, customResendVerification, customRequestPasswordReset } from "@/integrations/custom-auth";
 function mapAuthError(error: unknown): string { return error instanceof Error ? error.message : "Authentication failed. Please try again."; }
 async function signUpWithEmail(email: string, password: string, username: string, first: string, last: string) {
   return customSignUp(email,password,username,first,last);
