@@ -13,7 +13,6 @@ async function confirmVerifiedEmailAndSignIn(email: string, username: string, pa
 }
 async function resendVerificationEmail(email: string, _password: string) { await customResendVerification(email); }
 async function sendPasswordReset(email: string) { await customRequestPasswordReset(email); }
-async function signOutCurrentUser() { await customSignOut(); }
 async function checkRedirectAuthResult() {
   const params = new URLSearchParams(window.location.search);
   const verify = params.get("verify");
@@ -26,7 +25,6 @@ async function checkRedirectAuthResult() {
   }
   return null;
 }
-async function signInWithGoogle(): Promise<{ redirected?: boolean; credential?: { user?: { emailVerified: boolean } } }> { throw new Error("Google sign-in is not available while XoraTV moves to its independent authentication system."); }
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/auth")({
@@ -190,22 +188,13 @@ function AuthPage() {
     checkRedirectAuthResult().then(profile => { if (mounted && profile) void navigate({ to: "/" }); }).catch(error => { if (mounted) toast.error(mapAuthError(error)); });
     return () => { mounted = false; };
   }, [navigate]);
-  const google = async () => {
-    try {
-      
-      const result = await signInWithGoogle();
-      if (result.redirected) return;
-      if (result.credential?.user && !result.credential.user.emailVerified) { await signOutCurrentUser(); throw new Error("Please verify your email before entering XoraTV."); }
-      toast.success("Signed in — welcome to XoraTV!"); void navigate({ to: "/" });
-    } catch (error) { toast.error(mapAuthError(error)); }
-  };
   return <div className="xora-auth-page min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
     <aside className="xora-auth-brand relative hidden overflow-hidden lg:block"><div className="xora-auth-glow xora-auth-glow-one" /><div className="xora-auth-glow xora-auth-glow-two" /><div className="relative flex h-full flex-col justify-between p-12 xl:p-16"><Brand light /><div className="max-w-md"><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Stories from everywhere</p><h2 className="text-4xl font-semibold leading-tight text-white xl:text-5xl">Watch, share and create the culture you love.</h2><p className="mt-5 text-base leading-relaxed text-white/70">Join a community of creators and viewers bringing stories, music and entertainment to the world.</p><div className="mt-8 flex items-center gap-3"><div className="flex -space-x-2">{["X","C","T","V"].map((letter,index)=><span key={letter} className="xora-auth-avatar grid h-8 w-8 place-items-center rounded-full border-2 border-ink text-xs font-semibold" style={{ opacity: 1 - index * .12 }}>{letter}</span>)}</div><span className="text-sm text-white/70">Your next favourite story starts here</span></div></div><p className="text-xs text-white/45">A little closer, every day.</p></div></aside>
     <main className="flex min-h-screen flex-col px-4 py-6 sm:px-8 lg:py-10"><div className="mx-auto flex w-full max-w-[440px] items-center justify-between lg:justify-end"><div className="lg:hidden"><Brand /></div><span className="xora-auth-pill rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Your XoraTV account</span></div>
       <div className="flex flex-1 items-center justify-center py-8"><div key={screen} className="xora-auth-card rise w-full max-w-[440px] rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
         {screen === "signup" && <SignUp onScreen={setScreen} setPending={(email,password,username)=>{setPendingEmail(email);setPendingPassword(password);setPendingUsername(username);}} />}
         {screen === "verify" && <VerifyEmail email={pendingEmail} username={pendingUsername} password={pendingPassword} onScreen={setScreen} />}
-        {screen === "signin" && <SignIn onScreen={setScreen} onGoogle={google} />}
+        {screen === "signin" && <SignIn onScreen={setScreen} />}
         {screen === "forgot" && <ForgotPassword onScreen={setScreen} setPendingEmail={setResetEmail} />}
         {screen === "forgot-sent" && <ForgotSent email={resetEmail} onScreen={setScreen} />}
       </div></div>
