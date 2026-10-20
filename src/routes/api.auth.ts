@@ -54,24 +54,6 @@ function publicUser(account: Row, profile: Row) {
 }
 function validEmail(email: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function cleanUsername(value: string) { return value.toLowerCase().trim(); }
-async function sendEmail(to: string, subject: string, html: string) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.AUTH_FROM_EMAIL?.trim();
-  if (!apiKey || !from) return false;
-  const response = await fetch("https://api.resend.com/emails", {
-    method:"POST", headers:{ Authorization:`Bearer ${apiKey}`, "Content-Type":"application/json" },
-    body:JSON.stringify({from,to:[to],subject,html}), signal:AbortSignal.timeout(10000)
-  });
-  if (!response.ok) throw new Error("Email delivery provider rejected the message.");
-  return true;
-}
-async function issueToken(userId: string, type: "verify_email"|"reset_password", ttl: number) {
-  const raw = token();
-  await db("xora_auth_tokens", {method:"POST", headers:{Prefer:"return=minimal"}, body:JSON.stringify({
-    user_id:userId, token_hash:hash(raw), token_type:type, expires_at:new Date(Date.now()+ttl).toISOString()
-  })});
-  return raw;
-}
 async function profileFor(userId: string) {
   const rows = await db(`xora_profiles?id=eq.${encodeURIComponent(userId)}&select=*`);
   return rows[0] || null;
