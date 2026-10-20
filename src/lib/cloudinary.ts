@@ -251,46 +251,14 @@ export async function uploadToCloudinary(
   const resourceType = options.resourceType || (isImage ? "image" : "video");
   const targetFolder = options.folder || (isImage ? "xora/posters" : defaultFolder);
 
-  // Videos are processed server-side with FFmpeg before reaching Cloudinary.
-  // Cloudinary remains the delivery/CDN layer; the original upload never becomes
-  // the playback source and no video binary is written to Supabase or MongoDB.
-  if (resourceType === "video") {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (options.creatorId) formData.append("creatorId", options.creatorId);
-    if (options.title) formData.append("title", options.title);
-    if (options.description) formData.append("description", options.description);
-
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/content/video-upload", true);
-      if (options.onProgress) {
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable && event.total > 0) {
-            options.onProgress?.(Math.min(99, Math.round((event.loaded / event.total) * 80)));
-          }
-        };
-      }
-      xhr.onload = () => {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (xhr.status >= 200 && xhr.status < 300 && data.ok) {
-            options.onProgress?.(100);
-            resolve(data);
-          } else reject(new Error(data.error || `Video processing failed with status ${xhr.status}`));
-        } catch { reject(new Error("Invalid video processing response.")); }
-      };
-      xhr.onerror = () => reject(new Error("Network error processing video."));
-      xhr.send(formData);
-    });
-  }
-
+  // Course media uploads go directly from the creator's phone to Cloudinary.
+  // This avoids proxy body limits/timeouts on Render and keeps media binaries off our app server.
   const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
 
   const formData = new FormData();
   formData.append("file", file);
 
-  if (uploadPreset) {
+  if (uploadPreset && !targetFolder.startsWith("xora/courses/")) {
     formData.append("upload_preset", uploadPreset);
     if (targetFolder) {
       formData.append("folder", targetFolder);
