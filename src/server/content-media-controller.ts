@@ -120,19 +120,25 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
     const cloudinary = await uploadToCloudinary(file, "xora/courses/videos");
     const id = `video_${Date.now()}_${crypto.randomBytes(5).toString("hex")}`;
 
-    await registerCloudinaryVideo({
-      id,
-      creatorId: userId,
-      title: typeof form.get("title") === "string" ? String(form.get("title")) : "",
-      description: typeof form.get("description") === "string" ? String(form.get("description")) : "",
-      cloudinaryPublicId: String(cloudinary.public_id),
-      cloudinaryUrl: String(cloudinary.secure_url),
-      durationSeconds: typeof cloudinary.duration === "number" ? Math.round(cloudinary.duration) : null,
-      originalBytes: file.size,
-      compressedBytes,
-      contentType: "video",
-      metadata: { sourceMimeType: file.type, compression: "source-preserved", cloudinaryFormat: cloudinary.format || "mp4" },
-    });
+    try {
+      await registerCloudinaryVideo({
+        id,
+        creatorId: userId,
+        title: typeof form.get("title") === "string" ? String(form.get("title")) : "",
+        description: typeof form.get("description") === "string" ? String(form.get("description")) : "",
+        cloudinaryPublicId: String(cloudinary.public_id),
+        cloudinaryUrl: String(cloudinary.secure_url),
+        durationSeconds: typeof cloudinary.duration === "number" ? Math.round(cloudinary.duration) : null,
+        originalBytes: file.size,
+        compressedBytes,
+        contentType: "video",
+        metadata: { sourceMimeType: file.type, compression: "source-preserved", cloudinaryFormat: cloudinary.format || "mp4" },
+      });
+    } catch (metadataError) {
+      // Firebase course metadata is saved when the creator publishes the course.
+      // Optional cross-store indexing must not make a successful Cloudinary upload appear to fail.
+      console.warn("[Course Upload] Cloudinary upload succeeded; optional content index write failed:", metadataError instanceof Error ? metadataError.message : "unknown error");
+    }
 
     return new Response(JSON.stringify({
       ok: true,
