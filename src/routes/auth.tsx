@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode, type InputHTMLAttributes } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, AtSign, Check, Eye, EyeOff, Info, Loader2, Lock, Mail, Play, RotateCw, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowLeft, AtSign, Check, Eye, EyeOff, Info, Loader2, Lock, Mail, Play, ShieldCheck, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { customSignUp, customSignIn, customRecoverWithCode } from "@/integrations/custom-auth";
 function mapAuthError(error: unknown): string { return error instanceof Error ? error.message : "Authentication failed. Please try again."; }
@@ -19,7 +19,6 @@ export const Route = createFileRoute("/auth")({
 
 type Screen = "signup" | "signin" | "forgot" | "recovery-code";
 const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-const maskEmail = (value: string) => {
   const parts = value.split("@");
   const name = parts[0] || "";
   return parts[1] ? name.slice(0, 1) + "•".repeat(Math.max(2, name.length - 1)) + "@" + parts[1] : value;
