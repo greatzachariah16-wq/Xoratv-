@@ -26,9 +26,6 @@ import {
   getUserLikedPosts,
   getFollowsForUser,
   toggleFollowRtdb,
-  getSubscriptionsForUser,
-  getSubscriberCountForCreator,
-  toggleSubscriptionRtdb,
   recordPostViewRtdb,
   incrementPostShareRtdb,
   getNotificationsForUser,
@@ -228,7 +225,7 @@ export async function fetchRankedFeed(
     let follows: string[] = [];
     if (userId) {
       if (typeof window !== "undefined" && isFirebaseConfigured()) {
-        follows = await getSubscriptionsForUser(userId).catch(() => []);
+        follows = await fetchSupabaseSubscriptions().catch(() => []);
       }
       if (follows.length === 0) {
         const userPrefix = `${userId}:`;
@@ -265,7 +262,7 @@ export async function fetchRankedFeed(
     if (typeof window !== "undefined" && isFirebaseConfigured()) {
       try {
         const [f, l] = await Promise.all([
-          getSubscriptionsForUser(userId).catch(() => []),
+          fetchSupabaseSubscriptions().catch(() => []),
           getUserLikedPosts(userId).catch(() => []),
         ]);
         follows = f;
@@ -424,12 +421,18 @@ export function profileQuery(username: string) {
           const profile = await getProfileByUsername(username);
           if (profile) {
             try {
-              const subscriberCount = await getSubscriberCountForCreator(profile.id);
-              return { ...profile, subscriber_count: subscriberCount };
+              const response = await fetch(`/api/subscriptions?creatorId=${encodeURIComponent(profile.id)}`, {
+                credentials: "same-origin",
+                cache: "no-store",
+              });
+              const result = await response.json() as { ok?: boolean; subscriberCount?: number };
+              if (response.ok && result.ok) {
+                return { ...profile, subscriber_count: result.subscriberCount ?? 0 };
+              }
             } catch (countError) {
-              console.warn("[RealtimeDB] Subscriber count note:", countError);
-              return profile;
+              console.warn("[Supabase] Subscriber count note:", countError);
             }
+            return profile;
           }
         } catch (err) {
           console.warn("[RealtimeDB] Profile query note:", err);
@@ -548,38 +551,41 @@ export function myLikesQuery(userId: string | null | undefined) {
   });
 }
 
+async function fetchSupabaseSubscriptions(): Promise<string[]> {
+  const response = await fetch("/api/subscriptions", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => null) as { ok?: boolean; subscriptions?: string[]; error?: string } | null;
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || "Could not load subscriptions.");
+  }
+  return Array.isArray(result.subscriptions) ? result.subscriptions : [];
+}
+
 export function mySubscriptionsQuery(userId: string | null | undefined) {
   return queryOptions({
     queryKey: ["my-subscriptions", userId],
     enabled: Boolean(userId),
     queryFn: async (): Promise<string[]> => {
       if (!userId) return [];
-      if (isFirebaseConfigured()) {
-        try {
-          const follows = await getSubscriptionsForUser(userId);
-          if (follows.length > 0) return follows;
-        } catch (err) {
-          console.warn("[RealtimeDB] Follows query fallback:", err);
-        }
-      }
-      const userPrefix = `${userId}:`;
-      const follows: string[] = [];
-      localFollows.forEach((entry) => {
-        if (entry.startsWith(userPrefix)) {
-          follows.push(entry.substring(userPrefix.length));
-        }
-      });
-      return follows;
+      return fetchSupabaseSubscriptions();
     },
   });
 }
 
 export async function toggleSubscription(targetId: string, userId: string, subscribed: boolean) {
   if (!userId || !targetId || userId === targetId) throw new Error("Invalid subscription");
-  const key = `${userId}:${targetId}`;
-  if (subscribed) localFollows.delete(key);
-  else localFollows.add(key);
-  if (isFirebaseConfigured()) await toggleSubscriptionRtdb(userId, targetId, subscribed);
+  const response = await fetch("/api/subscriptions", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ creatorId: targetId, action: subscribed ? "unsubscribe" : "subscribe" }),
+  });
+  const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || "Could not update subscription.");
+  }
 }
 
 export async function recordPostView(postId: string, userId?: string | null) {
