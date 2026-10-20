@@ -1,10 +1,11 @@
 /**
  * Cloudinary client upload and 240p delivery transformation helpers.
  *
- * Implements Option 1 (Cloudinary on upload):
- * - Direct unsigned upload to Cloudinary (POST https://api.cloudinary.com/v1_1/<cloud_name>/video/upload)
- * - Automatic URL transformation to ~240p delivery (h_240,c_scale,q_auto:low,f_mp4)
- * - Retains public_id in metadata for rebuilding delivery URLs.
+ * Uploads media directly from the browser to Cloudinary.
+ * - Course folders always use a server-generated signature and require an active X Channel.
+ * - Other folders can use the configured unsigned preset or signed upload.
+ * - Video URLs are transformed to a bandwidth-conscious delivery rendition.
+ * - Retains public_id for rebuilding delivery URLs.
  */
 
 export interface CloudinaryConfig {
