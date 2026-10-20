@@ -60,7 +60,7 @@ async function requireMember(roomId: string, uid: string) {
   if (!rows.length) throw Object.assign(new Error("You are not a member of this chat."), { status: 403 });
 }
 function roomIdForPair(a: string, b: string) {
-  return `dm_${[a,b].sort().map((part) => part.replace(/[.#$\\[\\]\\/]/g, "_")).join("__")}`;
+  return `dm_${[a,b].sort().map((part) => part.replace(/[^a-zA-Z0-9_-]/g, "_")).join("__")}`;
 }
 
 export const Route = createFileRoute("/api/chat")({
