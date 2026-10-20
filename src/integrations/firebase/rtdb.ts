@@ -238,14 +238,21 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
   }
 
   const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
-  const postIds = Object.keys(feedMap).filter((id) => {
-    const entry = feedMap[id];
-    return entry.status === "published" && entry.approval_status === "approved";
-  });
+  // Build the initial feed from a small, relevant slice instead of fetching
+  // every indexed post before the first screen can render. Further feed
+  // pagination can be added separately without blocking this first load.
+  const postIds = Object.entries(feedMap)
+    .filter(([, entry]) => entry.status === "published" && entry.approval_status === "approved")
+    .sort(([, a], [, b]) => {
+      const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (b.created_at || "").localeCompare(a.created_at || "");
+    })
+    .slice(0, 24)
+    .map(([id]) => id);
 
-  // Avoid downloading the entire /posts catalogue for every feed request.
-  // Also avoid firing an unbounded request burst on mobile connections: read
-  // only indexed post records in small concurrent batches.
+  // Keep requests bounded for mobile networks. At most 24 post records are
+  // read for this feed request, in batches of eight.
   const posts: PostRecord[] = [];
   const batchSize = 8;
   for (let start = 0; start < postIds.length; start += batchSize) {
