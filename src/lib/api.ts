@@ -27,6 +27,7 @@ import {
   getFollowsForUser,
   toggleFollowRtdb,
   getSubscriptionsForUser,
+  getSubscriberCountForCreator,
   toggleSubscriptionRtdb,
   recordPostViewRtdb,
   incrementPostShareRtdb,
@@ -421,7 +422,15 @@ export function profileQuery(username: string) {
       if (isFirebaseConfigured()) {
         try {
           const profile = await getProfileByUsername(username);
-          if (profile) return profile;
+          if (profile) {
+            try {
+              const subscriberCount = await getSubscriberCountForCreator(profile.id);
+              return { ...profile, subscriber_count: subscriberCount };
+            } catch (countError) {
+              console.warn("[RealtimeDB] Subscriber count note:", countError);
+              return profile;
+            }
+          }
         } catch (err) {
           console.warn("[RealtimeDB] Profile query note:", err);
         }

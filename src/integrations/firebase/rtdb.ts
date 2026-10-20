@@ -325,23 +325,31 @@ export async function getSubscriptionsForUser(uid: string): Promise<string[]> {
   return Object.keys(snap.val() || {});
 }
 
+/** Derive the public subscriber total from the actual subscriber index, not a profile write. */
+export async function getSubscriberCountForCreator(uid: string): Promise<number> {
+  const snap = await get(ref(rtdb, `creatorSubscribers/${pathSafe(uid)}`));
+  if (!snap.exists()) return 0;
+  return Object.keys(snap.val() || {}).length;
+}
+
 export async function toggleSubscriptionRtdb(subscriberId: string, creatorId: string, subscribed: boolean): Promise<void> {
   const safeSubscriber = pathSafe(subscriberId);
   const safeCreator = pathSafe(creatorId);
-  const subscriptionRef = ref(rtdb, `subscriptions/${safeSubscriber}/${safeCreator}`);
-  const creatorSubscriberRef = ref(rtdb, `creatorSubscribers/${safeCreator}/${safeSubscriber}`);
-  const creatorRef = ref(rtdb, `profiles/${safeCreator}`);
+  if (safeSubscriber === safeCreator) throw new Error("You cannot subscribe to your own profile");
+  const subscriptionPath = `subscriptions/${safeSubscriber}/${safeCreator}`;
+  const creatorSubscriberPath = `creatorSubscribers/${safeCreator}/${safeSubscriber}`;
+  const subscriptionRef = ref(rtdb, subscriptionPath);
   if (subscribed) {
-    await remove(subscriptionRef);
-    await remove(creatorSubscriberRef);
-    await runTransaction(creatorRef, (current) => current ? { ...current, subscriber_count: Math.max(0, Number(current.subscriber_count || 0) - 1) } : current);
+    // A single multi-location update keeps both sides of the relationship in sync.
+    await update(ref(rtdb), { [subscriptionPath]: null, [creatorSubscriberPath]: null });
   } else {
     const existing = await get(subscriptionRef);
     if (existing.exists()) return;
     const now = new Date().toISOString();
-    await set(subscriptionRef, { created_at: now });
-    await set(creatorSubscriberRef, { created_at: now });
-    await runTransaction(creatorRef, (current) => current ? { ...current, subscriber_count: Number(current.subscriber_count || 0) + 1 } : current);
+    await update(ref(rtdb), {
+      [subscriptionPath]: { created_at: now },
+      [creatorSubscriberPath]: { created_at: now },
+    });
   }
 }
 

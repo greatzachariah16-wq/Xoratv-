@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Radio, Search, RefreshCw, Clock3 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -53,6 +53,7 @@ async function loadChannels(query: string): Promise<Channel[]> {
 
 function LiveTvPage() {
   const { channel: requestedChannel } = Route.useSearch();
+  const navigate = useNavigate({ from: "/tv" });
   const [search, setSearch] = useState("");
 
   const query = useQuery({
@@ -203,8 +204,7 @@ function LiveTvPage() {
               key={channel.id}
               type="button"
               onClick={() => {
-                window.history.replaceState({}, "", `/tv?channel=${encodeURIComponent(channel.id)}`);
-                window.dispatchEvent(new PopStateEvent("popstate"));
+                void navigate({ search: { channel: channel.id }, replace: true });
               }}
               className={`overflow-hidden rounded-2xl border bg-card text-left transition hover:-translate-y-0.5 hover:border-primary/50 ${selected?.id === channel.id ? "border-primary shadow-md" : "border-border/60"}`}
             >
