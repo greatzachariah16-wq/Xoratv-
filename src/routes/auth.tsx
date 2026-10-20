@@ -19,10 +19,6 @@ export const Route = createFileRoute("/auth")({
 
 type Screen = "signup" | "signin" | "forgot" | "recovery-code";
 const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  const parts = value.split("@");
-  const name = parts[0] || "";
-  return parts[1] ? name.slice(0, 1) + "•".repeat(Math.max(2, name.length - 1)) + "@" + parts[1] : value;
-};
 
 function Brand({ light = false }: { light?: boolean }) {
   return <div className="flex items-center gap-2.5"><div className="xora-auth-mark grid h-10 w-10 place-items-center rounded-xl shadow-card"><Play className="h-4 w-4 translate-x-px fill-current" /></div><span className={"font-display text-xl font-bold tracking-tight " + (light ? "text-white" : "text-foreground")}>Xora<span className="text-primary">TV</span></span></div>;
