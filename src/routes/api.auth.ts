@@ -7,13 +7,12 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.
 const DB_KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const COOKIE = "xora_session";
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
-const VERIFY_MS = 24 * 60 * 60 * 1000;
-const RESET_MS = 60 * 60 * 1000;
 const AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
 
 type Row = Record<string, any>;
 function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
 function token() { return randomBytes(32).toString("base64url"); }
+function recoveryCode() { return `XORA-${randomBytes(3).toString("hex").toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`; }
 function cookie(value: string, maxAge: number) {
   return `${COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
@@ -49,7 +48,7 @@ async function passwordMatches(password: string, stored: string) {
 }
 function publicUser(account: Row, profile: Row) {
   return {
-    id: account.id, email: account.email, emailVerified: Boolean(account.email_verified_at),
+    id: account.id, email: account.email, emailVerified: true,
     displayName: profile.display_name, photoURL: profile.avatar_url, profile: { ...profile, email: account.email }
   };
 }
@@ -83,7 +82,7 @@ async function current(request: Request) {
   const sessions = await db(`xora_auth_sessions?token_hash=eq.${hash(decodeURIComponent(raw))}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=user_id`);
   if (!sessions[0]) return null;
   const accounts = await db(`xora_auth_accounts?id=eq.${encodeURIComponent(sessions[0].user_id)}&disabled_at=is.null&select=id,email,email_verified_at`);
-  if (!accounts[0] || !accounts[0].email_verified_at) return null;
+  if (!accounts[0]) return null;
   const profile = await profileFor(accounts[0].id);
   return profile ? {account:accounts[0],profile} : null;
 }
@@ -120,56 +119,35 @@ export const Route = createFileRoute("/api/auth")({
         if (duplicate.length) return json({ok:false,error:"Unable to create account with those details. Check your email or sign in."},409);
         const taken = await db(`xora_profiles?username=eq.${encodeURIComponent(username)}&select=id`);
         if (taken.length) return json({ok:false,error:"That username is already taken."},409);
-        const accounts = await db("xora_auth_accounts", {method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({email,password_hash:await passwordHash(password)})});
+        const code = recoveryCode();
+        const accounts = await db("xora_auth_accounts", {method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({email,password_hash:await passwordHash(password),email_verified_at:new Date().toISOString(),recovery_code_hash:hash(code)})});
         const account = accounts[0];
         if (!account?.id) throw new Error("Account creation failed.");
         try {
           await db("xora_profiles", {method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
             id:account.id,username,first_name:first,last_name:last,display_name:`${first} ${last}`,avatar_url:AVATAR,bio:""
           })});
-          const verifyToken = await issueToken(account.id,"verify_email",VERIFY_MS);
-          const appUrl = (process.env.PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/,"");
-          const delivered = await sendEmail(email,"Verify your XoraTV email",`<p>Welcome to XoraTV, ${first.replace(/[&<>"]/g,"")}!</p><p>Verify your email within 24 hours:</p><p><a href="${appUrl}/auth?verify=${encodeURIComponent(verifyToken)}">Verify my email</a></p><p>If you did not create this account, ignore this email.</p>`);
-          return json({ok:true,verificationEmailSent:delivered,message:delivered?"Check your inbox to verify your email.":"Account created, but email delivery is not configured yet. Sign-in stays disabled until verification."},201);
+          const raw = await createSession(account.id);
+          const profile = await profileFor(account.id);
+          if (!profile) throw new Error("Account profile creation failed.");
+          return json({ok:true,user:publicUser({...account,email_verified_at:new Date().toISOString()},profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
         } catch (error) {
           await db(`xora_auth_accounts?id=eq.${encodeURIComponent(account.id)}`,{method:"DELETE"});
           throw error;
         }
-      }
-      if (action === "resend_verification") {
-        const email = String(body.email||"").trim().toLowerCase();
-        if (validEmail(email)) {
-          const accounts = await db(`xora_auth_accounts?email=eq.${encodeURIComponent(email)}&email_verified_at=is.null&disabled_at=is.null&select=id,email`);
-          if (accounts[0]) {
-            const raw = await issueToken(accounts[0].id,"verify_email",VERIFY_MS);
-            const appUrl = (process.env.PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/,"");
-            await sendEmail(email,"Verify your XoraTV email",`<p>Verify your XoraTV email within 24 hours:</p><p><a href="${appUrl}/auth?verify=${encodeURIComponent(raw)}">Verify my email</a></p>`);
-          }
-        }
-        return json({ok:true,message:"If that account is awaiting verification, a new email will be sent."});
-      }
-      if (action === "verify_email") {
-        const raw = String(body.token||"");
-        if (raw.length < 20) return json({ok:false,error:"Invalid or expired verification link."},400);
-        const rows = await db(`xora_auth_tokens?token_hash=eq.${hash(raw)}&token_type=eq.verify_email&consumed_at=is.null&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=id,user_id`);
-        if (!rows[0]) return json({ok:false,error:"Invalid or expired verification link."},400);
-        await db(`xora_auth_accounts?id=eq.${encodeURIComponent(rows[0].user_id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({email_verified_at:new Date().toISOString(),updated_at:new Date().toISOString()})});
-        await db(`xora_auth_tokens?id=eq.${encodeURIComponent(rows[0].id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({consumed_at:new Date().toISOString()})});
-        return json({ok:true,message:"Email verified. You can now sign in."});
       }
       if (action === "login") {
         const identifier = String(body.identifier||"").trim().toLowerCase().replace(/^@/,"");
         const password = typeof body.password === "string" ? body.password : "";
         if (!identifier || !password) return json({ok:false,error:"Enter your email or username and password."},400);
         let accounts: Row[] = [];
-        if (identifier.includes("@")) accounts = await db(`xora_auth_accounts?email=eq.${encodeURIComponent(identifier)}&disabled_at=is.null&select=id,email,password_hash,email_verified_at`);
+        if (identifier.includes("@")) accounts = await db(`xora_auth_accounts?email=eq.${encodeURIComponent(identifier)}&disabled_at=is.null&select=id,email,password_hash,email_verified_at,recovery_code_hash`);
         else {
           const profiles = await db(`xora_profiles?username=eq.${encodeURIComponent(identifier)}&select=id`);
           if (profiles[0]) accounts = await db(`xora_auth_accounts?id=eq.${encodeURIComponent(profiles[0].id)}&disabled_at=is.null&select=id,email,password_hash,email_verified_at`);
         }
         const account = accounts[0];
         if (!account || !(await passwordMatches(password,account.password_hash))) return json({ok:false,error:"Invalid email/username or password."},401);
-        if (!account.email_verified_at) return json({ok:false,error:"Please verify your email before signing in."},403);
         const profile = await profileFor(account.id);
         if (!profile) return json({ok:false,error:"Account profile is unavailable."},503);
         const raw = await createSession(account.id);
@@ -180,28 +158,26 @@ export const Route = createFileRoute("/api/auth")({
         if (raw) await db(`xora_auth_sessions?token_hash=eq.${hash(decodeURIComponent(raw))}`,{method:"DELETE"});
         return json({ok:true},200,{"Set-Cookie":clearCookie()});
       }
-      if (action === "reset_request") {
-        const email = String(body.email||"").trim().toLowerCase();
-        if (validEmail(email)) {
-          const accounts = await db(`xora_auth_accounts?email=eq.${encodeURIComponent(email)}&email_verified_at=not.is.null&disabled_at=is.null&select=id,email`);
-          if (accounts[0]) {
-            const raw = await issueToken(accounts[0].id,"reset_password",RESET_MS);
-            const appUrl = (process.env.PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/,"");
-            await sendEmail(email,"Reset your XoraTV password",`<p>Use this link within one hour to reset your XoraTV password:</p><p><a href="${appUrl}/auth?reset=${encodeURIComponent(raw)}">Reset password</a></p>`);
-          }
-        }
-        return json({ok:true,message:"If that verified account exists, password reset instructions will be sent."});
-      }
-      if (action === "reset_password") {
-        const raw = String(body.token||"");
+      if (action === "recover_with_code") {
+        const identifier = String(body.identifier||"").trim().toLowerCase().replace(/^@/,"");
+        const code = String(body.recoveryCode||"").trim().toUpperCase();
         const password = typeof body.password === "string" ? body.password : "";
-        if (password.length < 10 || password.length > 128) return json({ok:false,error:"Password must be 10–128 characters."},400);
-        const rows = await db(`xora_auth_tokens?token_hash=eq.${hash(raw)}&token_type=eq.reset_password&consumed_at=is.null&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=id,user_id`);
-        if (!rows[0]) return json({ok:false,error:"Invalid or expired reset link."},400);
-        await db(`xora_auth_accounts?id=eq.${encodeURIComponent(rows[0].user_id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({password_hash:await passwordHash(password),updated_at:new Date().toISOString()})});
-        await db(`xora_auth_tokens?user_id=eq.${encodeURIComponent(rows[0].user_id)}&token_type=eq.reset_password&consumed_at=is.null`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({consumed_at:new Date().toISOString()})});
-        await db(`xora_auth_sessions?user_id=eq.${encodeURIComponent(rows[0].user_id)}`,{method:"DELETE"});
-        return json({ok:true,message:"Password reset. Please sign in with your new password."});
+        if (!identifier || !code || password.length < 10 || password.length > 128) return json({ok:false,error:"Enter your username or email, recovery code, and a new password of at least 10 characters."},400);
+        let accounts: Row[] = [];
+        if (identifier.includes("@")) accounts = await db(`xora_auth_accounts?email=eq.${encodeURIComponent(identifier)}&disabled_at=is.null&select=id,email,password_hash,recovery_code_hash,email_verified_at`);
+        else {
+          const profiles = await db(`xora_profiles?username=eq.${encodeURIComponent(identifier)}&select=id`);
+          if (profiles[0]) accounts = await db(`xora_auth_accounts?id=eq.${encodeURIComponent(profiles[0].id)}&disabled_at=is.null&select=id,email,password_hash,recovery_code_hash,email_verified_at`);
+        }
+        const account=accounts[0];
+        if (!account || !account.recovery_code_hash || hash(code)!==account.recovery_code_hash) return json({ok:false,error:"The account details or recovery code are incorrect."},401);
+        const nextCode=recoveryCode();
+        await db(`xora_auth_accounts?id=eq.${encodeURIComponent(account.id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({password_hash:await passwordHash(password),recovery_code_hash:hash(nextCode),updated_at:new Date().toISOString()})});
+        await db(`xora_auth_sessions?user_id=eq.${encodeURIComponent(account.id)}`,{method:"DELETE"});
+        const raw=await createSession(account.id);
+        const profile=await profileFor(account.id);
+        if (!profile) return json({ok:false,error:"Account profile is unavailable."},503);
+        return json({ok:true,user:publicUser(account,profile),recoveryCode:nextCode,message:"Password changed. Save your new recovery code now."},200,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
       }
       return json({ok:false,error:"Unsupported authentication action."},400);
     } catch (error) {
