@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, ChevronRight, Clapperboard, Facebook, Instagram, ShieldCheck, Sparkles, Youtube } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Clapperboard, Facebook, Instagram, ShieldCheck, Sparkles, Youtube, Video, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/creator-application")({ component: CreatorApplicationPage });
 
 type Platform = "Facebook" | "TikTok" | "YouTube";
 type Social = { url: string; audience: string };
 const initialSocials: Record<Platform, Social> = {
-  Facebook: { url: "", audience: "" },
-  TikTok: { url: "", audience: "" },
-  YouTube: { url: "", audience: "" },
+  Facebook: { url: "", audience: "" }, TikTok: { url: "", audience: "" }, YouTube: { url: "", audience: "" },
 };
-
 const platformIcons = { Facebook, TikTok: Instagram, YouTube: Youtube };
+const categories = ["Entertainment", "Education & tutorials", "Music", "Comedy", "Lifestyle", "News & commentary", "Technology", "Gaming", "Film & storytelling", "Other"];
 
 function CreatorApplicationPage() {
   const [form, setForm] = useState({ fullName: "", email: "", username: "", channelName: "", country: "Nigeria", category: "Entertainment", about: "", sampleUrl: "", accepted: false });
@@ -22,73 +20,92 @@ function CreatorApplicationPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const eligible = useMemo(() => selected.some((platform) => Number(socials[platform].audience) >= 50 && /^https?:\/\//i.test(socials[platform].url)), [selected, socials]);
-
-  const update = (key: keyof typeof form, value: string | boolean) => setForm((old) => ({ ...old, [key]: value }));
-  const togglePlatform = (platform: Platform) => setSelected((old) => old.includes(platform) ? old.filter((p) => p !== platform) : [...old, platform]);
+  const update = (key: keyof typeof form, value: string | boolean) => setForm(old => ({ ...old, [key]: value }));
+  const togglePlatform = (platform: Platform) => setSelected(old => old.includes(platform) ? old.filter(p => p !== platform) : [...old, platform]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
+    event.preventDefault(); setError("");
     if (!eligible) { setError("Add a public profile link and at least 50 followers/subscribers on Facebook, TikTok or YouTube."); return; }
-    if (!form.accepted) { setError("Please confirm the information is accurate and accept the creator guidelines."); return; }
+    if (!form.accepted) { setError("Please confirm your details are accurate and accept the creator guidelines."); return; }
     setBusy(true);
     try {
       const backend = (import.meta as any).env?.VITE_RENDER_BACKEND_URL?.replace(/\/$/, "") || "";
-      const response = await fetch(`${backend}/api/creator-applications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, socials: Object.fromEntries(selected.map((platform) => [platform, socials[platform]])), source: "preview-lab" }),
-      });
+      const response = await fetch(`${backend}/api/creator-applications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, socials: Object.fromEntries(selected.map(platform => [platform, socials[platform]])), source: "preview-lab" }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.ok) throw new Error(body.error || "We couldn't submit your application. Please try again.");
       setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Submission failed. Please try again.");
-    } finally { setBusy(false); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Submission failed. Please try again."); }
+    finally { setBusy(false); }
   }
 
-  if (success) return <main className="min-h-screen bg-[#f7f4f2] px-4 py-12 text-[#211b2d]"><section className="mx-auto max-w-xl rounded-[32px] border border-white bg-white p-8 text-center shadow-xl sm:p-12"><div className="mx-auto grid size-16 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><CheckCircle2 size={32}/></div><p className="mt-6 text-xs font-bold uppercase tracking-[.22em] text-violet-700">Application received</p><h1 className="mt-3 text-3xl font-semibold tracking-tight">Your creator journey starts here.</h1><p className="mt-4 leading-7 text-slate-600">Thanks for applying to XoraTV. Our team will manually review your details, usually within 24 hours. Submitting an application does not automatically activate creator privileges.</p><button onClick={() => { setSuccess(false); setForm({ fullName:"", email:"", username:"", channelName:"", country:"Nigeria", category:"Entertainment", about:"", sampleUrl:"", accepted:false }); setSocials(initialSocials); setSelected(["TikTok"]); }} className="mt-7 rounded-xl bg-[#302344] px-5 py-3 text-sm font-semibold text-white">Submit another application</button></section></main>;
+  const reset = () => { setSuccess(false); setForm({ fullName:"", email:"", username:"", channelName:"", country:"Nigeria", category:"Entertainment", about:"", sampleUrl:"", accepted:false }); setSocials(initialSocials); setSelected(["TikTok"]); };
 
-  return <main className="min-h-screen overflow-hidden bg-[#f7f4f2] text-[#211b2d]">
-    <div className="pointer-events-none fixed inset-0 overflow-hidden"><div className="absolute -right-24 -top-32 size-[420px] rounded-full bg-violet-200/45 blur-3xl"/><div className="absolute -bottom-40 -left-24 size-[420px] rounded-full bg-rose-100/60 blur-3xl"/></div>
-    <header className="relative mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8"><a href="/" className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#302344] text-white shadow-lg"><Clapperboard size={20}/></span><span><span className="block text-lg font-bold tracking-tight">Xora<span className="text-violet-700">TV</span></span><span className="block text-[10px] font-semibold uppercase tracking-[.2em] text-slate-500">Creator network</span></span></a><span className="rounded-full border border-violet-200 bg-white/75 px-3 py-1.5 text-[11px] font-semibold text-violet-800">CREATOR APPLICATION LAB</span></header>
-    <section className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-12 pt-5 sm:px-8 lg:grid-cols-[.82fr_1.18fr] lg:gap-12 lg:pt-12">
-      <div className="lg:sticky lg:top-8 lg:self-start">
-        <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-3 py-2 text-xs font-semibold text-violet-800"><Sparkles size={14}/> Your creativity deserves a channel</div>
-        <h1 className="mt-6 max-w-xl text-4xl font-semibold leading-[1.08] tracking-[-.04em] sm:text-5xl">Make your next big thing <span className="text-violet-700">happen here.</span></h1>
-        <p className="mt-5 max-w-lg text-sm leading-7 text-slate-600">Apply to become an XoraTV creator. Bring your videos, lessons, ideas and community to a home built for African creativity and stories from everywhere.</p>
-        <div className="mt-7 space-y-3">
-          {[["01","Show us your audience","At least 50 followers on Facebook or TikTok, or 50 YouTube subscribers."],["02","Tell us what you make","Share your content niche and public social profiles so our team can review them."],["03","Hear back from our team","Manual review usually takes 24 hours. Approval is never automatic."]].map(([n,title,desc])=><div key={n} className="flex gap-4 rounded-2xl border border-white/80 bg-white/65 p-4 shadow-sm backdrop-blur"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-100 text-xs font-bold text-violet-800">{n}</span><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-600">{desc}</p></div></div>)}
-        </div>
-        <div className="mt-6 flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={16} className="text-emerald-700"/> Applications are reviewed by people, not auto-approved.</div>
+  if (success) return <main className="min-h-screen bg-background px-4 py-12 text-foreground"><section className="mx-auto max-w-lg rounded-3xl border border-border bg-card p-8 text-center shadow-card sm:p-12"><div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary"><CheckCircle2 size={32}/></div><p className="mt-6 text-xs font-bold uppercase tracking-[.2em] text-primary">Application received</p><h1 className="mt-3 font-display text-3xl font-semibold tracking-tight">Your next chapter starts here.</h1><p className="mt-4 text-sm leading-7 text-muted-foreground">Thanks for applying to XoraTV. Our team will manually review your details. An application does not automatically activate creator privileges.</p><button onClick={reset} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground">Submit another application <ArrowRight size={16}/></button></section></main>;
+
+  return <main className="min-h-screen bg-background text-foreground">
+    <header className="border-b border-border/70 bg-card/80">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-8">
+        <a href="/" className="flex min-w-0 items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><Clapperboard size={19}/></span><span><span className="block font-display text-lg font-bold tracking-tight">XoraTV</span><span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Creator network</span></span></a>
+        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"><span className="size-1.5 rounded-full bg-primary"/> Preview application</span>
       </div>
-      <form onSubmit={submit} className="relative rounded-[28px] border border-white bg-white/90 p-5 shadow-[0_24px_90px_-38px_rgba(48,35,68,.35)] backdrop-blur-xl sm:p-8">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.22em] text-violet-700">Application form</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">Let's get to know you.</h2><p className="mt-2 text-xs leading-5 text-slate-500">Fields marked * are required.</p></div><div className="grid size-12 place-items-center rounded-2xl bg-[#f0eafa] text-violet-800"><BookOpen size={22}/></div></div>
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
-          <Field label="Full name *"><input required autoComplete="name" value={form.fullName} onChange={e=>update("fullName",e.target.value)} placeholder="Your name" /></Field>
-          <Field label="Email address *"><input required type="email" autoComplete="email" value={form.email} onChange={e=>update("email",e.target.value)} placeholder="you@example.com" /></Field>
-          <Field label="XoraTV username (if you have one)"><input value={form.username} onChange={e=>update("username",e.target.value)} placeholder="@yourhandle" /></Field>
-          <Field label="Creator / channel name *"><input required value={form.channelName} onChange={e=>update("channelName",e.target.value)} placeholder="What should your channel be called?" /></Field>
-          <Field label="Country *"><input required value={form.country} onChange={e=>update("country",e.target.value)} /></Field>
-          <Field label="Content category *"><select value={form.category} onChange={e=>update("category",e.target.value)}>{["Entertainment","Education & tutorials","Music","Comedy","Lifestyle","News & commentary","Technology","Gaming","Film & storytelling","Other"].map(x=><option key={x}>{x}</option>)}</select></Field>
+    </header>
+
+    <section className="mx-auto grid max-w-6xl gap-8 px-4 py-7 sm:px-8 sm:py-12 lg:grid-cols-[.8fr_1.2fr] lg:gap-12">
+      <aside className="lg:sticky lg:top-8 lg:self-start">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary"><Sparkles size={14}/> For creators with a story to tell</div>
+        <h1 className="mt-5 max-w-xl font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">Your creativity.<br/><span className="text-primary">Your own channel.</span></h1>
+        <p className="mt-5 max-w-lg text-sm leading-7 text-muted-foreground">Bring your videos, lessons, music and ideas to XoraTV. Tell us what you create and where people can discover your work.</p>
+        <div className="mt-7 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex items-center gap-3 border-b border-border p-4"><span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><Video size={19}/></span><div><p className="text-sm font-semibold">A simple application</p><p className="mt-1 text-xs text-muted-foreground">Three quick steps to get started</p></div></div>
+          {[
+            ["01","Tell us about yourself","Your name, channel and the content you make."],
+            ["02","Connect a public profile","At least 50 followers or subscribers on one supported platform."],
+            ["03","Wait for a human review","Our team checks applications before any creator access is granted."],
+          ].map(([n,title,desc],i)=><div key={n} className={`flex gap-3 p-4 ${i<2?"border-b border-border":""}`}><span className="grid size-8 shrink-0 place-items-center rounded-lg border border-border text-xs font-bold text-primary">{n}</span><div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{desc}</p></div></div>)}
         </div>
-        <div className="mt-8 border-t border-slate-100 pt-6"><div className="flex items-end justify-between gap-3"><div><h3 className="text-base font-semibold">Your social audience</h3><p className="mt-1 text-xs leading-5 text-slate-500">Select every platform you want us to review.</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800">50+ required</span></div>
-          <div className="mt-4 flex flex-wrap gap-2">{(["Facebook","TikTok","YouTube"] as Platform[]).map(platform=>{const Icon=platformIcons[platform];const active=selected.includes(platform);return <button type="button" key={platform} onClick={()=>togglePlatform(platform)} className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${active?"border-violet-300 bg-violet-50 text-violet-900":"border-slate-200 bg-white text-slate-600 hover:border-violet-200"}`}><Icon size={15}/>{platform}{active&&<BadgeCheck size={14}/>}</button>})}</div>
-          <div className="mt-4 space-y-3">{selected.map(platform=><div key={platform} className="rounded-2xl border border-slate-200 bg-[#fcfbfd] p-4"><div className="mb-3 flex items-center gap-2 text-sm font-semibold">{platform}<span className="text-[10px] font-normal text-slate-500">Public profile required</span></div><div className="grid gap-3 sm:grid-cols-[1fr_150px]"><Field label="Profile / channel URL *"><input required type="url" placeholder="https://…" value={socials[platform].url} onChange={e=>setSocials(old=>({...old,[platform]:{...old[platform],url:e.target.value}}))}/></Field><Field label={platform==="YouTube"?"Subscribers *":"Followers *"}><input required type="number" min="0" value={socials[platform].audience} placeholder="e.g. 250" onChange={e=>setSocials(old=>({...old,[platform]:{...old[platform],audience:e.target.value}}))}/></Field></div></div>)}</div>
-          {selected.length===0&&<p className="mt-3 text-xs text-rose-600">Select at least one social platform.</p>}
-          <p className={`mt-3 text-xs ${eligible?"text-emerald-700":"text-slate-500"}`}>{eligible?"✓ Eligibility threshold met on at least one selected platform.":"You need 50+ followers/subscribers and a profile link on at least one selected platform."}</p>
+        <div className="mt-4 flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-primary"/> Your application is reviewed manually. Please use genuine details and links to public profiles.</div>
+      </aside>
+
+      <form onSubmit={submit} className="overflow-hidden rounded-2xl border border-border bg-card shadow-card sm:rounded-3xl">
+        <div className="border-b border-border bg-muted/35 px-5 py-6 sm:px-8">
+          <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Creator application · 01 / 03</p>
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Let's meet the creator.</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Fill in the details below. Fields marked with * are required.</p>
+          <div className="mt-5 flex gap-1.5" aria-hidden="true"><span className="h-1 flex-1 rounded-full bg-primary"/><span className="h-1 flex-1 rounded-full bg-primary/25"/><span className="h-1 flex-1 rounded-full bg-primary/25"/></div>
         </div>
-        <div className="mt-7 grid gap-4"><Field label="Tell us about your content *"><textarea required rows={4} maxLength={1500} value={form.about} onChange={e=>update("about",e.target.value)} placeholder="What do you create, who is it for, and what would you love to publish on XoraTV?"/></Field><Field label="Sample video or portfolio link (optional)"><input type="url" value={form.sampleUrl} onChange={e=>update("sampleUrl",e.target.value)} placeholder="https://…"/></Field></div>
-        <label className="mt-5 flex items-start gap-3 rounded-2xl bg-[#f7f4fa] p-4"><input className="mt-1 size-4 accent-violet-700" type="checkbox" checked={form.accepted} onChange={e=>update("accepted",e.target.checked)}/><span className="text-xs leading-5 text-slate-600">I confirm that the details and audience figures are accurate, my profile links are public, and I agree to follow XoraTV's creator guidelines. I understand this application is reviewed manually and does not grant creator access automatically.</span></label>
-        {error&&<p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-700">{error}</p>}
-        <button disabled={busy||selected.length===0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#302344] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/15 transition hover:bg-violet-900 disabled:cursor-not-allowed disabled:opacity-50">{busy?"Sending application…":"Submit creator application"}<ArrowRight size={16}/></button>
-        <p className="mt-3 text-center text-[10px] leading-5 text-slate-500">We usually review applications within 24 hours. Please submit once and keep your profile links available for review.</p>
+        <div className="space-y-8 p-5 sm:p-8">
+          <section><SectionTitle number="01" title="Your details" subtitle="How can we reach you?"/>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field label="Full name *"><input required autoComplete="name" value={form.fullName} onChange={e=>update("fullName",e.target.value)} placeholder="Your full name"/></Field>
+              <Field label="Email address *"><input required type="email" autoComplete="email" value={form.email} onChange={e=>update("email",e.target.value)} placeholder="you@example.com"/></Field>
+              <Field label="XoraTV username" hint="Optional"><input value={form.username} onChange={e=>update("username",e.target.value)} placeholder="@yourhandle"/></Field>
+              <Field label="Creator / channel name *"><input required value={form.channelName} onChange={e=>update("channelName",e.target.value)} placeholder="Your channel name"/></Field>
+              <Field label="Country *"><input required value={form.country} onChange={e=>update("country",e.target.value)} placeholder="Your country"/></Field>
+              <Field label="Content category *"><select value={form.category} onChange={e=>update("category",e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></Field>
+            </div>
+          </section>
+
+          <section className="border-t border-border pt-7"><SectionTitle number="02" title="Your audience" subtitle="Choose the platforms you want us to review."/><div className="mt-4 flex flex-wrap gap-2">{(["Facebook","TikTok","YouTube"] as Platform[]).map(platform=>{const Icon=platformIcons[platform];const active=selected.includes(platform);return <button type="button" key={platform} onClick={()=>togglePlatform(platform)} aria-pressed={active} className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${active?"border-primary bg-primary/10 text-primary":"border-border bg-background text-muted-foreground hover:border-primary/50"}`}><Icon size={15}/>{platform}{active&&<BadgeCheck size={14}/>}</button>})}</div>
+            <div className="mt-4 space-y-3">{selected.map(platform=><div key={platform} className="rounded-xl border border-border bg-background p-4"><div className="mb-3 flex items-center justify-between gap-2"><p className="text-sm font-semibold">{platform}</p><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] text-muted-foreground">50+ required</span></div><div className="grid gap-3 sm:grid-cols-[1fr_140px]"><Field label="Public profile URL *"><input required type="url" placeholder="https://…" value={socials[platform].url} onChange={e=>setSocials(old=>({...old,[platform]:{...old[platform],url:e.target.value}}))}/></Field><Field label={platform==="YouTube"?"Subscribers *":"Followers *"}><input required type="number" min="0" value={socials[platform].audience} placeholder="e.g. 250" onChange={e=>setSocials(old=>({...old,[platform]:{...old[platform],audience:e.target.value}}))}/></Field></div></div>)}</div>
+            {selected.length===0&&<p className="mt-3 text-xs text-destructive">Select at least one social platform.</p>}<p className={`mt-3 text-xs leading-5 ${eligible?"text-primary":"text-muted-foreground"}`}>{eligible?"✓ The minimum audience requirement is met on one selected platform.":"You need a public profile and at least 50 followers/subscribers on one selected platform."}</p>
+          </section>
+
+          <section className="border-t border-border pt-7"><SectionTitle number="03" title="Your creative work" subtitle="Give us a feel for what you want to share."/><div className="mt-4 space-y-4"><Field label="Tell us about your content *" hint={`${form.about.length}/1500`}><textarea required rows={4} maxLength={1500} value={form.about} onChange={e=>update("about",e.target.value)} placeholder="What do you create, who is it for, and what would you like to publish on XoraTV?"/></Field><Field label="Sample video or portfolio link" hint="Optional"><input type="url" value={form.sampleUrl} onChange={e=>update("sampleUrl",e.target.value)} placeholder="https://…"/></Field></div></section>
+
+          <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/35 p-4"><input className="mt-1 size-4 shrink-0 accent-[hsl(var(--primary))]" type="checkbox" checked={form.accepted} onChange={e=>update("accepted",e.target.checked)}/><span className="text-xs leading-5 text-muted-foreground">I confirm that my details and audience figures are accurate, my profile links are public, and I agree to follow XoraTV's creator guidelines. I understand this application does not grant creator access automatically.</span></label>
+          {error&&<p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm leading-5 text-destructive">{error}</p>}
+          <button disabled={busy||selected.length===0} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{busy?"Sending application…":"Send creator application"}<ArrowRight size={16}/></button>
+          <p className="text-center text-[11px] leading-5 text-muted-foreground">Please submit once. The team will review your application before any access is granted.</p>
+        </div>
       </form>
     </section>
-    <footer className="relative border-t border-white/80 px-5 py-6 text-center text-[11px] text-slate-500">XoraTV Creator Network · Preview Lab experiment · Not an approval or creator-access grant</footer>
+    <footer className="border-t border-border px-4 py-5 text-center text-[11px] text-muted-foreground">XoraTV Creator Network · Preview environment</footer>
   </main>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block min-w-0"><span className="mb-2 block text-[11px] font-semibold text-slate-700">{label}</span><span className="block [&_input]:h-11 [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-slate-200 [&_input]:bg-white [&_input]:px-3 [&_input]:text-sm [&_input]:text-slate-800 [&_input]:outline-none [&_input]:transition [&_input]:focus:border-violet-400 [&_input]:focus:ring-4 [&_input]:focus:ring-violet-100 [&_select]:h-11 [&_select]:w-full [&_select]:rounded-xl [&_select]:border [&_select]:border-slate-200 [&_select]:bg-white [&_select]:px-3 [&_select]:text-sm [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-xl [&_textarea]:border [&_textarea]:border-slate-200 [&_textarea]:bg-white [&_textarea]:p-3 [&_textarea]:text-sm [&_textarea]:outline-none [&_textarea]:focus:border-violet-400 [&_textarea]:focus:ring-4 [&_textarea]:focus:ring-violet-100">{children}</span></label>;
+function SectionTitle({number,title,subtitle}:{number:string;title:string;subtitle:string}) {
+  return <div className="flex items-start gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-bold text-primary">{number}</span><div><h3 className="text-base font-semibold">{title}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</p></div><ChevronRight size={16} className="ml-auto mt-2 text-muted-foreground/60"/></div>;
+}
+function Field({label,hint,children}:{label:string;hint?:string;children:React.ReactNode}) {
+  return <label className="block min-w-0"><span className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold"><span>{label}</span>{hint&&<span className="text-[10px] font-normal text-muted-foreground">{hint}</span>}</span><span className="block [&_input]:h-11 [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-input [&_input]:bg-background [&_input]:px-3 [&_input]:text-sm [&_input]:text-foreground [&_input]:outline-none [&_input]:transition [&_input]:placeholder:text-muted-foreground/70 [&_input]:focus:border-primary [&_input]:focus:ring-4 [&_input]:focus:ring-primary/10 [&_select]:h-11 [&_select]:w-full [&_select]:rounded-xl [&_select]:border [&_select]:border-input [&_select]:bg-background [&_select]:px-3 [&_select]:text-sm [&_select]:text-foreground [&_select]:outline-none [&_select]:focus:border-primary [&_select]:focus:ring-4 [&_select]:focus:ring-primary/10 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-xl [&_textarea]:border [&_textarea]:border-input [&_textarea]:bg-background [&_textarea]:p-3 [&_textarea]:text-sm [&_textarea]:text-foreground [&_textarea]:outline-none [&_textarea]:placeholder:text-muted-foreground/70 [&_textarea]:focus:border-primary [&_textarea]:focus:ring-4 [&_textarea]:focus:ring-primary/10">{children}</span></label>;
 }
