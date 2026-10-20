@@ -107,7 +107,7 @@ function ProfilePage() {
               <div className="flex flex-wrap items-center gap-2 pb-1">
                 {isMe ? (
                   <>
-                    <Link to="/settings" className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-3.5 py-2.5 text-xs font-semibold shadow-sm backdrop-blur-xl transition hover:bg-secondary sm:px-4 sm:text-sm"><PenLine className="size-4" /> Edit profile</Link>
+                    <Link to="/edit-profile" className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-3.5 py-2.5 text-xs font-semibold shadow-sm backdrop-blur-xl transition hover:bg-secondary sm:px-4 sm:text-sm"><PenLine className="size-4" /> Edit profile</Link>
                     <Link to="/creator-studio" className="press inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-semibold text-primary-foreground shadow-card transition hover:opacity-90 sm:px-4 sm:text-sm"><PlayCircle className="size-4" /> X Channel</Link>
                     <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="press inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface/75 px-3.5 py-2.5 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-xl transition hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm" aria-label="Sign out" title="Sign out"><LogOut className="size-4" />{signingOut ? "Signing out…" : "Sign out"}</button>
                   </>
