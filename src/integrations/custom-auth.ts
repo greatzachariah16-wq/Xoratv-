@@ -8,7 +8,7 @@ export interface CustomAuthUser {
   photoURL: string | null;
   profile: ProfileRecord;
 }
-type ApiResult<T = unknown> = { ok: boolean; user?: CustomAuthUser | null; error?: string; message?: string; verificationEmailSent?: boolean } & T;
+type ApiResult<T = unknown> = { ok: boolean; user?: CustomAuthUser | null; error?: string; message?: string; recoveryCode?: string | null } & T;
 
 async function request<T = unknown>(body?: Record<string, unknown>): Promise<ApiResult<T>> {
   const response = await fetch("/api/auth", {
@@ -24,7 +24,9 @@ async function request<T = unknown>(body?: Record<string, unknown>): Promise<Api
 }
 export async function customSignUp(email: string, password: string, username: string, firstName: string, lastName: string) {
   const result = await request({action:"register", email, password, username, firstName, lastName});
-  return { message: result.message || "Check your inbox to verify your email.", verificationEmailSent: Boolean(result.verificationEmailSent) };
+  if (!result.user || !result.recoveryCode) throw new Error("Recovery code was not returned.");
+  window.dispatchEvent(new Event("xora-auth-changed"));
+  return { user: result.user, recoveryCode: result.recoveryCode, message: result.message || "Account created." };
 }
 export async function customSignIn(identifier: string, password: string) {
   const result = await request({action:"login", identifier, password});
@@ -40,15 +42,9 @@ export async function customSignOut() {
   await request({action:"logout"});
   window.dispatchEvent(new Event("xora-auth-changed"));
 }
-export async function customVerifyEmail(token: string) {
-  return request({action:"verify_email",token});
-}
-export async function customResendVerification(email: string) {
-  return request({action:"resend_verification",email});
-}
-export async function customRequestPasswordReset(email: string) {
-  return request({action:"reset_request",email});
-}
-export async function customResetPassword(token: string, password: string) {
-  return request({action:"reset_password",token,password});
+export async function customRecoverWithCode(identifier: string, recoveryCode: string, password: string) {
+  const result = await request({action:"recover_with_code",identifier,recoveryCode,password});
+  if (!result.user || !result.recoveryCode) throw new Error("Recovery did not return a replacement code.");
+  window.dispatchEvent(new Event("xora-auth-changed"));
+  return {user:result.user,recoveryCode:result.recoveryCode,message:result.message||"Password changed."};
 }
