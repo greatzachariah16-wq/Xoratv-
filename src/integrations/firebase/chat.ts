@@ -1,4 +1,4 @@
-import { auth, isFirebaseConfigured } from "./config";
+import { isFirebaseConfigured } from "./config";
 import type { Unsubscribe } from "firebase/database";
 import type { ChatRoomRecord, ChatMessageRecord, ProfileRecord } from "./types";
 
