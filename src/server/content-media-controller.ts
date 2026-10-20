@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { registerCloudinaryVideo } from "./content-repository";
+import { queryRtdb } from "./xseries-service-account";
+import { getAuthenticatedUserId } from "./session-auth";
 
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
 
@@ -8,7 +10,12 @@ function cloudinaryConfig() {
   const apiKey = (process.env.CLOUDINARY_API_KEY || "").trim();
   const apiSecret = (process.env.CLOUDINARY_API_SECRET || "").trim();
   if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary server credentials are not configured.");
+    const missing = [
+      !cloudName ? "CLOUDINARY_CLOUD_NAME (or VITE_CLOUDINARY_CLOUD_NAME)" : "",
+      !apiKey ? "CLOUDINARY_API_KEY" : "",
+      !apiSecret ? "CLOUDINARY_API_SECRET" : "",
+    ].filter(Boolean);
+    throw new Error("Cloudinary upload is not configured on the server. Add these Render environment variables: " + missing.join(", ") + ".");
   }
   return { cloudName, apiKey, apiSecret };
 }
@@ -94,7 +101,18 @@ function cloudinary240pUrl(secureUrl: string): string {
   return base + "h_240,c_scale,q_auto:low,f_mp4/" + rest.join("/");
 }
 export async function handleContentVideoUpload(request: Request): Promise<Response> {
+  let userId: string | null = null;
+  try {
+    userId = await getAuthenticatedUserId(request);
+  } catch {
+    return new Response(JSON.stringify({ ok: false, error: "Could not verify your Xora session. Please sign in again." }), { status: 503, headers: { "Content-Type": "application/json" } });
+  }
+  if (!userId) return new Response(JSON.stringify({ ok: false, error: "Sign in with your Xora account before uploading." }), { status: 401, headers: { "Content-Type": "application/json" } });
+  const creator = await queryRtdb(`commerce/creators/${userId}`) as { status?: string } | null;
+  if (!creator || creator.status !== "active") return new Response(JSON.stringify({ ok: false, error: "Only active X Channel creators can upload course videos. Open X Channel first." }), { status: 403, headers: { "Content-Type": "application/json" } });
   const form = await request.formData();
+  const requestedCreatorId = String(form.get("creatorId") || "");
+  if (requestedCreatorId && requestedCreatorId !== userId) return new Response(JSON.stringify({ ok: false, error: "The upload creator does not match your signed-in account." }), { status: 403, headers: { "Content-Type": "application/json" } });
   const file = form.get("file");
   if (!(file instanceof File)) return new Response(JSON.stringify({ ok: false, error: "Video file is required." }), { status: 400 });
   if (!file.type.startsWith("video/")) return new Response(JSON.stringify({ ok: false, error: "Only video uploads are accepted." }), { status: 400 });
@@ -107,19 +125,25 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
     const cloudinary = await uploadToCloudinary(file, "xora/courses/videos");
     const id = `video_${Date.now()}_${crypto.randomBytes(5).toString("hex")}`;
 
-    await registerCloudinaryVideo({
-      id,
-      creatorId: typeof form.get("creatorId") === "string" ? String(form.get("creatorId")) : null,
-      title: typeof form.get("title") === "string" ? String(form.get("title")) : "",
-      description: typeof form.get("description") === "string" ? String(form.get("description")) : "",
-      cloudinaryPublicId: String(cloudinary.public_id),
-      cloudinaryUrl: String(cloudinary.secure_url),
-      durationSeconds: typeof cloudinary.duration === "number" ? Math.round(cloudinary.duration) : null,
-      originalBytes: file.size,
-      compressedBytes,
-      contentType: "video",
-      metadata: { sourceMimeType: file.type, compression: "source-preserved", cloudinaryFormat: cloudinary.format || "mp4" },
-    });
+    try {
+      await registerCloudinaryVideo({
+        id,
+        creatorId: userId,
+        title: typeof form.get("title") === "string" ? String(form.get("title")) : "",
+        description: typeof form.get("description") === "string" ? String(form.get("description")) : "",
+        cloudinaryPublicId: String(cloudinary.public_id),
+        cloudinaryUrl: String(cloudinary.secure_url),
+        durationSeconds: typeof cloudinary.duration === "number" ? Math.round(cloudinary.duration) : null,
+        originalBytes: file.size,
+        compressedBytes,
+        contentType: "video",
+        metadata: { sourceMimeType: file.type, compression: "source-preserved", cloudinaryFormat: cloudinary.format || "mp4" },
+      });
+    } catch (metadataError) {
+      // Firebase course metadata is saved when the creator publishes the course.
+      // Optional cross-store indexing must not make a successful Cloudinary upload appear to fail.
+      console.warn("[Course Upload] Cloudinary upload succeeded; optional content index write failed:", metadataError instanceof Error ? metadataError.message : "unknown error");
+    }
 
     return new Response(JSON.stringify({
       ok: true,

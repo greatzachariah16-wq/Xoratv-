@@ -44,6 +44,11 @@ export type Course = {
   contentPostId?: string | null;
   contentLockEnabled: boolean;
   contentLockCampaignId?: string | null;
+  unlockPoints?: number | null;
+  category?: string | null;
+  level?: string | null;
+  creatorDisplayName?: string | null;
+  creatorUsername?: string | null;
   status: "draft" | "published" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -1151,7 +1156,19 @@ export async function getCreatorCourses(creatorId?: string): Promise<Course[]> {
 }
 
 export async function getPublishedCourses(): Promise<Course[]> {
-  return (await getCreatorCourses()).filter((c) => c.status === "published");
+  const [courses, creatorsRaw] = await Promise.all([
+    getCreatorCourses(),
+    queryRtdb("commerce/creators") as Promise<Record<string, CreatorProfile> | null>,
+  ]);
+  const creators = creatorsRaw || {};
+  return courses.filter((course) => course.status === "published").map((course) => {
+    const creator = creators[course.creatorId];
+    return {
+      ...course,
+      creatorDisplayName: creator?.displayName || "Xora Creator",
+      creatorUsername: creator?.username || "",
+    };
+  });
 }
 
 export async function deleteCreatorCourse(courseId: string, creatorId: string): Promise<{ id: string; status: "deleted"; promotionLinksRemoved: number; mediaDeleted: boolean }> {
@@ -1202,6 +1219,9 @@ export async function saveCourse(params: {
   videoUrl?: string | null;
   contentPostId?: string | null;
   videoPublicId?: string | null;
+  unlockPoints?: number | null;
+  category?: string | null;
+  level?: string | null;
 }) {
   const now = new Date().toISOString();
   const course: Course = {
@@ -1215,6 +1235,9 @@ export async function saveCourse(params: {
     contentPostId: params.contentPostId || null,
     contentLockEnabled: false,
     contentLockCampaignId: null,
+    unlockPoints: Math.max(1, Math.round(Number(params.unlockPoints) || Math.ceil(Math.max(0, Number(params.price) || 0) / 0.1))),
+    category: String(params.category || "").trim().slice(0, 50) || null,
+    level: String(params.level || "Beginner").trim().slice(0, 30),
     status: "published",
     createdAt: now,
     updatedAt: now,
@@ -1224,7 +1247,8 @@ export async function saveCourse(params: {
   });
 
   if (course.videoUrl) {
-    await upsertXoraContent({
+    try {
+      await upsertXoraContent({
       id: course.id,
       firebaseId: course.id,
       contentType: "course",
@@ -1238,7 +1262,12 @@ export async function saveCourse(params: {
       metadata: { price: course.price, contentLockEnabled: false },
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
-    });
+      });
+    } catch (error) {
+      // The course is already safely stored in Firebase RTDB. Optional content indexing
+      // must not turn a successful publish into a reported failure.
+      console.warn("[Courses] Course saved but optional content index write failed:", error instanceof Error ? error.message : "unknown error");
+    }
   }
   return course;
 }
@@ -1247,35 +1276,32 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
   const courses = await getCreatorCourses();
   const course = courses.find((c) => c.id === params.courseId && c.status === "published");
   if (!course) throw new Error("Course is unavailable.");
+
+  // XoraTV courses are unlocked only with points earned through eligible CPA participation.
+  // Never debit the user's cash wallet or create a monetary course sale.
   const orderId = id("course_order");
   const referralCreatorId = await resolveCreatorAttribution(params.referralCode, "course", course.id);
-  const usePoints = params.paymentMethod === "points";
-  const requiredPoints = Math.ceil(Number(course.price || 0) / 0.1);
-  let debit: { transaction: any } | null = null;
-  let pointsRedemption: { points: number; remainingPoints: number } | null = null;
-  if (usePoints) {
-    pointsRedemption = await redeemCpaPoints({ userId: params.userId, points: requiredPoints, reference: orderId, purpose: "course_unlock", description: `Course unlock: ${course.title}` });
-  } else {
-    debit = await debitWallet({
-      userId: params.userId,
-      amount: course.price,
-      reference: orderId,
-      description: `Course purchase: ${course.title}`,
-    });
-  }
+  const requiredPoints = Math.max(1, Math.round(Number(course.unlockPoints) || Math.ceil(Number(course.price || 0) / 0.1)));
+  const pointsRedemption = await redeemCpaPoints({
+    userId: params.userId,
+    points: requiredPoints,
+    reference: orderId,
+    purpose: "course_unlock",
+    description: `Course unlock: ${course.title}`,
+  });
   const record = {
     id: orderId,
     userId: params.userId,
     courseId: course.id,
     creatorId: course.creatorId,
-    customerPrice: usePoints ? 0 : course.price,
-    originalPrice: course.price,
-    pointsRedeemed: pointsRedemption?.points || 0,
+    customerPrice: 0,
+    originalPrice: 0,
+    pointsRedeemed: pointsRedemption.points,
     referralCode: params.referralCode || null,
     referralCreatorId,
     status: "paid",
-    paymentMethod: usePoints ? "xora_points" : "xora_wallet",
-    walletTransactionId: debit?.transaction?.id || null,
+    paymentMethod: "xora_points",
+    walletTransactionId: null,
     createdAt: new Date().toISOString(),
   };
   try {
@@ -1283,16 +1309,12 @@ export async function createCourseOrder(params: { userId: string; courseId: stri
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
     });
   } catch (error) {
-    if (usePoints && pointsRedemption) {
-      await refundCpaPoints({ userId: params.userId, points: pointsRedemption.points, reference: orderId, description: `Refund for failed course unlock: ${course.title}` }).catch(() => undefined);
-    } else if (debit) {
-      await creditWallet({
-        userId: params.userId,
-        amount: course.price,
-        reference: `refund-${orderId}`,
-        description: `Refund for failed course order: ${course.title}`,
-      }).catch(() => undefined);
-    }
+    await refundCpaPoints({
+      userId: params.userId,
+      points: pointsRedemption.points,
+      reference: orderId,
+      description: `Refund for failed course unlock: ${course.title}`,
+    }).catch(() => undefined);
     throw error;
   }
   return record;

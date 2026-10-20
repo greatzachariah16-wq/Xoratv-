@@ -16,6 +16,8 @@ export type Course = {
   id: string; creatorId: string; title: string; description: string; price: number;
   thumbnailUrl?: string | null; videoUrl?: string | null; contentPostId?: string | null;
   contentLockEnabled?: boolean; contentLockCampaignId?: string | null;
+  unlockPoints?: number | null; category?: string | null; level?: string | null;
+  creatorDisplayName?: string | null; creatorUsername?: string | null;
   status: string; createdAt: string; updatedAt: string;
 };
 

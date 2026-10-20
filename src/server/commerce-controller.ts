@@ -1,4 +1,5 @@
 import { verifyAdminSession } from "./admin-auth";
+import { getAuthenticatedUserId } from "./session-auth";
 import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
   getPublicDataPlans,
@@ -180,9 +181,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/course/order" && request.method === "POST") {
     try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before unlocking a course." }, 401);
       const body = await request.json();
-      if (!body.userId || !body.courseId) return json({ ok: false, error: "Missing course order details." }, 400);
-      return json({ ok: true, order: await createCourseOrder(body) });
+      if (!body.courseId) return json({ ok: false, error: "Missing course details." }, 400);
+      return json({ ok: true, order: await createCourseOrder({ ...body, userId: authenticatedUserId, paymentMethod: "points" }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create course order." }, 500);
     }
@@ -202,9 +205,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/creator/register" && request.method === "POST") {
     try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in to Xora before creating an X Channel." }, 401);
       const body = await request.json();
-      if (!body.userId || !body.displayName || !body.username) return json({ ok: false, error: "Display name and username are required." }, 400);
-      return json({ ok: true, creator: await createCreatorProfile(body) });
+      if (!body.displayName || !body.username) return json({ ok: false, error: "Display name and username are required." }, 400);
+      return json({ ok: true, creator: await createCreatorProfile({ ...body, userId: authenticatedUserId }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Creator registration failed." }, 500);
     }
@@ -279,11 +284,13 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/creator/course" && request.method === "POST") {
     try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before publishing a course." }, 401);
       const body = await request.json();
-      if (!body.creatorId || !body.title || !body.description) return json({ ok: false, error: "Course title and description are required." }, 400);
-      const creator = await getCreator(body.creatorId);
-      if (!creator || creator.status !== "active") return json({ ok: false, error: "Creator account is not active." }, 403);
-      return json({ ok: true, course: await saveCourse({ ...body, videoPublicId: body.videoPublicId ? String(body.videoPublicId) : null }) });
+      if (!body.title || !body.description) return json({ ok: false, error: "Course title and description are required." }, 400);
+      const creator = await getCreator(authenticatedUserId);
+      if (!creator || creator.status !== "active") return json({ ok: false, error: "Only active X Channel creators can publish courses." }, 403);
+      return json({ ok: true, course: await saveCourse({ ...body, creatorId: authenticatedUserId, videoPublicId: body.videoPublicId ? String(body.videoPublicId) : null }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Course creation failed." }, 500);
     }
@@ -291,11 +298,13 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/creator/course" && request.method === "DELETE") {
     try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before managing courses." }, 401);
       const body = await request.json();
-      if (!body.creatorId || !body.courseId) return json({ ok: false, error: "Creator and course are required." }, 400);
-      const creator = await getCreator(String(body.creatorId));
-      if (!creator || creator.status !== "active") return json({ ok: false, error: "Creator account is not active." }, 403);
-      return json({ ok: true, result: await deleteCreatorCourse(String(body.courseId), String(body.creatorId)) });
+      if (!body.courseId) return json({ ok: false, error: "Course is required." }, 400);
+      const creator = await getCreator(authenticatedUserId);
+      if (!creator || creator.status !== "active") return json({ ok: false, error: "Only active X Channel creators can manage courses." }, 403);
+      return json({ ok: true, result: await deleteCreatorCourse(String(body.courseId), authenticatedUserId) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not delete course." }, 400);
     }
