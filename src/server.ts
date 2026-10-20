@@ -10,6 +10,8 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
+import { getAuthenticatedUserId } from "./server/session-auth";
+import { getCreator } from "./server/commerce-service";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleContentVideoUpload } from "./server/content-media-controller";
 import { getCpaOffers, getCpaWallet, recordCpaClick, handleCpaPostback, createOfferPromotionLink, settleCpaRevenue, markCpaCreatorPaid } from "./server/offerwall-service";
@@ -776,6 +778,21 @@ export default {
         }
 
         const folder = url.searchParams.get("folder") || "xora/videos";
+        // Course media must be signed only for a logged-in, active X Channel creator.
+        if (folder.startsWith("xora/courses/")) {
+          const userId = await getAuthenticatedUserId(request);
+          if (!userId) {
+            return new Response(JSON.stringify({ ok: false, error: "Sign in before uploading course media." }), {
+              status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+            });
+          }
+          const creator = await getCreator(userId);
+          if (!creator || creator.status !== "active") {
+            return new Response(JSON.stringify({ ok: false, error: "Only active X Channel creators can upload course media." }), {
+              status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+            });
+          }
+        }
         const timestamp = Math.round(Date.now() / 1000);
 
         const params: Record<string, string | number> = { folder, timestamp };
