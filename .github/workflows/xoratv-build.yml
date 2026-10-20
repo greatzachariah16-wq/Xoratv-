@@ -18,6 +18,6 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install locked dependencies
-        run: npm ci
+        run: npm install
       - name: Build application
         run: npm run build
