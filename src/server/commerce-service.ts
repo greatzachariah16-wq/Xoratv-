@@ -47,6 +47,8 @@ export type Course = {
   unlockPoints?: number | null;
   category?: string | null;
   level?: string | null;
+  creatorDisplayName?: string | null;
+  creatorUsername?: string | null;
   status: "draft" | "published" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -1154,7 +1156,19 @@ export async function getCreatorCourses(creatorId?: string): Promise<Course[]> {
 }
 
 export async function getPublishedCourses(): Promise<Course[]> {
-  return (await getCreatorCourses()).filter((c) => c.status === "published");
+  const [courses, creatorsRaw] = await Promise.all([
+    getCreatorCourses(),
+    queryRtdb("commerce/creators") as Promise<Record<string, CreatorProfile> | null>,
+  ]);
+  const creators = creatorsRaw || {};
+  return courses.filter((course) => course.status === "published").map((course) => {
+    const creator = creators[course.creatorId];
+    return {
+      ...course,
+      creatorDisplayName: creator?.displayName || "Xora Creator",
+      creatorUsername: creator?.username || "",
+    };
+  });
 }
 
 export async function deleteCreatorCourse(courseId: string, creatorId: string): Promise<{ id: string; status: "deleted"; promotionLinksRemoved: number; mediaDeleted: boolean }> {
