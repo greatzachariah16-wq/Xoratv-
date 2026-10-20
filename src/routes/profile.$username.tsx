@@ -35,14 +35,14 @@ type ProfileTab = "posts" | "about";
 
 function ProfilePage() {
   const { username } = Route.useParams();
-  const { user, signOut } = useAuth();
+  const { user, profile: authProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
   const subscriptions = useSubscriptions();
   const { data: profile, isPending } = useQuery(profileQuery(username));
   const { data: posts, isPending: postsPending } = useQuery(profilePostsQuery(profile?.id));
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
-  const isMe = Boolean(user && profile?.id === user.id);
+  const isMe = Boolean(user && (profile?.id === user.id || authProfile?.username?.toLowerCase() === username.toLowerCase()));
   const publishedPosts = posts ?? [];
   const handleSignOut = async () => {
     if (signingOut) return;
