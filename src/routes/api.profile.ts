@@ -66,8 +66,12 @@ export const Route = createFileRoute("/api/profile")({
         const location = typeof body.location === "string" ? body.location.trim() : "";
         const website = typeof body.website === "string" ? body.website.trim() : "";
         if (!display_name || display_name.length > 60) return json({ ok: false, error: "Display name must be 1–60 characters." }, 400);
-        if (bio.length > 570 || location.length > 80 || website.length > 200) return json({ ok: false, error: "One or more profile fields are too long." }, 400);
-        if (!/^https:\/\//i.test(avatar_url) || !/api\.dicebear\.com\/9\.x\/(adventurer|avataaars|bottts|lorelei|micah|notionists)\/svg\?seed=/.test(avatar_url)) {
+        if (bio.length > 600 || location.length > 80 || website.length > 200) return json({ ok: false, error: "One or more profile fields are too long." }, 400);
+        let avatar: URL;
+        try { avatar = new URL(avatar_url); } catch { return json({ ok: false, error: "Choose one of the available XoraTV avatar styles." }, 400); }
+        if (avatar.protocol !== "https:" || avatar.hostname !== "api.dicebear.com" ||
+            !/^\/9\.x\/(adventurer|avataaars|bottts|lorelei|micah|notionists)\/svg$/.test(avatar.pathname) ||
+            !avatar.searchParams.has("seed")) {
           return json({ ok: false, error: "Choose one of the available XoraTV avatar styles." }, 400);
         }
         if (website && !/^https?:\/\//i.test(website)) return json({ ok: false, error: "Website must start with https:// or http://." }, 400);
