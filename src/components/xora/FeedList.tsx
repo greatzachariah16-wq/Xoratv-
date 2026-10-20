@@ -113,31 +113,31 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     <div className="space-y-4">
       {feed === "home" || feed === "shorts" ? (
         <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-card/70 p-1 shadow-sm backdrop-blur-md">
             <button
               type="button"
               onClick={() => setMode("for_you")}
               className={cn(
-                "press flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                "press group flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                 mode === "for_you"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "bg-secondary text-muted-foreground hover:text-foreground",
+                  ? "bg-gradient-to-br from-primary/15 via-primary/10 to-accent/20 text-foreground shadow-sm ring-1 ring-primary/20"
+                  : "text-muted-foreground hover:bg-background/75 hover:text-foreground",
               )}
             >
-              <Compass className="size-3.5" aria-hidden="true" />
+              <Compass className="size-4 shrink-0" aria-hidden="true" />
               For You
             </button>
             <button
               type="button"
               onClick={() => setMode("following")}
               className={cn(
-                "press flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                "press group flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                 mode === "following"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "bg-secondary text-muted-foreground hover:text-foreground",
+                  ? "bg-gradient-to-br from-primary/15 via-primary/10 to-accent/20 text-foreground shadow-sm ring-1 ring-primary/20"
+                  : "text-muted-foreground hover:bg-background/75 hover:text-foreground",
               )}
             >
-              <Users className="size-3.5" aria-hidden="true" />
+              <Users className="size-4 shrink-0" aria-hidden="true" />
               Subscriptions
             </button>
           </div>
