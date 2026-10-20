@@ -21,6 +21,8 @@ type ProfileResponse = { ok?: boolean; profile?: ProfileRecord; error?: string }
 function EditProfilePage() {
   const { user, profile: authProfile, loading } = useAuth();
   const navigate = useNavigate();
+  const userId = user?.id;
+  const profileUsername = authProfile?.username || "";
   const [profile, setProfileState] = useState<ProfileRecord | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [about, setAbout] = useState("");
@@ -35,11 +37,11 @@ function EditProfilePage() {
   useEffect(() => {
     let active = true;
     if (loading) return () => { active = false; };
-    if (!user) { setLoadingProfile(false); return () => { active = false; }; }
+    if (!userId) { setLoadingProfile(false); return () => { active = false; }; }
     setLoadingProfile(true);
     const load = async () => {
       try {
-        const response = await fetch(`/api/profile?username=${encodeURIComponent(authProfile?.username || "")}`, {
+        const response = await fetch(`/api/profile?username=${encodeURIComponent(profileUsername)}`, {
           credentials: "same-origin", cache: "no-store",
         });
         const result = await response.json().catch(() => null) as ProfileResponse | null;
@@ -81,7 +83,7 @@ function EditProfilePage() {
     };
     void load();
     return () => { active = false; };
-  }, [user, authProfile, loading]);
+  }, [userId, profileUsername, loading]);
 
   if (!loading && !user) {
     return <AppShell wide><div className="mx-auto mt-10 max-w-xl rounded-3xl border border-border bg-surface p-7 text-center shadow-card"><h1 className="font-display text-2xl font-semibold">Sign in to edit your profile</h1><p className="mt-2 text-sm text-muted-foreground">Your profile settings are available after you sign in.</p><Link to="/auth" className="mt-5 inline-flex rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground">Sign in</Link></div></AppShell>;
