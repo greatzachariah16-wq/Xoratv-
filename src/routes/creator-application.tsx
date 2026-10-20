@@ -6,7 +6,7 @@ export const Route = createFileRoute("/creator-application")({ component: Creato
 type Platform = "Facebook" | "TikTok" | "YouTube";
 type Social = { url: string; audience: string };
 const initialSocials: Record<Platform, Social> = { Facebook: {url:"",audience:""}, TikTok:{url:"",audience:""}, YouTube:{url:"",audience:""} };
-const platformIcons = { Facebook, TikTok: Instagram, YouTube };
+const platformIcons = { Facebook, TikTok: Instagram, YouTube: Youtube };
 const categories = ["Entertainment","Education & tutorials","Music","Comedy","Lifestyle","News & commentary","Technology","Gaming","Film & storytelling","Other"];
 const steps = [{name:"About you",detail:"Your personal details"},{name:"Your audience",detail:"Public social profiles"},{name:"Your work",detail:"Content and review"}];
 
