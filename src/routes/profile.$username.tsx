@@ -96,8 +96,8 @@ function ProfilePage() {
                     <button type="button" onClick={() => void signOut()} className="press grid size-10 place-items-center rounded-xl border border-border bg-surface/80 text-muted-foreground backdrop-blur-xl transition hover:bg-secondary hover:text-foreground" aria-label="Sign out" title="Sign out"><LogOut className="size-4" /></button>
                   </>
                 ) : profile ? (
-                  <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user} title={!user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-card transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "border border-border bg-surface text-foreground" : "bg-primary text-primary-foreground hover:opacity-90")}>
-                    <Users className="size-4" /> {subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
+                  <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user || isMe} title={isMe ? "This is your profile" : !user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-card transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "border border-border bg-surface text-foreground" : "bg-primary text-primary-foreground hover:opacity-90")}>
+                    <Users className="size-4" /> {isMe ? "Your profile" : subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
                   </button>
                 ) : null}
               </div>
