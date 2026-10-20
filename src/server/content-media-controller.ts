@@ -10,7 +10,12 @@ function cloudinaryConfig() {
   const apiKey = (process.env.CLOUDINARY_API_KEY || "").trim();
   const apiSecret = (process.env.CLOUDINARY_API_SECRET || "").trim();
   if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary server credentials are not configured.");
+    const missing = [
+      !cloudName ? "CLOUDINARY_CLOUD_NAME (or VITE_CLOUDINARY_CLOUD_NAME)" : "",
+      !apiKey ? "CLOUDINARY_API_KEY" : "",
+      !apiSecret ? "CLOUDINARY_API_SECRET" : "",
+    ].filter(Boolean);
+    throw new Error("Cloudinary upload is not configured on the server. Add these Render environment variables: " + missing.join(", ") + ".");
   }
   return { cloudName, apiKey, apiSecret };
 }
