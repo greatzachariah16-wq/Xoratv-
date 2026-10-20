@@ -40,15 +40,13 @@ function sortRooms(rooms: ChatRoomRecord[]) {
 }
 
 async function api<T>(action: string, method: "GET" | "POST" = "GET", body?: unknown, params?: Record<string, string>): Promise<T> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) throw new Error("Your Xora session has expired. Please sign in again.");
-  const token = await currentUser.getIdToken();
-  const url = new URL(CHAT_API);
+  const url = new URL("/api/chat", window.location.origin);
   url.searchParams.set("action", action);
   for (const [key, value] of Object.entries(params || {})) url.searchParams.set(key, value);
   const response = await fetch(url.toString(), {
     method,
-    headers: { Authorization: `Bearer ${token}`, ...(method === "POST" ? { "Content-Type": "application/json" } : {}) },
+    credentials: "include",
+    headers: method === "POST" ? { "Content-Type": "application/json" } : undefined,
     ...(method === "POST" ? { body: JSON.stringify(body || {}) } : {}),
   });
   const responseText = await response.text();
