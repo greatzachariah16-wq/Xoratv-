@@ -1247,7 +1247,8 @@ export async function saveCourse(params: {
   });
 
   if (course.videoUrl) {
-    await upsertXoraContent({
+    try {
+      await upsertXoraContent({
       id: course.id,
       firebaseId: course.id,
       contentType: "course",
@@ -1261,7 +1262,12 @@ export async function saveCourse(params: {
       metadata: { price: course.price, contentLockEnabled: false },
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
-    });
+      });
+    } catch (error) {
+      // The course is already safely stored in Firebase RTDB. Optional content indexing
+      // must not turn a successful publish into a reported failure.
+      console.warn("[Courses] Course saved but optional content index write failed:", error instanceof Error ? error.message : "unknown error");
+    }
   }
   return course;
 }
