@@ -129,7 +129,7 @@ async function handle(request: Request): Promise<Response> {
     }
     if (action === "create-group" && request.method === "POST") {
       const name = String(input.name || "").trim().slice(0,100);
-      const requested = Array.isArray(input.memberIds) ? input.memberIds.filter((value: unknown) => typeof value === "string" && value.length > 0 && value.length <= 160).slice(0,99) : [];
+      const requested = Array.isArray(input.memberIds) ? input.memberIds.filter((value) => typeof value === "string" && value.length > 0 && value.length <= 160).slice(0,99) : [];
       if (!name) return json({ error: "Circle name is required." }, 400);
       const roomId = `group_${crypto.randomUUID()}`;
       const photo = typeof input.photo_url === "string" ? input.photo_url.slice(0,1000) : null;
