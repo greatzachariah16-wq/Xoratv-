@@ -137,7 +137,13 @@ export async function getAllRegisteredProfiles(): Promise<ProfileRecord[]> {
 
 export async function setProfile(profile: ProfileRecord): Promise<void> {
   const safeUid = pathSafe(profile.id);
-  await set(ref(rtdb, `profiles/${safeUid}`), sanitizeForRtdb(profile));
+  // Persist a deterministic, unique default avatar once per account. Existing user-uploaded
+  // avatars are never overwritten; DiceBear is a free SVG avatar service.
+  const profileToSave: ProfileRecord = {
+    ...profile,
+    avatar_url: profile.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(profile.id)}`,
+  };
+  await set(ref(rtdb, `profiles/${safeUid}`), sanitizeForRtdb(profileToSave));
   if (profile.username) {
     const safeUsername = pathSafe(profile.username.toLowerCase());
     await set(ref(rtdb, `usernames/${safeUsername}`), profile.id);
@@ -237,16 +243,19 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
     return entry.status === "published" && entry.approval_status === "approved";
   });
 
+  // Read the post catalog once and join it against the feed index in memory.
+  // The old implementation issued one RTDB request per post (N+1 reads), which
+  // made the feed slow on mobile connections as the catalog grew.
+  const postsSnap = await get(ref(rtdb, "posts"));
+  if (!postsSnap.exists()) return [];
+  const allPosts = postsSnap.val() as Record<string, PostRecord>;
   const posts: PostRecord[] = [];
-  await Promise.all(
-    postIds.map(async (id) => {
-      const p = await getPost(id);
-      if (p) {
-        if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") return;
-        posts.push(p);
-      }
-    }),
-  );
+  for (const id of postIds) {
+    const p = allPosts[pathSafe(id)];
+    if (!p) continue;
+    if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") continue;
+    posts.push(p);
+  }
 
   return posts.sort((a, b) => {
     if (b.featured !== a.featured) return b.featured ? 1 : -1;

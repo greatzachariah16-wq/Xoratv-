@@ -165,14 +165,14 @@ async function attachAuthor(post: PostRecord): Promise<PostWithAuthor> {
           id: authorProfile.id,
           username: authorProfile.username,
           display_name: authorProfile.display_name,
-          avatar_url: authorProfile.avatar_url,
+          avatar_url: authorProfile.avatar_url || `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(authorProfile.id)}`,
           location: authorProfile.location ?? null,
         }
       : {
           id: post.author_id || "creator",
           username: "creator",
           display_name: "Creator",
-          avatar_url: null,
+          avatar_url: post.author_id ? `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(post.author_id)}` : null,
           location: null,
         },
   };
