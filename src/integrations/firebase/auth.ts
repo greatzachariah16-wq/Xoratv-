@@ -194,8 +194,8 @@ export async function ensureProfileExists(
     display_name: fbUser.displayName || preferredUsername || finalUsername,
     avatar_url:
       fbUser.photoURL ||
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    bio: "Horror cinephile on Xora.",
+      "https://api.dicebear.com/9.x/adventurer/svg?seed=" + encodeURIComponent(fbUser.uid),
+    bio: "",
     website: null,
     location: null,
     is_admin: false,
@@ -246,7 +246,7 @@ export async function signUpWithEmail(
       display_name: displayName,
       avatar_url:
         cred.user.photoURL ||
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "https://api.dicebear.com/9.x/adventurer/svg?seed=" + encodeURIComponent(cred.user.uid),
       bio: "",
       website: null,
       location: null,

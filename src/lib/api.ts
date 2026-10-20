@@ -416,6 +416,33 @@ export function profileQuery(username: string) {
   return queryOptions({
     queryKey: ["profile", username],
     queryFn: async (): Promise<Profile | null> => {
+      // New Xora accounts are stored in Supabase. Read that public profile first;
+      // fall back to Firebase for legacy accounts while migration remains gradual.
+      try {
+        const response = await fetch(`/api/profile?username=${encodeURIComponent(username)}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => null) as { ok?: boolean; profile?: Profile; error?: string } | null;
+        if (response.ok && result?.ok && result.profile) {
+          try {
+            const countResponse = await fetch(`/api/subscriptions?creatorId=${encodeURIComponent(result.profile.id)}`, {
+              credentials: "same-origin",
+              cache: "no-store",
+            });
+            const countResult = await countResponse.json() as { ok?: boolean; subscriberCount?: number };
+            if (countResponse.ok && countResult.ok) {
+              return { ...result.profile, subscriber_count: countResult.subscriberCount ?? 0 };
+            }
+          } catch (countError) {
+            console.warn("[Supabase] Subscriber count note:", countError);
+          }
+          return result.profile;
+        }
+      } catch (err) {
+        console.warn("[Supabase] Profile query note:", err);
+      }
+
       if (isFirebaseConfigured()) {
         try {
           const profile = await getProfileByUsername(username);
@@ -426,9 +453,7 @@ export function profileQuery(username: string) {
                 cache: "no-store",
               });
               const result = await response.json() as { ok?: boolean; subscriberCount?: number };
-              if (response.ok && result.ok) {
-                return { ...profile, subscriber_count: result.subscriberCount ?? 0 };
-              }
+              if (response.ok && result.ok) return { ...profile, subscriber_count: result.subscriberCount ?? 0 };
             } catch (countError) {
               console.warn("[Supabase] Subscriber count note:", countError);
             }
@@ -440,16 +465,7 @@ export function profileQuery(username: string) {
       }
 
       const match = localProfiles.find((p) => p.username.toLowerCase() === username.toLowerCase());
-      if (match) return match;
-
-      return {
-        id: `user-${username}`,
-        username,
-        display_name: username,
-        avatar_url: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-        bio: "Horror cinema enthusiast and collector.",
-        created_at: new Date().toISOString(),
-      };
+      return match ?? null;
     },
   });
 }

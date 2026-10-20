@@ -33,6 +33,16 @@ export const Route = createFileRoute("/profile/$username")({
 
 type ProfileTab = "posts" | "about";
 
+function profileBioSections(value?: string | null) {
+  const lines = (value || "").split("\\n");
+  const about = lines.find((line) => line.startsWith("About: "));
+  const creating = lines.find((line) => line.startsWith("Creating: "));
+  if (about || creating) {
+    return { about: about?.slice(7) || "", creating: creating?.slice(10) || "" };
+  }
+  return { about: value || "", creating: "" };
+}
+
 function ProfilePage() {
   const { username } = Route.useParams();
   const { user, profile: authProfile, signOut } = useAuth();
@@ -107,7 +117,7 @@ function ProfilePage() {
               <div className="flex flex-wrap items-center gap-2 pb-1">
                 {isMe ? (
                   <>
-                    <Link to="/settings" className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-3.5 py-2.5 text-xs font-semibold shadow-sm backdrop-blur-xl transition hover:bg-secondary sm:px-4 sm:text-sm"><PenLine className="size-4" /> Edit profile</Link>
+                    <Link to="/edit-profile" className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-3.5 py-2.5 text-xs font-semibold shadow-sm backdrop-blur-xl transition hover:bg-secondary sm:px-4 sm:text-sm"><PenLine className="size-4" /> Edit profile</Link>
                     <Link to="/creator-studio" className="press inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-semibold text-primary-foreground shadow-card transition hover:opacity-90 sm:px-4 sm:text-sm"><PlayCircle className="size-4" /> X Channel</Link>
                     <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="press inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface/75 px-3.5 py-2.5 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-xl transition hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm" aria-label="Sign out" title="Sign out"><LogOut className="size-4" />{signingOut ? "Signing out…" : "Sign out"}</button>
                   </>
@@ -126,7 +136,7 @@ function ProfilePage() {
                   {isMe ? <span className="inline-flex items-center gap-1 rounded-full bg-sage/15 px-2.5 py-1 text-[10px] font-semibold text-sage"><BadgeCheck className="size-3.5" /> Your profile</span> : null}
                 </div>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground">@{profile?.username || username}</p>
-                {profile?.bio ? <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-foreground/85 sm:text-[15px]">{profile.bio}</p> : <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
+                {profile?.bio ? <div className="mt-4 max-w-2xl space-y-2 text-sm leading-7 text-foreground/85 sm:text-[15px]">{profileBioSections(profile.bio).about ? <p className="whitespace-pre-wrap">{profileBioSections(profile.bio).about}</p> : null}{profileBioSections(profile.bio).creating ? <p className="whitespace-pre-wrap"><span className="font-semibold text-muted-foreground">Creating · </span>{profileBioSections(profile.bio).creating}</p> : null}</div> : <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                   {profile?.location ? <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" />{profile.location}</span> : null}
                   {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
@@ -179,7 +189,7 @@ function ProfilePage() {
             </> : <div className="p-5 sm:p-7">
               <div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-2xl bg-accent text-primary"><CircleUserRound className="size-5" /></div><div><h2 className="font-display text-xl font-bold">About {profile?.display_name || username}</h2><p className="mt-1 text-sm text-muted-foreground">A little more about this XoraTV member</p></div></div>
               <div className="mt-6 space-y-3">
-                <div className="rounded-2xl border border-border/80 bg-background/60 p-4"><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Bio</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7">{profile?.bio || (isMe ? "Your bio is empty for now. Add a few words about yourself in profile settings." : "No bio added yet.")}</p></div>
+                <div className="rounded-2xl border border-border/80 bg-background/60 p-4"><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-muted-foreground">What are you about?</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7">{profileBioSections(profile?.bio).about || (isMe ? "Your description is empty for now." : "No description added yet.")}</p></div>{profileBioSections(profile?.bio).creating ? <div className="rounded-2xl border border-border/80 bg-background/60 p-4"><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-muted-foreground">What are you creating?</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7">{profileBioSections(profile?.bio).creating}</p></div> : null}
                 {profile?.location ? <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-background/60 p-4"><MapPin className="size-4 text-primary" /><div><p className="text-xs text-muted-foreground">Location</p><p className="mt-1 text-sm font-medium">{profile.location}</p></div></div> : null}
                 {joinedDate ? <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-background/60 p-4"><CalendarDays className="size-4 text-primary" /><div><p className="text-xs text-muted-foreground">Member since</p><p className="mt-1 text-sm font-medium">{joinedDate}</p></div></div> : null}
                 {isMe ? <Link to="/settings" className="press mt-2 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Update profile <PenLine className="size-4" /></Link> : null}
