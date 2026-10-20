@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Sparkles, PenLine, LogOut, MapPin, CalendarDays, Film, UserRound,
   Settings2, ArrowUpRight, PlayCircle, ShieldCheck, Grid2X2, CircleUserRound,
@@ -35,12 +36,27 @@ type ProfileTab = "posts" | "about";
 function ProfilePage() {
   const { username } = Route.useParams();
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
   const subscriptions = useSubscriptions();
   const { data: profile, isPending } = useQuery(profileQuery(username));
   const { data: posts, isPending: postsPending } = useQuery(profilePostsQuery(profile?.id));
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const isMe = Boolean(user && profile?.id === user.id);
   const publishedPosts = posts ?? [];
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      toast.success("You’ve signed out of XoraTV.");
+      await navigate({ to: "/auth" });
+    } catch {
+      toast.error("Couldn’t sign out. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
+  };
   const joinedDate = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })
     : null;
@@ -93,7 +109,7 @@ function ProfilePage() {
                   <>
                     <Link to="/settings" className="press inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-3.5 py-2.5 text-xs font-semibold shadow-sm backdrop-blur-xl transition hover:bg-secondary sm:px-4 sm:text-sm"><PenLine className="size-4" /> Edit profile</Link>
                     <Link to="/creator-studio" className="press inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-semibold text-primary-foreground shadow-card transition hover:opacity-90 sm:px-4 sm:text-sm"><PlayCircle className="size-4" /> X Channel</Link>
-                    <button type="button" onClick={() => void signOut()} className="press grid size-10 place-items-center rounded-xl border border-border bg-surface/80 text-muted-foreground backdrop-blur-xl transition hover:bg-secondary hover:text-foreground" aria-label="Sign out" title="Sign out"><LogOut className="size-4" /></button>
+                    <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="press inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface/75 px-3.5 py-2.5 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-xl transition hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm" aria-label="Sign out" title="Sign out"><LogOut className="size-4" />{signingOut ? "Signing out…" : "Sign out"}</button>
                   </>
                 ) : profile ? (
                   <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user || isMe} title={isMe ? "This is your profile" : !user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-card transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "border border-border bg-surface text-foreground" : "bg-primary text-primary-foreground hover:opacity-90")}>
