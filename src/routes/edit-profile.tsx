@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, ImagePlus, LoaderCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, LoaderCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
