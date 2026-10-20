@@ -40,10 +40,10 @@ const EmptyState = ({ icon: Icon, title, description, action }: { icon: React.El
 );
 
 export interface ChatPageProps {
-  currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; discoverableRooms: ChatRoom[]; discoverableError?: string | null; joiningGroupId: string | null; onJoinGroup: (roomId: string) => void; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
+  authLoading?: boolean; currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; discoverableRooms: ChatRoom[]; discoverableError?: string | null; joiningGroupId: string | null; onJoinGroup: (roomId: string) => void; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
 }
 export default function ChatPage({
-  currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
+  authLoading = false, currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
 }: ChatPageProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
@@ -58,6 +58,16 @@ export default function ChatPage({
   const activeOtherId = activeRoom?.type === "dm" ? Object.keys(activeRoom.memberIds || {}).find((id) => id !== currentUserId) : null;
   const activeOther = activeOtherId ? profileMap[activeOtherId] : null;
   useEffect(() => { if (activeMessages.length) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activeMessages.length, activeRoomId]);
+
+  if (!currentUserId && authLoading) return (
+    <div className="xora-page grid min-h-[55vh] place-items-center">
+      <div className="rounded-3xl border border-border bg-surface/90 px-8 py-7 text-center shadow-card">
+        <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+        <p className="text-sm font-medium">Restoring your Xora session…</p>
+        <p className="mt-1 text-xs text-muted-foreground">Just a moment while we reconnect your conversations.</p>
+      </div>
+    </div>
+  );
 
   if (!currentUserId) return (
     <div className="xora-page">

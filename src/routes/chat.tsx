@@ -44,7 +44,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [rawRooms, setRawRooms] = useState<ChatRoomRecord[]>([]);
@@ -381,7 +381,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       <div className="mx-auto max-w-6xl pb-8">
         <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
         <ChatPage
-          currentUserId={user?.id || null}
+          authLoading={authLoading}
+        currentUserId={user?.id || null}
           currentProfile={currentProfileLite}
           rooms={rooms}
           discoverableRooms={discoverableRooms}
