@@ -243,18 +243,19 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
     return entry.status === "published" && entry.approval_status === "approved";
   });
 
-  // Read the post catalog once and join it against the feed index in memory.
-  // The old implementation issued one RTDB request per post (N+1 reads), which
-  // made the feed slow on mobile connections as the catalog grew.
-  const postsSnap = await get(ref(rtdb, "posts"));
-  if (!postsSnap.exists()) return [];
-  const allPosts = postsSnap.val() as Record<string, PostRecord>;
+  // Avoid downloading the entire /posts catalogue for every feed request.
+  // Also avoid firing an unbounded request burst on mobile connections: read
+  // only indexed post records in small concurrent batches.
   const posts: PostRecord[] = [];
-  for (const id of postIds) {
-    const p = allPosts[pathSafe(id)];
-    if (!p) continue;
-    if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") continue;
-    posts.push(p);
+  const batchSize = 8;
+  for (let start = 0; start < postIds.length; start += batchSize) {
+    const batch = postIds.slice(start, start + batchSize);
+    const batchPosts = await Promise.all(batch.map((id) => getPost(id)));
+    for (const p of batchPosts) {
+      if (!p) continue;
+      if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") continue;
+      posts.push(p);
+    }
   }
 
   return posts.sort((a, b) => {
