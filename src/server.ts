@@ -779,7 +779,13 @@ export default {
 
         const folder = url.searchParams.get("folder") || "xora/videos";
         // Course media must be signed only for a logged-in, active X Channel creator.
-        if (folder.startsWith("xora/courses/")) {
+        const courseUploadFolders = ["xora/courses/videos", "xora/courses/thumbnails"];
+        if (folder.startsWith("xora/courses") && !courseUploadFolders.includes(folder)) {
+          return new Response(JSON.stringify({ ok: false, error: "Invalid course media upload folder." }), {
+            status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
+        }
+        if (courseUploadFolders.includes(folder)) {
           const userId = await getAuthenticatedUserId(request);
           if (!userId) {
             return new Response(JSON.stringify({ ok: false, error: "Sign in before uploading course media." }), {
