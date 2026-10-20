@@ -270,12 +270,9 @@ export async function uploadToCloudinary(
       const signRes = await fetch(
         `/api/cloudinary/sign?folder=${encodeURIComponent(targetFolder)}`,
       );
-      if (!signRes.ok) {
-        throw new Error(`Signature request failed with status ${signRes.status}`);
-      }
-      const signData = await signRes.json();
-      if (!signData.ok || !signData.signature || !signData.apiKey) {
-        throw new Error(signData.error || "Failed to generate Cloudinary upload signature.");
+      const signData = await signRes.json().catch(() => null);
+      if (!signRes.ok || !signData?.ok || !signData.signature || !signData.apiKey) {
+        throw new Error(signData?.error || `Signature request failed with status ${signRes.status}`);
       }
 
       formData.append("api_key", signData.apiKey);
