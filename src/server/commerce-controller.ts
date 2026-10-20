@@ -181,9 +181,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/course/order" && request.method === "POST") {
     try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before unlocking a course." }, 401);
       const body = await request.json();
-      if (!body.userId || !body.courseId) return json({ ok: false, error: "Missing course order details." }, 400);
-      return json({ ok: true, order: await createCourseOrder(body) });
+      if (!body.courseId) return json({ ok: false, error: "Missing course details." }, 400);
+      return json({ ok: true, order: await createCourseOrder({ ...body, userId: authenticatedUserId, paymentMethod: "points" }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create course order." }, 500);
     }
