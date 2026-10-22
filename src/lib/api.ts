@@ -49,7 +49,6 @@ export type PostWithAuthor = PostRecord & {
 
 // In-memory / local state cache for instant reactivity and offline/preview operation
 let localPosts: PostWithAuthor[] = [...SEED_HORROR_MOVIES];
-const pendingPostWrites = new Map<string, Promise<void>>();
 
 const localProfiles: ProfileRecord[] = [
   {
@@ -968,30 +967,10 @@ export function addLocalPost(post: Omit<PostRecord, "id" | "created_at">): strin
   localPosts = [record, ...localPosts];
 
   if (isFirebaseConfigured()) {
-    const pendingWrite = setPostRecord(record).then(() => undefined);
-    pendingPostWrites.set(id, pendingWrite);
-    void pendingWrite.catch((err) => console.warn("[RealtimeDB] Add post note:", err));
+    setPostRecord(record).catch((err) => console.warn("[RealtimeDB] Add post note:", err));
   }
 
   return id;
-}
-
-export async function waitForPostPersistence(id: string): Promise<void> {
-  const pendingWrite = pendingPostWrites.get(id);
-  if (pendingWrite) {
-    try {
-      await pendingWrite;
-    } finally {
-      pendingPostWrites.delete(id);
-    }
-    return;
-  }
-  if (!isFirebaseConfigured()) {
-    throw new Error("Short publishing is unavailable because creator content storage is not configured.");
-  }
-  const record = localPosts.find((post) => post.id === id);
-  if (!record) throw new Error("The uploaded Short could not be found for saving.");
-  await setPostRecord(record);
 }
 
 export function updateLocalPostStatus(id: string, status: "published" | "removed") {
