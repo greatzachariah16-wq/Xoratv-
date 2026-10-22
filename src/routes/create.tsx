@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Lock, Film, CheckCircle2 } from "lucide-react";
-import { addLocalPost, waitForPostPersistence } from "@/lib/api";
+import { addLocalPost } from "@/lib/api";
 import {
   uploadToCloudinary,
   isCloudinaryConfigured,
@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { cn } from "@/lib/utils";
-import { creatorDashboardQuery } from "@/lib/commerce";
+import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
 import type { Enums } from "@/integrations/firebase/types";
 
 export const Route = createFileRoute("/create")({
@@ -163,6 +163,23 @@ function CreatePage() {
         }
       }
 
+      if (feed === "shorts") {
+        if (kind !== "video" || !streamUrl || !mediaPath) throw new Error("Choose a video file to publish a Short.");
+        const created = await commerceFetch<{ ok: true; post: { id: string } }>("/api/commerce/creator/short", {
+          method: "POST",
+          body: JSON.stringify({
+            creatorId: user.id,
+            title: title.trim() || null,
+            caption: caption.trim() || null,
+            mediaPath,
+            posterPath,
+            streamUrl,
+            durationSeconds,
+          }),
+        });
+        return created.post.id;
+      }
+
       const postId = addLocalPost({
         author_id: user.id,
         kind,
@@ -178,10 +195,8 @@ function CreatePage() {
         featured: false,
         recommendation_score: 90,
         source: "creator",
-        playability_status: kind === "video" && feed === "shorts" ? "playable" : null,
+        playability_status: null,
       });
-      // The creator dashboard reads from Realtime Database, so wait for the Short record to persist before navigating back.
-      if (feed === "shorts") await waitForPostPersistence(postId);
       return postId;
     },
     onSuccess: (postId) => {
@@ -226,7 +241,7 @@ function CreatePage() {
       {isShortUpload && creatorDashboard.isPending ? <div className="mt-4 rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">Checking X Channel access…</div> : null}
       {isShortUpload && !creatorDashboard.isPending && creatorDashboard.data?.dashboard?.creator?.status !== "active" ? <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm"><p className="font-semibold">X Channel approval required</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Short uploads are available after your creator application is approved.</p><Link to="/creator-studio" className="mt-3 inline-flex rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">Open X Channel</Link></div> : null}
 
-      <div className="mt-5 flex gap-1 rounded-full border border-border bg-surface p-1">
+      {!isShortUpload ? <div className="mt-5 flex gap-1 rounded-full border border-border bg-surface p-1">
         {(["video", "text"] as const).map((option) => (
           <button
             key={option}
@@ -242,7 +257,7 @@ function CreatePage() {
             {option}
           </button>
         ))}
-      </div>
+      </div> : null}
 
       <form
         onSubmit={(e) => {
