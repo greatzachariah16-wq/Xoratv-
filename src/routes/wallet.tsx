@@ -138,36 +138,36 @@ function WalletPage() {
 
   return <AppShell wide>
     <main className="mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
-      <header className="overflow-hidden rounded-[28px] border border-border bg-surface shadow-card">
-        <div className="relative p-5 sm:p-7">
-          <div className="absolute -right-16 -top-20 size-56 rounded-full bg-primary/10 blur-3xl"/>
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-primary"><Wallet className="size-5"/><span className="text-sm font-semibold">Xora Rewards Wallet</span></div>
-              <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your earnings, all in one place.</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Track each survey reward, see what is still awaiting provider confirmation, and request a payout when your approved balance is ready. Referral earnings will be added to this same wallet later; surveys come first.</p>
-            </div>
-            <button onClick={() => { setNotice(""); setAmount(String(config?.minimumPayout ?? 200)); setPayoutStep("form"); }}
-              disabled={!config?.payoutsEnabled || Boolean(activePayout) || Number(wallet?.balance || 0) < Number(config?.minimumPayout ?? 200)}
-              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50">
-              <Banknote className="size-4"/> Request payout
-            </button>
-          </div>
-          {activePayout ? <div className="relative mt-4 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-800"><Clock3 className="mt-0.5 size-4 shrink-0"/><span>You already have a payout request being processed ({readableStatus(activePayout.status)}). You can submit another request when it is closed.</span></div> : null}
+      <header className="relative overflow-hidden rounded-[28px] border border-border bg-surface p-5 shadow-card sm:p-7">
+        <div className="absolute -right-12 -top-16 size-52 rounded-full bg-primary/10 blur-3xl" aria-hidden="true"/>
+        <div className="relative flex items-center gap-3">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-card"><Wallet className="size-5"/></div>
+          <div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">XoraTV · Rewards</p><h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Rewards Wallet</h1><p className="mt-1 text-sm text-muted-foreground">Your rewards, all in one place.</p></div>
         </div>
+        <p className="relative mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">Track survey rewards, see what is awaiting provider confirmation, and request a payout when your approved balance is ready. Referral earnings will join this wallet later.</p>
+        {activePayout ? <div className="relative mt-4 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-800"><Clock3 className="mt-0.5 size-4 shrink-0"/><span>You already have a payout request being processed ({readableStatus(activePayout.status)}). You can submit another request when it is closed.</span></div> : null}
       </header>
 
       {surveyWallet.isError ? <div className="rounded-2xl border border-destructive/20 bg-surface p-4 text-sm text-destructive">{surveyWallet.error.message}</div> : null}
       {notice && payoutStep === "closed" ? <div className="rounded-2xl border border-border bg-surface p-4 text-sm">{notice}</div> : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Available to request" value={balanceHidden ? "₦ •••••" : money(wallet?.balance || 0)} detail="Approved rewards not yet paid out" featured action={<button type="button" onClick={() => setBalanceHidden(v => !v)} aria-label={balanceHidden ? "Show balance" : "Hide balance"} className="rounded-lg p-1.5 text-primary hover:bg-primary/10">{balanceHidden ? <EyeOff className="size-4"/> : <Eye className="size-4"/>}</button>}/>
-        <Metric label="Approved survey earnings" value={money(wallet?.lifetimeEarned || 0)} detail="Total approved survey rewards"/>
-        <Metric label="Pending survey earnings" value={money(pendingSurveyEarnings)} detail="Awaiting provider confirmation"/>
-        <Metric label="Reward per approved survey" value={money(config?.rewardPerSurvey ?? 10)} detail={`Minimum payout: ${money(config?.minimumPayout ?? 200)}`}/>
+      <section className="grid min-w-0 gap-4 lg:grid-cols-[1.1fr_1fr]">
+        <article className="relative overflow-hidden rounded-[28px] bg-primary p-5 text-primary-foreground shadow-lift sm:p-7">
+          <div className="pointer-events-none absolute -right-12 -top-14 size-48 rounded-full bg-white/15 blur-3xl" aria-hidden="true"/>
+          <div className="relative flex items-center justify-between gap-3"><p className="flex items-center gap-2 text-sm font-medium text-primary-foreground/90"><ShieldCheck className="size-4"/> Available to withdraw</p><button type="button" onClick={() => setBalanceHidden(v => !v)} aria-label={balanceHidden ? "Show balance" : "Hide balance"} aria-pressed={balanceHidden} className="rounded-full bg-white/15 p-2 transition hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground">{balanceHidden ? <EyeOff className="size-4"/> : <Eye className="size-4"/>}</button></div>
+          <p className="relative mt-4 break-words font-display text-4xl font-semibold tracking-tight sm:text-5xl">{balanceHidden ? "₦ •••••" : money(wallet?.balance || 0)}</p>
+          <div className="relative mt-5 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs leading-5 text-primary-foreground/90"><Clock3 className="size-4 shrink-0"/><span>{balanceHidden ? "Pending rewards hidden" : `${money(pendingSurveyEarnings)} pending`} · awaiting provider confirmation, not withdrawable yet</span></div>
+          <button onClick={() => { setNotice(""); setAmount(String(config?.minimumPayout ?? 200)); setPayoutStep("form"); }} disabled={!config?.payoutsEnabled || Boolean(activePayout) || Number(wallet?.balance || 0) < Number(config?.minimumPayout ?? 200)} className="relative mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-foreground px-5 py-3 text-sm font-semibold text-primary transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"><Banknote className="size-4"/> Request payout</button>
+          <p className="relative mt-3 text-center text-[11px] leading-5 text-primary-foreground/80">Minimum payout {money(config?.minimumPayout ?? 200)} · manually reviewed</p>
+        </article>
+        <div className="grid min-w-0 grid-cols-2 gap-3">
+          <article className="rounded-2xl border border-border bg-surface p-4 shadow-card sm:rounded-3xl sm:p-5"><div className="grid size-9 place-items-center rounded-xl bg-amber-500/10 text-amber-700"><Clock3 className="size-4"/></div><p className="mt-4 text-xs leading-5 text-muted-foreground">Pending confirmation</p><p className="mt-1 break-words font-display text-2xl font-semibold tracking-tight">{balanceHidden ? "₦ •••••" : money(pendingSurveyEarnings)}</p><p className="mt-2 text-[11px] leading-5 text-muted-foreground">Waiting for the survey provider to confirm.</p></article>
+          <article className="rounded-2xl border border-border bg-surface p-4 shadow-card sm:rounded-3xl sm:p-5"><div className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary"><CheckCircle2 className="size-4"/></div><p className="mt-4 text-xs leading-5 text-muted-foreground">Lifetime survey rewards</p><p className="mt-1 break-words font-display text-2xl font-semibold tracking-tight">{balanceHidden ? "₦ •••••" : money(wallet?.lifetimeEarned || 0)}</p><p className="mt-2 text-[11px] leading-5 text-muted-foreground">Total approved survey earnings.</p></article>
+          <div className="col-span-2 flex items-start gap-3 rounded-2xl border border-border bg-surface-2/70 p-4"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-primary"><ShieldCheck className="size-4"/></div><div className="min-w-0"><p className="text-sm font-semibold">Your rewards stay transparent</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Each survey reward remains pending until the provider confirms it. Approved rewards become available according to your wallet balance and payout rules.</p><p className="mt-2 text-[11px] font-medium text-muted-foreground">Current reward per approved survey: {money(config?.rewardPerSurvey ?? 10)}</p></div></div>
+        </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-card sm:rounded-3xl sm:p-6">
+      <section className="rounded-[24px] border border-border bg-surface p-4 shadow-card sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h2 className="font-display text-xl font-semibold">Survey earnings activity</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Every survey is listed with its own amount and confirmation status. Pending surveys are not added to your available balance.</p></div>
           <span className="rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary">CPX Research · connection pending</span>
@@ -177,7 +177,7 @@ function WalletPage() {
           filteredTransactions.length ? <div className="mt-3 space-y-2">{filteredTransactions.map(tx => {
             const isSurvey = tx.type === "survey_reward";
             const positive = Number(tx.amount || 0) > 0;
-            return <article key={tx.id} className="flex items-center gap-3 rounded-xl border border-border bg-background p-3 sm:p-4">
+            return <article key={tx.id} className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3 transition hover:border-primary/25 sm:p-4">
               <div className={`grid size-10 shrink-0 place-items-center rounded-xl ${isSurvey ? "bg-emerald-500/10 text-emerald-700" : "bg-secondary text-muted-foreground"}`}>{isSurvey ? <CheckCircle2 className="size-5"/> : <Wallet className="size-5"/>}</div>
               <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{tx.description || (isSurvey ? "Completed survey" : tx.type.replace(/_/g, " "))}</p>
                 <p className="mt-1 text-[11px] text-muted-foreground">{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : "Date unavailable"}{tx.reference ? ` · Ref ${tx.reference}` : ""}</p>
@@ -187,7 +187,7 @@ function WalletPage() {
           })}</div> : <div className="mt-4 rounded-2xl border border-dashed border-border p-8 text-center"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Clock3 className="size-6"/></div><h3 className="mt-3 text-sm font-semibold">{activityFilter === "all" ? "No survey earnings yet" : `No ${activityFilter} activity yet`}</h3><p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">{activityFilter === "all" ? "When CPX Research is connected, completed surveys will appear here as pending until the provider confirms them. Only approved rewards will increase your available balance." : "Try another activity filter to see your wallet history."}</p></div>}
       </section>
 
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-card sm:rounded-3xl sm:p-6">
+      <section className="rounded-[24px] border border-border bg-surface p-4 shadow-card sm:p-6">
         <div><h2 className="font-display text-xl font-semibold">Payout history</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Review the status of each payout request and the account it was sent to.</p></div>
         {payouts.length ? <div className="mt-4 space-y-3">{payouts.map(p => <article key={p.id} className="rounded-xl border border-border bg-background p-4">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold">{money(p.amount)} payout</p><p className="mt-1 text-[11px] text-muted-foreground">{p.createdAt ? new Date(p.createdAt).toLocaleString() : "Date unavailable"}</p>
@@ -196,7 +196,7 @@ function WalletPage() {
         </article>)}</div> : <p className="mt-4 rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">Your payout requests will appear here after you submit one.</p>}
       </section>
 
-      <section className="rounded-2xl border border-primary/15 bg-primary/5 p-5 shadow-card sm:rounded-3xl sm:p-6"><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Wallet className="size-5"/></div><div><h2 className="font-display text-lg font-semibold">Referral rewards · coming soon</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Referral earnings will be added to this same wallet later. For now, surveys are the first reward source, and only approved rewards are available to request.</p></div></div></section>
+      <section className="rounded-[24px] border border-primary/15 bg-primary/5 p-5 shadow-card sm:p-6"><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Wallet className="size-5"/></div><div><h2 className="font-display text-lg font-semibold">Referral rewards · coming soon</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Referral earnings will be added to this same wallet later. For now, surveys are the first reward source, and only approved rewards are available to request.</p></div></div></section>
 
       {payoutStep !== "closed" ? <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) closePayout(); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="payout-dialog-title" className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border border-border bg-surface p-5 shadow-2xl sm:rounded-[28px] sm:p-6">
