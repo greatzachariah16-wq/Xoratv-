@@ -169,8 +169,9 @@ function WalletPage() {
           <div><h2 className="font-display text-xl font-semibold">Survey earnings activity</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Every survey is listed with its own amount and confirmation status. Pending surveys are not added to your available balance.</p></div>
           <span className="rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary">CPX Research · connection pending</span>
         </div>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter wallet activity">{(["all", "approved", "pending"] as const).map(filter => <button key={filter} type="button" onClick={() => setActivityFilter(filter)} aria-pressed={activityFilter === filter} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold capitalize transition ${activityFilter === filter ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground hover:bg-secondary"}`}>{filter === "all" ? "All activity" : filter}</button>)}</div>
         {surveyWallet.isPending ? <div className="py-10 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto mb-2 size-5 animate-spin"/>Loading your wallet…</div> :
-          transactions.length ? <div className="mt-4 space-y-2">{transactions.map(tx => {
+          filteredTransactions.length ? <div className="mt-3 space-y-2">{filteredTransactions.map(tx => {
             const isSurvey = tx.type === "survey_reward";
             const positive = Number(tx.amount || 0) > 0;
             return <article key={tx.id} className="flex items-center gap-3 rounded-xl border border-border bg-background p-3 sm:p-4">
