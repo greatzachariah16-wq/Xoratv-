@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { cn } from "@/lib/utils";
+import { creatorDashboardQuery } from "@/lib/commerce";
 import type { Enums } from "@/integrations/firebase/types";
 
 export const Route = createFileRoute("/create")({
@@ -40,9 +41,11 @@ function CreatePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [feed, setFeed] = useState<Feed>(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("feed") === "shorts" ? "shorts" : "home");
+  const creatorDashboard = useQuery({ ...creatorDashboardQuery(user?.id), enabled: Boolean(user?.id) && feed === "shorts" });
+  const isShortUpload = feed === "shorts";
 
   const [kind, setKind] = useState<"video" | "text">("video");
-  const [feed, setFeed] = useState<Feed>("home");
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [video, setVideo] = useState<File | null>(null);
@@ -98,6 +101,9 @@ function CreatePage() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in first");
+      if (feed === "shorts" && creatorDashboard.data?.dashboard?.creator?.status !== "active") {
+        throw new Error("Only approved X Channel creators can upload Shorts. Open X Channel to apply or check your access.");
+      }
       let mediaPath: string | null = null;
       let posterPath: string | null = null;
       let streamUrl: string | null = null;
@@ -177,8 +183,10 @@ function CreatePage() {
       queryClient.invalidateQueries({ queryKey: ["feed"] });
       queryClient.invalidateQueries({ queryKey: ["feed-infinite"] });
       queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
-      toast.success("Posted");
-      void navigate({ to: "/video/$postId", params: { postId } });
+      queryClient.invalidateQueries({ queryKey: ["commerce", "creator-dashboard"] });
+      toast.success(isShortUpload ? "Short published to your X Channel" : "Posted");
+      if (isShortUpload) void navigate({ to: "/creator-studio" });
+      else void navigate({ to: "/video/$postId", params: { postId } });
     },
     onError: (error) => {
       setProgress(0);
@@ -208,8 +216,10 @@ function CreatePage() {
 
   return (
     <AppShell>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Create</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Share a video or a short written post.</p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">{isShortUpload ? "Upload a Short" : "Create"}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{isShortUpload ? "Publish a vertical video to your X Channel. Only approved creators can upload Shorts." : "Share a video or a short written post."}</p>
+      {isShortUpload && creatorDashboard.isPending ? <div className="mt-4 rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">Checking X Channel access…</div> : null}
+      {isShortUpload && !creatorDashboard.isPending && creatorDashboard.data?.dashboard?.creator?.status !== "active" ? <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm"><p className="font-semibold">X Channel approval required</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Short uploads are available after your creator application is approved.</p><Link to="/creator-studio" className="mt-3 inline-flex rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">Open X Channel</Link></div> : null}
 
       <div className="mt-5 flex gap-1 rounded-full border border-border bg-surface p-1">
         {(["video", "text"] as const).map((option) => (
@@ -344,10 +354,10 @@ function CreatePage() {
 
         <button
           type="submit"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || (feed === "shorts" && (creatorDashboard.isPending || creatorDashboard.data?.dashboard?.creator?.status !== "active"))}
           className="press w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          {mutation.isPending ? "Publishing…" : "Publish"}
+          {mutation.isPending ? "Publishing…" : isShortUpload ? "Publish Short" : "Publish"}
         </button>
       </form>
     </AppShell>
