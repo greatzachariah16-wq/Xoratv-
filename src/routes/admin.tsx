@@ -20,6 +20,7 @@ import {
   Layers,
   ChevronRight,
   Zap,
+  Wallet,
 } from "lucide-react";
 import { adminPostsQuery, adminStatsQuery, updateLocalPostStatus } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -221,6 +222,26 @@ function AdminPage() {
       badgeColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
       accent: "text-amber-500",
       metric: "Moderation",
+    },
+    {
+      title: "X Channel Applications",
+      description: "Manually review creator applications and approve or reject access to creator tools.",
+      href: "/admin/creator-applications",
+      icon: ShieldCheck,
+      badge: "Manual review",
+      badgeColor: "bg-primary/10 text-primary border-primary/20",
+      accent: "text-primary",
+      metric: "Creator Program",
+    },
+    {
+      title: "Survey Wallet & Payouts",
+      description: "Configure survey rewards and manage users' payout requests and holds.",
+      href: "/admin/survey-wallet",
+      icon: Wallet,
+      badge: "₦10 / survey",
+      badgeColor: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+      accent: "text-emerald-600",
+      metric: "User Rewards",
     },
   ];
 
