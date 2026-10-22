@@ -57,7 +57,9 @@ function WalletPage() {
   const [bankName, setBankName] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [submittedPayout, setSubmittedPayout] = useState<SurveyPayout | null>(null);\n  const [balanceHidden, setBalanceHidden] = useState(false);\n  const [activityFilter, setActivityFilter] = useState<"all" | "approved" | "pending">("all");
+  const [submittedPayout, setSubmittedPayout] = useState<SurveyPayout | null>(null);
+  const [balanceHidden, setBalanceHidden] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<"all" | "approved" | "pending">("all");
 
   const surveyWallet = useQuery({
     queryKey: ["survey-wallet", user?.id],
@@ -81,7 +83,8 @@ function WalletPage() {
 
   const wallet = surveyWallet.data?.wallet;
   const config = surveyWallet.data?.config;
-  const transactions = wallet?.transactions || [];\n  const filteredTransactions = transactions.filter(tx => activityFilter === "all" || (activityFilter === "approved" ? ["approved", "successful", "paid"].includes(tx.status) : ["pending", "under_review", "requested", "on_hold", "reserved"].includes(tx.status)));
+  const transactions = wallet?.transactions || [];
+  const filteredTransactions = transactions.filter(tx => activityFilter === "all" || (activityFilter === "approved" ? ["approved", "successful", "paid"].includes(tx.status) : ["pending", "under_review", "requested", "on_hold", "reserved"].includes(tx.status)));
   const payouts = surveyWallet.data?.payouts || [];
   const pendingSurveyEarnings = transactions
     .filter(tx => tx.type === "survey_reward" && ["pending", "under_review"].includes(tx.status))
