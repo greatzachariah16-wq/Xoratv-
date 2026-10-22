@@ -177,7 +177,13 @@ export async function handleCreatorProgramRoute(request: Request, url: URL): Pro
       const payout = { id: payoutId, userId, amount, currency: "NGN", status: "requested", createdAt: now, updatedAt: now, payoutMethod: String(body.payoutMethod || "manual_bank_transfer").slice(0, 60), payoutDetails: body.payoutDetails && typeof body.payoutDetails === "object" ? body.payoutDetails : null };
       // Reserve funds by reducing available balance and recording the reservation transaction.
       await changeSurveyBalance(userId, -amount, { id: makeId("survey-reserve"), type: "payout_reservation", amount: -amount, status: "reserved", reference: payoutId, description: "Survey payout request reserved", createdAt: now });
-      await write(`${surveyPayoutsPath}/${payoutId}`, payout);
+      try {
+        await write(`${surveyPayoutsPath}/${payoutId}`, payout);
+      } catch (writeError) {
+        // If the payout record cannot be saved, release the reservation instead of losing the user's balance.
+        await changeSurveyBalance(userId, amount, { id: makeId("survey-release"), type: "payout_release", amount, status: "successful", reference: payoutId, description: "Payout reservation released after request creation failed", createdAt: new Date().toISOString() });
+        throw writeError;
+      }
       return json({ ok: true, payout }, 201);
     } catch (error) {
       return json({ ok: false, error: error instanceof Error ? error.message : "Could not request payout." }, 400);
