@@ -45,7 +45,7 @@ async function changeSurveyBalance(userId: string, amount: number, transaction: 
   const transactions = current.transactions && typeof current.transactions === "object" ? current.transactions : {};
   const next = {
     userId, currency: "NGN", balance: Number(current.balance || 0) + amount,
-    lifetimeEarned: Number(current.lifetimeEarned || 0) + (amount > 0 && String(transaction.type) === "survey_reward" ? amount : 0),
+    lifetimeEarned: Number(current.lifetimeEarned || 0) + (amount > 0 && String(transaction.type) === "survey_reward" && ["approved", "successful"].includes(String(transaction.status)) ? amount : 0),
     transactions: { ...transactions, [String(transaction.id)]: transaction },
     updatedAt: new Date().toISOString(),
   };
@@ -163,6 +163,13 @@ export async function handleCreatorProgramRoute(request: Request, url: URL): Pro
       const userId = String(body.userId || "").trim();
       const amount = Math.round(Number(body.amount) * 100) / 100;
       if (!userId || !Number.isFinite(amount) || amount <= 0) return json({ ok: false, error: "Enter a valid payout amount." }, 400);
+      const submittedDetails = body.payoutDetails && typeof body.payoutDetails === "object" ? body.payoutDetails : {};
+      const accountName = String(submittedDetails.accountName || "").trim().slice(0, 120);
+      const accountNumber = String(submittedDetails.accountNumber || "").replace(/\D/g, "").slice(0, 10);
+      const bankName = String(submittedDetails.bankName || "").trim().slice(0, 100);
+      if (accountName.length < 2 || accountNumber.length !== 10 || !bankName) {
+        return json({ ok: false, error: "Enter a valid bank, account name, and 10-digit account number before requesting a payout." }, 400);
+      }
       const config = await readSurveyConfig();
       if (!config.payoutsEnabled) return json({ ok: false, error: "Payout requests are temporarily disabled." }, 409);
       if (amount < config.minimumPayout) return json({ ok: false, error: `Minimum payout is ₦${config.minimumPayout.toLocaleString()}.` }, 400);
@@ -174,7 +181,7 @@ export async function handleCreatorProgramRoute(request: Request, url: URL): Pro
       if (Number(currentWallet.balance || 0) < amount) return json({ ok: false, error: "Insufficient available survey balance." }, 400);
       const payoutId = makeId("survey-payout");
       const now = new Date().toISOString();
-      const payout = { id: payoutId, userId, amount, currency: "NGN", status: "requested", createdAt: now, updatedAt: now, payoutMethod: String(body.payoutMethod || "manual_bank_transfer").slice(0, 60), payoutDetails: body.payoutDetails && typeof body.payoutDetails === "object" ? body.payoutDetails : null };
+      const payout = { id: payoutId, userId, amount, currency: "NGN", status: "requested", createdAt: now, updatedAt: now, payoutMethod: String(body.payoutMethod || "manual_bank_transfer").slice(0, 60), payoutDetails: { accountName, accountNumber, bankName } };
       // Reserve funds by reducing available balance and recording the reservation transaction.
       await changeSurveyBalance(userId, -amount, { id: makeId("survey-reserve"), type: "payout_reservation", amount: -amount, status: "reserved", reference: payoutId, description: "Survey payout request reserved", createdAt: now });
       try {
