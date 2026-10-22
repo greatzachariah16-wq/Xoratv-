@@ -38,8 +38,6 @@ function XChannel(){
   const {user,profile}=useAuth();
   const [section,setSection]=useState<Section>("home");
   const [menuOpen,setMenuOpen]=useState(false);
-  const [registered,setRegistered]=useState(false);
-  const [busy,setBusy]=useState(false);
   const [deleteTarget,setDeleteTarget]=useState<any>(null);
   const [deleteBusy,setDeleteBusy]=useState(false);
   const [payoutBusy,setPayoutBusy]=useState(false);
