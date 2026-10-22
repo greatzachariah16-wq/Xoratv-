@@ -1086,6 +1086,12 @@ export async function testMelePurchase(params: {
 export async function createCreatorProfile(params: {
   userId: string; displayName: string; username: string;
 }) {
+  const existing = await getCreator(params.userId);
+  if (existing?.status === "active") return existing;
+  const application = await queryRtdb(`creatorProgram/applications/${encodeURIComponent(params.userId)}`) as { status?: string } | null;
+  if (!application || application.status !== "approved") {
+    throw new Error("X Channel access requires an approved creator application.");
+  }
   const now = new Date().toISOString();
   const record: CreatorProfile = {
     id: params.userId,
@@ -1096,7 +1102,7 @@ export async function createCreatorProfile(params: {
     createdAt: now,
     updatedAt: now,
   };
-  await queryRtdb(`commerce/creators/${params.userId}`, {
+  await queryRtdb(`commerce/creators/${encodeURIComponent(params.userId)}`, {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
   });
   return record;
