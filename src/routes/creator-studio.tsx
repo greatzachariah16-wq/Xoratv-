@@ -155,7 +155,7 @@ function XChannel(){
     finally{setPayoutBusy(false);}
   }
 
-  if(!creatorInfo&&!registered)return <AppShell wide>
+  if(!creatorInfo)return <AppShell wide>
     <div className="mx-auto max-w-5xl grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
       <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface p-7 shadow-card sm:p-9">
         <div className="absolute -right-24 -top-24 size-72 rounded-full bg-primary/10 blur-3xl"/>
