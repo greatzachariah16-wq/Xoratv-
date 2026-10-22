@@ -1369,6 +1369,59 @@ export async function getCreatorDashboard(userId: string) {
   };
 }
 
+export async function createCreatorShort(params: {
+  creatorId: string; title?: string | null; caption?: string | null;
+  mediaPath: string; posterPath?: string | null; streamUrl: string; durationSeconds?: number | null;
+}) {
+  const creatorId = String(params.creatorId || "").trim();
+  const creator = await getCreator(creatorId);
+  if (!creator || creator.status !== "active") throw new Error("Only approved, active X Channel creators can publish Shorts.");
+  const streamUrl = String(params.streamUrl || "").trim();
+  let parsedUrl: URL;
+  try { parsedUrl = new URL(streamUrl); } catch { throw new Error("A valid uploaded video URL is required."); }
+  if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "res.cloudinary.com") {
+    throw new Error("Short videos must be uploaded to Xora's configured Cloudinary media store.");
+  }
+  const mediaPath = String(params.mediaPath || "").trim().slice(0, 512);
+  if (!mediaPath) throw new Error("The uploaded video reference is missing.");
+  const title = String(params.title || "").trim().slice(0, 120);
+  const caption = String(params.caption || "").trim().slice(0, 1000);
+  const posterPath = String(params.posterPath || "").trim().slice(0, 2048) || null;
+  const durationSeconds = Number.isFinite(Number(params.durationSeconds)) ? Math.max(0, Math.round(Number(params.durationSeconds))) : null;
+  const now = new Date().toISOString();
+  const post = {
+    id: id("creator_short"),
+    author_id: creatorId,
+    kind: "video",
+    feed: "shorts",
+    status: "published",
+    approval_status: "approved",
+    title: title || null,
+    caption: caption || null,
+    media_path: mediaPath,
+    poster_path: posterPath,
+    stream_url: streamUrl,
+    duration_seconds: durationSeconds,
+    featured: false,
+    recommendation_score: 90,
+    source: "creator",
+    playability_status: "playable",
+    views_count: 0,
+    created_at: now,
+  };
+  await queryRtdb(`posts/${post.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(post) });
+  try {
+    await queryRtdb(`postsByFeed/shorts/${post.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ created_at: now, recommendation_score: post.recommendation_score, status: post.status, approval_status: post.approval_status }),
+    });
+  } catch (error) {
+    await queryRtdb(`posts/${post.id}`, { method: "DELETE" }).catch(() => undefined);
+    throw error;
+  }
+  return post;
+}
+
 export async function deleteCreatorShort(postId: string, creatorId: string): Promise<{ id: string; deleted: true; mediaDeleted: boolean }> {
   const cleanPostId = String(postId || "").trim();
   const cleanCreatorId = String(creatorId || "").trim();
@@ -1380,7 +1433,7 @@ export async function deleteCreatorShort(postId: string, creatorId: string): Pro
   if (post.source !== "creator" || post.kind !== "video" || post.feed !== "shorts") throw new Error("That post is not a creator Short.");
 
   let mediaDeleted = false;
-  const mediaUrl = String(post.media_path || post.stream_url || "");
+  const mediaUrl = String(post.stream_url || post.media_path || "");
   const cloudinaryMatch = mediaUrl.match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)$/);
   if (cloudinaryMatch) {
     const parts = cloudinaryMatch[2].split("/").filter(Boolean);
