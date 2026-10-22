@@ -221,6 +221,6 @@ function WalletPage() {
   </AppShell>;
 }
 
-function Metric({ label, value, detail, featured = false }: { label: string; value: string; detail: string; featured?: boolean }) {
-  return <article className={`rounded-2xl border p-4 shadow-sm ${featured ? "border-primary/25 bg-primary/5" : "border-border bg-surface"}`}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 font-display text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{detail}</p></article>;
+function Metric({ label, value, detail, featured = false, action }: { label: string; value: string; detail: string; featured?: boolean; action?: React.ReactNode }) {
+  return <article className={`rounded-2xl border p-4 shadow-sm ${featured ? "border-primary/25 bg-primary/5" : "border-border bg-surface"}`}><div className="flex items-start justify-between gap-2"><p className="text-xs text-muted-foreground">{label}</p>{action}</div><p className="mt-2 font-display text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{detail}</p></article>;
 }
