@@ -241,31 +241,27 @@ export async function uploadToCloudinary(
   options: CloudinaryUploadOptions = {},
 ): Promise<CloudinaryUploadResult> {
   const { cloudName, uploadPreset, folder: defaultFolder, isConfigured } = getCloudinaryConfig();
+  const isImage = file.type.startsWith("image/");
+  const resourceType = options.resourceType || (isImage ? "image" : "video");
+  const targetFolder = options.folder || (isImage ? "xora/posters" : defaultFolder);
+  const isCourseMedia = targetFolder.startsWith("xora/courses/");
+  let resolvedCloudName = cloudName;
 
-  if (!isConfigured) {
+  // Course uploads always use a server signature. Render holds the Cloudinary
+  // credentials and returns the cloud name, so no client Vite variable is needed.
+  if (!isConfigured && !isCourseMedia) {
     return Promise.reject(
       new Error("Cloudinary is not configured. Please provide VITE_CLOUDINARY_CLOUD_NAME."),
     );
   }
 
-  const isImage = file.type.startsWith("image/");
-  const resourceType = options.resourceType || (isImage ? "image" : "video");
-  const targetFolder = options.folder || (isImage ? "xora/posters" : defaultFolder);
-
-  // Course media uploads go directly from the creator's phone to Cloudinary.
-  // This avoids proxy body limits/timeouts on Render and keeps media binaries off our app server.
-  const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
-
   const formData = new FormData();
   formData.append("file", file);
 
-  if (uploadPreset && !targetFolder.startsWith("xora/courses/")) {
+  if (uploadPreset && !isCourseMedia) {
     formData.append("upload_preset", uploadPreset);
-    if (targetFolder) {
-      formData.append("folder", targetFolder);
-    }
+    if (targetFolder) formData.append("folder", targetFolder);
   } else {
-    // Request server signature using configured CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET
     try {
       const signRes = await fetch(
         `/api/cloudinary/sign?folder=${encodeURIComponent(targetFolder)}`,
@@ -275,21 +271,23 @@ export async function uploadToCloudinary(
         throw new Error(signData?.error || `Signature request failed with status ${signRes.status}`);
       }
 
+      resolvedCloudName = String(signData.cloudName || resolvedCloudName).trim();
+      if (!resolvedCloudName) throw new Error("Cloudinary server did not return a cloud name.");
+
       formData.append("api_key", signData.apiKey);
       formData.append("timestamp", String(signData.timestamp));
       formData.append("signature", signData.signature);
-      if (signData.folder) {
-        formData.append("folder", signData.folder);
-      }
+      if (signData.folder) formData.append("folder", signData.folder);
     } catch (signErr) {
       const msg = signErr instanceof Error ? signErr.message : "Upload signature failed";
       return Promise.reject(
-        new Error(
-          `Unable to authorize Cloudinary upload: ${msg}. Provide VITE_CLOUDINARY_UPLOAD_PRESET or check CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.`,
-        ),
+        new Error(`Unable to authorize Cloudinary upload: ${msg}. Check Render's Cloudinary server credentials and active creator access.`),
       );
     }
   }
+
+  // Use Render's returned cloud name for signed uploads.
+  const endpoint = `https://api.cloudinary.com/v1_1/${resolvedCloudName}/${resourceType}/upload`;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
