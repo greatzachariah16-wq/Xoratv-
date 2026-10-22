@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -41,7 +41,10 @@ function CreatePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [feed, setFeed] = useState<Feed>(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("feed") === "shorts" ? "shorts" : "home");
+  const [feed, setFeed] = useState<Feed>("home");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("feed") === "shorts") setFeed("shorts");
+  }, []);
   const creatorDashboard = useQuery({ ...creatorDashboardQuery(user?.id), enabled: Boolean(user?.id) && feed === "shorts" });
   const isShortUpload = feed === "shorts";
 
