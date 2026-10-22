@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, CheckCircle2, Clock3, Eye, EyeOff, Loader2, ShieldCheck, Wallet, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -193,6 +193,8 @@ function WalletPage() {
         </article>)}</div> : <p className="mt-4 rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">Your payout requests will appear here after you submit one.</p>}
       </section>
 
+      <section className="rounded-2xl border border-primary/15 bg-primary/5 p-5 shadow-card sm:rounded-3xl sm:p-6"><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Wallet className="size-5"/></div><div><h2 className="font-display text-lg font-semibold">Referral rewards · coming soon</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Referral earnings will be added to this same wallet later. For now, surveys are the first reward source, and only approved rewards are available to request.</p></div></div></section>
+
       {payoutStep !== "closed" ? <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) closePayout(); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="payout-dialog-title" className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border border-border bg-surface p-5 shadow-2xl sm:rounded-[28px] sm:p-6">
           <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Xora Rewards Wallet</p><h2 id="payout-dialog-title" className="mt-2 font-display text-xl font-semibold">{payoutStep === "form" ? "Request a payout" : payoutStep === "review" ? "Confirm payout details" : "Request received"}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{payoutStep === "form" ? "Enter where you would like your approved survey earnings sent." : payoutStep === "review" ? "Review everything below before sending your request." : "Your payout request has been recorded successfully."}</p></div><button onClick={closePayout} disabled={busy} aria-label="Close payout dialog" className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-secondary disabled:opacity-50"><X className="size-4"/></button></div>
@@ -221,6 +223,6 @@ function WalletPage() {
   </AppShell>;
 }
 
-function Metric({ label, value, detail, featured = false, action }: { label: string; value: string; detail: string; featured?: boolean; action?: React.ReactNode }) {
+function Metric({ label, value, detail, featured = false, action }: { label: string; value: string; detail: string; featured?: boolean; action?: ReactNode }) {
   return <article className={`rounded-2xl border p-4 shadow-sm ${featured ? "border-primary/25 bg-primary/5" : "border-border bg-surface"}`}><div className="flex items-start justify-between gap-2"><p className="text-xs text-muted-foreground">{label}</p>{action}</div><p className="mt-2 font-display text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{detail}</p></article>;
 }
