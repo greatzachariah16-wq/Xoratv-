@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { verifyAdminSession } from "./admin-auth";
-import { getCleanDbUrl, getFirebaseAccessToken, queryRtdb } from "./xseries-service-account";
+import { queryRtdb } from "./xseries-service-account";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -44,8 +44,8 @@ async function changeSurveyBalance(userId: string, amount: number, transaction: 
   const current = await queryRtdb(path) as any || {};
   const transactions = current.transactions && typeof current.transactions === "object" ? current.transactions : {};
   const next = {
-    userId, currency: "NGN", balance: Math.max(0, Number(current.balance || 0) + amount),
-    lifetimeEarned: Number(current.lifetimeEarned || 0) + (amount > 0 ? amount : 0),
+    userId, currency: "NGN", balance: Number(current.balance || 0) + amount,
+    lifetimeEarned: Number(current.lifetimeEarned || 0) + (amount > 0 && String(transaction.type) === "survey_reward" ? amount : 0),
     transactions: { ...transactions, [String(transaction.id)]: transaction },
     updatedAt: new Date().toISOString(),
   };
@@ -154,7 +154,7 @@ export async function handleCreatorProgramRoute(request: Request, url: URL): Pro
     ]);
     const payouts = Object.values(payoutsRaw).filter((p: any) => p?.userId === userId).sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt)));
     const transactions = Object.values(wallet?.transactions || {}).sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 50);
-    return json({ ok: true, wallet: { balance: Number(wallet?.balance || 0), lifetimeEarned: Number(wallet?.lifetimeEarned || 0), currency: "NGN", transactions }, config: { minimumPayout: config.minimumPayout, payoutsEnabled: config.payoutsEnabled }, payouts });
+    return json({ ok: true, wallet: { balance: Number(wallet?.balance || 0), lifetimeEarned: Number(wallet?.lifetimeEarned || 0), currency: "NGN", transactions }, config: { rewardPerSurvey: config.rewardPerSurvey, minimumPayout: config.minimumPayout, payoutsEnabled: config.payoutsEnabled }, payouts });
   }
 
   if (path === "/api/survey-wallet/payout" && request.method === "POST") {
