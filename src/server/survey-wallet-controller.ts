@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { verifyAdminSession } from "./admin-auth";
 import { queryRtdb } from "./xseries-service-account";
+import { getAuthenticatedUserId } from "./session-auth";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -57,6 +58,8 @@ export async function handleSurveyWalletRoute(request: Request, url: URL): Promi
   if (path === "/api/survey-wallet" && request.method === "GET") {
     const userId = url.searchParams.get("userId")?.trim();
     if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId || authenticatedUserId !== userId) return json({ ok: false, error: "Sign in to view this rewards wallet." }, 401);
     const [wallet, config, payoutsRaw] = await Promise.all([
       queryRtdb(`${walletsPath}/${encodeURIComponent(userId)}`) as Promise<any>,
       readConfig(),
@@ -73,6 +76,8 @@ export async function handleSurveyWalletRoute(request: Request, url: URL): Promi
       const userId = String(body.userId || "").trim();
       const amount = Math.round(Number(body.amount) * 100) / 100;
       if (!userId || userId.length > 160 || !Number.isFinite(amount) || amount <= 0) return json({ ok: false, error: "Enter a valid payout amount." }, 400);
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId || authenticatedUserId !== userId) return json({ ok: false, error: "Sign in to request a payout from this wallet." }, 401);
       const submitted = body.payoutDetails && typeof body.payoutDetails === "object" ? body.payoutDetails : {};
       const accountName = String(submitted.accountName || "").trim().slice(0, 120);
       const accountNumber = String(submitted.accountNumber || "").replace(/\D/g, "").slice(0, 10);
