@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banknote, CheckCircle2, Clock3, RefreshCw, Save, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/xora/AppShell";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/admin/survey-wallet")({ component: SurveyWalletAdmin });
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -20,12 +20,13 @@ function SurveyWalletAdmin() {
   const [minimum, setMinimum] = useState("200");
   const [enabled, setEnabled] = useState(true);
   const [loaded, setLoaded] = useState(false);
-  if (configQuery.data && !loaded) {
+  useEffect(() => {
+    if (!configQuery.data || loaded) return;
     setReward(String(configQuery.data.config.rewardPerSurvey ?? 10));
     setMinimum(String(configQuery.data.config.minimumPayout ?? 200));
     setEnabled(configQuery.data.config.payoutsEnabled !== false);
     setLoaded(true);
-  }
+  }, [configQuery.data, loaded]);
   const save = useMutation({
     mutationFn: () => adminFetch("/api/admin/survey-wallet/config", { method: "POST", body: JSON.stringify({ rewardPerSurvey: Number(reward), minimumPayout: Number(minimum), payoutsEnabled: enabled }) }),
     onSuccess: () => { toast.success("Survey reward settings saved."); void client.invalidateQueries({ queryKey: ["admin", "survey-wallet-config"] }); },
