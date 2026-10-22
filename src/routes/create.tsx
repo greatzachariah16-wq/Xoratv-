@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Lock, Film, CheckCircle2 } from "lucide-react";
-import { addLocalPost } from "@/lib/api";
+import { addLocalPost, waitForPostPersistence } from "@/lib/api";
 import {
   uploadToCloudinary,
   isCloudinaryConfigured,
@@ -180,6 +180,8 @@ function CreatePage() {
         source: "creator",
         playability_status: kind === "video" && feed === "shorts" ? "playable" : null,
       });
+      // The creator dashboard reads from Realtime Database, so wait for the Short record to persist before navigating back.
+      if (feed === "shorts") await waitForPostPersistence(postId);
       return postId;
     },
     onSuccess: (postId) => {
