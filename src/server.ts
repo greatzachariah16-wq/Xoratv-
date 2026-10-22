@@ -22,6 +22,7 @@ import { fetchNexusChannels, getNexusChannel, getNexusGuide } from "./integratio
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
+import { handleCreatorProgramRoute } from "./server/creator-program-controller";
 
 const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
 let shortsVerificationRunning = false;
@@ -532,6 +533,12 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
+
+    // Creator applications and survey-wallet endpoints are isolated from the commerce wallet.
+    if (url.pathname.startsWith("/api/creator-applications") || url.pathname.startsWith("/api/admin/creator-applications") || url.pathname.startsWith("/api/survey-wallet") || url.pathname.startsWith("/api/admin/survey-wallet")) {
+      const programResponse = await handleCreatorProgramRoute(request, url);
+      if (programResponse) return programResponse;
+    }
 
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
