@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   BookOpen, Check, ChevronDown, Gift, Landmark, Loader2,
   Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users, ImagePlus,
@@ -149,7 +150,8 @@ function XChannel(){
       setCourseVideoUrl("");
       setCourseVideoPublicId("");
       setCourseThumbnailUrl("");
-      setCourseNotice("Course published successfully.");
+      setCourseNotice("");
+      toast.success("Course published successfully.");
       setSection("manage");
       await refetch();
     } catch (error) {
