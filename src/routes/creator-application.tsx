@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, CheckCircle2, Clapperboard, Facebook, Instagram, ShieldCheck, Sparkles, Youtube } from "lucide-react";
 
 export const Route = createFileRoute("/creator-application")({ component: CreatorApplicationPage });
@@ -11,6 +12,7 @@ const categories = ["Entertainment","Education & tutorials","Music","Comedy","Li
 const steps = [{name:"About you",detail:"Your personal details"},{name:"Your audience",detail:"Public social profiles"},{name:"Your work",detail:"Content and review"}];
 
 function CreatorApplicationPage() {
+ const { user } = useAuth();
  const [step,setStep] = useState(0);
  const [form,setForm] = useState({fullName:"",email:"",username:"",channelName:"",country:"Nigeria",category:"Entertainment",about:"",sampleUrl:"",accepted:false});
  const [socials,setSocials] = useState<Record<Platform,Social>>(initialSocials);
@@ -35,12 +37,13 @@ function CreatorApplicationPage() {
  }
  async function submit(event:React.FormEvent<HTMLFormElement>) {
    event.preventDefault(); setError("");
+   if(!user){setError("Please sign in to XoraTV before submitting your creator application.");return;}
    if(!eligible){setStep(1);setError("Add a public profile link and at least 50 followers/subscribers on one supported platform.");return;}
    if(!form.accepted){setError("Please confirm your details are accurate and accept the creator guidelines.");return;}
    setBusy(true);
    try {
      const backend=(import.meta as any).env?.VITE_RENDER_BACKEND_URL?.replace(/\/$/,"")||"";
-     const response=await fetch(`${backend}/api/creator-applications`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,socials:Object.fromEntries(selected.map(p=>[p,socials[p]])),source:"preview-lab"})});
+     const response=await fetch(`${backend}/api/creator-applications`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,userId:user.id,socials:Object.fromEntries(selected.map(p=>[p,socials[p]])),source:"preview-lab"})});
      const body=await response.json().catch(()=>({}));
      if(!response.ok||!body.ok)throw new Error(body.error||"We couldn't submit your application. Please try again.");
      setSuccess(true);
