@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, CheckCircle2, Clock3, Loader2, ShieldCheck, Wallet, X } from "lucide-react";
+import { Banknote, CheckCircle2, Clock3, Eye, EyeOff, Loader2, ShieldCheck, Wallet, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -57,7 +57,7 @@ function WalletPage() {
   const [bankName, setBankName] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [submittedPayout, setSubmittedPayout] = useState<SurveyPayout | null>(null);
+  const [submittedPayout, setSubmittedPayout] = useState<SurveyPayout | null>(null);\n  const [balanceHidden, setBalanceHidden] = useState(false);\n  const [activityFilter, setActivityFilter] = useState<"all" | "approved" | "pending">("all");
 
   const surveyWallet = useQuery({
     queryKey: ["survey-wallet", user?.id],
@@ -81,7 +81,7 @@ function WalletPage() {
 
   const wallet = surveyWallet.data?.wallet;
   const config = surveyWallet.data?.config;
-  const transactions = wallet?.transactions || [];
+  const transactions = wallet?.transactions || [];\n  const filteredTransactions = transactions.filter(tx => activityFilter === "all" || (activityFilter === "approved" ? ["approved", "successful", "paid"].includes(tx.status) : ["pending", "under_review", "requested", "on_hold", "reserved"].includes(tx.status)));
   const payouts = surveyWallet.data?.payouts || [];
   const pendingSurveyEarnings = transactions
     .filter(tx => tx.type === "survey_reward" && ["pending", "under_review"].includes(tx.status))
@@ -158,7 +158,7 @@ function WalletPage() {
       {notice && payoutStep === "closed" ? <div className="rounded-2xl border border-border bg-surface p-4 text-sm">{notice}</div> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Available to request" value={money(wallet?.balance || 0)} detail="Approved rewards not yet paid out" featured/>
+        <Metric label="Available to request" value={balanceHidden ? "₦ •••••" : money(wallet?.balance || 0)} detail="Approved rewards not yet paid out" featured action={<button type="button" onClick={() => setBalanceHidden(v => !v)} aria-label={balanceHidden ? "Show balance" : "Hide balance"} className="rounded-lg p-1.5 text-primary hover:bg-primary/10">{balanceHidden ? <EyeOff className="size-4"/> : <Eye className="size-4"/>}</button>}/>
         <Metric label="Approved survey earnings" value={money(wallet?.lifetimeEarned || 0)} detail="Total approved survey rewards"/>
         <Metric label="Pending survey earnings" value={money(pendingSurveyEarnings)} detail="Awaiting provider confirmation"/>
         <Metric label="Reward per approved survey" value={money(config?.rewardPerSurvey ?? 10)} detail={`Minimum payout: ${money(config?.minimumPayout ?? 200)}`}/>
@@ -180,7 +180,7 @@ function WalletPage() {
               </div>
               <div className="shrink-0 text-right"><p className={`text-sm font-semibold ${positive ? "text-emerald-700" : "text-foreground"}`}>{positive ? "+" : "−"}{money(Math.abs(Number(tx.amount || 0)))}</p><span className={`mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${statusStyle(tx.status)}`}>{readableStatus(tx.status)}</span></div>
             </article>;
-          })}</div> : <div className="mt-4 rounded-2xl border border-dashed border-border p-8 text-center"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Clock3 className="size-6"/></div><h3 className="mt-3 text-sm font-semibold">No survey earnings yet</h3><p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">When CPX Research is connected, completed surveys will appear here as pending until the provider confirms them. Only approved rewards will increase your available balance.</p></div>}
+          })}</div> : <div className="mt-4 rounded-2xl border border-dashed border-border p-8 text-center"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Clock3 className="size-6"/></div><h3 className="mt-3 text-sm font-semibold">{activityFilter === "all" ? "No survey earnings yet" : `No ${activityFilter} activity yet`}</h3><p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">{activityFilter === "all" ? "When CPX Research is connected, completed surveys will appear here as pending until the provider confirms them. Only approved rewards will increase your available balance." : "Try another activity filter to see your wallet history."}</p></div>}
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-card sm:rounded-3xl sm:p-6">
