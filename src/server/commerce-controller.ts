@@ -3,7 +3,7 @@ import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
-  saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
+  saveCourse, deleteCreatorCourse, deleteCreatorShort, createCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
@@ -262,6 +262,25 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create promotion link." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/creator/short" && request.method === "POST") {
+    try {
+      const body = await request.json() as any;
+      if (!body.creatorId || !body.streamUrl || !body.mediaPath) return json({ ok: false, error: "Uploaded video and creator details are required." }, 400);
+      const post = await createCreatorShort({
+        creatorId: String(body.creatorId),
+        title: body.title == null ? null : String(body.title),
+        caption: body.caption == null ? null : String(body.caption),
+        mediaPath: String(body.mediaPath),
+        posterPath: body.posterPath == null ? null : String(body.posterPath),
+        streamUrl: String(body.streamUrl),
+        durationSeconds: body.durationSeconds == null ? null : Number(body.durationSeconds),
+      });
+      return json({ ok: true, post }, 201);
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not publish Short." }, 400);
     }
   }
 
