@@ -165,7 +165,7 @@ function WalletPage() {
           <article className="rounded-2xl border border-[#eadfd5] bg-[#fffdf9] p-4 shadow-sm sm:rounded-3xl sm:p-5"><div className="grid size-9 place-items-center rounded-xl bg-[#f0e4d9] text-[#65483c]"><CheckCircle2 className="size-4"/></div><p className="mt-4 text-xs leading-5 text-muted-foreground">Lifetime survey rewards</p><p className="mt-1 break-words font-display text-2xl font-semibold tracking-tight">{balanceHidden ? "₦ •••••" : money(wallet?.lifetimeEarned || 0)}</p><p className="mt-2 text-[11px] leading-5 text-muted-foreground">Total approved survey earnings.</p></article>
           <div className="col-span-2 flex items-start gap-3 rounded-2xl border border-[#eadfd5] bg-[#f7f0e9] p-4"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#fffdf9] text-[#65483c]"><ShieldCheck className="size-4"/></div><div className="min-w-0"><p className="text-sm font-semibold">Your rewards stay transparent</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Each survey reward remains pending until the provider confirms it. Approved rewards become available according to your wallet balance and payout rules.</p><p className="mt-2 text-[11px] font-medium text-muted-foreground">Current reward per approved survey: {money(config?.rewardPerSurvey ?? 10)}</p></div></div>
         </div>
-      </section>
+      </div>
 
       <section className="h-fit min-w-0 rounded-3xl border border-[#eadfd5] bg-[#fffdf9] p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
