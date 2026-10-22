@@ -139,14 +139,14 @@ function WalletPage() {
   return <AppShell wide>
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
       <header className="flex items-center gap-3">
-        
-        <div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-[#e4d4c4] bg-[#e9d8c6] text-[#65483c] shadow-sm">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e9d8c6] text-[#65483c] shadow-sm"><Wallet className="size-5"/></div>
-          <div className="min-w-0 flex-1"><h1 className="font-display text-2xl font-semibold tracking-tight text-[#5c4037]">Rewards Wallet</h1><p className="text-sm text-muted-foreground">Your rewards, all in one place</p></div>
+        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e9d8c6] text-[#65483c] shadow-sm">
+          <Wallet className="size-5"/>
         </div>
-        
-        {activePayout ? <div className="relative mt-4 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-800"><Clock3 className="mt-0.5 size-4 shrink-0"/><span>You already have a payout request being processed ({readableStatus(activePayout.status)}). You can submit another request when it is closed.</span></div> : null}
-      </header>
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-[#5c4037]">Rewards Wallet</h1>
+          <p className="text-sm text-muted-foreground">Your rewards, all in one place</p>
+        </div>
+      </header>eader>
 
       {surveyWallet.isError ? <div className="rounded-2xl border border-destructive/20 bg-[#fffdf9] p-4 text-sm text-destructive">{surveyWallet.error.message}</div> : null}
       {notice && payoutStep === "closed" ? <div className="rounded-2xl border border-[#eadfd5] bg-[#fffdf9] p-4 text-sm">{notice}</div> : null}
