@@ -142,7 +142,7 @@ function WalletPage() {
             <div>
               <div className="flex items-center gap-2 text-primary"><Wallet className="size-5"/><span className="text-sm font-semibold">Xora Rewards Wallet</span></div>
               <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight sm:text-3xl">Your earnings, all in one place.</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Track each survey reward, see what is still awaiting provider confirmation, and request a payout when your approved balance is ready.</p>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Track each survey reward, see what is still awaiting provider confirmation, and request a payout when your approved balance is ready. Referral earnings will be added to this same wallet later; surveys come first.</p>
             </div>
             <button onClick={() => { setNotice(""); setAmount(String(config?.minimumPayout ?? 200)); setPayoutStep("form"); }}
               disabled={!config?.payoutsEnabled || Boolean(activePayout) || Number(wallet?.balance || 0) < Number(config?.minimumPayout ?? 200)}
