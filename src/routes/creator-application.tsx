@@ -42,8 +42,8 @@ function CreatorApplicationPage() {
    if(!form.accepted){setError("Please confirm your details are accurate and accept the creator guidelines.");return;}
    setBusy(true);
    try {
-     const backend=(import.meta as any).env?.VITE_RENDER_BACKEND_URL?.replace(/\/$/,"")||"";
-     const response=await fetch(`${backend}/api/creator-applications`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,userId:user.id,socials:Object.fromEntries(selected.map(p=>[p,socials[p]])),source:"preview-lab"})});
+     // Use this deployment's own API origin; Preview must never forward applications to production.
+     const response=await fetch(`/api/creator-applications`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,userId:user.id,socials:Object.fromEntries(selected.map(p=>[p,socials[p]])),source:"preview-lab"})});
      const body=await response.json().catch(()=>({}));
      if(!response.ok||!body.ok)throw new Error(body.error||"We couldn't submit your application. Please try again.");
      setSuccess(true);
