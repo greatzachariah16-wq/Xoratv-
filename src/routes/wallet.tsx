@@ -146,7 +146,7 @@ function WalletPage() {
           <h1 className="font-display text-2xl font-semibold tracking-tight text-[#5c4037]">Rewards Wallet</h1>
           <p className="text-sm text-muted-foreground">Your rewards, all in one place</p>
         </div>
-      </header>eader>
+      </header>
 
       {surveyWallet.isError ? <div className="rounded-2xl border border-destructive/20 bg-[#fffdf9] p-4 text-sm text-destructive">{surveyWallet.error.message}</div> : null}
       {notice && payoutStep === "closed" ? <div className="rounded-2xl border border-[#eadfd5] bg-[#fffdf9] p-4 text-sm">{notice}</div> : null}
