@@ -288,6 +288,9 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       if (!authenticatedUserId) return json({ ok: false, error: "Sign in before publishing a course." }, 401);
       const body = await request.json();
       if (!body.title || !body.description) return json({ ok: false, error: "Course title and description are required." }, 400);
+      if (!body.thumbnailUrl) return json({ ok: false, error: "A course thumbnail is required." }, 400);
+      if (typeof body.description !== "string" || body.description.trim().length > 500) return json({ ok: false, error: "Course description must be 500 characters or fewer." }, 400);
+      if (!Array.isArray(body.lessons) || body.lessons.length < 1 || body.lessons.length > 50 || body.lessons.some((lesson: any) => !String(lesson?.title || "").trim() || !String(lesson?.videoUrl || "").trim())) return json({ ok: false, error: "Add a title and uploaded video for every lesson (maximum 50 lessons)." }, 400);
       const creator = await getCreator(authenticatedUserId);
       if (!creator || creator.status !== "active") return json({ ok: false, error: "Only active X Channel creators can publish courses." }, 403);
       return json({ ok: true, course: await saveCourse({ ...body, creatorId: authenticatedUserId, videoPublicId: body.videoPublicId ? String(body.videoPublicId) : null }) });
