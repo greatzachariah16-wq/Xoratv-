@@ -33,6 +33,8 @@ export type CreatorProfile = {
   showCommunity?: boolean;
 };
 
+export type CourseLesson = { title: string; videoUrl: string; videoPublicId?: string | null; order: number };
+
 export type Course = {
   id: string;
   creatorId: string;
@@ -41,6 +43,7 @@ export type Course = {
   price: number;
   thumbnailUrl?: string | null;
   videoUrl?: string | null;
+  lessons?: CourseLesson[];
   contentPostId?: string | null;
   contentLockEnabled: boolean;
   contentLockCampaignId?: string | null;
@@ -1217,6 +1220,7 @@ export async function saveCourse(params: {
   price: number;
   thumbnailUrl?: string | null;
   videoUrl?: string | null;
+  lessons?: Array<{ title?: string; videoUrl?: string; videoPublicId?: string | null; order?: number }>;
   contentPostId?: string | null;
   videoPublicId?: string | null;
   unlockPoints?: number | null;
@@ -1232,6 +1236,7 @@ export async function saveCourse(params: {
     price: Math.max(0, Number(params.price) || 0),
     thumbnailUrl: params.thumbnailUrl || null,
     videoUrl: params.videoUrl || null,
+    lessons: (params.lessons || []).filter((lesson) => lesson?.title?.trim() && lesson?.videoUrl).map((lesson, index) => ({ title: String(lesson.title).trim().slice(0, 120), videoUrl: String(lesson.videoUrl), videoPublicId: lesson.videoPublicId || null, order: index + 1 })),
     contentPostId: params.contentPostId || null,
     contentLockEnabled: false,
     contentLockCampaignId: null,
@@ -1259,7 +1264,7 @@ export async function saveCourse(params: {
       cloudinaryUrl: course.videoUrl,
       thumbnailUrl: course.thumbnailUrl,
       status: "ready",
-      metadata: { price: course.price, contentLockEnabled: false },
+      metadata: { price: course.price, contentLockEnabled: false, lessons: course.lessons || [] },
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
       });
