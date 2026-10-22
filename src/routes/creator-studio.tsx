@@ -39,7 +39,6 @@ function XChannel(){
   const [section,setSection]=useState<Section>("home");
   const [menuOpen,setMenuOpen]=useState(false);
   const [registered,setRegistered]=useState(false);
-  const [terms,setTerms]=useState(false);
   const [busy,setBusy]=useState(false);
   const [deleteTarget,setDeleteTarget]=useState<any>(null);
   const [deleteBusy,setDeleteBusy]=useState(false);
@@ -82,15 +81,6 @@ function XChannel(){
   if(!user)return <AppShell wide><div className="mx-auto max-w-3xl rounded-[30px] border border-border bg-surface p-10 text-center shadow-card"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><Radio className="size-7"/></div><h1 className="mt-5 font-display text-3xl font-semibold">X Channel</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">Sign in to create and manage your XoraTV creator channel.</p><Link to="/auth" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Sign in</Link></div></AppShell>;
 
   async function saveCustomization(){ setCustomizeBusy(true); try{ await commerceFetch("/api/commerce/creator/customization",{method:"POST",body:JSON.stringify({userId:user.id,channelBio,featuredTitle,featuredDescription,showCourses,showCommunity})}); await refetch(); }catch(e){alert(e instanceof Error?e.message:"Could not save channel customization.");}finally{setCustomizeBusy(false);} }
-
-  async function register(){
-    setBusy(true);
-    try{
-      await commerceFetch("/api/commerce/creator/register",{method:"POST",body:JSON.stringify({userId:user.id,displayName,username})});
-      setRegistered(true); await refetch();
-    }catch(e){alert(e instanceof Error?e.message:"Channel registration failed.");}
-    finally{setBusy(false);}
-  }
 
   async function deleteCourse(){
     if(!deleteTarget)return;
@@ -185,10 +175,10 @@ function XChannel(){
       </section>
       <section className="rounded-[32px] border border-border bg-surface p-7 shadow-card sm:p-9">
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Get started</p>
-        <h2 className="mt-2 font-display text-2xl font-semibold">Create your X Channel</h2>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">Your channel is separate from your personal XoraTV profile, but uses the same signed-in account.</p>
-        <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background p-4"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)} className="mt-0.5 size-4 accent-primary"/><span className="text-xs leading-5 text-muted-foreground">I agree to the X Channel creator terms and understand that creator activity may be reviewed by XoraTV.</span></label>
-        <button onClick={()=>void register()} disabled={!terms||busy} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{busy?<Loader2 className="size-4 animate-spin"/>:<Radio className="size-4"/>}{busy?"Creating channel…":"Create X Channel"}</button>
+        <h2 className="mt-2 font-display text-2xl font-semibold">Apply for your X Channel</h2>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Tell us about your content and public social profiles. Every application is reviewed manually, and only approved applicants can publish courses, videos or Shorts.</p>
+        <div className="mt-6 rounded-2xl border border-border bg-background p-4"><p className="text-xs leading-5 text-muted-foreground">You'll need a public Facebook, TikTok or YouTube profile with at least 50 followers or subscribers. Meeting the requirement does not guarantee approval.</p></div>
+        <Link to="/creator-application" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"><Radio className="size-4"/>Start creator application</Link>
       </section>
     </div>
   </AppShell>;
@@ -321,4 +311,4 @@ function Metric({label,value}:{label:string;value:any}){return <div className="r
 function Stat({label,value}:{label:string;value:string}){return <div className="rounded-xl border border-border bg-background p-3"><p className="text-[10px] text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>}
 function EmptyContent({icon,title,text,action,href}:{icon:any;title:string;text:string;action:string;href:string}){return <section className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center shadow-card"><div className="mx-auto grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">{icon}</div><h2 className="mt-4 font-display text-xl font-semibold">{title}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted-foreground">{text}</p><Link to={href as any} className="mt-5 inline-flex rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">{action}</Link></section>}
 function Action({icon,title,text,href,onClick}:{icon:any;title:string;text:string;href?:string;onClick?:()=>void}){const body=<><div className="text-primary">{icon}</div><p className="mt-3 text-sm font-semibold">{title}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{text}</p></>;return href?<Link to={href as any} className="rounded-2xl border border-border bg-surface p-4 shadow-sm hover:bg-secondary">{body}</Link>:<button onClick={onClick} className="rounded-2xl border border-border bg-surface p-4 text-left shadow-sm hover:bg-secondary">{body}</button>}
-function CourseShelf({courses}:{courses:any[]}){return courses.length?<div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{courses.map(c=><div key={c.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm"><div className="grid aspect-video place-items-center rounded-xl bg-secondary text-primary"><BookOpen className="size-6"/></div><p className="mt-3 truncate text-sm font-semibold">{c.title}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">Unlock through eligible XoraTV rewards, surveys or CPA activities.</p></div>)}</div>:<div className="mt-3 rounded-2xl border border-dashed border-border bg-surface p-7 text-center text-xs text-muted-foreground">No published courses yet.</div>}
+function CourseShelf({courses}:{courses:any[]}){return courses.length?<div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{courses.map(c=><div key={c.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm"><div className="aspect-video overflow-hidden bg-secondary">{c.thumbnailUrl?<img src={c.thumbnailUrl} alt={c.title} loading="lazy" className="size-full object-cover"/>:<div className="grid size-full place-items-center text-primary"><BookOpen className="size-6"/></div>}</div><div className="p-4"><p className="truncate text-sm font-semibold">{c.title}</p><p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{c.description || "Unlock through eligible XoraTV rewards, surveys or CPA activities."}</p></div></div>)}</div>:<div className="mt-3 rounded-2xl border border-dashed border-border bg-surface p-7 text-center text-xs text-muted-foreground">No published courses yet.</div>}
