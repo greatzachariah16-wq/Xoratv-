@@ -10,6 +10,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { handleAdminRoute } from "./server/admin-auth";
 import { handleXseriesRoute } from "./server/xseries-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
+import { handleSurveyWalletRoute } from "./server/survey-wallet-controller";
 import { getAuthenticatedUserId } from "./server/session-auth";
 import { getCreator } from "./server/commerce-service";
 import { handleCampaignsRoute } from "./server/campaigns-controller";
@@ -534,6 +535,12 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
+
+    // Rewards wallet API, separate from the existing purchase wallet.
+    if (url.pathname.startsWith("/api/survey-wallet") || url.pathname.startsWith("/api/admin/survey-wallet")) {
+      const response = await handleSurveyWalletRoute(request, url);
+      if (response) return response;
+    }
 
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
