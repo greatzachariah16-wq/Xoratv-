@@ -76,19 +76,19 @@ function SurveysPage() {
             <section aria-labelledby="sum" className=" overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground shadow-lift">
               <div className="flex items-center justify-between">
                 <h2 id="sum" className="text-sm font-medium opacity-90">Your survey rewards</h2>
-                <span className="rounded-full bg-on-plum/15 px-2 py-0.5 text-[10px] font-bold tracking-wider">DEMO</span>
+                <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-bold tracking-wider">DEMO</span>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div>
                   <p className="flex items-center gap-1.5 text-xs opacity-80"><Sparkles className="size-3.5" strokeWidth={1.75} aria-hidden />Xora Points</p>
                   <p className="mt-1 font-display text-3xl font-semibold">1,240</p>
                 </div>
-                <div className="border-l border-on-plum/20 pl-3">
+                <div className="border-l border-primary-foreground/20 pl-3">
                   <p className="flex items-center gap-1.5 text-xs opacity-80"><Hourglass className="size-3.5" strokeWidth={1.75} aria-hidden />Pending cash</p>
                   <p className="mt-1 font-display text-3xl font-semibold">₦30</p>
                 </div>
               </div>
-              <p className="mt-4 rounded-xl bg-on-plum/10 px-3 py-2 text-xs leading-relaxed">
+              <p className="mt-4 rounded-xl bg-primary-foreground/10 px-3 py-2 text-xs leading-relaxed">
                 Sample values. Rewards aren't live in this prototype — nothing is credited.
               </p>
             </section>
