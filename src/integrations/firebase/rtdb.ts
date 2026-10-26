@@ -248,22 +248,49 @@ export async function getFeedPosts(
   }
 
   const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
-  // Read only the requested page of post records. The index is lightweight, so
-  // scrolling can continue beyond the first batch without downloading every post.
-  const postIds = Object.entries(feedMap)
+  const orderedIds = Object.entries(feedMap)
     .filter(([, entry]) => entry.status === "published" && entry.approval_status === "approved")
     .sort(([, a], [, b]) => {
       const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
       if (scoreDiff !== 0) return scoreDiff;
       return (b.created_at || "").localeCompare(a.created_at || "");
     })
-    .slice(offset, offset + limit)
     .map(([id]) => id);
 
+  if (feed === "shorts") {
+    // Shorts only displays creator uploads. Skip other indexed videos before
+    // applying the page offset, otherwise a page with few creator uploads can
+    // look like the feed has ended even though more Shorts exist further down.
+    const eligible: PostRecord[] = [];
+    const batchSize = 8;
+    for (let start = 0; start < orderedIds.length && eligible.length < offset + limit; start += batchSize) {
+      const batch = await Promise.all(orderedIds.slice(start, start + batchSize).map((id) => getPost(id)));
+      for (const post of batch) {
+        if (
+          post &&
+          post.feed === "shorts" &&
+          post.kind === "video" &&
+          post.status === "published" &&
+          post.approval_status === "approved" &&
+          post.source === "creator" &&
+          Boolean(post.stream_url || post.media_path)
+        ) {
+          eligible.push(post);
+        }
+      }
+    }
+    return eligible.slice(offset, offset + limit).sort((a, b) => {
+      if (b.featured !== a.featured) return b.featured ? 1 : -1;
+      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+    });
+  }
+
+  // Load only this page of post records; never download video files just to
+  // build the feed. The lightweight index can contain far more than one page.
+  const postIds = orderedIds.slice(offset, offset + limit);
   const posts = await Promise.all(postIds.map((id) => getPost(id)));
   return posts
     .filter((p): p is PostRecord => Boolean(p))
-    .filter((p) => feed !== "shorts" || p.source === "creator" || p.playability_status === "playable")
     .sort((a, b) => {
       if (b.featured !== a.featured) return b.featured ? 1 : -1;
       return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
