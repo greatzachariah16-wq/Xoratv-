@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { AdsterraBanner } from "@/components/ads/AdsterraBanner";
-import { AidzapFeedAd } from "@/components/ads/AidzapFeedAd";
 import { AdcashBanner } from "@/components/ads/AdcashBanner";
 import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
 import { FeedSkeleton } from "./Skeletons";
@@ -194,7 +193,6 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
                 >
                   <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
                 </div>
-                {post.kind === "video" ? <AidzapFeedAd className="my-3" /> : null}
                 {(index + 1) % 2 === 0 && (feed === "home" || feed === "shorts" || feed === "learn") ? (
                   <AdsterraBanner className="my-3" />
                 ) : null}
