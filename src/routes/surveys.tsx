@@ -43,7 +43,7 @@ function numberOf(item: CpxSurvey, keys: string[]): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 function surveyUrl(item: CpxSurvey): string {
-  const raw = valueOf(item, ["survey_url", "surveyUrl", "url", "link", "survey_link", "redirect_url", "redirectUrl"]);
+  const raw = valueOf(item, ["href_new", "href", "survey_url", "surveyUrl", "url", "link", "survey_link", "redirect_url", "redirectUrl"]);
   try {
     const parsed = new URL(raw);
     return parsed.protocol === "https:" ? parsed.toString() : "";
@@ -109,7 +109,7 @@ function SurveysPage() {
                 <div className="flex items-start justify-between gap-3"><h3 className="font-semibold">{title}</h3><span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">CPX Research</span></div>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   {minutes !== null && <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5"><Clock className="size-3.5" />~{minutes} min</span>}
-                  {reward !== null && <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5"><Sparkles className="size-3.5" />{reward} {valueOf(item, ["currency"]) || "reward units"}</span>}
+                  {reward !== null && <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5"><Sparkles className="size-3.5" />{reward} {valueOf(item, ["currency", "currency_code", "currencyCode"]) || "local payout"}</span>}
                 </div>
                 <div className="mt-4 flex justify-end">{link ? <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Start survey <ExternalLink className="size-4" /></a> : <span className="text-xs text-muted-foreground">Survey link not provided in the API response.</span>}</div>
               </li>;
