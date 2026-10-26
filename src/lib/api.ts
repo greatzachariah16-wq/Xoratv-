@@ -764,31 +764,30 @@ export function searchQuery(term: string) {
 }
 
 export async function toggleLike(postId: string, userId: string, liked: boolean) {
-  const key = `${postId}:${userId}`;
-
-  // Firebase is the source of truth when configured. Let failures reach the
-  // mutation so the UI does not show the Like animation as a success.
-  if (isFirebaseConfigured()) {
-    await toggleLikeRtdb(postId, userId, liked);
+  // Xora uses its own Supabase-backed session, not Firebase Authentication.
+  // Persist likes through the authenticated server route so Firebase RTDB rules
+  // are enforced with the server service account rather than a missing Firebase token.
+  const response = await fetch("/api/likes", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ postId, action: liked ? "unlike" : "like" }),
+  });
+  const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || "Could not update your like.");
   }
 
+  const key = `${postId}:${userId}`;
   if (liked) {
     localLikes.delete(key);
     trackEvent({ type: "skip", postId, userId });
   } else {
     localLikes.add(key);
     trackEvent({ type: "like", postId, userId });
-    fetch("/api/engagement/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, type: "like", targetId: postId }),
-    })
-      .then(() => {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
-        }
-      })
-      .catch(() => {});
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
+    }
   }
 }
 
