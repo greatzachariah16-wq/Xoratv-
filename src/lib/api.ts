@@ -22,7 +22,6 @@ import {
   getCommentsForPost,
   addCommentToPost,
   removeCommentFromPost,
-  toggleLikeRtdb,
   getUserLikedPosts,
   getFollowsForUser,
   toggleFollowRtdb,
@@ -179,12 +178,14 @@ export async function fetchRankedFeed(
   feed: FeedType,
   userId?: string | null,
   mode: "for_you" | "following" = "for_you",
+  offset = 0,
+  limit = 24,
 ): Promise<PostWithAuthor[]> {
   let rawPosts: PostRecord[] = [];
 
   if (typeof window !== "undefined" && isFirebaseConfigured()) {
     try {
-      const rtdbPosts = await getFeedPosts(feed);
+      const rtdbPosts = await getFeedPosts(feed, offset, limit);
       if (rtdbPosts && rtdbPosts.length > 0) {
         rawPosts = rtdbPosts;
       }
@@ -193,13 +194,13 @@ export async function fetchRankedFeed(
     }
   }
 
-  if (rawPosts.length === 0) {
+  if (rawPosts.length === 0 && offset === 0) {
     rawPosts = localPosts.filter(
       (p) =>
         p.feed === feed &&
         (feed !== "shorts" || p.source === "creator" || (p.source === "youtube" && p.playability_status === "playable")) &&
         (feed === "shorts" || Boolean(p.poster_path)),
-    );
+    ).slice(offset, offset + limit);
     // Demo/local fallback posts are read-only. Do not attempt anonymous RTDB writes
     // from the homepage; production content must be published by the trusted server path.
   }
@@ -322,9 +323,8 @@ export function feedInfiniteQuery(
       return allPages.length;
     },
     queryFn: async ({ pageParam = 0 }): Promise<PostWithAuthor[]> => {
-      const allRanked = await fetchRankedFeed(feed, userId, mode);
-      const start = Number(pageParam) * pageSize;
-      return allRanked.slice(start, start + pageSize);
+      const offset = Number(pageParam) * pageSize;
+      return fetchRankedFeed(feed, userId, mode, offset, pageSize);
     },
     // Refresh open feeds so newly published posts appear without requiring a
     // manual page reload. Keep this interval modest to avoid hammering Firebase.
@@ -764,31 +764,30 @@ export function searchQuery(term: string) {
 }
 
 export async function toggleLike(postId: string, userId: string, liked: boolean) {
-  const key = `${postId}:${userId}`;
-
-  // Firebase is the source of truth when configured. Let failures reach the
-  // mutation so the UI does not show the Like animation as a success.
-  if (isFirebaseConfigured()) {
-    await toggleLikeRtdb(postId, userId, liked);
+  // Xora uses its own Supabase-backed session, not Firebase Authentication.
+  // Persist likes through the authenticated server route so Firebase RTDB rules
+  // are enforced with the server service account rather than a missing Firebase token.
+  const response = await fetch("/api/likes", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ postId, action: liked ? "unlike" : "like" }),
+  });
+  const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || "Could not update your like.");
   }
 
+  const key = `${postId}:${userId}`;
   if (liked) {
     localLikes.delete(key);
     trackEvent({ type: "skip", postId, userId });
   } else {
     localLikes.add(key);
     trackEvent({ type: "like", postId, userId });
-    fetch("/api/engagement/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, type: "like", targetId: postId }),
-    })
-      .then(() => {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
-        }
-      })
-      .catch(() => {});
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("xora:engagement-updated"));
+    }
   }
 }
 

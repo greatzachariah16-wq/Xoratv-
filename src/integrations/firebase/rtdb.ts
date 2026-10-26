@@ -223,52 +223,78 @@ export async function getAllPosts(): Promise<PostRecord[]> {
   return Object.values(val) as PostRecord[];
 }
 
-export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
+export async function getFeedPosts(
+  feed: FeedType,
+  offset = 0,
+  limit = 24,
+): Promise<PostRecord[]> {
   const feedSnap = await get(ref(rtdb, `postsByFeed/${feed}`));
   if (!feedSnap.exists()) {
     // Fallback only when the feed index is absent.
     const all = await getAllPosts();
-    return all.filter(
+    const candidates = all.filter(
       (p) =>
         p.feed === feed &&
         p.status === "published" &&
         p.approval_status === "approved" &&
-        (feed !== "shorts" || p.playability_status === "playable"),
+        (feed !== "shorts" || p.playability_status === "playable" || p.source === "creator"),
     );
+    candidates.sort((a, b) => {
+      const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (b.created_at || "").localeCompare(a.created_at || "");
+    });
+    return candidates.slice(offset, offset + limit);
   }
 
   const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
-  // Build the initial feed from a small, relevant slice instead of fetching
-  // every indexed post before the first screen can render. Further feed
-  // pagination can be added separately without blocking this first load.
-  const postIds = Object.entries(feedMap)
+  const orderedIds = Object.entries(feedMap)
     .filter(([, entry]) => entry.status === "published" && entry.approval_status === "approved")
     .sort(([, a], [, b]) => {
       const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
       if (scoreDiff !== 0) return scoreDiff;
       return (b.created_at || "").localeCompare(a.created_at || "");
     })
-    .slice(0, 24)
     .map(([id]) => id);
 
-  // Keep requests bounded for mobile networks. At most 24 post records are
-  // read for this feed request, in batches of eight.
-  const posts: PostRecord[] = [];
-  const batchSize = 8;
-  for (let start = 0; start < postIds.length; start += batchSize) {
-    const batch = postIds.slice(start, start + batchSize);
-    const batchPosts = await Promise.all(batch.map((id) => getPost(id)));
-    for (const p of batchPosts) {
-      if (!p) continue;
-      if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") continue;
-      posts.push(p);
+  if (feed === "shorts") {
+    // Shorts only displays creator uploads. Skip other indexed videos before
+    // applying the page offset, otherwise a page with few creator uploads can
+    // look like the feed has ended even though more Shorts exist further down.
+    const eligible: PostRecord[] = [];
+    const batchSize = 8;
+    for (let start = 0; start < orderedIds.length && eligible.length < offset + limit; start += batchSize) {
+      const batch = await Promise.all(orderedIds.slice(start, start + batchSize).map((id) => getPost(id)));
+      for (const post of batch) {
+        if (
+          post &&
+          post.feed === "shorts" &&
+          post.kind === "video" &&
+          post.status === "published" &&
+          post.approval_status === "approved" &&
+          post.source === "creator" &&
+          Boolean(post.stream_url || post.media_path)
+        ) {
+          eligible.push(post);
+        }
+      }
     }
+    return eligible.slice(offset, offset + limit).sort((a, b) => {
+      if (b.featured !== a.featured) return b.featured ? 1 : -1;
+      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+    });
   }
 
-  return posts.sort((a, b) => {
-    if (b.featured !== a.featured) return b.featured ? 1 : -1;
-    return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-  });
+  // Load only this page of post records; never download video files just to
+  // build the feed. The lightweight index can contain far more than one page.
+  const postIds = orderedIds.slice(offset, offset + limit);
+  const posts = await Promise.all(postIds.map((id) => getPost(id)));
+  return posts
+    .filter((p): p is PostRecord => Boolean(p))
+    .sort((a, b) => {
+      if (b.featured !== a.featured) return b.featured ? 1 : -1;
+      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+    });
 }
 
 // --- COMMENTS ---
