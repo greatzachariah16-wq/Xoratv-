@@ -46,8 +46,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
       if (feed === "shorts" && (post.kind !== "video" || post.source !== "creator")) return false;
       // Never show legacy Dailymotion content on the Home feed.
       if (feed === "home" && post.source === "dailymotion") return false;
-      // Covers are optional for Shorts; the video itself is enough to render the card.
-      if (feed !== "shorts" && post.kind === "video" && !post.poster_path) return false;
+      // Posters are optional on every video feed; do not hide otherwise playable videos.
       seen.add(post.id);
       return true;
     });
