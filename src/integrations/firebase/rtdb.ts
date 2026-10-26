@@ -223,24 +223,33 @@ export async function getAllPosts(): Promise<PostRecord[]> {
   return Object.values(val) as PostRecord[];
 }
 
-export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
+export async function getFeedPosts(
+  feed: FeedType,
+  offset = 0,
+  limit = 24,
+): Promise<PostRecord[]> {
   const feedSnap = await get(ref(rtdb, `postsByFeed/${feed}`));
   if (!feedSnap.exists()) {
     // Fallback only when the feed index is absent.
     const all = await getAllPosts();
-    return all.filter(
+    const candidates = all.filter(
       (p) =>
         p.feed === feed &&
         p.status === "published" &&
         p.approval_status === "approved" &&
-        (feed !== "shorts" || p.playability_status === "playable"),
+        (feed !== "shorts" || p.playability_status === "playable" || p.source === "creator"),
     );
+    candidates.sort((a, b) => {
+      const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (b.created_at || "").localeCompare(a.created_at || "");
+    });
+    return candidates.slice(offset, offset + limit);
   }
 
   const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
-  // Build the initial feed from a small, relevant slice instead of fetching
-  // every indexed post before the first screen can render. Further feed
-  // pagination can be added separately without blocking this first load.
+  // Read only the requested page of post records. The index is lightweight, so
+  // scrolling can continue beyond the first batch without downloading every post.
   const postIds = Object.entries(feedMap)
     .filter(([, entry]) => entry.status === "published" && entry.approval_status === "approved")
     .sort(([, a], [, b]) => {
@@ -248,27 +257,17 @@ export async function getFeedPosts(feed: FeedType): Promise<PostRecord[]> {
       if (scoreDiff !== 0) return scoreDiff;
       return (b.created_at || "").localeCompare(a.created_at || "");
     })
-    .slice(0, 24)
+    .slice(offset, offset + limit)
     .map(([id]) => id);
 
-  // Keep requests bounded for mobile networks. At most 24 post records are
-  // read for this feed request, in batches of eight.
-  const posts: PostRecord[] = [];
-  const batchSize = 8;
-  for (let start = 0; start < postIds.length; start += batchSize) {
-    const batch = postIds.slice(start, start + batchSize);
-    const batchPosts = await Promise.all(batch.map((id) => getPost(id)));
-    for (const p of batchPosts) {
-      if (!p) continue;
-      if (feed === "shorts" && p.source !== "creator" && p.playability_status !== "playable") continue;
-      posts.push(p);
-    }
-  }
-
-  return posts.sort((a, b) => {
-    if (b.featured !== a.featured) return b.featured ? 1 : -1;
-    return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-  });
+  const posts = await Promise.all(postIds.map((id) => getPost(id)));
+  return posts
+    .filter((p): p is PostRecord => Boolean(p))
+    .filter((p) => feed !== "shorts" || p.source === "creator" || p.playability_status === "playable")
+    .sort((a, b) => {
+      if (b.featured !== a.featured) return b.featured ? 1 : -1;
+      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+    });
 }
 
 // --- COMMENTS ---
