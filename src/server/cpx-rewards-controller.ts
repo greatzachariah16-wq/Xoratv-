@@ -138,7 +138,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   // Repeated callbacks are expected. An identical status is acknowledged without
   // adding another reward; a later status=2 is retained as a reversal event.
   if (existing && String(existing.status) === status) {
-    return json({ ok: true, duplicate: true, mode: "test-only", trans_id: transId });
+    return json({ ok: true, duplicate: true, mode: LIVE_ENABLED() ? "live" : "disabled", trans_id: transId });
   }
 
   const isFullCompletion = type === "complete" && status === "1";
