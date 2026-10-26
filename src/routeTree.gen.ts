@@ -20,6 +20,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RewardsRouteImport } from './routes/rewards'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as SurveysRouteImport } from './routes/surveys'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShortsRouteImport } from './routes/shorts'
 import { Route as SupportRouteImport } from './routes/support'
@@ -93,6 +94,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const RewardsRoute = RewardsRouteImport.update({
   id: '/rewards',
   path: '/rewards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveysRoute = SurveysRouteImport.update({
+  id: '/surveys',
+  path: '/surveys',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/rewards': typeof RewardsRoute
   '/search': typeof SearchRoute
+  '/surveys': typeof SurveysRoute
   '/settings': typeof SettingsRoute
   '/shorts': typeof ShortsRoute
   '/support': typeof SupportRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/rewards': typeof RewardsRoute
   '/search': typeof SearchRoute
+  '/surveys': typeof SurveysRoute
   '/settings': typeof SettingsRoute
   '/shorts': typeof ShortsRoute
   '/support': typeof SupportRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/rewards': typeof RewardsRoute
   '/search': typeof SearchRoute
+  '/surveys': typeof SurveysRoute
   '/settings': typeof SettingsRoute
   '/shorts': typeof ShortsRoute
   '/support': typeof SupportRoute
@@ -441,6 +450,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RewardsRoute: typeof RewardsRoute
   SearchRoute: typeof SearchRoute
+  SurveysRoute: typeof SurveysRoute
   SettingsRoute: typeof SettingsRoute
   ShortsRoute: typeof ShortsRoute
   SupportRoute: typeof SupportRoute
@@ -527,6 +537,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/surveys': {
+      id: '/surveys'
+      path: '/surveys'
+      fullPath: '/surveys'
+      preLoaderRoute: typeof SurveysRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -762,6 +779,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RewardsRoute: RewardsRoute,
   SearchRoute: SearchRoute,
+  SurveysRoute: SurveysRoute,
   SettingsRoute: SettingsRoute,
   ShortsRoute: ShortsRoute,
   SupportRoute: SupportRoute,
