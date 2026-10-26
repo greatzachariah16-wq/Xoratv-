@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { queryRtdb } from "./xseries-service-account";
+import { getAuthenticatedUserId } from "./session-auth";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -44,6 +45,43 @@ async function write(path: string, value: unknown) {
 export async function handleCpxRewardsRoute(request: Request, url: URL): Promise<Response | null> {
   if (!url.pathname.startsWith("/api/cpx/rewards")) return null;
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: HEADERS });
+
+  if (url.pathname === "/api/cpx/rewards/surveys" && request.method === "GET") {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return json({ ok: false, error: "Sign in to view CPX Research surveys." }, 401);
+    const secret = getSecureHash();
+    const appId = (process.env.CPX_APP_ID || "").trim();
+    if (!secret || !appId) return json({ ok: false, error: "CPX Research server credentials are not configured." }, 503);
+
+    try {
+      const secureHash = crypto.createHash("md5").update(`${userId}-${secret}`).digest("hex");
+      const apiUrl = new URL("https://live-api.cpx-research.com/api/get-surveys.php");
+      apiUrl.searchParams.set("app_id", appId);
+      apiUrl.searchParams.set("ext_user_id", userId);
+      apiUrl.searchParams.set("output_method", "api");
+      apiUrl.searchParams.set("secure_hash", secureHash);
+      apiUrl.searchParams.set("limit", "12");
+      const forwardedIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+      if (forwardedIp) apiUrl.searchParams.set("ip_user", forwardedIp);
+      const userAgent = request.headers.get("user-agent");
+      if (userAgent) apiUrl.searchParams.set("user_agent", userAgent);
+
+      const response = await fetch(apiUrl, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!response.ok) return json({ ok: false, error: "CPX Research survey service is temporarily unavailable." }, 502);
+      const payload = await response.json() as any;
+      const surveys = Array.isArray(payload) ? payload : Array.isArray(payload?.surveys) ? payload.surveys : [];
+      return new Response(JSON.stringify({ ok: true, surveys, fetchedAt: new Date().toISOString() }), {
+        status: 200,
+        headers: { ...HEADERS, "Cache-Control": "private, max-age=120" },
+      });
+    } catch (error) {
+      console.error("[CPX Rewards] Survey lookup failed:", error instanceof Error ? error.message : error);
+      return json({ ok: false, error: "Could not load CPX Research surveys right now." }, 502);
+    }
+  }
 
   if (url.pathname === "/api/cpx/rewards/status" && request.method === "GET") {
     return json({
