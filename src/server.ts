@@ -1316,7 +1316,7 @@ export default {
       if (storageRes) return storageRes;
     }
 
-    // Content video upload: FFmpeg -> Cloudinary -> Supabase + MongoDB metadata
+    // Content video upload: FFmpeg -> Cloudinary -> Supabase metadata
     if (url.pathname === "/api/content/video-upload" && request.method === "POST") {
       return await handleContentVideoUpload(request);
     }
