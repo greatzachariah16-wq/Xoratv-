@@ -1,5 +1,3 @@
-import { MongoClient, type Db } from "mongodb";
-
 export type XoraContentRecord = {
   id: string;
   firebaseId?: string | null;
@@ -22,44 +20,9 @@ export type XoraContentRecord = {
 const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
 const SUPABASE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || "";
 const CONTENT_SECRET = process.env.XORA_CONTENT_DB_SECRET?.trim() || "";
-const MONGO_URI = process.env.MONGODB_URI?.trim() || "";
-
-let mongoClient: MongoClient | null = null;
-let mongoDb: Db | null = null;
-
 function requireConfig() {
   if (!SUPABASE_KEY || !CONTENT_SECRET) {
     throw new Error("Xora content database credentials are not configured.");
-  }
-  if (!MONGO_URI) throw new Error("MONGODB_URI is not configured.");
-}
-
-async function getMongoDb() {
-  requireConfig();
-  if (mongoClient && mongoDb) return mongoDb;
-
-  // A failed Atlas connection must not leave a half-initialized MongoClient in
-  // memory. Render instances can retry after a transient TLS handshake failure.
-  mongoClient = new MongoClient(MONGO_URI, {
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 10000,
-    connectTimeoutMS: 10000,
-    socketTimeoutMS: 30000,
-  });
-
-  try {
-    await mongoClient.connect();
-    mongoDb = mongoClient.db("xoratv");
-    await mongoDb.collection<XoraContentRecord>("videos").createIndex({ id: 1 }, { unique: true });
-    await mongoDb.collection<XoraContentRecord>("videos").createIndex({ creatorId: 1, contentType: 1 });
-    await mongoDb.collection<XoraContentRecord>("videos").createIndex({ cloudinaryPublicId: 1 }, { sparse: true });
-    return mongoDb;
-  } catch (error) {
-    await mongoClient.close().catch(() => undefined);
-    mongoClient = null;
-    mongoDb = null;
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error("MongoDB content database connection failed: " + message);
   }
 }
 
@@ -100,16 +63,7 @@ async function supabaseUpsert(record: XoraContentRecord) {
 }
 
 export async function upsertXoraContent(record: XoraContentRecord) {
-  requireConfig();
-  const mongo = await getMongoDb();
-  await Promise.all([
-    supabaseUpsert(record),
-    mongo.collection<XoraContentRecord>("videos").updateOne(
-      { id: record.id },
-      { $set: record, $setOnInsert: { createdAt: record.createdAt } },
-      { upsert: true },
-    ),
-  ]);
+  await supabaseUpsert(record);
   return record;
 }
 
@@ -151,16 +105,6 @@ export async function registerCloudinaryVideo(input: {
 export async function getXoraContent(id: string): Promise<XoraContentRecord | null> {
   requireConfig();
 
-  // MongoDB is the primary metadata lookup. If Atlas has a transient TLS
-  // problem, use the Supabase copy so deletion can still identify the media.
-  try {
-    const mongo = await getMongoDb();
-    const record = await mongo.collection<XoraContentRecord>("videos").findOne({ id });
-    if (record) return record;
-  } catch {
-    // Fall through to Supabase.
-  }
-
   const response = await fetch(
     SUPABASE_URL + "/rest/v1/xora_content?id=eq." + encodeURIComponent(id) + "&limit=1",
     {
@@ -198,8 +142,6 @@ export async function deleteXoraContent(id: string): Promise<void> {
   requireConfig();
   const errors: string[] = [];
 
-  // Clean the two metadata stores independently. A transient MongoDB failure
-  // should not prevent the Supabase copy from being removed.
   try {
     const response = await fetch(
       SUPABASE_URL + "/rest/v1/xora_content?id=eq." + encodeURIComponent(id),
@@ -221,20 +163,10 @@ export async function deleteXoraContent(id: string): Promise<void> {
     errors.push("Supabase: " + (error instanceof Error ? error.message : String(error)));
   }
 
-  try {
-    const mongo = await getMongoDb();
-    await mongo.collection<XoraContentRecord>("videos").deleteOne({ id });
-  } catch (error) {
-    errors.push("MongoDB: " + (error instanceof Error ? error.message : String(error)));
-  }
-
   if (errors.length) {
     throw new Error("Course content cleanup failed — " + errors.join(" · "));
   }
 }
 
-export async function closeContentDatabaseConnections() {
-  if (mongoClient) await mongoClient.close();
-  mongoClient = null;
-  mongoDb = null;
-}
+// Kept as a compatibility no-op for any existing shutdown hooks.
+export async function closeContentDatabaseConnections() {}
