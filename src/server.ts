@@ -25,6 +25,7 @@ import { fetchNexusChannels, getNexusChannel, getNexusGuide } from "./integratio
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
+import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
 
 const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
 let shortsVerificationRunning = false;
@@ -545,6 +546,12 @@ export default {
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
+    // CPX Research rewards test postback. Kept separate from Live TV and the live wallet.
+    if (url.pathname.startsWith("/api/cpx/rewards")) {
+      const rewardsRes = await handleCpxRewardsRoute(request, url);
+      if (rewardsRes) return rewardsRes;
     }
 
     // CPX Research Live Channels access gate and server-side postback.
