@@ -15,6 +15,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
 import { HilltopInPagePushAd } from "@/components/ads/HilltopInPagePushAd";
+import { AidzapStickyAd } from "@/components/ads/AidzapStickyAd";
 
 const PREVIEW_NO_ADS = import.meta.env.VITE_PREVIEW_NO_ADS === "true";
 
@@ -188,6 +189,7 @@ function RootComponent() {
         <Toaster position="top-center" />
         {!PREVIEW_NO_ADS && <LargeBannerPopupAd />}
         {!PREVIEW_NO_ADS && <HilltopInPagePushAd />}
+        {!PREVIEW_NO_ADS && <AidzapStickyAd />}
       </AuthProvider>
     </QueryClientProvider>
   );
