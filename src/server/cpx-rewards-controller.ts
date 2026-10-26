@@ -144,7 +144,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   const isFullCompletion = type === "complete" && status === "1";
   const cashRewardNgn = isFullCompletion && amountUsd >= CASH_THRESHOLD_USD ? CASH_REWARD_NGN : 0;
   const points = isFullCompletion ? Math.max(0, Math.round(amountUsd * POINTS_PER_USD)) : 0;
-  const record = {
+  const record: Record<string, any> = {
     transactionId: transId,
     transactionKey,
     userId,
