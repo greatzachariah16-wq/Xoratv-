@@ -22,7 +22,6 @@ import {
   getCommentsForPost,
   addCommentToPost,
   removeCommentFromPost,
-  toggleLikeRtdb,
   getUserLikedPosts,
   getFollowsForUser,
   toggleFollowRtdb,
