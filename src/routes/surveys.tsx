@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppShell } from "@/components/xora/AppShell";
-import { auth } from "@/integrations/firebase/config";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, RefreshCw, ShieldCheck, Clock, Sparkles, WifiOff, Inbox, ExternalLink, LockKeyhole } from "lucide-react";
 
@@ -18,12 +17,10 @@ type CpxSurvey = Record<string, unknown> & { id?: string | number };
 type SurveyResponse = { ok: boolean; surveys?: CpxSurvey[]; error?: string; fetchedAt?: string };
 
 async function loadCpxSurveys(): Promise<SurveyResponse> {
-  const user = auth.currentUser;
-  if (!user) throw new Error("Please sign in to view available surveys.");
-  const token = await user.getIdToken();
   const response = await fetch("/api/cpx/rewards/surveys", {
     method: "GET",
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
     cache: "no-store",
   });
   const payload = await response.json().catch(() => ({})) as SurveyResponse;
