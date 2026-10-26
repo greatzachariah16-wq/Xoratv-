@@ -10,10 +10,16 @@ export function AidzapStickyAd() {
 
   useEffect(() => {
     if (PREVIEW_NO_ADS) return;
+    let wasDismissed = false;
     try {
-      setDismissed(sessionStorage.getItem(DISMISSED_KEY) === "1");
+      wasDismissed = sessionStorage.getItem(DISMISSED_KEY) === "1";
     } catch {
-      setDismissed(false);
+      // Continue without session persistence when storage is unavailable.
+    }
+    setDismissed(wasDismissed);
+    if (!wasDismissed && window.matchMedia("(min-width: 768px)").matches) {
+      const timer = window.setTimeout(() => setExpanded(true), 8000);
+      return () => window.clearTimeout(timer);
     }
   }, []);
 
