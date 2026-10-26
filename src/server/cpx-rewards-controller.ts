@@ -12,7 +12,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const TEST_ROOT = "commerce/cpxRewardsTest";
 const CASH_THRESHOLD_USD = 0.05;
 const CASH_REWARD_NGN = 10;
-const POINTS_PER_USD = 700;
+const POINTS_PER_USD = Math.max(0, Number(process.env.XORA_CPA_POINTS_PER_USD || 100));
 
 function safeEqualHex(a: string, b: string) {
   if (!/^[a-f0-9]{32}$/i.test(a) || !/^[a-f0-9]{32}$/i.test(b)) return false;
@@ -138,7 +138,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   // Repeated callbacks are expected. An identical status is acknowledged without
   // adding another reward; a later status=2 is retained as a reversal event.
   if (existing && String(existing.status) === status) {
-    return json({ ok: true, duplicate: true, mode: LIVE_ENABLED() ? "live" : "disabled", trans_id: transId });
+    return json({ ok: true, duplicate: true, mode: "test-only", liveWalletCredited: false, trans_id: transId });
   }
 
   const isFullCompletion = type === "complete" && status === "1";
