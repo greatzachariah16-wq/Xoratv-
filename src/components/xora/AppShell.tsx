@@ -16,6 +16,7 @@ import {
   User,
   Wallet,
   Gift,
+  ClipboardList,
   Radio,
   Baby,
   Menu,
@@ -120,15 +121,15 @@ export function AppShell({
             );
           })}
           <Link
-            to="/rewards"
+            to="/surveys"
             className={cn(
               "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-              pathname.startsWith("/rewards")
+              pathname.startsWith("/surveys")
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
           >
-            <Gift className="size-4.5" aria-hidden="true" /> Rewards
+            <ClipboardList className="size-4.5" aria-hidden="true" /> Surveys
           </Link>
           <Link
             to="/search"
@@ -296,9 +297,9 @@ export function AppShell({
                   </Link>
                 );
               })}
-              <Link to="/rewards" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Gift className="size-4.5" aria-hidden="true" /></span>
-                Rewards
+              <Link to="/surveys" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><ClipboardList className="size-4.5" aria-hidden="true" /></span>
+                Surveys
               </Link>
               <Link to="/search" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
                 <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Search className="size-4.5" aria-hidden="true" /></span>
