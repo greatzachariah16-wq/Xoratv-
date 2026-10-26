@@ -31,11 +31,14 @@ async function read(path: string): Promise<any> {
   return (await queryRtdb(path)) || null;
 }
 async function write(path: string, value: unknown) {
-  await queryRtdb(path, {
+  const result = await queryRtdb(path, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(value),
   });
+  if (result === null || result === undefined) {
+    throw new Error(`CPX test ledger write was not confirmed for ${path}`);
+  }
 }
 
 /**
@@ -138,12 +141,42 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   // Repeated callbacks are expected. An identical status is acknowledged without
   // adding another reward; a later status=2 is retained as a reversal event.
   if (existing && String(existing.status) === status) {
+    console.info("[CPX Rewards] Duplicate callback acknowledged", {
+      transId,
+      status,
+      mode: "test-only",
+      alreadyRecorded: true,
+    });
     return json({ ok: true, duplicate: true, mode: "test-only", liveWalletCredited: false, trans_id: transId });
   }
 
   const isFullCompletion = type === "complete" && status === "1";
   const cashRewardNgn = isFullCompletion && amountUsd >= CASH_THRESHOLD_USD ? CASH_REWARD_NGN : 0;
   const points = isFullCompletion ? Math.max(0, Math.round(amountUsd * POINTS_PER_USD)) : 0;
+  // Test credits live only in this isolated ledger. They never touch the user's
+  // production wallet or production Xora Points balance.
+  const walletKey = crypto.createHash("sha256").update(userId).digest("hex");
+  const walletPath = `${TEST_ROOT}/wallets/${walletKey}`;
+  const testWallet = await read(walletPath) || {
+    userId,
+    simulatedCashBalanceNgn: 0,
+    simulatedPointsBalance: 0,
+  };
+  const previousCash = Number(testWallet.simulatedCashBalanceNgn) || 0;
+  const previousPoints = Number(testWallet.simulatedPointsBalance) || 0;
+  const reversalCash = existing && String(existing.status) === "1" && status === "2"
+    ? Number(existing.simulatedCashRewardNgn) || 0
+    : 0;
+  const reversalPoints = existing && String(existing.status) === "1" && status === "2"
+    ? Number(existing.simulatedPoints) || 0
+    : 0;
+  const nextTestWallet = {
+    userId,
+    simulatedCashBalanceNgn: Math.max(0, previousCash + cashRewardNgn - reversalCash),
+    simulatedPointsBalance: Math.max(0, previousPoints + points - reversalPoints),
+    updatedAt: new Date().toISOString(),
+    mode: "test-only",
+  };
   const record: Record<string, any> = {
     transactionId: transId,
     transactionKey,
@@ -159,6 +192,11 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
     simulatedPoints: points,
     previousStatus: existing?.status ?? null,
     reversalDetected: Boolean(existing && existing.status === "1" && status === "2"),
+    testWalletPath: walletPath,
+    testWalletBalanceAfter: {
+      simulatedCashBalanceNgn: nextTestWallet.simulatedCashBalanceNgn,
+      simulatedPointsBalance: nextTestWallet.simulatedPointsBalance,
+    },
     liveWalletCredited: false,
     mode: "test-only",
     createdAt: existing?.createdAt || now,
@@ -167,8 +205,31 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
 
   // Keep an append-only callback audit and a latest-state transaction index.
   const eventId = `${Date.now()}_${crypto.randomBytes(5).toString("hex")}`;
-  await write(`${TEST_ROOT}/events/${eventId}`, { ...record, eventId });
-  await write(transactionPath, record);
+  try {
+    await write(`${TEST_ROOT}/events/${eventId}`, { ...record, eventId });
+    await write(transactionPath, record);
+    await write(walletPath, nextTestWallet);
+  } catch (error) {
+    console.error("[CPX Rewards] Test callback ledger write failed", {
+      transId,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return json({ ok: false, error: "CPX test callback could not be recorded." }, 500);
+  }
+  console.info("[CPX Rewards] Test callback recorded and simulated credit applied", {
+    transId,
+    userId,
+    status,
+    type,
+    publisherRevenueUsd: record.publisherRevenueUsd,
+    simulatedCashRewardNgn: cashRewardNgn,
+    simulatedPoints: points,
+    testWalletBalanceAfter: record.testWalletBalanceAfter,
+    reversalDetected: record.reversalDetected,
+    liveWalletCredited: false,
+    mode: "test-only",
+  });
   return json({
     ok: true,
     mode: "test-only",
@@ -179,6 +240,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
       type,
       simulatedCashRewardNgn: cashRewardNgn,
       simulatedPoints: points,
+      testWalletBalanceAfter: record.testWalletBalanceAfter,
       reversalDetected: record.reversalDetected,
       liveWalletCredited: false,
     },
