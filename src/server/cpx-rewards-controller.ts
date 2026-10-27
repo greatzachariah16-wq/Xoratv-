@@ -1,7 +1,5 @@
 import crypto from "node:crypto";
 import { getAuthenticatedUserId } from "./session-auth";
-import { creditWallet } from "./wallet-service";
-import { creditCpaPoints } from "./offerwall-service";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -133,6 +131,31 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
     } catch (error) {
       console.error("[CPX Rewards] Survey lookup failed:", error instanceof Error ? error.message : error);
       return json({ ok: false, error: "Could not load CPX Research surveys right now." }, 502);
+    }
+  }
+
+  if (url.pathname === "/api/cpx/rewards/balance" && request.method === "GET") {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return json({ ok: false, error: "Sign in to view your CPX rewards." }, 401);
+    try {
+      const rows = await supabaseRequest("cpx_live_wallets", new URLSearchParams({
+        select: "user_id,cash_balance_ngn,points_balance,lifetime_points_earned,updated_at",
+        user_id: `eq.${userId}`, limit: "1",
+      }).toString());
+      const row = rows?.[0];
+      return json({
+        ok: true,
+        source: "supabase",
+        wallet: {
+          cashBalanceNgn: Number(row?.cash_balance_ngn || 0),
+          pointsBalance: Number(row?.points_balance || 0),
+          lifetimePointsEarned: Number(row?.lifetime_points_earned || 0),
+          updatedAt: row?.updated_at || null,
+        },
+      }, 200);
+    } catch (error) {
+      console.error("[CPX Rewards] Balance lookup failed", error instanceof Error ? error.message : error);
+      return json({ ok: false, error: "Could not load CPX rewards balance." }, 502);
     }
   }
 
