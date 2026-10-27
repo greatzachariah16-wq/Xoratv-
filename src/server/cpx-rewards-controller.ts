@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { queryRtdb } from "./xseries-service-account";
 import { getAuthenticatedUserId } from "./session-auth";
 
 const HEADERS = {
@@ -9,7 +8,8 @@ const HEADERS = {
   "Content-Type": "application/json",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: HEADERS });
-const TEST_ROOT = "commerce/cpxRewardsTest";
+const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
+const SUPABASE_KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const CASH_THRESHOLD_USD = 0.05;
 const CASH_REWARD_NGN = 10;
 const POINTS_PER_USD = Math.max(0, Number(process.env.XORA_CPA_POINTS_PER_USD || 100));
@@ -27,18 +27,65 @@ function getExpectedHash(transId: string, secret: string) {
   return crypto.createHash("md5").update(`${transId}-${secret}`).digest("hex");
 }
 
-async function read(path: string): Promise<any> {
-  return (await queryRtdb(path)) || null;
-}
-async function write(path: string, value: unknown) {
-  const result = await queryRtdb(path, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(value),
+async function supabaseRequest(table: string, query: string, method = "GET", body?: unknown, prefer?: string): Promise<any> {
+  if (!SUPABASE_KEY) throw new Error("SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is not configured.");
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query ? `?${query}` : ""}`, {
+    method,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(prefer ? { Prefer: prefer } : {}),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal: AbortSignal.timeout(10000),
   });
-  if (result === null || result === undefined) {
-    throw new Error(`CPX test ledger write was not confirmed for ${path}`);
-  }
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Supabase ${table} ${method} failed (HTTP ${response.status}): ${text.slice(0, 500)}`);
+  return text ? JSON.parse(text) : null;
+}
+async function readTransaction(transId: string): Promise<any | null> {
+  const rows = await supabaseRequest("cpx_test_transactions", new URLSearchParams({ select: "*", transaction_id: `eq.${transId}`, limit: "1" }).toString());
+  const row = rows?.[0];
+  if (!row) return null;
+  return {
+    transactionId: row.transaction_id, transactionKey: row.transaction_key, userId: row.user_id,
+    status: row.status, type: row.type, offerId: row.offer_id, subId: row.sub_id, subId2: row.sub_id2,
+    publisherRevenueUsd: Number(row.publisher_revenue_usd), localAmount: Number(row.local_amount),
+    simulatedCashRewardNgn: Number(row.simulated_cash_reward_ngn), simulatedPoints: Number(row.simulated_points),
+    previousStatus: row.previous_status, reversalDetected: row.reversal_detected,
+    testWalletBalanceAfter: row.test_wallet_balance_after, liveWalletCredited: row.live_wallet_credited,
+    mode: row.mode, createdAt: row.created_at, updatedAt: row.updated_at,
+  };
+}
+async function readWallet(userId: string): Promise<any | null> {
+  const rows = await supabaseRequest("cpx_test_wallets", new URLSearchParams({ select: "*", user_id: `eq.${userId}`, limit: "1" }).toString());
+  const row = rows?.[0];
+  return row ? { userId: row.user_id, simulatedCashBalanceNgn: Number(row.simulated_cash_balance_ngn), simulatedPointsBalance: Number(row.simulated_points_balance), updatedAt: row.updated_at, mode: row.mode } : null;
+}
+async function writeEvent(record: Record<string, any>) {
+  await supabaseRequest("cpx_test_events", "", "POST", {
+    event_id: record.eventId, transaction_id: record.transactionId, user_id: record.userId,
+    status: record.status, mode: "test-only", event_payload: record,
+  }, "return=minimal");
+}
+async function writeTransaction(record: Record<string, any>) {
+  await supabaseRequest("cpx_test_transactions", "on_conflict=transaction_id", "POST", {
+    transaction_id: record.transactionId, transaction_key: record.transactionKey, user_id: record.userId,
+    status: record.status, type: record.type, offer_id: record.offerId, sub_id: record.subId, sub_id2: record.subId2,
+    publisher_revenue_usd: record.publisherRevenueUsd, local_amount: record.localAmount,
+    simulated_cash_reward_ngn: record.simulatedCashRewardNgn, simulated_points: record.simulatedPoints,
+    previous_status: record.previousStatus, reversal_detected: record.reversalDetected,
+    test_wallet_balance_after: record.testWalletBalanceAfter, live_wallet_credited: false,
+    mode: "test-only", created_at: record.createdAt, updated_at: record.updatedAt,
+  }, "resolution=merge-duplicates,return=minimal");
+}
+async function writeWallet(wallet: Record<string, any>) {
+  await supabaseRequest("cpx_test_wallets", "on_conflict=user_id", "POST", {
+    user_id: wallet.userId, simulated_cash_balance_ngn: wallet.simulatedCashBalanceNgn,
+    simulated_points_balance: wallet.simulatedPointsBalance, mode: "test-only", updated_at: wallet.updatedAt,
+  }, "resolution=merge-duplicates,return=minimal");
 }
 
 /**
@@ -134,8 +181,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   }
 
   const transactionKey = crypto.createHash("sha256").update(transId).digest("hex");
-  const transactionPath = `${TEST_ROOT}/transactions/${transactionKey}`;
-  const existing = await read(transactionPath);
+  const existing = await readTransaction(transId);
   const now = new Date().toISOString();
 
   // Repeated callbacks are expected. An identical status is acknowledged without
@@ -155,9 +201,8 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   const points = isFullCompletion ? Math.max(0, Math.round(amountUsd * POINTS_PER_USD)) : 0;
   // Test credits live only in this isolated ledger. They never touch the user's
   // production wallet or production Xora Points balance.
-  const walletKey = crypto.createHash("sha256").update(userId).digest("hex");
-  const walletPath = `${TEST_ROOT}/wallets/${walletKey}`;
-  const testWallet = await read(walletPath) || {
+  const walletPath = "Supabase: cpx_test_wallets";
+  const testWallet = await readWallet(userId) || {
     userId,
     simulatedCashBalanceNgn: 0,
     simulatedPointsBalance: 0,
@@ -206,9 +251,9 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   // Keep an append-only callback audit and a latest-state transaction index.
   const eventId = `${Date.now()}_${crypto.randomBytes(5).toString("hex")}`;
   try {
-    await write(`${TEST_ROOT}/events/${eventId}`, { ...record, eventId });
-    await write(transactionPath, record);
-    await write(walletPath, nextTestWallet);
+    await writeEvent({ ...record, eventId });
+    await writeTransaction(record);
+    await writeWallet(nextTestWallet);
   } catch (error) {
     console.error("[CPX Rewards] Test callback ledger write failed", {
       transId,
