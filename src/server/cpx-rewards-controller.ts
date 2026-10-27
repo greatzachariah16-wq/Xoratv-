@@ -216,8 +216,9 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   if (url.pathname === "/api/cpx/rewards/status" && request.method === "GET") {
     return json({
       ok: true,
-      mode: LIVE_REWARDS_ENABLED ? "live-enabled" : "test-only",
+      mode: LIVE_REWARDS_ENABLED ? "live-enabled" : "test-existing-wallet",
       liveWalletCreditsEnabled: LIVE_REWARDS_ENABLED,
+      testUsesExistingWallet: true,
       appIdConfigured: Boolean(process.env.CPX_APP_ID),
       secureHashConfigured: Boolean(getSecureHash()),
       cashThresholdUsd: CASH_THRESHOLD_USD,
@@ -261,7 +262,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   }
 
   const transactionKey = crypto.createHash("sha256").update(transId).digest("hex");
-  if (LIVE_REWARDS_ENABLED) {
+  {
     try {
       const result = await applyExistingWalletReward({
         transId, userId, status, type, offerId: offerId || null, amountUsd, amountLocal,
