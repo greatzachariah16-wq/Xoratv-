@@ -50,7 +50,7 @@ export const FRAUD_GUARD_CONFIG = {
   // Multi-Account Device Collision Rule
   deviceCollision: {
     rollingWindowDays: 30, // Rolling window for multi-account tracking
-    collisionThreshold: 3, // 3+ distinct accounts on one device triggers collision alert
+    collisionThreshold: 4, // 3+ distinct accounts on one device triggers collision alert
   },
 
   // Watch Session Heartbeat Rules
