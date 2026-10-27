@@ -13,6 +13,7 @@ const SUPABASE_KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SE
 const CASH_THRESHOLD_USD = 0.05;
 const CASH_REWARD_NGN = 10;
 const POINTS_PER_USD = Math.max(0, Number(process.env.XORA_CPA_POINTS_PER_USD || 100));
+const LIVE_REWARDS_ENABLED = process.env.CPX_LIVE_REWARDS_ENABLED === "true";
 
 function safeEqualHex(a: string, b: string) {
   if (!/^[a-f0-9]{32}$/i.test(a) || !/^[a-f0-9]{32}$/i.test(b)) return false;
@@ -133,11 +134,36 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
     }
   }
 
+  if (url.pathname === "/api/cpx/rewards/balance" && request.method === "GET") {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return json({ ok: false, error: "Sign in to view your CPX rewards." }, 401);
+    try {
+      const rows = await supabaseRequest("cpx_live_wallets", new URLSearchParams({
+        select: "user_id,cash_balance_ngn,points_balance,lifetime_points_earned,updated_at",
+        user_id: `eq.${userId}`, limit: "1",
+      }).toString());
+      const row = rows?.[0];
+      return json({
+        ok: true,
+        source: "supabase",
+        wallet: {
+          cashBalanceNgn: Number(row?.cash_balance_ngn || 0),
+          pointsBalance: Number(row?.points_balance || 0),
+          lifetimePointsEarned: Number(row?.lifetime_points_earned || 0),
+          updatedAt: row?.updated_at || null,
+        },
+      }, 200);
+    } catch (error) {
+      console.error("[CPX Rewards] Balance lookup failed", error instanceof Error ? error.message : error);
+      return json({ ok: false, error: "Could not load CPX rewards balance." }, 502);
+    }
+  }
+
   if (url.pathname === "/api/cpx/rewards/status" && request.method === "GET") {
     return json({
       ok: true,
-      mode: "test-only",
-      liveWalletCreditsEnabled: false,
+      mode: LIVE_REWARDS_ENABLED ? "live-enabled" : "test-only",
+      liveWalletCreditsEnabled: LIVE_REWARDS_ENABLED,
       appIdConfigured: Boolean(process.env.CPX_APP_ID),
       secureHashConfigured: Boolean(getSecureHash()),
       cashThresholdUsd: CASH_THRESHOLD_USD,
@@ -181,6 +207,20 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   }
 
   const transactionKey = crypto.createHash("sha256").update(transId).digest("hex");
+  if (LIVE_REWARDS_ENABLED) {
+    try {
+      const result = await supabaseRequest("rpc/apply_cpx_reward_postback", "", "POST", {
+        p_transaction_id: transId, p_user_id: userId, p_status: status, p_type: type,
+        p_offer_id: offerId || null, p_revenue_usd: amountUsd, p_cash_threshold_usd: CASH_THRESHOLD_USD,
+        p_cash_reward_ngn: CASH_REWARD_NGN, p_points_per_usd: POINTS_PER_USD,
+      });
+      return json({ ok: true, mode: "live", trans_id: transId, result });
+    } catch (error) {
+      console.error("[CPX Rewards] Supabase live callback failed", { transId, error: error instanceof Error ? error.message : String(error) });
+      return json({ ok: false, error: "CPX live reward processing failed; callback may be retried." }, 500);
+    }
+  }
+
   const existing = await readTransaction(transId);
   const now = new Date().toISOString();
 

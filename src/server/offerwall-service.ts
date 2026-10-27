@@ -275,6 +275,70 @@ export async function refundCpaPoints(params: { userId: string; points: number; 
   return { points: requested, remainingPoints: updatedPoints };
 }
 
+/**
+ * Credits CPX-earned Xora Points using a stable provider transaction reference.
+ * The reference record is checked before changing the balance so provider retries
+ * do not normally award points twice. This uses the existing RTDB conventions.
+ */
+export async function creditCpaPoints(params: {
+  userId: string;
+  points: number;
+  reference: string;
+  description: string;
+  action?: "credit" | "reverse";
+}) {
+  const points = Math.max(0, Math.floor(Number(params.points) || 0));
+  if (!params.userId || !params.reference || points <= 0) {
+    if (points === 0) return { points: 0, duplicate: false };
+    throw new Error("Invalid CPX points credit.");
+  }
+  // Store the idempotency marker and points mutation in the same Firebase
+  // ETag-conditional write so simultaneous CPX retries cannot double-credit.
+  const { getCleanDbUrl, getFirebaseAccessToken } = await import("./xseries-service-account");
+  const base = getCleanDbUrl();
+  const token = await getFirebaseAccessToken();
+  if (!base || !token) throw new Error("Firebase conditional writes are unavailable.");
+  const action = params.action || "credit";
+  const key = crypto.createHash("sha256").update(params.reference).digest("hex");
+  const target = `${base}/commerce/cpaUsers/${encodeURIComponent(params.userId)}.json`;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const read = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      headers: { "X-Firebase-ETag": "true" }, signal: AbortSignal.timeout(12000),
+    });
+    if (!read.ok) throw new Error(`Unable to read CPA points (HTTP ${read.status}).`);
+    const raw = await read.json().catch(() => null) as any;
+    const etag = read.headers.get("etag");
+    const account = raw?.trackingId ? raw : await getOrCreateCpaUser(params.userId) as any;
+    const credits = { ...(account.cpxCredits || {}) };
+    const prior = credits[key];
+    if (prior?.status === (action === "credit" ? "credited" : "reversed")) {
+      return { points: Number(prior.points || points), duplicate: true, remainingPoints: Number(account.points || 0) };
+    }
+    if (action === "reverse" && !prior) {
+      // A reversal arriving before a completion is remembered; a later completion is blocked.
+      credits[key] = { reference: params.reference, points, status: "reversed", updatedAt: new Date().toISOString() };
+      const write = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, { method: "PUT",
+        headers: { "Content-Type": "application/json", "if-match": etag || "null_etag" },
+        body: JSON.stringify({ ...account, cpxCredits: credits, updatedAt: new Date().toISOString() }),
+        signal: AbortSignal.timeout(12000) });
+      if (write.ok) return { points, duplicate: false, reversed: true, remainingPoints: Number(account.points || 0) };
+      if (write.status !== 412) throw new Error(`Unable to record points reversal (HTTP ${write.status}).`);
+      continue;
+    }
+    if (action === "credit" && prior?.status === "reversed") return { points, duplicate: true, reversed: true };
+    const balance = Math.max(0, Number(account.points || 0) + (action === "credit" ? points : -points));
+    credits[key] = { reference: params.reference, points, status: action === "credit" ? "credited" : "reversed", description: params.description, updatedAt: new Date().toISOString() };
+    const updated = { ...account, points: balance,
+      lifetimeEarned: Math.max(0, Number(account.lifetimeEarned || 0) + (action === "credit" ? points : 0)),
+      cpxCredits: credits, updatedAt: new Date().toISOString() };
+    const write = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, { method: "PUT",
+      headers: { "Content-Type": "application/json", "if-match": etag || "null_etag" },
+      body: JSON.stringify(updated), signal: AbortSignal.timeout(12000) });
+    if (write.ok) return { points, duplicate: false, remainingPoints: balance, reversed: action === "reverse" };
+    if (write.status !== 412) throw new Error(`Unable to update CPA points (HTTP ${write.status}).`);
+  }
+  throw new Error("CPA points changed during CPX processing; retry the postback.");
+}
 export async function getCpaWallet(userId: string) {
   const account = await getOrCreateCpaUser(userId);
   return { points: account.points, lifetimeEarned: account.lifetimeEarned, lifetimeRedeemed: account.lifetimeRedeemed, pointsNgnValue: pointsNgnValue(), maxDataDiscountPercent: MAX_DATA_POINTS_DISCOUNT_PERCENT };
