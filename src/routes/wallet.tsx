@@ -61,18 +61,6 @@ function WalletPage() {
   const [balanceHidden, setBalanceHidden] = useState(false);
   const [activityFilter, setActivityFilter] = useState<"all" | "approved" | "pending">("all");
 
-  const cpxWallet = useQuery({
-    queryKey: ["cpx-live-wallet", user?.id],
-    enabled: Boolean(user?.id),
-    queryFn: async () => {
-      const response = await fetch("/api/cpx/rewards/balance", { credentials: "same-origin" });
-      const body = await response.json();
-      if (!response.ok || !body.ok) throw new Error(body.error || "Could not load CPX rewards.");
-      return body as { ok: true; source: "supabase"; wallet: { cashBalanceNgn: number; pointsBalance: number; lifetimePointsEarned: number; updatedAt: string | null } };
-    },
-    refetchInterval: 15000,
-  });
-
   const surveyWallet = useQuery({
     queryKey: ["survey-wallet", user?.id],
     enabled: Boolean(user?.id),
@@ -162,17 +150,6 @@ function WalletPage() {
 
       {surveyWallet.isError ? <div className="rounded-2xl border border-destructive/20 bg-[#fffdf9] p-4 text-sm text-destructive">{surveyWallet.error.message}</div> : null}
       {notice && payoutStep === "closed" ? <div className="rounded-2xl border border-[#eadfd5] bg-[#fffdf9] p-4 text-sm">{notice}</div> : null}
-
-      <section className="mt-5 rounded-3xl border border-[#ded5f4] bg-gradient-to-br from-[#f7f3ff] to-[#fffdf9] p-5 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div><p className="text-sm font-semibold text-[#5b4386]">CPX Research rewards</p><p className="mt-1 text-xs text-muted-foreground">Live CPX balances · stored in Supabase</p></div>
-          <span className="rounded-full bg-[#e9e0ff] px-2.5 py-1 text-xs font-medium text-[#5b4386]">CPX</span>
-        </div>
-        {cpxWallet.isLoading ? <p className="mt-4 text-sm text-muted-foreground">Loading CPX balance…</p> : cpxWallet.isError ? <p className="mt-4 text-sm text-destructive">{cpxWallet.error.message}</p> : <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-white bg-white/80 p-4"><p className="text-xs text-muted-foreground">CPX cash rewards</p><p className="mt-2 font-display text-2xl font-semibold text-[#5c4037]">{money(cpxWallet.data?.wallet.cashBalanceNgn || 0)}</p></div>
-          <div className="rounded-2xl border border-white bg-white/80 p-4"><p className="text-xs text-muted-foreground">CPX Xora Points</p><p className="mt-2 font-display text-2xl font-semibold text-[#5c4037]">{Number(cpxWallet.data?.wallet.pointsBalance || 0).toLocaleString("en-NG")}</p></div>
-        </div>}
-      </section>
 
       <div className="mt-6 grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[1.1fr_1fr]">
         <article className="relative overflow-hidden rounded-3xl border border-[#d9c4b1] bg-gradient-to-br from-[#e9d8c6] to-[#d5bba4] p-6 text-[#543b32] shadow-md">
