@@ -267,7 +267,7 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
       const result = await applyExistingWalletReward({
         transId, userId, status, type, offerId: offerId || null, amountUsd, amountLocal,
       });
-      return json({ ok: true, mode: "live", trans_id: transId, result });
+      return json({ ok: true, mode: LIVE_REWARDS_ENABLED ? "live" : "test-existing-wallet", trans_id: transId, existingWalletCredited: true, result });
     } catch (error) {
       console.error("[CPX Rewards] Existing wallet callback failed", { transId, error: error instanceof Error ? error.message : String(error) });
       return json({ ok: false, error: "CPX reward could not be applied to the existing Xora wallet; callback may be retried." }, 500);
