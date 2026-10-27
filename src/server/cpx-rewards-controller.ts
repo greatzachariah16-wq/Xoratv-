@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { getAuthenticatedUserId } from "./session-auth";
+import { creditWallet } from "./wallet-service";
+import { creditCpaPoints } from "./offerwall-service";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
