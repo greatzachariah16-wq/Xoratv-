@@ -275,6 +275,58 @@ export async function refundCpaPoints(params: { userId: string; points: number; 
   return { points: requested, remainingPoints: updatedPoints };
 }
 
+/**
+ * Credits CPX-earned Xora Points using a stable provider transaction reference.
+ * The reference record is checked before changing the balance so provider retries
+ * do not normally award points twice. This uses the existing RTDB conventions.
+ */
+export async function creditCpaPoints(params: {
+  userId: string;
+  points: number;
+  reference: string;
+  description: string;
+}) {
+  const points = Math.max(0, Math.floor(Number(params.points) || 0));
+  if (!params.userId || !params.reference || points <= 0) {
+    if (points === 0) return { points: 0, duplicate: false };
+    throw new Error("Invalid CPX points credit.");
+  }
+  const creditId = `cpx_${crypto.createHash("sha256").update(params.reference).digest("hex")}`;
+  const creditPath = `commerce/cpaPointCredits/${creditId}`;
+  const existing = await queryRtdb(creditPath) as any;
+  if (existing?.status === "credited" && existing?.userId === params.userId) {
+    return { points: Number(existing.points || 0), duplicate: true };
+  }
+  if (existing && existing.userId !== params.userId) throw new Error("CPX points reference belongs to another user.");
+
+  const account = await getOrCreateCpaUser(params.userId);
+  const now = new Date().toISOString();
+  const updated = {
+    ...account,
+    points: Number(account.points || 0) + points,
+    lifetimeEarned: Number(account.lifetimeEarned || 0) + points,
+    updatedAt: now,
+  };
+  // Save the reference first. If the balance write fails, callback retry sees a
+  // pending record; it must not silently claim success.
+  await queryRtdb(creditPath, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: creditId, userId: params.userId, reference: params.reference, points, description: params.description, status: "pending", createdAt: now }),
+  });
+  await queryRtdb(cpaUserPath(params.userId), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updated),
+  });
+  await queryRtdb(creditPath, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "credited", creditedAt: new Date().toISOString(), remainingPoints: updated.points }),
+  });
+  return { points, remainingPoints: updated.points, duplicate: false };
+}
+
 export async function getCpaWallet(userId: string) {
   const account = await getOrCreateCpaUser(userId);
   return { points: account.points, lifetimeEarned: account.lifetimeEarned, lifetimeRedeemed: account.lifetimeRedeemed, pointsNgnValue: pointsNgnValue(), maxDataDiscountPercent: MAX_DATA_POINTS_DISCOUNT_PERCENT };
