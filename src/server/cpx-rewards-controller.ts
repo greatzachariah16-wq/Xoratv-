@@ -46,6 +46,61 @@ async function supabaseRequest(table: string, query: string, method = "GET", bod
   if (!response.ok) throw new Error(`Supabase ${table} ${method} failed (HTTP ${response.status}): ${text.slice(0, 500)}`);
   return text ? JSON.parse(text) : null;
 }
+async function applyExistingWalletReward(params: {
+  transId: string; userId: string; status: string; type: string; offerId: string | null;
+  amountUsd: number; amountLocal: number;
+}) {
+  const { transId, userId, status, type, offerId, amountUsd, amountLocal } = params;
+  const ledgerPath = `commerce/cpxResearchTransactions/${encodeURIComponent(transId)}`;
+  const prior = await queryRtdb(ledgerPath) as any;
+  if (prior && String(prior.status) === status) return { duplicate: true, status, wallet: "existing" };
+  const completed = status === "1" && type === "complete";
+  const cash = completed && amountUsd >= CASH_THRESHOLD_USD ? CASH_REWARD_NGN : 0;
+  const points = completed ? Math.max(0, Math.round(amountUsd * POINTS_PER_USD)) : 0;
+  const reversing = Boolean(prior && String(prior.status) === "1" && status === "2");
+  const reverseCash = reversing ? Number(prior.cashRewardNgn || 0) : 0;
+  const reversePoints = reversing ? Number(prior.pointsReward || 0) : 0;
+  const now = new Date().toISOString();
+
+  if (cash || reverseCash) {
+    const walletPath = `commerce/surveyWallets/${encodeURIComponent(userId)}`;
+    const wallet = await queryRtdb(walletPath) as any || {};
+    const transactions = wallet.transactions && typeof wallet.transactions === "object" ? wallet.transactions : {};
+    const txId = `cpx_${crypto.createHash("sha256").update(transId).digest("hex").slice(0, 24)}`;
+    const delta = cash - reverseCash;
+    const nextBalance = Math.round((Number(wallet.balance || 0) + delta) * 100) / 100;
+    if (nextBalance < 0) throw new Error("Existing survey wallet balance is insufficient for CPX reversal.");
+    await queryRtdb(walletPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      ...wallet, userId, currency: "NGN", balance: nextBalance,
+      lifetimeEarned: Number(wallet.lifetimeEarned || 0) + (cash > 0 ? cash : 0),
+      transactions: { ...transactions, [txId]: {
+        id: txId, type: reversing ? "survey_reward_reversal" : "survey_reward",
+        amount: delta, currency: "NGN", status: reversing ? "reversed" : "successful",
+        reference: `cpx-${transId}`, description: reversing ? "CPX Research reward reversal" : "CPX Research survey reward",
+        createdAt: now, providerReference: transId,
+      } }, updatedAt: now,
+    }) });
+  }
+
+  if (points || reversePoints) {
+    const pointsPath = `commerce/cpaUsers/${encodeURIComponent(userId)}`;
+    const account = await queryRtdb(pointsPath) as any || { userId, trackingId: "", points: 0, lifetimeEarned: 0, lifetimeRedeemed: 0 };
+    const nextPoints = Math.max(0, Number(account.points || 0) + points - reversePoints);
+    await queryRtdb(pointsPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      ...account, userId, points: nextPoints,
+      lifetimeEarned: Number(account.lifetimeEarned || 0) + points,
+      updatedAt: now,
+    }) });
+  }
+
+  await queryRtdb(ledgerPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    transactionId: transId, userId, status, type, offerId, publisherRevenueUsd: amountUsd,
+    localAmount: amountLocal, cashRewardNgn: cash, pointsReward: points,
+    reversed: reversing, createdAt: prior?.createdAt || now, updatedAt: now,
+  }) });
+  return { duplicate: false, wallet: "existing", cashRewardNgn: cash, pointsReward: points, reversed: reversing };
+}
+
 async function readTransaction(transId: string): Promise<any | null> {
   const rows = await supabaseRequest("cpx_test_transactions", new URLSearchParams({ select: "*", transaction_id: `eq.${transId}`, limit: "1" }).toString());
   const row = rows?.[0];
@@ -138,24 +193,23 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
     const userId = await getAuthenticatedUserId(request);
     if (!userId) return json({ ok: false, error: "Sign in to view your CPX rewards." }, 401);
     try {
-      const rows = await supabaseRequest("cpx_live_wallets", new URLSearchParams({
-        select: "user_id,cash_balance_ngn,points_balance,lifetime_points_earned,updated_at",
-        user_id: `eq.${userId}`, limit: "1",
-      }).toString());
-      const row = rows?.[0];
+      const [surveyWallet, pointsAccount] = await Promise.all([
+        queryRtdb(`commerce/surveyWallets/${encodeURIComponent(userId)}`) as Promise<any>,
+        queryRtdb(`commerce/cpaUsers/${encodeURIComponent(userId)}`) as Promise<any>,
+      ]);
       return json({
         ok: true,
-        source: "supabase",
+        source: "existing-xora-wallets",
         wallet: {
-          cashBalanceNgn: Number(row?.cash_balance_ngn || 0),
-          pointsBalance: Number(row?.points_balance || 0),
-          lifetimePointsEarned: Number(row?.lifetime_points_earned || 0),
-          updatedAt: row?.updated_at || null,
+          cashBalanceNgn: Number(surveyWallet?.balance || 0),
+          pointsBalance: Number(pointsAccount?.points || 0),
+          lifetimePointsEarned: Number(pointsAccount?.lifetimeEarned || 0),
+          updatedAt: surveyWallet?.updatedAt || pointsAccount?.updatedAt || null,
         },
       }, 200);
     } catch (error) {
-      console.error("[CPX Rewards] Balance lookup failed", error instanceof Error ? error.message : error);
-      return json({ ok: false, error: "Could not load CPX rewards balance." }, 502);
+      console.error("[CPX Rewards] Existing wallet lookup failed", error instanceof Error ? error.message : error);
+      return json({ ok: false, error: "Could not load your Xora rewards balance." }, 502);
     }
   }
 
@@ -209,15 +263,13 @@ export async function handleCpxRewardsRoute(request: Request, url: URL): Promise
   const transactionKey = crypto.createHash("sha256").update(transId).digest("hex");
   if (LIVE_REWARDS_ENABLED) {
     try {
-      const result = await supabaseRequest("rpc/apply_cpx_reward_postback", "", "POST", {
-        p_transaction_id: transId, p_user_id: userId, p_status: status, p_type: type,
-        p_offer_id: offerId || null, p_revenue_usd: amountUsd, p_cash_threshold_usd: CASH_THRESHOLD_USD,
-        p_cash_reward_ngn: CASH_REWARD_NGN, p_points_per_usd: POINTS_PER_USD,
+      const result = await applyExistingWalletReward({
+        transId, userId, status, type, offerId: offerId || null, amountUsd, amountLocal,
       });
       return json({ ok: true, mode: "live", trans_id: transId, result });
     } catch (error) {
-      console.error("[CPX Rewards] Supabase live callback failed", { transId, error: error instanceof Error ? error.message : String(error) });
-      return json({ ok: false, error: "CPX live reward processing failed; callback may be retried." }, 500);
+      console.error("[CPX Rewards] Existing wallet callback failed", { transId, error: error instanceof Error ? error.message : String(error) });
+      return json({ ok: false, error: "CPX reward could not be applied to the existing Xora wallet; callback may be retried." }, 500);
     }
   }
 
