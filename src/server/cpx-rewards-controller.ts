@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { getAuthenticatedUserId } from "./session-auth";
+import { queryRtdb } from "./xseries-service-account";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
