@@ -345,8 +345,8 @@ export async function getCpaWallet(userId: string) {
 }
 
 export async function handleCpaPostback(request: Request) {
-  const configuredPassword = process.env.CPAGRIP_POSTBACK_PASSWORD?.trim();
-  if (!configuredPassword) return { ok: false as const, status: 503, error: "CPAGRIP_POSTBACK_PASSWORD is not configured." };
+  // CPAGrip postbacks no longer require a shared password.
+  // Keep payload validation, tracking lookup, and duplicate-conversion protection below.
 
   const contentType = request.headers.get("content-type") || "";
   let payload: Record<string, string> = {};
@@ -355,8 +355,6 @@ export async function handleCpaPostback(request: Request) {
   } else {
     payload = Object.fromEntries(new URLSearchParams(await request.text()).entries());
   }
-
-  if (String(payload.password || "") !== configuredPassword) return { ok: false as const, status: 401, error: "Invalid CPAGrip postback password." };
 
   const payout = Number(String(payload.payout || "0").replace(/[$,]/g, ""));
   const offerId = String(payload.offer_id || "").trim();
@@ -371,8 +369,8 @@ export async function handleCpaPostback(request: Request) {
   const tracking = await getTrackingRecord(trackingId);
   const userId = String(tracking?.userId || "").trim();
 
-  // Admin diagnostics can validate the exact CPAGrip payload/password/tracking
-  // path without awarding points or creating a payable conversion.
+  // Admin diagnostics validate the CPAGrip payload/tracking path
+  // without awarding points or creating a payable conversion.
   if (String(payload.test || "") === "1") {
     const testId = id("cpa_webhook_test");
     const diagnostic = {
@@ -477,7 +475,7 @@ export async function getAdminCpaOverview() {
   return {
     configured: {
       feed: Boolean(process.env.CPAGRIP_USER_ID?.trim() && process.env.CPAGRIP_RSS_KEY?.trim()),
-      postbackPassword: Boolean(process.env.CPAGRIP_POSTBACK_PASSWORD?.trim()),
+      postbackPasswordRequired: false,
       endpoint: "/api/webhooks/cpagrip",
     },
     totals: {
@@ -508,7 +506,6 @@ export async function runCpaPostbackSelfTest(params: { trackingId?: string; offe
   const payout = Number(params.payout || 1);
   if (!Number.isFinite(payout) || payout <= 0) throw new Error("Test payout must be positive.");
   const testPayload = new URLSearchParams({
-    password: process.env.CPAGRIP_POSTBACK_PASSWORD?.trim() || "",
     payout: payout.toFixed(2),
     offer_id: offerId,
     tracking_id: trackingId,
