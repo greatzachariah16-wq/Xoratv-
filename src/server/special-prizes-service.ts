@@ -17,6 +17,71 @@ export type SpecialPrize = {
 
 const prizesPath = "commerce/specialPrizes";
 
+const bannerPath = "commerce/specialPrizesSettings/banner";
+
+export type SpecialPrizesBanner = {
+  enabled: boolean;
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  updatedAt: string;
+};
+
+const defaultBanner: SpecialPrizesBanner = {
+  enabled: false,
+  imageUrl: "",
+  title: "Special Prizes",
+  subtitle: "Explore special offers selected for XoraTV.",
+  updatedAt: "",
+};
+
+export async function getSpecialPrizesBanner(): Promise<SpecialPrizesBanner> {
+  const raw = await queryRtdb(bannerPath) as Partial<SpecialPrizesBanner> | null;
+  return {
+    enabled: raw?.enabled === true,
+    imageUrl: String(raw?.imageUrl || "").trim(),
+    title: String(raw?.title || defaultBanner.title).trim().slice(0, 100),
+    subtitle: String(raw?.subtitle || defaultBanner.subtitle).trim().slice(0, 300),
+    updatedAt: String(raw?.updatedAt || ""),
+  };
+}
+
+export async function saveSpecialPrizesBanner(input: {
+  enabled?: boolean;
+  imageUrl?: string;
+  title?: string;
+  subtitle?: string;
+}): Promise<SpecialPrizesBanner> {
+  const rawImageUrl = String(input.imageUrl || "").trim();
+  let imageUrl = "";
+  if (rawImageUrl) {
+    try {
+      const parsed = new URL(rawImageUrl);
+      if (parsed.protocol !== "https:") throw new Error();
+      imageUrl = parsed.toString();
+    } catch {
+      throw new Error("Banner image must be a valid HTTPS URL.");
+    }
+  }
+  const title = String(input.title ?? defaultBanner.title).trim();
+  const subtitle = String(input.subtitle ?? defaultBanner.subtitle).trim();
+  if (!title || title.length > 100) throw new Error("Banner title must be between 1 and 100 characters.");
+  if (subtitle.length > 300) throw new Error("Banner text must be 300 characters or fewer.");
+  const banner: SpecialPrizesBanner = {
+    enabled: input.enabled === true && Boolean(imageUrl),
+    imageUrl,
+    title,
+    subtitle,
+    updatedAt: new Date().toISOString(),
+  };
+  await queryRtdb(bannerPath, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(banner),
+  });
+  return banner;
+}
+
 function cleanCampaignId(value: unknown) {
   const id = String(value ?? "").trim();
   if (!/^[a-zA-Z0-9_-]{4,100}$/.test(id)) throw new Error("Enter a valid Golden Goose campaign ID.");
