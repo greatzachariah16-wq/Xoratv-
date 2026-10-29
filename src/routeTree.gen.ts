@@ -259,7 +259,7 @@ export interface FileRoutesByFullPath {
   '/xtv-series': typeof XtvSeriesRoute
   '/offers': typeof OffersRoute
   '/special-prizes': typeof SpecialPrizesRoute
-  '/admin/commerce': typeof AdminCommerceRouteWithChildren
+  '/admin/commerce': typeof AdminCommerceRoute
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -301,7 +301,7 @@ export interface FileRoutesByTo {
   '/xtv-series': typeof XtvSeriesRoute
   '/offers': typeof OffersRoute
   '/special-prizes': typeof SpecialPrizesRoute
-  '/admin/commerce': typeof AdminCommerceRouteWithChildren
+  '/admin/commerce': typeof AdminCommerceRoute
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -344,7 +344,7 @@ export interface FileRoutesById {
   '/xtv-series': typeof XtvSeriesRoute
   '/offers': typeof OffersRoute
   '/special-prizes': typeof SpecialPrizesRoute
-  '/admin/commerce': typeof AdminCommerceRouteWithChildren
+  '/admin/commerce': typeof AdminCommerceRoute
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -530,7 +530,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/commerce': { id: '/admin/commerce'; path: '/commerce'; fullPath: '/admin/commerce'; preLoaderRoute: typeof AdminCommerceRouteImport; parentRoute: typeof AdminRouteImport }
+    '/admin/commerce': { id: '/admin/commerce'; path: '/commerce'; fullPath: '/admin/commerce'; preLoaderRoute: typeof AdminCommerceRouteImport; parentRoute: typeof AdminRoute }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -713,37 +713,37 @@ declare module '@tanstack/react-router' {
       path: '/commerce/creator-reference'
       fullPath: '/admin/commerce/creator-reference'
       preLoaderRoute: typeof AdminCommerceCreatorReferenceRouteImport
-      parentRoute: typeof AdminRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/commerce/pricing': {
       id: '/admin/commerce/pricing'
       path: '/commerce/pricing'
       fullPath: '/admin/commerce/pricing'
       preLoaderRoute: typeof AdminCommercePricingRouteImport
-      parentRoute: typeof AdminRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/commerce/test-data': {
       id: '/admin/commerce/test-data'
       path: '/commerce/test-data'
       fullPath: '/admin/commerce/test-data'
       preLoaderRoute: typeof AdminCommerceTestDataRouteImport
-      parentRoute: typeof AdminRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/commerce/cpa': {
       id: '/admin/commerce/cpa'
       path: '/commerce/cpa'
       fullPath: '/admin/commerce/cpa'
       preLoaderRoute: typeof AdminCommerceCpaRouteImport
-      parentRoute: typeof AdminRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/commerce/discounts': {
       id: '/admin/commerce/discounts'
       path: '/commerce/discounts'
       fullPath: '/admin/commerce/discounts'
       preLoaderRoute: typeof AdminCommerceDiscountsRouteImport
-      parentRoute: typeof AdminRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/admin/commerce/special-prizes': { id: '/admin/commerce/special-prizes'; path: '/commerce/special-prizes'; fullPath: '/admin/commerce/special-prizes'; preLoaderRoute: typeof AdminCommerceSpecialPrizesRouteImport; parentRoute: typeof AdminRouteImport }
+    '/admin/commerce/special-prizes': { id: '/admin/commerce/special-prizes'; path: '/commerce/special-prizes'; fullPath: '/admin/commerce/special-prizes'; preLoaderRoute: typeof AdminCommerceSpecialPrizesRouteImport; parentRoute: typeof AdminRoute }
     '/admin/campaigns/manage': {
       id: '/admin/campaigns/manage'
       path: '/manage'
