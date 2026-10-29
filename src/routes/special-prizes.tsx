@@ -6,7 +6,8 @@ import { commerceFetch } from "@/lib/commerce";
 
 export const Route = createFileRoute("/special-prizes")({ component: SpecialPrizes });
 
-type Prize = { id: string; title: string; description: string; campaignId: string; imageUrl?: string; scriptSnippet?: string; status: "active" | "paused"; clicks: number };\ntype Banner = { enabled: boolean; imageUrl: string; title: string; subtitle: string };\nconst defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Prizes", subtitle: "Explore special offers selected for XoraTV." };
+type Prize = { id: string; title: string; description: string; campaignId: string; imageUrl?: string; scriptSnippet?: string; status: "active" | "paused"; clicks: number };
+type Banner = { enabled: boolean; imageUrl: string; title: string; subtitle: string };\nconst defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Prizes", subtitle: "Explore special offers selected for XoraTV." };
 function SpecialPrizes() {
   const [prizes, setPrizes] = useState<Prize[]>([]);\n  const [banner, setBanner] = useState<Banner>(defaultBanner);
   const [selected, setSelected] = useState<Prize | null>(null);
