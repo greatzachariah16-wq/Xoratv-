@@ -9,7 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick } from "./special-prizes-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner } from "./special-prizes-service";
 
 
 const headers = {
@@ -74,7 +74,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path === "/api/commerce/special-prizes" && request.method === "GET") {
     try {
-      return json({ ok: true, prizes: await listSpecialPrizes(false) });
+      return json({ ok: true, prizes: await listSpecialPrizes(false), banner: await getSpecialPrizesBanner() });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not load special prizes." }, 500);
     }
@@ -87,6 +87,32 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, click: await recordSpecialPrizeClick(String(body.id)) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "This prize is no longer available." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/banner" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, banner: await getSpecialPrizesBanner() });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load Special Prizes banner." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/banner" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      return json({ ok: true, banner: await saveSpecialPrizesBanner({
+        enabled: body.enabled === true,
+        imageUrl: String(body.imageUrl || ""),
+        title: String(body.title ?? ""),
+        subtitle: String(body.subtitle ?? ""),
+      }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not save Special Prizes banner." }, 400);
     }
   }
 
