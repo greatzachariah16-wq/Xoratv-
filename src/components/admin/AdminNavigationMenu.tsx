@@ -21,6 +21,7 @@ import {
   Sparkles,
   Banknote,
   DollarSign,
+  Gift,
   TestTube2,
   SlidersHorizontal,
 } from "lucide-react";
@@ -157,6 +158,16 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     href: "/admin/commerce/test-data",
     accentColor: "text-rose-500",
     badge: "Live Test",
+  },
+  {
+    id: "commerce-special-prizes",
+    title: "Special Prizes",
+    category: "growth",
+    description: "Manage Golden Goose prize campaigns and pause unavailable offers without an app update.",
+    icon: Gift,
+    href: "/admin/commerce/special-prizes",
+    accentColor: "text-amber-500",
+    badge: "Golden Goose",
   },
   {
     id: "commerce-cpa",
@@ -307,7 +318,7 @@ export function AdminNavigationMenu({
             </span>
             <span>Sections Menu</span>
             <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-              10
+              {ADMIN_SECTIONS.length}
             </span>
           </button>
         ) : (

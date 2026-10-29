@@ -41,7 +41,7 @@ const NAV = [
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/chat", label: "Community Chat", icon: MessageCircle },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
-  { to: "/offers", label: "Offers", icon: Gift },
+  { to: "/special-prizes", label: "Special Prizes", icon: Gift },
 ] as const;
 
 function useUnreadCount() {
