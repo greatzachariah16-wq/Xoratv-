@@ -9,6 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, recordSpecialPrizeClick } from "./special-prizes-service";
 
 
 const headers = {
@@ -68,6 +69,65 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json(result, result.status);
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare webhook error." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/special-prizes" && request.method === "GET") {
+    try {
+      return json({ ok: true, prizes: await listSpecialPrizes(false) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load special prizes." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/special-prizes/click" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (!body.id) return json({ ok: false, error: "Prize ID is required." }, 400);
+      return json({ ok: true, click: await recordSpecialPrizeClick(String(body.id)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "This prize is no longer available." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, prizes: await listSpecialPrizes(true) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load special prizes." }, 500);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.title || !body.campaignId) return json({ ok: false, error: "Title and campaign ID are required." }, 400);
+      const prize = await saveSpecialPrize({
+        id: body.id ? String(body.id) : undefined,
+        title: String(body.title),
+        description: body.description == null ? "" : String(body.description),
+        campaignId: String(body.campaignId),
+        status: body.status === "paused" ? "paused" : "active",
+      });
+      return json({ ok: true, prize });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not save special prize." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/status" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.id || (body.status !== "active" && body.status !== "paused")) return json({ ok: false, error: "Prize ID and valid status are required." }, 400);
+      return json({ ok: true, prize: await setSpecialPrizeStatus(String(body.id), body.status) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not update prize status." }, 400);
     }
   }
 
