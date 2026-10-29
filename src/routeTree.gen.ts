@@ -299,6 +299,9 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/offers': typeof OffersRoute
+  '/special-prizes': typeof SpecialPrizesRoute
+  '/admin/commerce': typeof AdminCommerceRouteWithChildren
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -314,6 +317,7 @@ export interface FileRoutesByTo {
   '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
   '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
   '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/commerce/special-prizes': typeof AdminCommerceSpecialPrizesRoute
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -338,6 +342,9 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/offers': typeof OffersRoute
+  '/special-prizes': typeof SpecialPrizesRoute
+  '/admin/commerce': typeof AdminCommerceRouteWithChildren
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -348,6 +355,13 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
+  '/admin/commerce/creator-reference': typeof AdminCommerceCreatorReferenceRoute
+  '/admin/commerce/pricing': typeof AdminCommercePricingRoute
+  '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
+  '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
+  '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/commerce/special-prizes': typeof AdminCommerceSpecialPrizesRoute
+  '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
   '/video/$postId': typeof VideoPostIdRoute
@@ -742,6 +756,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminCommerceRouteChildren {
+  AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
+  AdminCommercePricingRoute: typeof AdminCommercePricingRoute
+  AdminCommerceTestDataRoute: typeof AdminCommerceTestDataRoute
+  AdminCommerceCpaRoute: typeof AdminCommerceCpaRoute
+  AdminCommerceDiscountsRoute: typeof AdminCommerceDiscountsRoute
+  AdminCommerceSpecialPrizesRoute: typeof AdminCommerceSpecialPrizesRoute
+}
+const AdminCommerceRouteChildren: AdminCommerceRouteChildren = {
+  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
+  AdminCommercePricingRoute: AdminCommercePricingRoute,
+  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute,
+  AdminCommerceCpaRoute: AdminCommerceCpaRoute,
+  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute,
+  AdminCommerceSpecialPrizesRoute: AdminCommerceSpecialPrizesRoute,
+}
+const AdminCommerceRouteWithChildren = AdminCommerceRoute._addFileChildren(AdminCommerceRouteChildren)
+
 interface AdminRouteChildren {
   AdminCommerceRouteWithChildren: typeof AdminCommerceRouteWithChildren
   AdminCampaignsManageRoute: typeof AdminCampaignsManageRoute
@@ -770,23 +802,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminXseriesRoute: AdminXseriesRoute,
   AdminXserisRoute: AdminXserisRoute,
 }
-interface AdminCommerceRouteChildren {
-  AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
-  AdminCommercePricingRoute: typeof AdminCommercePricingRoute
-  AdminCommerceTestDataRoute: typeof AdminCommerceTestDataRoute
-  AdminCommerceCpaRoute: typeof AdminCommerceCpaRoute
-  AdminCommerceDiscountsRoute: typeof AdminCommerceDiscountsRoute
-  AdminCommerceSpecialPrizesRoute: typeof AdminCommerceSpecialPrizesRoute
-}
-const AdminCommerceRouteChildren: AdminCommerceRouteChildren = {
-  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
-  AdminCommercePricingRoute: AdminCommercePricingRoute,
-  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute,
-  AdminCommerceCpaRoute: AdminCommerceCpaRoute,
-  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute,
-  AdminCommerceSpecialPrizesRoute: AdminCommerceSpecialPrizesRoute,
-}
-const AdminCommerceRouteWithChildren = AdminCommerceRoute._addFileChildren(AdminCommerceRouteChildren)
 
 interface ChatRouteChildren {
   ChatRoomIdRoute: typeof ChatRoomIdRoute
