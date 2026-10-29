@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
 import { debitWallet, creditWallet, getWallet } from "./wallet-service";
+import { listSpecialPrizes } from "./special-prizes-service";
 import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 import { deleteXoraContent, getXoraContent } from "./content-repository";
 import { deleteCloudinaryVideo } from "./content-media-controller";
@@ -843,9 +844,10 @@ export async function handleMeleWebhook(request: Request) {
 export type CreatorPromotionLink = {
   token: string;
   creatorId: string;
-  service: "data" | "course" | "offer";
+  service: "data" | "course" | "offer" | "special-prize";
   courseId?: string | null;
   offerId?: string | null;
+  specialPrizeId?: string | null;
   label: string;
   targetPath: string;
   clicks: number;
@@ -874,26 +876,36 @@ async function writePromotionLinks(links: CreatorPromotionLink[]): Promise<void>
   });
 }
 
-export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course"; courseId?: string | null; }): Promise<CreatorPromotionLink> {
+export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course" | "special-prize"; courseId?: string | null; specialPrizeId?: string | null; }): Promise<CreatorPromotionLink> {
   const creator = await getCreator(params.creatorId);
   if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
+  const courseIdInput = String(params.courseId || "").trim();
+  const prizeIdInput = String(params.specialPrizeId || "").trim();
+  if (params.service === "special-prize" && !prizeIdInput) throw new Error("Choose a special prize to promote.");
   const existingLinks = await getCreatorPromotionLinks(params.creatorId);
   const existing = existingLinks.find((link) =>
     link.service === params.service &&
-    (params.service === "data" || link.courseId === String(params.courseId || "").trim()),
+    (params.service === "data" || (params.service === "course" && link.courseId === courseIdInput) || (params.service === "special-prize" && link.specialPrizeId === prizeIdInput)),
   );
   if (existing) return existing;
 
   let label = "Xora Data Plans";
   let targetPath = "/data";
   let courseId: string | null = null;
+  let specialPrizeId: string | null = null;
   if (params.service === "course") {
-    courseId = String(params.courseId || "").trim();
+    courseId = courseIdInput;
     if (!courseId) throw new Error("A course is required for a course promotion link.");
     const course = (await getCreatorCourses(params.creatorId)).find((item) => item.id === courseId && item.status === "published");
     if (!course) throw new Error("That course is not available for this creator.");
     label = course.title;
     targetPath = "/learn?course=" + encodeURIComponent(course.id);
+  } else if (params.service === "special-prize") {
+    specialPrizeId = prizeIdInput;
+    const prize = (await listSpecialPrizes(false)).find((item) => item.id === specialPrizeId);
+    if (!prize) throw new Error("That special prize is no longer available.");
+    label = prize.title;
+    targetPath = "/special-prizes?offer=" + encodeURIComponent(prize.id);
   }
   let token = "";
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -902,7 +914,7 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
   }
   if (!token) throw new Error("Could not generate a unique promotion link. Please try again.");
   const now = new Date().toISOString();
-  const record: CreatorPromotionLink = { token, creatorId: params.creatorId, service: params.service, courseId, label, targetPath, clicks: 0, createdAt: now, updatedAt: now };
+  const record: CreatorPromotionLink = { token, creatorId: params.creatorId, service: params.service, courseId, specialPrizeId, label, targetPath, clicks: 0, createdAt: now, updatedAt: now };
   await queryRtdb(promotionLinkPath(token), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
   return record;
 }
@@ -945,10 +957,11 @@ export async function resolvePromotionLink(token: string) {
   if (!link) return null;
   const now = new Date().toISOString();
   await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
-  const targetPath = link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : "/data";
+  const targetPath = link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : link.service === "special-prize" ? "/special-prizes" : "/data";
   const target = new URL(targetPath, "https://xoratv.local");
   target.searchParams.set("promo", link.token);
   if (link.service === "offer" && link.offerId) target.searchParams.set("offer", link.offerId);
+  if (link.service === "special-prize" && link.specialPrizeId) target.searchParams.set("offer", link.specialPrizeId);
   return { ...link, targetPath: target.pathname + target.search };
 }
 
