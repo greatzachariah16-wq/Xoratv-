@@ -9,7 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, recordSpecialPrizeClick } from "./special-prizes-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick } from "./special-prizes-service";
 
 
 const headers = {
@@ -105,12 +105,14 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
     try {
       const body = await request.json();
-      if (!body.title || !body.campaignId) return json({ ok: false, error: "Title and campaign ID are required." }, 400);
+      if (!body.title || (!body.campaignId && !body.scriptSnippet)) return json({ ok: false, error: "Title and either a campaign ID or offer script are required." }, 400);
       const prize = await saveSpecialPrize({
         id: body.id ? String(body.id) : undefined,
         title: String(body.title),
         description: body.description == null ? "" : String(body.description),
-        campaignId: String(body.campaignId),
+        campaignId: body.campaignId ? String(body.campaignId) : "",
+        imageUrl: body.imageUrl ? String(body.imageUrl) : "",
+        scriptSnippet: body.scriptSnippet ? String(body.scriptSnippet) : "",
         currency: body.currency ? String(body.currency) : "USD",
         status: body.status === "paused" ? "paused" : "active",
       });
@@ -129,6 +131,18 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, prize: await setSpecialPrizeStatus(String(body.id), body.status) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not update prize status." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/delete" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.id) return json({ ok: false, error: "Prize ID is required." }, 400);
+      return json({ ok: true, result: await deleteSpecialPrize(String(body.id)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not delete special prize." }, 400);
     }
   }
 
