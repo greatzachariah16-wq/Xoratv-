@@ -39,11 +39,10 @@ export function getGoldenGooseScriptUrl(campaignId: string) {
 
 export async function listSpecialPrizes(includePaused = false): Promise<SpecialPrize[]> {
   const raw = await queryRtdb(prizesPath) as Record<string, unknown> | null;
-  const now = Date.now();
   return Object.entries(raw || {})
     .map(([id, value]) => normalizePrize(id, value))
     .filter((prize) => prize.id && prize.title && prize.campaignId)
-    .filter((prize) => includePaused || (prize.status === "active" && (!prize.updatedAt || now >= 0)))
+    .filter((prize) => includePaused || prize.status === "active"
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
