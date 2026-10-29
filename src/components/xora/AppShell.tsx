@@ -42,6 +42,7 @@ const NAV = [
   { to: "/chat", label: "Community Chat", icon: MessageCircle },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
   { to: "/offers", label: "Offers", icon: Gift },
+  { to: "/special-prizes", label: "Special Prizes", icon: Sparkles },
 ] as const;
 
 function useUnreadCount() {
