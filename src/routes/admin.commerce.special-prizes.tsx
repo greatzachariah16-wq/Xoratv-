@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Loader2, Plus, RefreshCw, Save, ToggleLeft, ToggleRight } from "lucide-react";
 import { AdminProtectedLayout } from "@/components/admin/AdminProtectedLayout";
 import { commerceFetch } from "@/lib/commerce";
@@ -16,7 +16,7 @@ function SpecialPrizesAdmin() {
   async function load(){setLoading(true);try{const r=await commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes");setPrizes(r.prizes||[]);}catch(e){setMessage(e instanceof Error?e.message:"Could not load prizes.");}finally{setLoading(false);}}
   useEffect(()=>{void load();},[]);
   function edit(p:Prize){setDraft({id:p.id,title:p.title,description:p.description,campaignId:p.campaignId,status:p.status});setMessage("");window.scrollTo({top:0,behavior:"smooth"});}
-  async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");try{await commerceFetch("/api/admin/commerce/special-prizes",{method:"POST",body:JSON.stringify(draft)});setDraft(empty);setMessage("Saved. The public Special Prizes page now uses the updated settings.");await load();}catch(e){setMessage(e instanceof Error?e.message:"Could not save prize.");}finally{setBusy(false);}}
+  async function save(e:FormEvent){e.preventDefault();setBusy(true);setMessage("");try{await commerceFetch("/api/admin/commerce/special-prizes",{method:"POST",body:JSON.stringify(draft)});setDraft(empty);setMessage("Saved. The public Special Prizes page now uses the updated settings.");await load();}catch(e){setMessage(e instanceof Error?e.message:"Could not save prize.");}finally{setBusy(false);}}
   async function toggle(p:Prize){setBusy(true);setMessage("");try{await commerceFetch("/api/admin/commerce/special-prizes/status",{method:"POST",body:JSON.stringify({id:p.id,status:p.status==="active"?"paused":"active"})});setMessage(p.status==="active"?"Prize paused; it will no longer appear to users.":"Prize reactivated; it is visible again.");await load();}catch(e){setMessage(e instanceof Error?e.message:"Could not change status.");}finally{setBusy(false);}}
   return <AdminProtectedLayout title="Special Prizes" subtitle="Manage Golden Goose campaigns without releasing a new XoraTV app version." currentSectionId="commerce-special-prizes">
     <div className="mx-auto max-w-4xl space-y-5">
