@@ -42,7 +42,7 @@ export async function listSpecialPrizes(includePaused = false): Promise<SpecialP
   return Object.entries(raw || {})
     .map(([id, value]) => normalizePrize(id, value))
     .filter((prize) => prize.id && prize.title && prize.campaignId)
-    .filter((prize) => includePaused || prize.status === "active"
+    .filter((prize) => includePaused || prize.status === "active")
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
