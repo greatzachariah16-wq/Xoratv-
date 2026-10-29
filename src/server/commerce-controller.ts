@@ -9,7 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, recordSpecialPrizeClick } from "./special-prizes-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick } from "./special-prizes-service";
 
 
 const headers = {
@@ -131,6 +131,18 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, prize: await setSpecialPrizeStatus(String(body.id), body.status) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not update prize status." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/delete" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.id) return json({ ok: false, error: "Prize ID is required." }, 400);
+      return json({ ok: true, result: await deleteSpecialPrize(String(body.id)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not delete special prize." }, 400);
     }
   }
 
