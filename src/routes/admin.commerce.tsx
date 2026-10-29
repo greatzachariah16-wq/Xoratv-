@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useChildMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Users, BookOpen, Smartphone, Wallet, Banknote, RefreshCw } from "lucide-react";
 import { AdminProtectedLayout } from "@/components/admin/AdminProtectedLayout";
@@ -7,7 +7,11 @@ import { adminCommerceQuery } from "@/lib/commerce";
 export const Route = createFileRoute("/admin/commerce")({ component: AdminCommerceOverview });
 
 function AdminCommerceOverview() {
-  const query = useQuery(adminCommerceQuery());
+  const childMatches = useChildMatches();
+  const isChildActive = childMatches.length > 0;
+  const query = useQuery({ ...adminCommerceQuery(), enabled: !isChildActive });
+  if (isChildActive) return <Outlet />;
+
   const o = query.data?.overview;
   const creators = Array.isArray(o?.creators) ? o.creators : [];
   const courses = Array.isArray(o?.courses) ? o.courses : [];
@@ -15,9 +19,10 @@ function AdminCommerceOverview() {
   const courseOrders = Array.isArray(o?.courseOrders) ? o.courseOrders : [];
   const commissions = Array.isArray(o?.commissions) ? o.commissions : [];
   const payoutDetails = Array.isArray(o?.payoutDetails) ? o.payoutDetails : [];
-  const successful = (x: any) => ["success","paid","delivered","successful"].includes(String(x?.status || "").toLowerCase());
+  const successful = (x: any) => ["success", "paid", "delivered", "successful"].includes(String(x?.status || "").toLowerCase());
   const revenue = dataOrders.concat(courseOrders).filter(successful).reduce((n: number, x: any) => n + Number(x.customerPrice || 0), 0);
   const pendingCommission = commissions.filter((x: any) => x.status === "pending").reduce((n: number, x: any) => n + Number(x.amount || 0), 0);
+
   return <AdminProtectedLayout title="Commerce Overview" subtitle="A clean live summary of Xora commerce activity." currentSectionId="commerce">
     <div className="space-y-5">
       <header className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Commerce</p><h1 className="mt-1 font-display text-2xl font-semibold">Commerce overview</h1><p className="mt-1 text-xs text-muted-foreground">Use the admin menu for Pricing, Test Data, Creator Reference, CPA and discount tools.</p></div><button type="button" onClick={() => void query.refetch()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold"><RefreshCw className={query.isFetching ? "size-3.5 animate-spin" : "size-3.5"} />Refresh</button></header>
