@@ -194,30 +194,30 @@ const AdminXserisRoute = AdminXserisRouteImport.update({
 } as any)
 const AdminCommerceCreatorReferenceRoute = AdminCommerceCreatorReferenceRouteImport.update({
   id: '/admin/commerce/creator-reference',
-  path: '/creator-reference',
-  getParentRoute: () => AdminCommerceRoute,
+  path: '/commerce/creator-reference',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommercePricingRoute = AdminCommercePricingRouteImport.update({
   id: '/admin/commerce/pricing',
-  path: '/pricing',
-  getParentRoute: () => AdminCommerceRoute,
+  path: '/commerce/pricing',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceTestDataRoute = AdminCommerceTestDataRouteImport.update({
   id: '/admin/commerce/test-data',
-  path: '/test-data',
-  getParentRoute: () => AdminCommerceRoute,
+  path: '/commerce/test-data',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceCpaRoute = AdminCommerceCpaRouteImport.update({
   id: '/admin/commerce/cpa',
-  path: '/cpa',
-  getParentRoute: () => AdminCommerceRoute,
+  path: '/commerce/cpa',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceDiscountsRoute = AdminCommerceDiscountsRouteImport.update({
   id: '/admin/commerce/discounts',
-  path: '/discounts',
-  getParentRoute: () => AdminCommerceRoute,
+  path: '/commerce/discounts',
+  getParentRoute: () => AdminRoute,
 } as any)
-const AdminCommerceSpecialPrizesRoute = AdminCommerceSpecialPrizesRouteImport.update({ id: '/admin/commerce/special-prizes', path: '/special-prizes', getParentRoute: () => AdminCommerceRoute } as any)
+const AdminCommerceSpecialPrizesRoute = AdminCommerceSpecialPrizesRouteImport.update({ id: '/admin/commerce/special-prizes', path: '/commerce/special-prizes', getParentRoute: () => AdminRoute } as any)
 const AdminCampaignsManageRoute = AdminCampaignsManageRouteImport.update({
   id: '/admin/campaigns/manage',
   path: '/manage',
@@ -692,40 +692,40 @@ declare module '@tanstack/react-router' {
     }
     '/admin/commerce/creator-reference': {
       id: '/admin/commerce/creator-reference'
-      path: '/creator-reference'
+      path: '/commerce/creator-reference'
       fullPath: '/admin/commerce/creator-reference'
       preLoaderRoute: typeof AdminCommerceCreatorReferenceRouteImport
-      parentRoute: typeof AdminCommerceRouteImport
+      parentRoute: typeof AdminRouteImport
     }
     '/admin/commerce/pricing': {
       id: '/admin/commerce/pricing'
-      path: '/pricing'
+      path: '/commerce/pricing'
       fullPath: '/admin/commerce/pricing'
       preLoaderRoute: typeof AdminCommercePricingRouteImport
-      parentRoute: typeof AdminCommerceRouteImport
+      parentRoute: typeof AdminRouteImport
     }
     '/admin/commerce/test-data': {
       id: '/admin/commerce/test-data'
-      path: '/test-data'
+      path: '/commerce/test-data'
       fullPath: '/admin/commerce/test-data'
       preLoaderRoute: typeof AdminCommerceTestDataRouteImport
-      parentRoute: typeof AdminCommerceRouteImport
+      parentRoute: typeof AdminRouteImport
     }
     '/admin/commerce/cpa': {
       id: '/admin/commerce/cpa'
-      path: '/cpa'
+      path: '/commerce/cpa'
       fullPath: '/admin/commerce/cpa'
       preLoaderRoute: typeof AdminCommerceCpaRouteImport
-      parentRoute: typeof AdminCommerceRouteImport
+      parentRoute: typeof AdminRouteImport
     }
     '/admin/commerce/discounts': {
       id: '/admin/commerce/discounts'
-      path: '/discounts'
+      path: '/commerce/discounts'
       fullPath: '/admin/commerce/discounts'
       preLoaderRoute: typeof AdminCommerceDiscountsRouteImport
-      parentRoute: typeof AdminCommerceRouteImport
+      parentRoute: typeof AdminRouteImport
     }
-    '/admin/commerce/special-prizes': { id: '/admin/commerce/special-prizes'; path: '/special-prizes'; fullPath: '/admin/commerce/special-prizes'; preLoaderRoute: typeof AdminCommerceSpecialPrizesRouteImport; parentRoute: typeof AdminCommerceRouteImport }
+    '/admin/commerce/special-prizes': { id: '/admin/commerce/special-prizes'; path: '/commerce/special-prizes'; fullPath: '/admin/commerce/special-prizes'; preLoaderRoute: typeof AdminCommerceSpecialPrizesRouteImport; parentRoute: typeof AdminRouteImport }
     '/admin/campaigns/manage': {
       id: '/admin/campaigns/manage'
       path: '/manage'
@@ -757,26 +757,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminCommerceRouteChildren {
+interface AdminRouteChildren {
+  AdminCommerceRoute: typeof AdminCommerceRoute
   AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
   AdminCommercePricingRoute: typeof AdminCommercePricingRoute
   AdminCommerceTestDataRoute: typeof AdminCommerceTestDataRoute
   AdminCommerceCpaRoute: typeof AdminCommerceCpaRoute
   AdminCommerceDiscountsRoute: typeof AdminCommerceDiscountsRoute
   AdminCommerceSpecialPrizesRoute: typeof AdminCommerceSpecialPrizesRoute
-}
-const AdminCommerceRouteChildren: AdminCommerceRouteChildren = {
-  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
-  AdminCommercePricingRoute: AdminCommercePricingRoute,
-  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute,
-  AdminCommerceCpaRoute: AdminCommerceCpaRoute,
-  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute,
-  AdminCommerceSpecialPrizesRoute: AdminCommerceSpecialPrizesRoute,
-}
-const AdminCommerceRouteWithChildren = AdminCommerceRoute._addFileChildren(AdminCommerceRouteChildren)
-
-interface AdminRouteChildren {
-  AdminCommerceRouteWithChildren: typeof AdminCommerceRouteWithChildren
   AdminCampaignsManageRoute: typeof AdminCampaignsManageRoute
   AdminCampaignsRoute: typeof AdminCampaignsRoute
   AdminDiscoveryRoute: typeof AdminDiscoveryRoute
@@ -790,7 +778,13 @@ interface AdminRouteChildren {
   AdminXserisRoute: typeof AdminXserisRoute
 }
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminCommerceRouteWithChildren: AdminCommerceRouteWithChildren,
+  AdminCommerceRoute: AdminCommerceRoute,
+  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
+  AdminCommercePricingRoute: AdminCommercePricingRoute,
+  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute,
+  AdminCommerceCpaRoute: AdminCommerceCpaRoute,
+  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute,
+  AdminCommerceSpecialPrizesRoute: AdminCommerceSpecialPrizesRoute,
   AdminCampaignsManageRoute: AdminCampaignsManageRoute,
   AdminCampaignsRoute: AdminCampaignsRoute,
   AdminDiscoveryRoute: AdminDiscoveryRoute,
