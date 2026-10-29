@@ -63,8 +63,8 @@ export async function saveSpecialPrizesBanner(input: {
       throw new Error("Banner image must be a valid HTTPS URL.");
     }
   }
-  const title = String(input.title ?? defaultBanner.title).trim();
-  const subtitle = String(input.subtitle ?? defaultBanner.subtitle).trim();
+  const title = String(input.title || defaultBanner.title).trim();
+  const subtitle = String(input.subtitle || defaultBanner.subtitle).trim();
   if (!title || title.length > 100) throw new Error("Banner title must be between 1 and 100 characters.");
   if (subtitle.length > 300) throw new Error("Banner text must be 300 characters or fewer.");
   const banner: SpecialPrizesBanner = {
