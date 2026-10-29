@@ -6,6 +6,8 @@ export type SpecialPrize = {
   title: string;
   description: string;
   campaignId: string;
+  imageUrl: string;
+  scriptSnippet: string;
   currency: string;
   status: "active" | "paused";
   clicks: number;
@@ -27,6 +29,8 @@ function normalizePrize(id: string, value: any): SpecialPrize {
     title: String(value?.title || "").trim(),
     description: String(value?.description || "").trim(),
     campaignId: String(value?.campaignId || "").trim(),
+    imageUrl: String(value?.imageUrl || "").trim(),
+    scriptSnippet: String(value?.scriptSnippet || ""),
     currency: /^[A-Z]{3}$/.test(String(value?.currency || "")) ? String(value.currency) : "USD",
     status: value?.status === "active" ? "active" : "paused",
     clicks: Math.max(0, Number(value?.clicks || 0)),
@@ -43,7 +47,7 @@ export async function listSpecialPrizes(includePaused = false): Promise<SpecialP
   const raw = await queryRtdb(prizesPath) as Record<string, unknown> | null;
   return Object.entries(raw || {})
     .map(([id, value]) => normalizePrize(id, value))
-    .filter((prize) => prize.id && prize.title && prize.campaignId)
+    .filter((prize) => prize.id && prize.title && (prize.campaignId || prize.scriptSnippet))
     .filter((prize) => includePaused || prize.status === "active")
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
@@ -52,7 +56,9 @@ export async function saveSpecialPrize(input: {
   id?: string;
   title: string;
   description?: string;
-  campaignId: string;
+  campaignId?: string;
+  imageUrl?: string;
+  scriptSnippet?: string;
   currency?: string;
   status?: "active" | "paused";
 }) {
@@ -60,7 +66,22 @@ export async function saveSpecialPrize(input: {
   const description = String(input.description || "").trim();
   if (title.length < 2 || title.length > 100) throw new Error("Title must be between 2 and 100 characters.");
   if (description.length > 500) throw new Error("Description must be 500 characters or fewer.");
-  const campaignId = cleanCampaignId(input.campaignId);
+  const scriptSnippet = String(input.scriptSnippet || "");
+  if (scriptSnippet.length > 20000) throw new Error("Offer script must be 20,000 characters or fewer.");
+  const rawCampaignId = String(input.campaignId || "").trim();
+  const campaignId = rawCampaignId ? cleanCampaignId(rawCampaignId) : "";
+  if (!campaignId && !scriptSnippet.trim()) throw new Error("Provide a Golden Goose campaign ID or paste the offer script.");
+  const rawImageUrl = String(input.imageUrl || "").trim();
+  let imageUrl = "";
+  if (rawImageUrl) {
+    try {
+      const parsed = new URL(rawImageUrl);
+      if (parsed.protocol !== "https:") throw new Error();
+      imageUrl = parsed.toString();
+    } catch {
+      throw new Error("Offer image must be a valid HTTPS URL.");
+    }
+  }
   const currency = String(input.currency || "USD").trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) throw new Error("Choose a valid 3-letter offer currency.");
   const id = input.id ? String(input.id).trim() : crypto.randomUUID();
@@ -68,7 +89,7 @@ export async function saveSpecialPrize(input: {
   const existing = await queryRtdb(`${prizesPath}/${id}`) as any;
   const now = new Date().toISOString();
   const prize: SpecialPrize = {
-    id, title, description, campaignId, currency,
+    id, title, description, campaignId, imageUrl, scriptSnippet, currency,
     status: input.status === "paused" ? "paused" : "active",
     clicks: Math.max(0, Number(existing?.clicks || 0)),
     createdAt: String(existing?.createdAt || now),
