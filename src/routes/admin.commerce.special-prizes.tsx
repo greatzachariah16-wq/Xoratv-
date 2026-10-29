@@ -7,6 +7,8 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export const Route = createFileRoute("/admin/commerce/special-prizes")({ component: SpecialPrizesAdmin });
 type Prize = { id: string; title: string; description: string; campaignId: string; imageUrl: string; scriptSnippet: string; currency: string; status: "active" | "paused"; clicks: number; createdAt: string; updatedAt: string };
+type Banner = { enabled: boolean; imageUrl: string; title: string; subtitle: string; updatedAt?: string };
+const defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Prizes", subtitle: "Explore special offers selected for XoraTV." };
 const empty = { id: "", title: "", description: "", campaignId: "", imageUrl: "", scriptSnippet: "", currency: "USD", status: "active" as "active" | "paused" };
 function SpecialPrizesAdmin() {
   const [prizes,setPrizes]=useState<Prize[]>([]);
@@ -15,7 +17,10 @@ function SpecialPrizesAdmin() {
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
   const [uploadingImage,setUploadingImage]=useState(false);
-  async function load(){setLoading(true);try{const r=await commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes");setPrizes(r.prizes||[]);}catch(e){setMessage(e instanceof Error?e.message:"Could not load prizes.");}finally{setLoading(false);}}
+  const [bannerDraft,setBannerDraft]=useState<Banner>(defaultBanner);
+  const [bannerBusy,setBannerBusy]=useState(false);
+  const [uploadingBanner,setUploadingBanner]=useState(false);
+  async function load(){setLoading(true);try{const [r,b]=await Promise.all([commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes"),commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner")]);setPrizes(r.prizes||[]);setBannerDraft({...defaultBanner,...(b.banner||{})});}catch(e){setMessage(e instanceof Error?e.message:"Could not load Special Prizes settings.");}finally{setLoading(false);}}
   useEffect(()=>{void load();},[]);
   function edit(p:Prize){setDraft({id:p.id,title:p.title,description:p.description,campaignId:p.campaignId,imageUrl:p.imageUrl||"",scriptSnippet:p.scriptSnippet||"",currency:p.currency||"USD",status:p.status});setMessage("");window.scrollTo({top:0,behavior:"smooth"});}
   async function uploadPrizeImage(file: File){
@@ -29,6 +34,26 @@ function SpecialPrizesAdmin() {
     }catch(e){setMessage(e instanceof Error?e.message:"Image upload failed.");}
     finally{setUploadingImage(false);}
   }
+  async function uploadBannerImage(file: File){
+    setUploadingBanner(true);setMessage("");
+    try{
+      if(!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("Choose a JPG, PNG, or WebP banner image.");
+      if(file.size>8*1024*1024) throw new Error("Banner image must be 8 MB or smaller.");
+      const result=await uploadToCloudinary(file,{resourceType:"image",folder:"xora/special-prizes/banner"});
+      setBannerDraft(current=>({...current,imageUrl:result.url,enabled:true}));
+      setMessage("Banner image uploaded. Save banner settings to publish it.");
+    }catch(e){setMessage(e instanceof Error?e.message:"Banner upload failed.");}
+    finally{setUploadingBanner(false);}
+  }
+  async function saveBanner(e:FormEvent){
+    e.preventDefault();setBannerBusy(true);setMessage("");
+    try{
+      const result=await commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner",{method:"POST",body:JSON.stringify(bannerDraft)});
+      setBannerDraft({...defaultBanner,...result.banner});
+      setMessage("Special Prizes banner saved and published.");
+    }catch(e){setMessage(e instanceof Error?e.message:"Could not save banner settings.");}
+    finally{setBannerBusy(false);}
+  }
   async function save(e:FormEvent){e.preventDefault();setBusy(true);setMessage("");try{await commerceFetch("/api/admin/commerce/special-prizes",{method:"POST",body:JSON.stringify(draft)});setDraft(empty);setMessage("Saved. The public Special Prizes page now uses the updated settings.");await load();}catch(e){setMessage(e instanceof Error?e.message:"Could not save prize.");}finally{setBusy(false);}}
   async function toggle(p:Prize){setBusy(true);setMessage("");try{await commerceFetch("/api/admin/commerce/special-prizes/status",{method:"POST",body:JSON.stringify({id:p.id,status:p.status==="active"?"paused":"active"})});setMessage(p.status==="active"?"Prize paused; it will no longer appear to users.":"Prize reactivated; it is visible again.");await load();}catch(e){setMessage(e instanceof Error?e.message:"Could not change status.");}finally{setBusy(false);}}
   async function remove(p:Prize){
@@ -40,6 +65,26 @@ function SpecialPrizesAdmin() {
   }
   return <AdminProtectedLayout title="Special Prizes" subtitle="Manage Golden Goose campaigns without releasing a new XoraTV app version." currentSectionId="commerce-special-prizes">
     <div className="mx-auto max-w-4xl space-y-5">
+      <section className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
+        <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Public page appearance</p><h2 className="mt-1 font-display text-xl font-semibold">Special Prizes banner</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Choose the image and wording users see at the top of the Special Prizes page. You can upload a replacement any time; saving publishes the new banner without an app update.</p></div>
+        <form onSubmit={saveBanner} className="space-y-3">
+          <label className="block text-xs font-semibold">Banner title<input required maxLength={100} value={bannerDraft.title} onChange={e=>setBannerDraft({...bannerDraft,title:e.target.value})} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="Special Prizes"/></label>
+          <label className="block text-xs font-semibold">Banner subtitle<textarea maxLength={300} value={bannerDraft.subtitle} onChange={e=>setBannerDraft({...bannerDraft,subtitle:e.target.value})} className="mt-1 min-h-20 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="A short message shown under the title"/></label>
+          <label className="block text-xs font-semibold">Upload banner image<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingBanner||bannerBusy} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadBannerImage(file);e.currentTarget.value="";}} className="mt-1 block w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal"/><span className="mt-1 block text-[10px] font-normal text-muted-foreground">JPG, PNG or WebP · maximum 8 MB. Uploading a new image replaces the current draft image.</span></label>
+          {uploadingBanner?<p className="text-xs text-muted-foreground">Uploading banner image…</p>:null}
+          {bannerDraft.imageUrl?<div className="space-y-2 rounded-xl border border-border bg-background p-3"><img src={bannerDraft.imageUrl} alt="Special Prizes banner preview" className="max-h-56 w-full rounded-lg object-cover"/><button type="button" onClick={()=>setBannerDraft({...bannerDraft,imageUrl:"",enabled:false})} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Remove banner image</button></div>:<p className="rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">No banner image selected. Upload an image to replace the default banner design.</p>}
+          <label className="block text-xs font-semibold">Or paste a banner image URL<input type="url" value={bannerDraft.imageUrl} onChange={e=>setBannerDraft({...bannerDraft,imageUrl:e.target.value,enabled:Boolean(e.target.value.trim())})} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="https://…/banner.jpg"/></label>
+          <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={bannerDraft.enabled} disabled={!bannerDraft.imageUrl} onChange={e=>setBannerDraft({...bannerDraft,enabled:e.target.checked})}/> Show this banner to users</label>
+          <div className="overflow-hidden rounded-2xl border border-border">
+            <div className="relative min-h-32 bg-gradient-to-br from-primary/20 via-background to-secondary p-5" style={bannerDraft.enabled&&bannerDraft.imageUrl?{backgroundImage:`linear-gradient(90deg,rgba(20,16,20,.82),rgba(20,16,20,.25)),url("${bannerDraft.imageUrl}")`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}>
+              <p className={bannerDraft.enabled&&bannerDraft.imageUrl?"text-[10px] font-bold uppercase tracking-[.18em] text-white/80":"text-[10px] font-bold uppercase tracking-[.18em] text-primary"}>XoraTV Rewards</p>
+              <h3 className={bannerDraft.enabled&&bannerDraft.imageUrl?"mt-2 font-display text-2xl font-extrabold text-white":"mt-2 font-display text-2xl font-extrabold"}>{bannerDraft.title||"Special Prizes"}</h3>
+              <p className={bannerDraft.enabled&&bannerDraft.imageUrl?"mt-2 max-w-xl text-sm text-white/90":"mt-2 max-w-xl text-sm text-muted-foreground"}>{bannerDraft.subtitle}</p>
+            </div>
+          </div>
+          <button disabled={bannerBusy||uploadingBanner} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{bannerBusy?<Loader2 className="size-4 animate-spin"/>:<Save className="size-4"/>}{bannerBusy?"Saving banner…":"Save banner"}</button>
+        </form>
+      </section>
       <section className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
         <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Live catalogue</p><h1 className="mt-1 font-display text-2xl font-semibold">{draft.id?"Edit special prize":"Add special prize"}</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Add the offer details and either enter a Golden Goose campaign ID or paste the provider JavaScript/HTML snippet. Pasted code runs directly on the Special Prizes page and has access to that page. You can pause an offer at any time without updating the APK.</p></div>
         <form onSubmit={save} className="space-y-3">
