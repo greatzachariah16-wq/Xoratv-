@@ -315,6 +315,20 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     }
   }
 
+  if (path === "/api/commerce/creator/special-prize-link" && request.method === "POST") {
+    try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before creating a promotion link." }, 401);
+      const body = await request.json();
+      if (!body.specialPrizeId) return json({ ok: false, error: "Choose a special prize to promote." }, 400);
+      const creator = await getCreator(authenticatedUserId);
+      if (!creator || creator.status !== "active") return json({ ok: false, error: "Only active X Channel creators can promote special prizes." }, 403);
+      return json({ ok: true, link: await createCreatorPromotionLink({ creatorId: authenticatedUserId, service: "special-prize", specialPrizeId: String(body.specialPrizeId) }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create special-prize link." }, 400);
+    }
+  }
+
   if (path === "/api/commerce/creator/promotion-link" && request.method === "POST") {
     try {
       const body = await request.json();
