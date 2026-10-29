@@ -153,7 +153,7 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
   if (!knownEvents.has(event)) return { ok: false as const, status: 400, error: "Unsupported Golden Goose event." };
   const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
   const currency = /^[A-Z]{3}$/.test(String(prizeRaw?.currency || "")) ? String(prizeRaw.currency) : "USD";
-  const commission = payableEvents.has(event) ? Math.round(profit * 0.35 * 10000) / 10000 : 0;
+  const commission = (payableEvents.has(event) || pendingEvents.has(event)) ? Math.round(profit * 0.35 * 10000) / 10000 : 0;
   const now = new Date().toISOString();
   const conversion = {
     id: eventId,
