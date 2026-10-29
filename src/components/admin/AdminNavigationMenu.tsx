@@ -318,7 +318,7 @@ export function AdminNavigationMenu({
             </span>
             <span>Sections Menu</span>
             <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-              10
+              {ADMIN_SECTIONS.length}
             </span>
           </button>
         ) : (
