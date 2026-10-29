@@ -7,9 +7,11 @@ import { commerceFetch } from "@/lib/commerce";
 export const Route = createFileRoute("/special-prizes")({ component: SpecialPrizes });
 
 type Prize = { id: string; title: string; description: string; campaignId: string; imageUrl?: string; scriptSnippet?: string; status: "active" | "paused"; clicks: number };
-type Banner = { enabled: boolean; imageUrl: string; title: string; subtitle: string };\nconst defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Prizes", subtitle: "Explore special offers selected for XoraTV." };
+type Banner = { enabled: boolean; imageUrl: string; title: string; subtitle: string };
+const defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Prizes", subtitle: "Explore special offers selected for XoraTV." };
 function SpecialPrizes() {
-  const [prizes, setPrizes] = useState<Prize[]>([]);\n  const [banner, setBanner] = useState<Banner>(defaultBanner);
+  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [banner, setBanner] = useState<Banner>(defaultBanner);
   const [selected, setSelected] = useState<Prize | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,8 +22,9 @@ function SpecialPrizes() {
   async function load() {
     setLoading(true); setError("");
     try {
-      const result = await commerceFetch<{ prizes: Prize[] }>("/api/commerce/special-prizes");
+      const result = await commerceFetch<{ prizes: Prize[]; banner?: Banner }>("/api/commerce/special-prizes");
       setPrizes(Array.isArray(result.prizes) ? result.prizes : []);
+      setBanner({ ...defaultBanner, ...(result.banner || {}) });
       const params = new URLSearchParams(window.location.search);
       const wanted = params.get("offer");
       setPromotionToken(params.get("promo") || "");
