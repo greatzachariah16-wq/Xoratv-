@@ -116,6 +116,15 @@ export async function setSpecialPrizeStatus(id: string, status: "active" | "paus
   return normalizePrize(id, updated);
 }
 
+export async function deleteSpecialPrize(id: string) {
+  if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) throw new Error("Invalid prize ID.");
+  const existing = await queryRtdb(`${prizesPath}/${id}`) as any;
+  if (!existing) throw new Error("Special prize was not found.");
+  await queryRtdb(`${prizesPath}/${id}`, { method: "DELETE" });
+  return { id, deleted: true };
+}
+
+
 export async function recordSpecialPrizeClick(id: string) {
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) throw new Error("Invalid prize ID.");
   const existing = await queryRtdb(`${prizesPath}/${id}`) as any;
