@@ -13,13 +13,16 @@ function SpecialPrizes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
+  const [promotionToken, setPromotionToken] = useState("");
 
   async function load() {
     setLoading(true); setError("");
     try {
       const result = await commerceFetch<{ prizes: Prize[] }>("/api/commerce/special-prizes");
       setPrizes(Array.isArray(result.prizes) ? result.prizes : []);
-      const wanted = new URLSearchParams(window.location.search).get("offer");
+      const params = new URLSearchParams(window.location.search);
+      const wanted = params.get("offer");
+      setPromotionToken(params.get("promo") || "");
       setSelected(wanted ? (result.prizes || []).find((p) => p.id === wanted) || null : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load special prizes.");
@@ -38,20 +41,27 @@ function SpecialPrizes() {
     note.textContent = "Connecting to the offer provider…";
     mount.appendChild(note);
     const script = document.createElement("script");
-    script.src = `https://ngglznw.com/bc/${encodeURIComponent(selected.campaignId)}.js?force_https=1`;
+    const providerUrl = new URL(`https://ngglznw.com/bc/${encodeURIComponent(selected.campaignId)}.js`);
+    providerUrl.searchParams.set("force_https", "1");
+    // Golden Goose postbacks can return p1/p2. The token identifies the creator promotion;
+    // the prize ID binds the event to the intended campaign. Verify propagation with a live test.
+    if (promotionToken) providerUrl.searchParams.set("p1", promotionToken);
+    providerUrl.searchParams.set("p2", selected.id);
+    script.src = providerUrl.toString();
     script.async = true;
     script.onload = () => { setScriptReady(true); note.remove(); };
     script.onerror = () => { setError("The offer provider script could not load. Please try again later."); note.textContent = "The provider script could not be loaded."; };
     mount.appendChild(script);
     return () => { mount.replaceChildren(); };
-  }, [selected?.id, selected?.campaignId]);
+  }, [selected?.id, selected?.campaignId, promotionToken]);
 
   async function openPrize(prize: Prize) {
     setError("");
     try {
       await commerceFetch("/api/commerce/special-prizes/click", { method: "POST", body: JSON.stringify({ id: prize.id }) });
       setSelected(prize);
-      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}`);
+      const promoQuery = promotionToken ? `&promo=${encodeURIComponent(promotionToken)}` : "";
+      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { setError(e instanceof Error ? e.message : "This prize is no longer available."); await load(); }
   }

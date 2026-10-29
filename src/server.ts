@@ -26,6 +26,7 @@ import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
 import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
+import { recordGoldenGoosePostback } from "./server/special-prizes-service";
 
 const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
 let shortsVerificationRunning = false;
@@ -675,6 +676,15 @@ export default {
         return new Response(JSON.stringify({ ok: true, click: result }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Offer click error." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/api/webhooks/goldengoose" && (request.method === "GET" || request.method === "POST")) {
+      try {
+        const result = await recordGoldenGoosePostback(request, url);
+        return new Response(JSON.stringify(result), { status: result.status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Golden Goose postback failed." }), { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
     }
 

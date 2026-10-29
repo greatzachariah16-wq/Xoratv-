@@ -26,6 +26,8 @@ import { Route as ShortsRouteImport } from './routes/shorts'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as XtvSeriesRouteImport } from './routes/xtv-series'
+import { Route as OffersRouteImport } from './routes/offers'
+import { Route as SpecialPrizesRouteImport } from './routes/special-prizes'
 import { Route as AdminCampaignsRouteImport } from './routes/admin.campaigns'
 import { Route as AdminDiscoveryRouteImport } from './routes/admin.discovery'
 import { Route as AdminFraudRouteImport } from './routes/admin.fraud'
@@ -36,11 +38,13 @@ import { Route as AdminTrackerRouteImport } from './routes/admin.tracker'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminXseriesRouteImport } from './routes/admin.xseries'
 import { Route as AdminXserisRouteImport } from './routes/admin.xseris'
+import { Route as AdminCommerceRouteImport } from './routes/admin.commerce'
 import { Route as AdminCommerceCreatorReferenceRouteImport } from './routes/admin.commerce.creator-reference'
 import { Route as AdminCommercePricingRouteImport } from './routes/admin.commerce.pricing'
 import { Route as AdminCommerceTestDataRouteImport } from './routes/admin.commerce.test-data'
 import { Route as AdminCommerceCpaRouteImport } from './routes/admin.commerce.cpa'
 import { Route as AdminCommerceDiscountsRouteImport } from './routes/admin.commerce.discounts'
+import { Route as AdminCommerceSpecialPrizesRouteImport } from './routes/admin.commerce.special-prizes'
 import { Route as AdminCampaignsManageRouteImport } from './routes/admin.campaigns.manage'
 import { Route as ChatRoomIdRouteImport } from './routes/chat.$roomId'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
@@ -55,6 +59,11 @@ const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCommerceRoute = AdminCommerceRouteImport.update({
+  id: '/admin/commerce',
+  path: '/commerce',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -131,6 +140,8 @@ const XtvSeriesRoute = XtvSeriesRouteImport.update({
   path: '/xtv-series',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OffersRoute = OffersRouteImport.update({ id: '/offers', path: '/offers', getParentRoute: () => rootRouteImport } as any)
+const SpecialPrizesRoute = SpecialPrizesRouteImport.update({ id: '/special-prizes', path: '/special-prizes', getParentRoute: () => rootRouteImport } as any)
 const AdminCampaignsRoute = AdminCampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
@@ -183,29 +194,30 @@ const AdminXserisRoute = AdminXserisRouteImport.update({
 } as any)
 const AdminCommerceCreatorReferenceRoute = AdminCommerceCreatorReferenceRouteImport.update({
   id: '/admin/commerce/creator-reference',
-  path: '/creator-reference',
+  path: '/commerce/creator-reference',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommercePricingRoute = AdminCommercePricingRouteImport.update({
   id: '/admin/commerce/pricing',
-  path: '/pricing',
+  path: '/commerce/pricing',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceTestDataRoute = AdminCommerceTestDataRouteImport.update({
   id: '/admin/commerce/test-data',
-  path: '/test-data',
+  path: '/commerce/test-data',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceCpaRoute = AdminCommerceCpaRouteImport.update({
   id: '/admin/commerce/cpa',
-  path: '/cpa',
+  path: '/commerce/cpa',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceDiscountsRoute = AdminCommerceDiscountsRouteImport.update({
   id: '/admin/commerce/discounts',
-  path: '/discounts',
+  path: '/commerce/discounts',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCommerceSpecialPrizesRoute = AdminCommerceSpecialPrizesRouteImport.update({ id: '/admin/commerce/special-prizes', path: '/commerce/special-prizes', getParentRoute: () => AdminRoute } as any)
 const AdminCampaignsManageRoute = AdminCampaignsManageRouteImport.update({
   id: '/admin/campaigns/manage',
   path: '/manage',
@@ -245,6 +257,9 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/offers': typeof OffersRoute
+  '/special-prizes': typeof SpecialPrizesRoute
+  '/admin/commerce': typeof AdminCommerceRoute
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -260,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
   '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
   '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/commerce/special-prizes': typeof AdminCommerceSpecialPrizesRoute
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -283,6 +299,9 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/offers': typeof OffersRoute
+  '/special-prizes': typeof SpecialPrizesRoute
+  '/admin/commerce': typeof AdminCommerceRoute
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -298,6 +317,7 @@ export interface FileRoutesByTo {
   '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
   '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
   '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/commerce/special-prizes': typeof AdminCommerceSpecialPrizesRoute
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -322,6 +342,9 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/watch': typeof WatchRoute
   '/xtv-series': typeof XtvSeriesRoute
+  '/offers': typeof OffersRoute
+  '/special-prizes': typeof SpecialPrizesRoute
+  '/admin/commerce': typeof AdminCommerceRoute
   '/admin/campaigns': typeof AdminCampaignsRoute
   '/admin/discovery': typeof AdminDiscoveryRoute
   '/admin/fraud': typeof AdminFraudRoute
@@ -332,6 +355,13 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/admin/xseries': typeof AdminXseriesRoute
   '/admin/xseris': typeof AdminXserisRoute
+  '/admin/commerce/creator-reference': typeof AdminCommerceCreatorReferenceRoute
+  '/admin/commerce/pricing': typeof AdminCommercePricingRoute
+  '/admin/commerce/test-data': typeof AdminCommerceTestDataRoute
+  '/admin/commerce/cpa': typeof AdminCommerceCpaRoute
+  '/admin/commerce/discounts': typeof AdminCommerceDiscountsRoute
+  '/admin/commerce/special-prizes': typeof AdminCommerceSpecialPrizesRoute
+  '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
   '/video/$postId': typeof VideoPostIdRoute
@@ -355,6 +385,9 @@ export interface FileRouteTypes {
     | '/support'
     | '/watch'
     | '/xtv-series'
+    | '/offers'
+    | '/special-prizes'
+    | '/admin/commerce'
     | '/admin/campaigns'
     | '/admin/discovery'
     | '/admin/fraud'
@@ -370,6 +403,7 @@ export interface FileRouteTypes {
     | '/admin/commerce/test-data'
     | '/admin/commerce/cpa'
     | '/admin/commerce/discounts'
+    | '/admin/commerce/special-prizes'
     | '/admin/campaigns/manage'
     | '/chat/$roomId'
     | '/profile/$username'
@@ -392,6 +426,15 @@ export interface FileRouteTypes {
     | '/support'
     | '/watch'
     | '/xtv-series'
+    | '/offers'
+    | '/special-prizes'
+    | '/admin/commerce'
+    | '/admin/commerce/creator-reference'
+    | '/admin/commerce/pricing'
+    | '/admin/commerce/test-data'
+    | '/admin/commerce/cpa'
+    | '/admin/commerce/discounts'
+    | '/admin/commerce/special-prizes'
     | '/admin/campaigns'
     | '/admin/discovery'
     | '/admin/fraud'
@@ -423,6 +466,15 @@ export interface FileRouteTypes {
     | '/support'
     | '/watch'
     | '/xtv-series'
+    | '/offers'
+    | '/special-prizes'
+    | '/admin/commerce'
+    | '/admin/commerce/creator-reference'
+    | '/admin/commerce/pricing'
+    | '/admin/commerce/test-data'
+    | '/admin/commerce/cpa'
+    | '/admin/commerce/discounts'
+    | '/admin/commerce/special-prizes'
     | '/admin/campaigns'
     | '/admin/discovery'
     | '/admin/fraud'
@@ -456,6 +508,8 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   WatchRoute: typeof WatchRoute
   XtvSeriesRoute: typeof XtvSeriesRoute
+  OffersRoute: typeof OffersRoute
+  SpecialPrizesRoute: typeof SpecialPrizesRoute
   ProfileUsernameRoute: typeof ProfileUsernameRoute
   VideoPostIdRoute: typeof VideoPostIdRoute
 }
@@ -476,6 +530,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/commerce': { id: '/admin/commerce'; path: '/commerce'; fullPath: '/admin/commerce'; preLoaderRoute: typeof AdminCommerceRouteImport; parentRoute: typeof AdminRoute }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -581,6 +636,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof XtvSeriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/offers': { id: '/offers'; path: '/offers'; fullPath: '/offers'; preLoaderRoute: typeof OffersRouteImport; parentRoute: typeof rootRouteImport }
+    '/special-prizes': { id: '/special-prizes'; path: '/special-prizes'; fullPath: '/special-prizes'; preLoaderRoute: typeof SpecialPrizesRouteImport; parentRoute: typeof rootRouteImport }
     '/admin/campaigns': {
       id: '/admin/campaigns'
       path: '/campaigns'
@@ -653,39 +710,40 @@ declare module '@tanstack/react-router' {
     }
     '/admin/commerce/creator-reference': {
       id: '/admin/commerce/creator-reference'
-      path: '/creator-reference'
+      path: '/commerce/creator-reference'
       fullPath: '/admin/commerce/creator-reference'
       preLoaderRoute: typeof AdminCommerceCreatorReferenceRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/commerce/pricing': {
       id: '/admin/commerce/pricing'
-      path: '/pricing'
+      path: '/commerce/pricing'
       fullPath: '/admin/commerce/pricing'
       preLoaderRoute: typeof AdminCommercePricingRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/commerce/test-data': {
       id: '/admin/commerce/test-data'
-      path: '/test-data'
+      path: '/commerce/test-data'
       fullPath: '/admin/commerce/test-data'
       preLoaderRoute: typeof AdminCommerceTestDataRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/commerce/cpa': {
       id: '/admin/commerce/cpa'
-      path: '/cpa'
+      path: '/commerce/cpa'
       fullPath: '/admin/commerce/cpa'
       preLoaderRoute: typeof AdminCommerceCpaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/commerce/discounts': {
       id: '/admin/commerce/discounts'
-      path: '/discounts'
+      path: '/commerce/discounts'
       fullPath: '/admin/commerce/discounts'
       preLoaderRoute: typeof AdminCommerceDiscountsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/commerce/special-prizes': { id: '/admin/commerce/special-prizes'; path: '/commerce/special-prizes'; fullPath: '/admin/commerce/special-prizes'; preLoaderRoute: typeof AdminCommerceSpecialPrizesRouteImport; parentRoute: typeof AdminRoute }
     '/admin/campaigns/manage': {
       id: '/admin/campaigns/manage'
       path: '/manage'
@@ -718,11 +776,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminCommerceRoute: typeof AdminCommerceRoute
   AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
   AdminCommercePricingRoute: typeof AdminCommercePricingRoute
   AdminCommerceTestDataRoute: typeof AdminCommerceTestDataRoute
   AdminCommerceCpaRoute: typeof AdminCommerceCpaRoute
   AdminCommerceDiscountsRoute: typeof AdminCommerceDiscountsRoute
+  AdminCommerceSpecialPrizesRoute: typeof AdminCommerceSpecialPrizesRoute
   AdminCampaignsManageRoute: typeof AdminCampaignsManageRoute
   AdminCampaignsRoute: typeof AdminCampaignsRoute
   AdminDiscoveryRoute: typeof AdminDiscoveryRoute
@@ -735,14 +795,15 @@ interface AdminRouteChildren {
   AdminXseriesRoute: typeof AdminXseriesRoute
   AdminXserisRoute: typeof AdminXserisRoute
 }
-
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute
-  AdminCommercePricingRoute: AdminCommercePricingRoute
-  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute
-  AdminCommerceCpaRoute: AdminCommerceCpaRoute
-  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute
-  AdminCampaignsManageRoute: AdminCampaignsManageRoute
+  AdminCommerceRoute: AdminCommerceRoute,
+  AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
+  AdminCommercePricingRoute: AdminCommercePricingRoute,
+  AdminCommerceTestDataRoute: AdminCommerceTestDataRoute,
+  AdminCommerceCpaRoute: AdminCommerceCpaRoute,
+  AdminCommerceDiscountsRoute: AdminCommerceDiscountsRoute,
+  AdminCommerceSpecialPrizesRoute: AdminCommerceSpecialPrizesRoute,
+  AdminCampaignsManageRoute: AdminCampaignsManageRoute,
   AdminCampaignsRoute: AdminCampaignsRoute,
   AdminDiscoveryRoute: AdminDiscoveryRoute,
   AdminFraudRoute: AdminFraudRoute,
@@ -754,8 +815,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminXseriesRoute: AdminXseriesRoute,
   AdminXserisRoute: AdminXserisRoute,
 }
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ChatRouteChildren {
   ChatRoomIdRoute: typeof ChatRoomIdRoute
@@ -785,6 +844,8 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   WatchRoute: WatchRoute,
   XtvSeriesRoute: XtvSeriesRoute,
+  OffersRoute: OffersRoute,
+  SpecialPrizesRoute: SpecialPrizesRoute,
   ProfileUsernameRoute: ProfileUsernameRoute,
   VideoPostIdRoute: VideoPostIdRoute,
 }
