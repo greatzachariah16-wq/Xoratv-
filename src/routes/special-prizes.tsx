@@ -44,19 +44,29 @@ function SpecialPrizes() {
         .replaceAll("{{p1}}", encodeURIComponent(promotionToken))
         .replaceAll("{{p2}}", encodeURIComponent(selected.id));
       const looksLikeMarkup = /<\s*[a-z!/]/i.test(snippet);
-      const documentHtml = looksLikeMarkup
-        ? snippet
-        : `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><script>\n${snippet}\n</script></body></html>`;
-      const frame = document.createElement("iframe");
-      frame.setAttribute("sandbox", "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox");
-      frame.setAttribute("title", `Offer provider: ${selected.title}`);
-      frame.style.width = "100%";
-      frame.style.minHeight = "360px";
-      frame.style.border = "0";
-      frame.style.borderRadius = "12px";
-      frame.onload = () => setScriptReady(true);
-      frame.srcdoc = documentHtml;
-      mount.appendChild(frame);
+      if (looksLikeMarkup) {
+        const template = document.createElement("template");
+        template.innerHTML = snippet;
+        const nodes = Array.from(template.content.childNodes);
+        for (const node of nodes) {
+          if (node instanceof HTMLScriptElement) {
+            const liveScript = document.createElement("script");
+            for (const attribute of Array.from(node.attributes)) liveScript.setAttribute(attribute.name, attribute.value);
+            liveScript.onload = () => setScriptReady(true);
+            liveScript.onerror = () => setError("The provider script could not load. Check the provider URL and try again.");
+            liveScript.textContent = node.textContent;
+            mount.appendChild(liveScript);
+            if (!liveScript.src) setScriptReady(true);
+          } else {
+            mount.appendChild(node.cloneNode(true));
+          }
+        }
+      } else {
+        const liveScript = document.createElement("script");
+        liveScript.textContent = snippet;
+        mount.appendChild(liveScript);
+        setScriptReady(true);
+      }
       return () => { mount.replaceChildren(); };
     }
     if (!selected.campaignId) {
