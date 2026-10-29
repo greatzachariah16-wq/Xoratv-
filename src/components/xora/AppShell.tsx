@@ -22,6 +22,7 @@ import {
   Menu,
   MessageCircle,
   X,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
