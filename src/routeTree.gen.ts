@@ -695,36 +695,37 @@ declare module '@tanstack/react-router' {
       path: '/creator-reference'
       fullPath: '/admin/commerce/creator-reference'
       preLoaderRoute: typeof AdminCommerceCreatorReferenceRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminCommerceRouteImport
     }
     '/admin/commerce/pricing': {
       id: '/admin/commerce/pricing'
       path: '/pricing'
       fullPath: '/admin/commerce/pricing'
       preLoaderRoute: typeof AdminCommercePricingRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminCommerceRouteImport
     }
     '/admin/commerce/test-data': {
       id: '/admin/commerce/test-data'
       path: '/test-data'
       fullPath: '/admin/commerce/test-data'
       preLoaderRoute: typeof AdminCommerceTestDataRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminCommerceRouteImport
     }
     '/admin/commerce/cpa': {
       id: '/admin/commerce/cpa'
       path: '/cpa'
       fullPath: '/admin/commerce/cpa'
       preLoaderRoute: typeof AdminCommerceCpaRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminCommerceRouteImport
     }
     '/admin/commerce/discounts': {
       id: '/admin/commerce/discounts'
       path: '/discounts'
       fullPath: '/admin/commerce/discounts'
       preLoaderRoute: typeof AdminCommerceDiscountsRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminCommerceRouteImport
     }
+    '/admin/commerce/special-prizes': { id: '/admin/commerce/special-prizes'; path: '/special-prizes'; fullPath: '/admin/commerce/special-prizes'; preLoaderRoute: typeof AdminCommerceSpecialPrizesRouteImport; parentRoute: typeof AdminCommerceRouteImport }
     '/admin/campaigns/manage': {
       id: '/admin/campaigns/manage'
       path: '/manage'
