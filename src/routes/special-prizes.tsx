@@ -43,10 +43,10 @@ function SpecialPrizes() {
       const snippet = selected.scriptSnippet.trim()
         .replaceAll("{{p1}}", encodeURIComponent(promotionToken))
         .replaceAll("{{p2}}", encodeURIComponent(selected.id));
-      const looksLikeMarkup = /<\\s*[a-z!/]/i.test(snippet);
+      const looksLikeMarkup = /<\s*[a-z!/]/i.test(snippet);
       const documentHtml = looksLikeMarkup
         ? snippet
-        : `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><script>\n${snippet}\n<\\/script></body></html>`;
+        : `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><script>\n${snippet}\n</script></body></html>`;
       const frame = document.createElement("iframe");
       frame.setAttribute("sandbox", "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox");
       frame.setAttribute("title", `Offer provider: ${selected.title}`);
