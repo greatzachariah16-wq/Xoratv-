@@ -111,6 +111,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
         title: String(body.title),
         description: body.description == null ? "" : String(body.description),
         campaignId: String(body.campaignId),
+        currency: body.currency ? String(body.currency) : "USD",
         status: body.status === "paused" ? "paused" : "active",
       });
       return json({ ok: true, prize });
