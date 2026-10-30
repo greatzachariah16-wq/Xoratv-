@@ -106,15 +106,15 @@ function SpecialPrizes() {
   }
 
   return <AppShell wide>
-    <div className="mx-auto max-w-3xl space-y-5">
-      <header className="relative overflow-hidden rounded-[26px] border border-primary/15 bg-gradient-to-br from-primary/12 via-background to-secondary p-5 sm:p-7" style={!selected && banner.enabled && banner.imageUrl ? { backgroundImage: `linear-gradient(90deg,rgba(20,16,20,.82),rgba(20,16,20,.28)),url("${banner.imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+    <div className="mx-auto max-w-5xl space-y-5">
+      { !selected && banner.enabled && banner.imageUrl ? <header className="overflow-hidden rounded-[26px] border border-primary/15 bg-black/5 shadow-card"><img src={banner.imageUrl} alt="Special Prizes banner" className="block h-auto max-h-[75vh] w-full object-contain" /></header> : <header className="relative overflow-hidden rounded-[26px] border border-primary/15 bg-gradient-to-br from-primary/12 via-background to-secondary p-5 sm:p-7">
         {selected ? <button type="button" onClick={() => { setSelected(null); setRequestedPrizeUnavailable(false); window.history.replaceState({}, "", "/special-prizes"); }} className="mb-4 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground"><ArrowLeft className="size-4"/>All special prizes</button> : null}
         <div className="flex items-center gap-3">
           {selected?.imageUrl ? <img src={selected.imageUrl} alt="" className="size-12 rounded-2xl object-cover shadow-card" /> : !banner.enabled || !banner.imageUrl ? <span className="grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-card"><Gift className="size-6"/></span> : null}
           <div><p className={banner.enabled && banner.imageUrl && !selected ? "text-[10px] font-bold uppercase tracking-[.18em] text-white/80" : "text-[10px] font-bold uppercase tracking-[.18em] text-primary"}>XoraTV Rewards</p><h1 className={banner.enabled && banner.imageUrl && !selected ? "font-display text-2xl font-extrabold text-white sm:text-3xl" : "font-display text-2xl font-extrabold sm:text-3xl"}>{selected ? selected.title : banner.enabled && banner.imageUrl ? banner.title : "Special Prizes"}</h1></div>
         </div>
         {selected || !banner.enabled || !banner.imageUrl ? <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">{selected ? (selected.description || "Follow the offer provider's instructions to participate.") : "Explore special offers selected for XoraTV. Availability is updated online, so offers can be paused or replaced without updating the app."}</p> : null}
-      </header>
+      </header> }
 
       {error ? <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</div> : null}
       {requestedPrizeUnavailable && !selected ? <section className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center"><Gift className="mx-auto size-8 text-muted-foreground"/><h2 className="mt-3 font-semibold">This Special Prize is no longer available</h2><p className="mt-1 text-sm text-muted-foreground">The campaign may have ended or been paused by XoraTV. No action is needed on your side.</p><button type="button" onClick={() => { setRequestedPrizeUnavailable(false); window.history.replaceState({}, "", "/special-prizes"); }} className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Browse available prizes</button></section> : null}
