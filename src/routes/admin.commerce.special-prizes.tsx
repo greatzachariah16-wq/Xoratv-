@@ -7,8 +7,8 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export const Route = createFileRoute("/admin/commerce/special-prizes")({ component: SpecialPrizesAdmin });
 type Prize = { id: string; title: string; description: string; campaignId: string; imageUrl: string; scriptSnippet: string; currency: string; status: "active" | "paused"; clicks: number; createdAt: string; updatedAt: string };
-type Banner = { enabled: boolean; imageUrl: string; title: string; subtitle: string; updatedAt?: string };
-const defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Prizes", subtitle: "Explore special offers selected for XoraTV." };
+type Banner = { enabled: boolean; imageUrl: string; updatedAt?: string };
+const defaultBanner: Banner = { enabled: false, imageUrl: "" };
 const empty = { id: "", title: "", description: "", campaignId: "", imageUrl: "", scriptSnippet: "", currency: "USD", status: "active" as "active" | "paused" };
 function SpecialPrizesAdmin() {
   const [prizes,setPrizes]=useState<Prize[]>([]);
@@ -66,10 +66,8 @@ function SpecialPrizesAdmin() {
   return <AdminProtectedLayout title="Special Prizes" subtitle="Manage Golden Goose campaigns without releasing a new XoraTV app version." currentSectionId="commerce-special-prizes">
     <div className="mx-auto max-w-4xl space-y-5">
       <section className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
-        <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Public page appearance</p><h2 className="mt-1 font-display text-xl font-semibold">Special Prizes banner</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Upload the banner image you want users to see at the top of the Special Prizes page. Title and subtitle are optional; leave them blank to use the default wording.</p></div>
+        <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Public page appearance</p><h2 className="mt-1 font-display text-xl font-semibold">Special Prizes banner</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Upload the banner image you want users to see at the top of the Special Prizes page.</p></div>
         <form onSubmit={saveBanner} className="space-y-3">
-          <label className="block text-xs font-semibold">Banner title (optional)<input maxLength={100} value={bannerDraft.title} onChange={e=>setBannerDraft({...bannerDraft,title:e.target.value})} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="Special Prizes"/></label>
-          <label className="block text-xs font-semibold">Banner subtitle (optional)<textarea maxLength={300} value={bannerDraft.subtitle} onChange={e=>setBannerDraft({...bannerDraft,subtitle:e.target.value})} className="mt-1 min-h-20 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal" placeholder="A short message shown under the title"/></label>
           <label className="block text-xs font-semibold">Upload banner image<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingBanner||bannerBusy} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadBannerImage(file);e.currentTarget.value="";}} className="mt-1 block w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal"/><span className="mt-1 block text-[10px] font-normal text-muted-foreground">JPG, PNG or WebP · maximum 8 MB. Uploading a new image replaces the current draft image.</span></label>
           {uploadingBanner?<p className="text-xs text-muted-foreground">Uploading banner image…</p>:null}
           {bannerDraft.imageUrl?<div className="space-y-2 rounded-xl border border-border bg-background p-3"><img src={bannerDraft.imageUrl} alt="Special Prizes banner preview" className="max-h-56 w-full rounded-lg object-cover"/><button type="button" onClick={()=>setBannerDraft({...bannerDraft,imageUrl:"",enabled:false})} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Remove banner image</button></div>:<p className="rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">No banner image selected. Upload an image to replace the default banner design.</p>}
@@ -78,8 +76,6 @@ function SpecialPrizesAdmin() {
           <div className="overflow-hidden rounded-2xl border border-border">
             <div className="relative min-h-32 bg-gradient-to-br from-primary/20 via-background to-secondary p-5" style={bannerDraft.enabled&&bannerDraft.imageUrl?{backgroundImage:`linear-gradient(90deg,rgba(20,16,20,.82),rgba(20,16,20,.25)),url("${bannerDraft.imageUrl}")`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}>
               <p className={bannerDraft.enabled&&bannerDraft.imageUrl?"text-[10px] font-bold uppercase tracking-[.18em] text-white/80":"text-[10px] font-bold uppercase tracking-[.18em] text-primary"}>XoraTV Rewards</p>
-              <h3 className={bannerDraft.enabled&&bannerDraft.imageUrl?"mt-2 font-display text-2xl font-extrabold text-white":"mt-2 font-display text-2xl font-extrabold"}>{bannerDraft.title||"Special Prizes"}</h3>
-              <p className={bannerDraft.enabled&&bannerDraft.imageUrl?"mt-2 max-w-xl text-sm text-white/90":"mt-2 max-w-xl text-sm text-muted-foreground"}>{bannerDraft.subtitle}</p>
             </div>
           </div>
           <button disabled={bannerBusy||uploadingBanner} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{bannerBusy?<Loader2 className="size-4 animate-spin"/>:<Save className="size-4"/>}{bannerBusy?"Saving banner…":"Save banner"}</button>
