@@ -1,7 +1,7 @@
 import { verifyAdminSession } from "./admin-auth";
 import { getAuthenticatedUserId } from "./session-auth";
 import {
-  createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, getPromotionTarget,
+  createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, createCreatorPost, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
@@ -394,6 +394,37 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       }) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create promotion link." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/creator/post" && request.method === "POST") {
+    try {
+      const authenticatedUserId = await getAuthenticatedUserId(request);
+      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before publishing." }, 401);
+      const body = await request.json() as Record<string, unknown>;
+      const kind = body.kind === "video" ? "video" : body.kind === "text" ? "text" : null;
+      if (!kind) return json({ ok: false, error: "Choose a valid post type." }, 400);
+      if (kind === "text" && !String(body.posterPath || "").trim()) {
+        return json({ ok: false, error: "Add a picture to your post before publishing." }, 400);
+      }
+      if (kind === "video" && !String(body.streamUrl || body.mediaPath || "").trim()) {
+        return json({ ok: false, error: "Upload a video before publishing." }, 400);
+      }
+      const post = await createCreatorPost({
+        userId: authenticatedUserId,
+        kind,
+        title: String(body.title || "").trim() || null,
+        caption: String(body.caption || "").trim() || null,
+        mediaPath: String(body.mediaPath || "").trim() || null,
+        posterPath: String(body.posterPath || "").trim() || null,
+        streamUrl: String(body.streamUrl || "").trim() || null,
+        durationSeconds: body.durationSeconds == null ? null : (Number.isFinite(Number(body.durationSeconds)) ? Number(body.durationSeconds) : null),
+        specialPrizeId: String(body.specialPrizeId || "").trim() || null,
+        specialPrizeLinkToken: String(body.specialPrizeLinkToken || "").trim() || null,
+      });
+      return json({ ok: true, post });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not publish post." }, 500);
     }
   }
 

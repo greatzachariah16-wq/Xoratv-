@@ -296,9 +296,19 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
               ) : null}
             </div>
           ) : (
-            <p className="rounded-xl bg-surface-2 px-4 py-5 text-[15px] leading-relaxed text-foreground text-pretty">
-              {post.caption}
-            </p>
+            <div className="overflow-hidden rounded-xl bg-surface-2">
+              {post.poster_path ? (
+                <img
+                  src={post.poster_path}
+                  alt={post.title || "Post image"}
+                  loading="lazy"
+                  className="max-h-[520px] w-full object-cover"
+                />
+              ) : null}
+              <p className="whitespace-pre-wrap px-4 py-4 text-[15px] leading-relaxed text-foreground text-pretty">
+                {post.caption}
+              </p>
+            </div>
           )}
         </div>
 

@@ -1410,6 +1410,74 @@ export async function getCreatorDashboard(userId: string) {
   };
 }
 
+export async function createCreatorPost(params: {
+  userId: string;
+  kind: "video" | "text";
+  title: string | null;
+  caption: string | null;
+  mediaPath: string | null;
+  posterPath: string | null;
+  streamUrl: string | null;
+  durationSeconds: number | null;
+  specialPrizeId?: string | null;
+  specialPrizeLinkToken?: string | null;
+}) {
+  const creator = await getCreator(params.userId);
+  if (params.kind === "video" && (!creator || creator.status !== "active")) {
+    throw new Error("Only active X Channel creators can publish Shorts.");
+  }
+  if (params.kind === "text" && !params.posterPath) {
+    throw new Error("Add a picture to your post before publishing.");
+  }
+  if (params.kind === "video" && !params.streamUrl && !params.mediaPath) {
+    throw new Error("The video upload is missing its playback URL.");
+  }
+
+  const postId = id("post");
+  const createdAt = new Date().toISOString();
+  const feed = params.kind === "video" ? "shorts" : "home";
+  const record = {
+    id: postId,
+    author_id: params.userId,
+    title: params.title,
+    caption: params.caption,
+    kind: params.kind,
+    feed,
+    status: "published",
+    approval_status: "approved",
+    media_path: params.mediaPath,
+    poster_path: params.posterPath,
+    stream_url: params.streamUrl,
+    duration_seconds: params.durationSeconds,
+    featured: false,
+    recommendation_score: 90,
+    source: "creator",
+    created_at: createdAt,
+    playability_status: params.kind === "video" ? "playable" : null,
+    special_prize_id: params.specialPrizeId || null,
+    special_prize_link_token: params.specialPrizeLinkToken || null,
+  };
+
+  // Use the server's Firebase service-account connection. The browser uses
+  // Xora's custom Supabase session, not Firebase Authentication.
+  await queryRtdb(`posts/${postId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(record),
+  });
+  await queryRtdb(`postsByFeed/${feed}/${postId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      created_at: createdAt,
+      recommendation_score: 90,
+      status: "published",
+      approval_status: "approved",
+    }),
+  });
+  return record;
+}
+
 export async function deleteCreatorShort(postId: string, creatorId: string): Promise<{ id: string; deleted: true; mediaDeleted: boolean }> {
   const cleanPostId = String(postId || "").trim();
   const cleanCreatorId = String(creatorId || "").trim();
