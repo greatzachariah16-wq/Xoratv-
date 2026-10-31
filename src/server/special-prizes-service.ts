@@ -346,10 +346,15 @@ export async function listSpecialPrizeTraffic(limit = 250): Promise<SpecialPrize
 const conversionPath = (eventId: string) => `commerce/specialPrizeConversions/${crypto.createHash("sha256").update(eventId).digest("hex")}`;
 
 export async function recordGoldenGoosePostback(request: Request, url: URL) {
+  // Golden Goose does not provide a shared postback secret in its current setup.
+  // If XoraTV configures a real provider credential later, enforce it; otherwise
+  // rely on the opaque, server-issued promotion/click attribution key and exact
+  // prize matching. This confirms attribution, not the sender's identity.
   const configuredSecret = process.env.GOLDENGOOSE_POSTBACK_SECRET?.trim();
-  if (!configuredSecret) return { ok: false as const, status: 503, error: "Golden Goose postback secret is not configured." };
-  const suppliedSecret = url.searchParams.get("key") || request.headers.get("x-goldengoose-secret") || "";
-  if (suppliedSecret !== configuredSecret) return { ok: false as const, status: 401, error: "Invalid postback key." };
+  if (configuredSecret) {
+    const suppliedSecret = url.searchParams.get("key") || request.headers.get("x-goldengoose-secret") || "";
+    if (suppliedSecret !== configuredSecret) return { ok: false as const, status: 401, error: "Invalid postback key." };
+  }
 
   const params = new URLSearchParams(url.searchParams);
   if (request.method === "POST") {
