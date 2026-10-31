@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { queryRtdb } from "./xseries-service-account";
-import { getAdminDataCatalog, type DataCatalogRecord, type MelePlan } from "./commerce-service";
+import { getAdminDataCatalog, getMelePlans, type MelePlan } from "./commerce-service";
 import { recordPeriodClaim } from "./engagement-controller";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
@@ -33,9 +33,11 @@ function readWalletBalance(body: any): number | null {
     body?.data?.balance, body?.balance,
     body?.data?.wallet?.balance, body?.wallet?.balance,
     body?.result?.balance, body?.result?.data?.balance,
+    body?.data?.available_balance, body?.available_balance,
+    body?.data?.wallet_balance, body?.wallet_balance,
   ];
   for (const candidate of candidates) {
-    const value = Number(candidate);
+    const value = typeof candidate === "string" ? Number(candidate.replace(/[^0-9.-]/g, "")) : Number(candidate);
     if (candidate !== undefined && candidate !== null && Number.isFinite(value)) return value;
   }
   return null;
@@ -112,13 +114,17 @@ export async function claimDataReward(params: {
   const walletResponse = await meleRequest("/wallet/");
   const walletBody = await walletResponse.json().catch(() => null);
   if (!walletResponse.ok) throw new Error(walletBody?.message || "Could not verify the MELE provider balance.");
+  const walletData = walletBody?.data ?? walletBody;
+  if (walletData?.livemode === false || String(walletData?.mode || "").toLowerCase() === "test") {
+    throw new Error("MELE is currently in test mode. Live data rewards are paused until the provider account is switched to live mode.");
+  }
   const providerBalance = readWalletBalance(walletBody);
   if (providerBalance === null) throw new Error("MELE did not return a readable wallet balance. No data reward was ordered.");
-  const providerCost = Number(selected.providerCost);
+  const plan = (await getMelePlans(true)).find((item) => Number(item.plan_id) === Number((selected.providerPlan as MelePlan).plan_id) && item.network === selected.network);
+  if (!plan) throw new Error("MELE no longer lists this bundle. Refresh the rewards catalogue and choose another plan.");
+  const providerCost = Number(plan.price);
   if (!Number.isFinite(providerCost) || providerCost <= 0) throw new Error("This data reward has an invalid provider cost.");
-  if (providerBalance < providerCost) throw new Error("Xora's MELE provider balance is not sufficient for this data reward. Please try again later.");
-
-  const plan = selected.providerPlan as MelePlan;
+  if (providerBalance < providerCost) throw new Error("The MELE provider balance is not sufficient for this data reward. Please try again later.");
   const orderId = makeId("data_reward");
   const reference = orderId.slice(0, 75);
   const now = new Date().toISOString();
