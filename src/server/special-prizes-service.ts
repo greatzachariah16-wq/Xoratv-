@@ -346,11 +346,8 @@ export async function listSpecialPrizeTraffic(limit = 250): Promise<SpecialPrize
 const conversionPath = (eventId: string) => `commerce/specialPrizeConversions/${crypto.createHash("sha256").update(eventId).digest("hex")}`;
 
 export async function recordGoldenGoosePostback(request: Request, url: URL) {
-  const configuredSecret = process.env.GOLDENGOOSE_POSTBACK_SECRET?.trim();
-  if (!configuredSecret) return { ok: false as const, status: 503, error: "Golden Goose postback secret is not configured." };
-  const suppliedSecret = url.searchParams.get("key") || request.headers.get("x-goldengoose-secret") || "";
-  if (suppliedSecret !== configuredSecret) return { ok: false as const, status: 401, error: "Invalid postback key." };
-
+  // Golden Goose does not provide a shared postback secret. Validate every event
+  // against XoraTV's recorded click/promotion and prize attribution below.
   const params = new URLSearchParams(url.searchParams);
   if (request.method === "POST") {
     const contentType = request.headers.get("content-type") || "";
