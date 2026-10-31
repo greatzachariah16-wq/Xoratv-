@@ -177,6 +177,11 @@ export async function claimDataReward(params: {
     await queryRtdb(`commerce/dataOrders/${orderId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
     if (status === "success") {
       await recordPeriodClaim(params.userId).catch((error) => console.error("[Data Rewards] Engagement count update failed:", error));
+      await queryRtdb(`commerce/dataOrders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engagementRecordedAt: new Date().toISOString() }),
+      });
     }
     return updated;
   } catch (error) {
