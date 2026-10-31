@@ -64,7 +64,6 @@ export async function getDataRewardPlans() {
       dataSize: item.data_size,
       planName: item.plan_name,
       validity: item.validity,
-      providerCost: item.providerCost,
     }))
     .sort((a, b) => a.network.localeCompare(b.network) || a.providerCost - b.providerCost);
 }
