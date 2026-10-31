@@ -5,6 +5,10 @@ export type SpecialPrize = {
   id: string;
   title: string;
   description: string;
+  details: string;
+  steps: string[];
+  smsInstructions: string;
+  screenshots: string[];
   campaignId: string;
   imageUrl: string;
   scriptSnippet: string;
@@ -93,6 +97,10 @@ function normalizePrize(id: string, value: any): SpecialPrize {
     id,
     title: String(value?.title || "").trim(),
     description: String(value?.description || "").trim(),
+    details: String(value?.details || "").trim(),
+    steps: Array.isArray(value?.steps) ? value.steps.map((step: unknown) => String(step || "").trim()).filter(Boolean).slice(0, 20) : [],
+    smsInstructions: String(value?.smsInstructions || "").trim(),
+    screenshots: Array.isArray(value?.screenshots) ? value.screenshots.map((url: unknown) => String(url || "").trim()).filter((url: string) => /^https:\/\//i.test(url)).slice(0, 12) : [],
     campaignId: String(value?.campaignId || "").trim(),
     imageUrl: String(value?.imageUrl || "").trim(),
     scriptSnippet: String(value?.scriptSnippet || ""),
@@ -121,6 +129,10 @@ export async function saveSpecialPrize(input: {
   id?: string;
   title: string;
   description?: string;
+  details?: string;
+  steps?: string[];
+  smsInstructions?: string;
+  screenshots?: string[];
   campaignId?: string;
   imageUrl?: string;
   scriptSnippet?: string;
@@ -130,7 +142,18 @@ export async function saveSpecialPrize(input: {
   const title = String(input.title || "").trim();
   const description = String(input.description || "").trim();
   if (title.length < 2 || title.length > 100) throw new Error("Title must be between 2 and 100 characters.");
-  if (description.length > 500) throw new Error("Description must be 500 characters or fewer.");
+  if (description.length > 500) throw new Error("Short description must be 500 characters or fewer.");
+  const details = String(input.details || "").trim();
+  if (details.length > 5000) throw new Error("Offer details must be 5,000 characters or fewer.");
+  const steps = Array.isArray(input.steps) ? input.steps.map((step) => String(step || "").trim()).filter(Boolean).slice(0, 20) : [];
+  if (steps.some((step) => step.length > 500)) throw new Error("Each offer step must be 500 characters or fewer.");
+  const smsInstructions = String(input.smsInstructions || "").trim();
+  if (smsInstructions.length > 2000) throw new Error("SMS instructions must be 2,000 characters or fewer.");
+  const screenshots = Array.isArray(input.screenshots) ? input.screenshots.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 12) : [];
+  for (const screenshot of screenshots) {
+    try { const parsed = new URL(screenshot); if (parsed.protocol !== "https:") throw new Error(); }
+    catch { throw new Error("Every offer-flow screenshot must be a valid HTTPS URL."); }
+  }
   const scriptSnippet = String(input.scriptSnippet || "");
   if (scriptSnippet.length > 20000) throw new Error("Offer script must be 20,000 characters or fewer.");
   const rawCampaignId = String(input.campaignId || "").trim();
@@ -154,7 +177,7 @@ export async function saveSpecialPrize(input: {
   const existing = await queryRtdb(`${prizesPath}/${id}`) as any;
   const now = new Date().toISOString();
   const prize: SpecialPrize = {
-    id, title, description, campaignId, imageUrl, scriptSnippet, currency,
+    id, title, description, details, steps, smsInstructions, screenshots, campaignId, imageUrl, scriptSnippet, currency,
     status: input.status === "paused" ? "paused" : "active",
     clicks: Math.max(0, Number(existing?.clicks || 0)),
     createdAt: String(existing?.createdAt || now),
@@ -422,4 +445,45 @@ export async function getCreatorSpecialPrizeEarnings(creatorId: string) {
     totals.set(currency,row);
   }
   return [...totals.values()].map(v=>({...v,confirmedCommission:Math.round(v.confirmedCommission*10000)/10000,pendingCommission:Math.round(v.pendingCommission*10000)/10000}));
+}
+
+export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
+  const [trafficRaw, conversionsRaw] = await Promise.all([
+    queryRtdb("commerce/specialPrizeTraffic") as Promise<Record<string, any> | null>,
+    queryRtdb("commerce/specialPrizeConversions") as Promise<Record<string, any> | null>,
+  ]);
+  const clicks = Object.values(trafficRaw || {})
+    .filter((item: any) => item && item.creatorId === creatorId && item.id && item.clickedAt)
+    .sort((a: any, b: any) => String(b.clickedAt).localeCompare(String(a.clickedAt)));
+  const now = Date.now();
+  const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+  const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+  const monthStart = now - 30 * 24 * 60 * 60 * 1000;
+  const timestamp = (item: any) => {
+    const parsed = Date.parse(String(item.clickedAt || ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const sourceCounts = new Map<string, number>();
+  const offerCounts = new Map<string, { prizeId: string; prizeTitle: string; clicks: number }>();
+  for (const click of clicks) {
+    const source = String((click as any).sourceType || "unknown");
+    sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    const prizeId = String((click as any).prizeId || "");
+    const current = offerCounts.get(prizeId) || { prizeId, prizeTitle: String((click as any).prizeTitle || "Special Prize"), clicks: 0 };
+    current.clicks++;
+    offerCounts.set(prizeId, current);
+  }
+  const conversions = Object.values(conversionsRaw || {}).filter((item: any) => item && item.creatorId === creatorId);
+  return {
+    totalClicks: clicks.length,
+    clicksToday: clicks.filter((item: any) => timestamp(item) >= todayStart.getTime()).length,
+    clicksLast7Days: clicks.filter((item: any) => timestamp(item) >= weekStart).length,
+    clicksLast30Days: clicks.filter((item: any) => timestamp(item) >= monthStart).length,
+    sourceBreakdown: [...sourceCounts.entries()].map(([source, count]) => ({ source, clicks: count })).sort((a, b) => b.clicks - a.clicks),
+    offerBreakdown: [...offerCounts.values()].sort((a, b) => b.clicks - a.clicks),
+    recentClicks: clicks.slice(0, 12),
+    pendingConversions: conversions.filter((item: any) => item.status === "pending").length,
+    approvedConversions: conversions.filter((item: any) => item.status === "approved").length,
+    cancelledConversions: conversions.filter((item: any) => item.status === "cancelled").length,
+  };
 }
