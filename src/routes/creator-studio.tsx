@@ -198,6 +198,8 @@ function XChannel(){
     finally{setPayoutBusy(false);}
   }
 
+  if(isPending)return <AppShell wide><div className="p-8 text-sm text-muted-foreground">Loading your X Channel…</div></AppShell>;
+
   if(!creatorInfo&&!registered)return <AppShell wide>
     <div className="mx-auto max-w-5xl grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
       <section className="relative overflow-hidden rounded-[32px] border border-border bg-surface p-7 shadow-card sm:p-9">
@@ -223,8 +225,6 @@ function XChannel(){
       </section>
     </div>
   </AppShell>;
-
-  if(isPending)return <AppShell wide><div className="p-8 text-sm text-muted-foreground">Loading your X Channel…</div></AppShell>;
 
   const publicTabs:[Section,string][]=[["home","Home"],["shorts","Shorts"],...(showCourses?[["courses","Courses"] as [Section,string]]:[]),["community","Posts"],["about","About"]];
   const manageTabs:[Section,string][]=[["manage","Overview"],["analytics","Analytics"],["earnings","Earnings"],["customize","Customize"]];
