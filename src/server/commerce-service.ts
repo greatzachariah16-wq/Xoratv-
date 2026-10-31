@@ -1107,6 +1107,12 @@ export async function testMelePurchase(params: {
 export async function createCreatorProfile(params: {
   userId: string; displayName: string; username: string;
 }) {
+  const creatorPath = `commerce/creators/${params.userId}`;
+  // Channel registration is one-time. Returning the saved record prevents a
+  // repeat visit or a delayed dashboard request from overwriting channel data.
+  const existing = await queryRtdb(creatorPath) as CreatorProfile | null;
+  if (existing) return existing;
+
   const now = new Date().toISOString();
   const record: CreatorProfile = {
     id: params.userId,
@@ -1117,10 +1123,10 @@ export async function createCreatorProfile(params: {
     createdAt: now,
     updatedAt: now,
   };
-  await queryRtdb(`commerce/creators/${params.userId}`, {
+  await queryRtdb(creatorPath, {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
   });
-  return record;
+  return (await queryRtdb(creatorPath) as CreatorProfile | null) || record;
 }
 
 export async function getCreator(userId: string): Promise<CreatorProfile | null> {
