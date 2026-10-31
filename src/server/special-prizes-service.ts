@@ -385,7 +385,7 @@ export async function createGoldenGooseTest(prizeId: string, origin: string) {
   await queryRtdb(`${goldenGooseTestsPath}/${id}`, {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
   });
-  return { testId: id, testUrl: `${origin.replace(/\\/$/, "")}/goldengoose/test/${id}`, status: record.status, prizeTitle: prize.title };
+  return { testId: id, testUrl: `${origin.replace(/\/$/, "")}/goldengoose/test/${id}`, status: record.status, prizeTitle: prize.title };
 }
 
 export async function getGoldenGooseTest(testId: string) {
