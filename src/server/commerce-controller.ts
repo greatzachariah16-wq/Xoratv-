@@ -8,6 +8,7 @@ import {
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
+import { getDataRewardPlans, getUserDataRewardClaims, claimDataReward } from "./data-rewards-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
 import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner } from "./special-prizes-service";
 
@@ -242,6 +243,47 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, deposit: await getWalletDepositStatus(reference, userId) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not read wallet funding status." }, 404);
+    }
+  }
+
+  if (path === "/api/data-rewards" && request.method === "GET") {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return json({ ok: false, error: "Sign in to claim a data reward." }, 401);
+    try {
+      const [plans, claims] = await Promise.all([getDataRewardPlans(), getUserDataRewardClaims(userId)]);
+      return json({ ok: true, plans, claims });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load data rewards." }, 500);
+    }
+  }
+
+  if (path === "/api/data-rewards/claims" && request.method === "GET") {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return json({ ok: false, error: "Sign in to view your data reward claims." }, 401);
+    try {
+      return json({ ok: true, claims: await getUserDataRewardClaims(userId) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load claim history." }, 500);
+    }
+  }
+
+  if (path === "/api/data-rewards/claim" && request.method === "POST") {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return json({ ok: false, error: "Sign in before claiming a data reward." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.catalogId || !body.phoneNumber || !body.idempotencyKey) {
+        return json({ ok: false, error: "Choose a data reward and enter the recipient phone number." }, 400);
+      }
+      const claim = await claimDataReward({
+        userId,
+        catalogId: String(body.catalogId),
+        phoneNumber: String(body.phoneNumber),
+        idempotencyKey: String(body.idempotencyKey),
+      });
+      return json({ ok: true, claim });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not claim this data reward." }, 400);
     }
   }
 
