@@ -80,7 +80,7 @@ function DataRewards() {
       </section>
 
       <section className="rounded-[26px] border border-[#eadfd5] bg-[#fffdf9] p-5 shadow-sm">
-        <div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">Choose your data reward</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">One successful claim every 24 hours. Points are shown beside each bundle.</p></div><span className="rounded-full bg-[#f3e9df] px-3 py-1.5 text-[10px] font-semibold text-[#65483c]">MELE data</span></div>
+        <div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">Choose your data reward</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">One successful claim every 24 hours. Points are shown beside each bundle.</p></div><span className="rounded-full bg-[#f3e9df] px-3 py-1.5 text-[10px] font-semibold text-[#65483c]">XoraTV data</span></div>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {REWARD_TIERS.map((item) => {
             const active = selected === item.id;
@@ -98,13 +98,13 @@ function DataRewards() {
       <section className="rounded-[26px] border border-[#eadfd5] bg-[#fffdf9] p-5 shadow-sm">
         <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-[#f0e4d9] text-[#65483c]"><Smartphone className="size-5" /></div><div><h2 className="text-base font-semibold">Where should we send it?</h2><p className="text-xs text-muted-foreground">Enter the Nigerian phone number to receive your data.</p></div></div>
         <label className="mt-4 block text-xs font-semibold text-foreground">Recipient phone number<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, "").slice(0, 13))} inputMode="tel" autoComplete="tel" placeholder="08012345678" className="mt-2 h-12 w-full rounded-xl border border-[#e5d8cc] bg-white px-3 text-sm outline-none focus:border-[#8b6b5d]" /></label>
-        <div className="mt-4 flex items-start gap-3 rounded-xl bg-[#f7f0e9] p-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#65483c]" /><p className="text-[11px] leading-5 text-[#6e5a50]">A successful reward claim starts your 24-hour cooldown. Failed provider attempts will not use your daily claim.</p></div>
+        <div className="mt-4 flex items-start gap-3 rounded-xl bg-[#f7f0e9] p-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#65483c]" /><p className="text-[11px] leading-5 text-[#6e5a50]">A successful reward claim starts your 24-hour cooldown. Failed fulfilment attempts will not use your daily claim.</p></div>
         {error ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</p> : null}
         {notice ? <p className="mt-3 rounded-xl border border-[#eadfd5] bg-[#f7f0e9] p-3 text-xs text-[#65483c]">{notice}</p> : null}
         <button type="button" disabled={!validPhone || !enoughPoints || loading} onClick={() => setNotice("Reward fulfilment is not open yet. Your points have not been deducted.")} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#65483c] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
           <ShieldCheck className="size-4" /> Claim {tier.size} · {tier.points} points
         </button>
-        <p className="mt-3 text-center text-[10px] leading-5 text-muted-foreground">Your Xora Points are not deducted on this preview. Claims will open after secure MELE fulfilment and duplicate-claim protection are connected.</p>
+        <p className="mt-3 text-center text-[10px] leading-5 text-muted-foreground">Your Xora Points are not deducted on this preview. Claims will open after secure fulfilment and duplicate-claim protection are connected.</p>
       </section>
     </main>
   </AppShell>;
