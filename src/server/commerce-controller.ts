@@ -121,7 +121,16 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     try {
       const testId = url.searchParams.get("id") || "";
       const test = await getGoldenGooseTest(testId);
-      return json({ ok: true, test });
+      return json({ ok: true, test: {
+        testId: test.id,
+        testUrl: `${url.origin}/goldengoose/test/${test.id}`,
+        status: test.status,
+        prizeTitle: test.prizeTitle,
+        receivedAt: test.receivedAt,
+        eventId: test.eventId,
+        event: test.event,
+        profit: test.profit,
+      } });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not read Golden Goose test." }, 404);
     }
