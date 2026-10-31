@@ -8,7 +8,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 export const Route = createFileRoute("/admin/commerce/special-prizes")({ component: SpecialPrizesAdmin });
 type Prize = { id: string; title: string; description: string; details?: string; steps?: string[]; smsInstructions?: string; screenshots?: string[]; campaignId: string; imageUrl: string; scriptSnippet: string; currency: string; status: "active" | "paused"; clicks: number; createdAt: string; updatedAt: string };
 type Banner = { enabled: boolean; imageUrl: string; updatedAt?: string };
-type Traffic = { id:string; creatorId:string; creatorUsername:string; creatorDisplayName:string; prizeId:string; prizeTitle:string; postId:string|null; source:string; sourceType:string; medium:string|null; campaign:string|null; referrerHost:string|null; clickedAt:string };
+type Traffic = { id:string; creatorId:string; creatorUsername:string; creatorDisplayName:string; prizeId:string; prizeTitle:string; postId:string|null; source:string; sourceType:string; medium:string|null; campaign:string|null; referrerHost:string|null; browserName?:string; clickedAt:string };
 const defaultBanner: Banner = { enabled: false, imageUrl: "" };
 const empty = { id: "", title: "", description: "", details: "", steps: [] as string[], smsInstructions: "", screenshots: [] as string[], campaignId: "", imageUrl: "", scriptSnippet: "", currency: "USD", status: "active" as "active" | "paused" };
 function SpecialPrizesAdmin() {
@@ -142,7 +142,7 @@ function SpecialPrizesAdmin() {
               </div>
               <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                 <div className="rounded-xl bg-background p-3"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Traffic source</p><p className="mt-1 break-all font-semibold">{item.source || "Direct / unknown"}</p>{item.referrerHost && item.referrerHost!==item.source?<p className="mt-1 break-all text-[10px] text-muted-foreground">Referrer: {item.referrerHost}</p>:null}</div>
-                <div className="rounded-xl bg-background p-3"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Visit details</p><p className="mt-1">{new Date(item.clickedAt).toLocaleString()}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.medium ? `Medium: ${item.medium}` : "No medium tag"}{item.campaign ? ` · Campaign: ${item.campaign}` : ""}</p>{item.postId?<p className="mt-1 text-[10px] text-muted-foreground">Video post: {item.postId}</p>:null}</div>
+                <div className="rounded-xl bg-background p-3"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Visit details</p><p className="mt-1">{new Date(item.clickedAt).toLocaleString()}</p><p className="mt-1 font-semibold">{item.browserName || "Browser unknown"}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.medium ? `Medium: ${item.medium}` : "No medium tag"}{item.campaign ? ` · Campaign: ${item.campaign}` : ""}</p>{item.postId?<p className="mt-1 text-[10px] text-muted-foreground">Video post: {item.postId}</p>:null}</div>
               </div>
             </article>)}
           </div>

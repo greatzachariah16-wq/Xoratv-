@@ -93,6 +93,7 @@ function XChannel(){
   const textPosts=profilePosts.filter((post:any)=>post.kind==="text" && post.status==="published").sort((a:any,b:any)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
 
   useEffect(()=>{ if(!creatorInfo)return; setChannelBio(creatorInfo.channelBio||""); setFeaturedTitle(creatorInfo.featuredTitle||"Your channel. Your stories."); setFeaturedDescription(creatorInfo.featuredDescription||"Make your best work the first thing people discover on XoraTV."); setShowCourses(creatorInfo.showCourses!==false); setShowCommunity(creatorInfo.showCommunity!==false); },[creatorInfo]);
+  useEffect(()=>{ if(section==="earnings") void refetch(); },[section,refetch]);
 
   if(!user)return <AppShell wide><div className="mx-auto max-w-3xl rounded-[30px] border border-border bg-surface p-10 text-center shadow-card"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><Radio className="size-7"/></div><h1 className="mt-5 font-display text-3xl font-semibold">X Channel</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">Sign in to create and manage your XoraTV creator channel.</p><Link to="/auth" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Sign in</Link></div></AppShell>;
 
