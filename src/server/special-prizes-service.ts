@@ -204,6 +204,101 @@ export async function recordSpecialPrizeClick(id: string) {
 }
 
 
+
+export type SpecialPrizeTrafficRecord = {
+  id: string;
+  token: string;
+  creatorId: string;
+  creatorUsername: string;
+  creatorDisplayName: string;
+  prizeId: string;
+  prizeTitle: string;
+  postId: string | null;
+  source: string;
+  sourceType: "social" | "search" | "website" | "internal" | "direct" | "unknown";
+  medium: string | null;
+  campaign: string | null;
+  referrerHost: string | null;
+  clickedAt: string;
+};
+
+function safeTrafficValue(value: string | null, max = 120): string | null {
+  const clean = String(value || "").trim().replace(/[<>\r\n]/g, "").slice(0, max);
+  return clean || null;
+}
+
+function classifyTrafficSource(source: string, referrerHost: string | null): SpecialPrizeTrafficRecord["sourceType"] {
+  const value = (source || referrerHost || "").toLowerCase();
+  if (!value) return "direct";
+  if (/(facebook|instagram|tiktok|youtube|x\.com|twitter|whatsapp|telegram|reddit|pinterest|snapchat)/.test(value)) return "social";
+  if (/(google|bing|yahoo|duckduckgo|baidu)/.test(value)) return "search";
+  if (value.includes("xoratv")) return "internal";
+  if (referrerHost || value.includes(".")) return "website";
+  return "unknown";
+}
+
+/** Resolve and record an attributed Special Prize link visit without storing raw IPs or full referrer URLs. */
+export async function resolveSpecialPrizePromotionClick(token: string, request: Request, url: URL) {
+  if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return null;
+  const promotion = await queryRtdb(`commerce/promotionLinks/${token}`) as any;
+  if (!promotion || promotion.service !== "special-prize" || !promotion.creatorId || !promotion.specialPrizeId) return null;
+
+  const prize = await queryRtdb(`${prizesPath}/${promotion.specialPrizeId}`) as any;
+  if (!prize || prize.status !== "active") return null;
+
+  const creator = await queryRtdb(`commerce/creators/${promotion.creatorId}`) as any;
+  const referer = request.headers.get("referer") || "";
+  let referrerHost: string | null = null;
+  try { referrerHost = referer ? new URL(referer).hostname.toLowerCase().slice(0, 180) : null; } catch { referrerHost = null; }
+  const utmSource = safeTrafficValue(url.searchParams.get("utm_source"));
+  const medium = safeTrafficValue(url.searchParams.get("utm_medium"));
+  const campaign = safeTrafficValue(url.searchParams.get("utm_campaign"));
+  const source = utmSource || referrerHost || "Direct / unknown";
+  const postIdRaw = safeTrafficValue(url.searchParams.get("postId"), 100);
+  const postId = postIdRaw && /^[A-Za-z0-9_-]{1,100}$/.test(postIdRaw) ? postIdRaw : null;
+  const clickedAt = new Date().toISOString();
+  const record: SpecialPrizeTrafficRecord = {
+    id: crypto.randomUUID(),
+    token,
+    creatorId: String(promotion.creatorId),
+    creatorUsername: String(creator?.username || ""),
+    creatorDisplayName: String(creator?.displayName || "Xora Creator"),
+    prizeId: String(promotion.specialPrizeId),
+    prizeTitle: String(prize.title || promotion.label || "Special Prize"),
+    postId,
+    source: source.slice(0, 180),
+    sourceType: classifyTrafficSource(source, referrerHost),
+    medium,
+    campaign,
+    referrerHost,
+    clickedAt,
+  };
+  await queryRtdb(`commerce/specialPrizeTraffic/${record.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(record),
+  });
+  await queryRtdb(`commerce/promotionLinks/${token}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clicks: Math.max(0, Number(promotion.clicks || 0) + 1), updatedAt: clickedAt }),
+  });
+
+  const target = new URL("/special-prizes", url.origin);
+  target.searchParams.set("offer", String(promotion.specialPrizeId));
+  target.searchParams.set("promo", token);
+  if (postId) target.searchParams.set("postId", postId);
+  return { promotion, targetPath: target.pathname + target.search };
+}
+
+export async function listSpecialPrizeTraffic(limit = 250): Promise<SpecialPrizeTrafficRecord[]> {
+  const raw = await queryRtdb("commerce/specialPrizeTraffic") as Record<string, SpecialPrizeTrafficRecord> | SpecialPrizeTrafficRecord[] | null;
+  const records = raw ? (Array.isArray(raw) ? raw : Object.values(raw)) : [];
+  return records.filter((item) => item && item.id && item.creatorId && item.prizeId)
+    .sort((a, b) => String(b.clickedAt || "").localeCompare(String(a.clickedAt || "")))
+    .slice(0, Math.max(1, Math.min(500, Math.floor(limit))));
+}
+
 const conversionPath = (eventId: string) => `commerce/specialPrizeConversions/${crypto.createHash("sha256").update(eventId).digest("hex")}`;
 
 export async function recordGoldenGoosePostback(request: Request, url: URL) {

@@ -9,7 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner } from "./special-prizes-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner, resolveSpecialPrizePromotionClick, listSpecialPrizeTraffic } from "./special-prizes-service";
 
 
 const headers = {
@@ -27,8 +27,10 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path.startsWith("/s/") && request.method === "GET") {
     const token = path.slice(3).split("/")[0];
+    const specialPrizeClick = await resolveSpecialPrizePromotionClick(token, request, url);
+    if (specialPrizeClick) return Response.redirect(new URL(specialPrizeClick.targetPath, url.origin), 302);
     const promotion = await resolvePromotionLink(token);
-    if (!promotion) return new Response("Promotion link not found.", { status: 404, headers });
+    if (!promotion || promotion.service === "special-prize") return new Response("Promotion link not found or no longer active.", { status: 404, headers });
     return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
   }
   if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
@@ -87,6 +89,16 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, click: await recordSpecialPrizeClick(String(body.id)) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "This prize is no longer available." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/traffic" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      return json({ ok: true, traffic: await listSpecialPrizeTraffic(250) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load Special Prize traffic." }, 500);
     }
   }
 

@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   EyeOff,
   Ban,
+  Gift,
 } from "lucide-react";
 import {
   deletePost,
@@ -300,6 +301,18 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
             </p>
           )}
         </div>
+
+        {post.kind === "video" && post.special_prize_id && post.special_prize_link_token ? (
+          <div className="px-3 pt-2">
+            <a
+              href={`/s/${encodeURIComponent(post.special_prize_link_token)}?postId=${encodeURIComponent(post.id)}`}
+              className="press flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/15"
+            >
+              <Gift className="size-4" aria-hidden="true" />
+              Get your special prize
+            </a>
+          </div>
+        ) : null}
 
         <div className="px-3 pb-3 pt-3">
           {post.title ? (

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, Lock, Film, CheckCircle2 } from "lucide-react";
+import { Upload, Lock, Film, CheckCircle2, Gift, Sparkles } from "lucide-react";
 import { addLocalPost } from "@/lib/api";
 import {
   uploadToCloudinary,
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { cn } from "@/lib/utils";
+import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
 import type { Enums } from "@/integrations/firebase/types";
 
 export const Route = createFileRoute("/create")({
@@ -40,6 +41,8 @@ function CreatePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: creatorDashboard } = useQuery(creatorDashboardQuery(user?.id));
+  const isActiveCreator = creatorDashboard?.dashboard?.creator?.status === "active";
 
   const [kind, setKind] = useState<"video" | "text">("video");
   const [feed, setFeed] = useState<Feed>("home");
@@ -49,6 +52,18 @@ function CreatePage() {
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [poster, setPoster] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
+  const [promoteSpecialPrize, setPromoteSpecialPrize] = useState(false);
+  const [selectedSpecialPrize, setSelectedSpecialPrize] = useState("");
+  const [specialPrizes, setSpecialPrizes] = useState<Array<{id:string;title:string;description?:string}>>([]);
+
+  useEffect(() => {
+    if (!isActiveCreator) return;
+    let mounted = true;
+    void commerceFetch<{prizes:Array<{id:string;title:string;description?:string}>}>("/api/commerce/special-prizes")
+      .then(result => { if (mounted) setSpecialPrizes(Array.isArray(result.prizes) ? result.prizes : []); })
+      .catch(() => { if (mounted) setSpecialPrizes([]); });
+    return () => { mounted = false; };
+  }, [isActiveCreator]);
 
   const handleVideoSelect = async (file: File | null) => {
     if (!file) {
@@ -102,6 +117,19 @@ function CreatePage() {
       let posterPath: string | null = null;
       let streamUrl: string | null = null;
       let durationSeconds: number | null = null;
+      let specialPrizeId: string | null = null;
+      let specialPrizeLinkToken: string | null = null;
+
+      if (kind === "video" && promoteSpecialPrize) {
+        if (!isActiveCreator) throw new Error("Only active X Channel creators can promote Special Prizes.");
+        if (!selectedSpecialPrize) throw new Error("Choose a Special Prize for this video, or switch the promotion off.");
+        const linkResult = await commerceFetch<{link:{token:string}}>("/api/commerce/creator/special-prize-link", {
+          method: "POST",
+          body: JSON.stringify({ specialPrizeId: selectedSpecialPrize }),
+        });
+        specialPrizeId = selectedSpecialPrize;
+        specialPrizeLinkToken = linkResult.link.token;
+      }
 
       if (kind === "video") {
         if (!video) throw new Error("Choose a video file");
@@ -170,6 +198,8 @@ function CreatePage() {
         recommendation_score: 90,
         source: "creator",
         playability_status: kind === "video" && feed === "shorts" ? "playable" : null,
+        special_prize_id: specialPrizeId,
+        special_prize_link_token: specialPrizeLinkToken,
       });
       return postId;
     },
@@ -294,6 +324,39 @@ function CreatePage() {
                 onChange={(e) => setPoster(e.target.files?.[0] ?? null)}
               />
             </label>
+
+            {isActiveCreator ? (
+              <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={promoteSpecialPrize}
+                    onChange={event => setPromoteSpecialPrize(event.target.checked)}
+                    className="mt-0.5 size-4 accent-primary"
+                  />
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-sm font-semibold"><Gift className="size-4 text-primary"/> Promote a Special Prize</span>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">Add a “Get your special prize” button beneath this video. It will open the selected Special Prize page.</span>
+                  </span>
+                </label>
+                {promoteSpecialPrize ? (
+                  <div className="mt-3 space-y-2">
+                    <label htmlFor="special-prize-select" className="text-xs font-semibold">Choose the Special Prize</label>
+                    <select
+                      id="special-prize-select"
+                      value={selectedSpecialPrize}
+                      onChange={event => setSelectedSpecialPrize(event.target.value)}
+                      required
+                      className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Select an active Special Prize</option>
+                      {specialPrizes.map(prize => <option key={prize.id} value={prize.id}>{prize.title}</option>)}
+                    </select>
+                    {specialPrizes.length === 0 ? <p className="text-[11px] text-muted-foreground">No active Special Prizes are available right now.</p> : <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Sparkles className="size-3.5 text-primary"/> You can turn this off for any video before publishing.</p>}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
 
             <div>
               <label htmlFor="title" className="text-xs font-medium text-muted-foreground">
