@@ -242,6 +242,7 @@ export type SpecialPrizeTrafficRecord = {
   medium: string | null;
   campaign: string | null;
   referrerHost: string | null;
+  browserName: string;
   clickedAt: string;
 };
 
@@ -260,6 +261,23 @@ function classifyTrafficSource(source: string, referrerHost: string | null): Spe
   return "unknown";
 }
 
+function detectTrafficBrowser(userAgent: string): string {
+  const ua = String(userAgent || "").toLowerCase();
+  if (!ua) return "Unknown";
+  if (/opera mini|opmini|opera mobi/.test(ua)) return "Opera Mini";
+  if (/edg\\//.test(ua)) return "Microsoft Edge";
+  if (/samsungbrowser/.test(ua)) return "Samsung Internet";
+  if (/opr\\//.test(ua)) return "Opera";
+  if (/fbav|fban|fb_iab/.test(ua)) return "Facebook In-App";
+  if (/instagram/.test(ua)) return "Instagram In-App";
+  if (/bytedancewebview|tiktok/.test(ua)) return "TikTok In-App";
+  if (/; wv\\)|\\bwv\\b/.test(ua)) return "Android WebView";
+  if (/firefox|fxios/.test(ua)) return "Firefox";
+  if (/chrome|crios/.test(ua)) return "Chrome";
+  if (/safari/.test(ua)) return "Safari";
+  return "Other browser";
+}
+
 /** Resolve and record an attributed Special Prize link visit without storing raw IPs or full referrer URLs. */
 export async function resolveSpecialPrizePromotionClick(token: string, request: Request, url: URL) {
   if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return null;
@@ -271,6 +289,7 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
 
   const creator = await queryRtdb(`commerce/creators/${promotion.creatorId}`) as any;
   const referer = request.headers.get("referer") || "";
+  const browserName = detectTrafficBrowser(request.headers.get("user-agent") || "");
   let referrerHost: string | null = null;
   try { referrerHost = referer ? new URL(referer).hostname.toLowerCase().slice(0, 180) : null; } catch { referrerHost = null; }
   const utmSource = safeTrafficValue(url.searchParams.get("utm_source"));
@@ -294,6 +313,7 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
     medium,
     campaign,
     referrerHost,
+    browserName,
     clickedAt,
   };
   await queryRtdb(`commerce/specialPrizeTraffic/${record.id}`, {
@@ -464,10 +484,13 @@ export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const sourceCounts = new Map<string, number>();
+  const browserCounts = new Map<string, number>();
   const offerCounts = new Map<string, { prizeId: string; prizeTitle: string; clicks: number }>();
   for (const click of clicks) {
     const source = String((click as any).sourceType || "unknown");
     sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    const browser = String((click as any).browserName || "Unknown");
+    browserCounts.set(browser, (browserCounts.get(browser) || 0) + 1);
     const prizeId = String((click as any).prizeId || "");
     const current = offerCounts.get(prizeId) || { prizeId, prizeTitle: String((click as any).prizeTitle || "Special Prize"), clicks: 0 };
     current.clicks++;
@@ -480,6 +503,7 @@ export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
     clicksLast7Days: clicks.filter((item: any) => timestamp(item) >= weekStart).length,
     clicksLast30Days: clicks.filter((item: any) => timestamp(item) >= monthStart).length,
     sourceBreakdown: [...sourceCounts.entries()].map(([source, count]) => ({ source, clicks: count })).sort((a, b) => b.clicks - a.clicks),
+    browserBreakdown: [...browserCounts.entries()].map(([browser, count]) => ({ browser, clicks: count })).sort((a, b) => b.clicks - a.clicks),
     offerBreakdown: [...offerCounts.values()].sort((a, b) => b.clicks - a.clicks),
     recentClicks: clicks.slice(0, 12),
     pendingConversions: conversions.filter((item: any) => item.status === "pending").length,
