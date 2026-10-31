@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
 import { profilePostsQuery } from "@/lib/api";
 import { CourseCreatorForm } from "@/components/xora/CourseCreatorForm";
+import { XoraLoading } from "@/components/xora/Skeletons";
 
 export const Route = createFileRoute("/creator-studio")({ component: XChannel });
 
@@ -201,7 +202,7 @@ function XChannel(){
     finally{setPayoutBusy(false);}
   }
 
-  if(isPending)return <AppShell wide><div className="p-8 text-sm text-muted-foreground">Loading your X Channel…</div></AppShell>;
+  if(isPending)return <AppShell wide><XoraLoading title="Loading your X Channel" subtitle="Preparing your creator studio, videos and earnings." /></AppShell>;
 
   if(!creatorInfo&&!registered)return <AppShell wide>
     <div className="mx-auto max-w-5xl grid gap-5 lg:grid-cols-[1.15fr_.85fr]">

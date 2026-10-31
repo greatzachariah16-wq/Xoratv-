@@ -1,3 +1,29 @@
+export function XoraLoading({
+  title = "Loading",
+  subtitle = "Getting everything ready for you.",
+}: {
+  title?: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="xora-loading-screen" role="status" aria-live="polite" aria-label={title}>
+      <div className="xora-loading-card">
+        <div className="xora-loading-mark" aria-hidden="true">
+          <span className="xora-loading-mark-letter">X</span>
+        </div>
+        <div className="xora-loading-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <p className="xora-loading-title">{title}</p>
+        <p className="xora-loading-subtitle">{subtitle}</p>
+      </div>
+      <span className="sr-only">Please wait</span>
+    </div>
+  );
+}
+
 export function PostCardSkeleton({ vertical = false }: { vertical?: boolean }) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-3" aria-hidden="true">
@@ -26,10 +52,14 @@ export function FeedSkeleton({
   count?: number;
   vertical?: boolean;
 }) {
+  if (vertical) {
+    return <XoraLoading title="Loading Shorts" subtitle="Finding fresh videos from Xora creators." />;
+  }
+
   return (
     <div className="space-y-4" role="status" aria-label="Loading feed">
       {Array.from({ length: count }).map((_, index) => (
-        <PostCardSkeleton key={index} vertical={vertical} />
+        <PostCardSkeleton key={index} />
       ))}
       <span className="sr-only">Loading</span>
     </div>

@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/feed/$feed")({
           // Read full post records from the same Firebase connection used by publishing.
           // Scan past stale index entries so they cannot make a feed look empty or end early.
           const visible: PostRecord[] = [];
-          const batchSize = 8;
+          const batchSize = 24;
           for (let start = 0; start < orderedIds.length && visible.length < offset + limit; start += batchSize) {
             const batch = await Promise.all(
               orderedIds.slice(start, start + batchSize).map((id) => queryRtdb(`posts/${id}`)),
