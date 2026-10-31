@@ -145,11 +145,13 @@ function SpecialPrizes() {
             {!providerStarted?<button type="button" onClick={()=>{setProviderStarted(true);window.setTimeout(()=>document.getElementById("golden-goose-prize-script")?.scrollIntoView({behavior:"smooth",block:"start"}),80);}} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-md transition-transform hover:-translate-y-0.5">Subscribe <ArrowUpRight className="size-4"/></button>:null}
           </div>
         </article>
-        {providerStarted?<section className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Secure offer provider</p><p className="mt-1 text-xs text-muted-foreground">Continue with the provider's subscription steps below.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold">{scriptReady ? "Connected" : "Connecting"}</span></div>
-          <div id="golden-goose-prize-script" className="min-h-24 rounded-xl border border-border/60 bg-background p-3" />
-          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">If you complete the subscription successfully, check the SMS or confirmation details described above. Keep any confirmation message until the provider has verified your participation.</p>
-        </section>:null}
+        {providerStarted?<div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event)=>{if(event.target===event.currentTarget)setProviderStarted(false);}}>
+          <section role="dialog" aria-modal="true" aria-label="Secure offer provider" className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[28px] border border-border bg-surface p-4 shadow-2xl sm:rounded-[28px] sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Secure offer provider</p><p className="mt-1 text-xs text-muted-foreground">Complete the provider steps here without leaving XoraTV.</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold">{scriptReady ? "Connected" : "Connecting"}</span><button type="button" onClick={()=>setProviderStarted(false)} aria-label="Close provider panel" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:bg-secondary">×</button></div></div>
+            <div id="golden-goose-prize-script" className="min-h-28 rounded-xl border border-border/60 bg-background p-3" />
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">If you complete the subscription successfully, check the SMS or confirmation details described above. Keep any confirmation message until the provider has verified your participation.</p>
+          </section>
+        </div>:null}
       </section> : <section className="space-y-3">
         {loading && !prizes.length ? <div className="flex items-center justify-center gap-2 rounded-2xl border border-border p-8 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin"/>Loading special prizes…</div> : null}
         {!loading && !prizes.length && !error ? <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center"><Sparkles className="mx-auto size-8 text-primary"/><h2 className="mt-3 font-semibold">No special prizes available right now</h2><p className="mt-1 text-sm text-muted-foreground">Please check back later.</p></div> : null}
