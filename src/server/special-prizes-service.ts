@@ -355,19 +355,31 @@ type GoldenGooseTestRecord = {
 const goldenGooseTestsPath = "commerce/goldenGooseTests";
 
 function getPrizeProviderScriptUrl(prize: SpecialPrize): string {
-  let rawUrl = "";
+  let snippetUrl = "";
   if (prize.scriptSnippet.trim()) {
     const match = prize.scriptSnippet.match(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
-    if (match?.[1]) rawUrl = match[1];
+    if (match?.[1]) snippetUrl = match[1].trim();
   }
-  if (!rawUrl && prize.campaignId) rawUrl = getGoldenGooseScriptUrl(prize.campaignId);
-  if (!rawUrl) throw new Error("This prize has no usable Golden Goose script URL.");
-  const parsed = new URL(rawUrl);
-  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !/^\/bc\/[A-Za-z0-9_-]{4,100}\.js$/i.test(parsed.pathname)) {
-    throw new Error("The saved provider snippet is not a supported Golden Goose campaign script.");
+
+  // Prefer a recognized provider snippet, but don't let an unrelated or differently
+  // formatted saved embed block a test when the campaign ID is available.
+  if (snippetUrl) {
+    try {
+      const parsed = new URL(snippetUrl);
+      const supported = parsed.protocol === "https:"
+        && parsed.hostname === "ngglznw.com"
+        && /^\/bc\/[A-Za-z0-9_-]{4,100}\.js$/i.test(parsed.pathname);
+      if (supported) {
+        parsed.searchParams.set("force_https", "1");
+        return parsed.toString();
+      }
+    } catch {
+      // Fall through to the canonical URL generated from the saved campaign ID.
+    }
   }
-  parsed.searchParams.set("force_https", "1");
-  return parsed.toString();
+
+  if (prize.campaignId) return getGoldenGooseScriptUrl(prize.campaignId);
+  throw new Error("This prize needs a valid Golden Goose campaign ID or a script URL in the format https://ngglznw.com/bc/{campaign_id}.js. Edit the prize and add its campaign ID to create a test link.");
 }
 
 export async function createGoldenGooseTest(prizeId: string, origin: string) {
