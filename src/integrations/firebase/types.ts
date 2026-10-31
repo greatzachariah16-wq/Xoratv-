@@ -50,6 +50,9 @@ export interface PostRecord {
   playability_checked_at?: string | null;
   playability_failure_count?: number | null;
   playability_error?: string | null;
+  /** Optional creator-selected Special Prize promotion shown on this video. */
+  special_prize_id?: string | null;
+  special_prize_link_token?: string | null;
 }
 
 export interface ProfileRecord {
