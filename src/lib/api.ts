@@ -183,14 +183,30 @@ export async function fetchRankedFeed(
 ): Promise<PostWithAuthor[]> {
   let rawPosts: PostRecord[] = [];
 
-  if (typeof window !== "undefined" && isFirebaseConfigured()) {
+  if (typeof window !== "undefined") {
     try {
-      const rtdbPosts = await getFeedPosts(feed, offset, limit);
-      if (rtdbPosts && rtdbPosts.length > 0) {
-        rawPosts = rtdbPosts;
+      // Use the same server-side Firebase connection that persists creator posts.
+      // This prevents a client/server database URL mismatch from hiding new posts.
+      const response = await fetch(
+        `/api/feed/${encodeURIComponent(feed)}?offset=${offset}&limit=${limit}`,
+        { credentials: "same-origin", cache: "no-store" },
+      );
+      const payload = await response.json().catch(() => null) as
+        | { ok?: boolean; posts?: PostRecord[]; error?: string }
+        | null;
+      if (!response.ok || !payload?.ok || !Array.isArray(payload.posts)) {
+        throw new Error(payload?.error || "Could not load the public feed.");
       }
+      rawPosts = payload.posts;
     } catch (err) {
-      console.warn("[RealtimeDB] Query feed error:", err);
+      console.warn("[Public feed] Server feed query failed; trying the legacy client reader:", err);
+      if (isFirebaseConfigured()) {
+        try {
+          rawPosts = await getFeedPosts(feed, offset, limit);
+        } catch (fallbackError) {
+          console.warn("[RealtimeDB] Legacy feed query error:", fallbackError);
+        }
+      }
     }
   }
 
