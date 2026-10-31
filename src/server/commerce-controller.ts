@@ -27,10 +27,10 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path.startsWith("/s/") && request.method === "GET") {
     const token = path.slice(3).split("/")[0];
-    const specialPrizeClick = await resolveSpecialPrizePromotionClick(token, request, url).catch(() => null);
+    const specialPrizeClick = await resolveSpecialPrizePromotionClick(token, request, url);
     if (specialPrizeClick) return Response.redirect(new URL(specialPrizeClick.targetPath, url.origin), 302);
     const promotion = await resolvePromotionLink(token);
-    if (!promotion) return new Response("Promotion link not found.", { status: 404, headers });
+    if (!promotion || promotion.service === "special-prize") return new Response("Promotion link not found or no longer active.", { status: 404, headers });
     return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
   }
   if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
