@@ -287,6 +287,7 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
   const target = new URL("/special-prizes", url.origin);
   target.searchParams.set("offer", String(promotion.specialPrizeId));
   target.searchParams.set("promo", token);
+  target.searchParams.set("click", record.id);
   if (postId) target.searchParams.set("postId", postId);
   return { promotion, targetPath: target.pathname + target.search };
 }
