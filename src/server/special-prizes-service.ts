@@ -360,7 +360,8 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     const all = await queryRtdb("commerce/specialPrizeConversions") as Record<string, any> | null;
     const matches = Object.entries(all || {}).filter(([, item]) =>
       item?.creatorId === creatorId && item?.prizeId === prizeId &&
-      item?.attributionKey === attributionKey && item?.event === "hold" && item?.status === "pending"
+      (item?.attributionKey === attributionKey || (!item?.attributionKey && item?.token === attributionKey)) &&
+      item?.event === "hold" && item?.status === "pending"
     );
     if (matches.length !== 1) return {
       ok: false as const, status: 409,
@@ -372,7 +373,15 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     const nextStatus = holdApprovedEvents.has(event) ? "approved" : "cancelled";
     await queryRtdb(`commerce/specialPrizeConversions/${recordKey}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: nextStatus, settlementStatus: nextStatus === "approved" ? "pending" : "not_payable", statusUpdatedAt: now, statusEventId: eventId }),
+      body: JSON.stringify({
+        status: nextStatus,
+        settlementStatus: nextStatus === "approved" ? "pending" : "not_payable",
+        profit: nextStatus === "approved" ? profit : Number(pending.profit || 0),
+        currency,
+        creatorCommission: nextStatus === "approved" ? Math.round(profit * 0.35 * 10000) / 10000 : 0,
+        statusUpdatedAt: now,
+        statusEventId: eventId,
+      }),
     });
     await queryRtdb(eventPath, {
       method: "PUT", headers: { "Content-Type": "application/json" },
