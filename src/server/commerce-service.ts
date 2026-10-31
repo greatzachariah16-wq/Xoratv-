@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
 import { debitWallet, creditWallet, getWallet } from "./wallet-service";
-import { listSpecialPrizes, getCreatorSpecialPrizeEarnings } from "./special-prizes-service";
+import { listSpecialPrizes, getCreatorSpecialPrizeEarnings, getCreatorSpecialPrizeAnalytics } from "./special-prizes-service";
 import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 import { deleteXoraContent, getXoraContent } from "./content-repository";
 import { deleteCloudinaryVideo } from "./content-media-controller";
@@ -1407,6 +1407,7 @@ export async function getCreatorDashboard(userId: string) {
     cpa: cpaStatsRaw || { approvedConversions: 0, pendingCommission: 0, payableCommission: 0, paidCommission: 0, minConversions: 200, payoutEligible: false },
     links: (await getCreatorPromotionLinks(userId)).map((link) => ({ ...link, path: "/s/" + link.token })),
     specialPrizeEarnings: await getCreatorSpecialPrizeEarnings(userId),
+    specialPrizeAnalytics: await getCreatorSpecialPrizeAnalytics(userId),
   };
 }
 
