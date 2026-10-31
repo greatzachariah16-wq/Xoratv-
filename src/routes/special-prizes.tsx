@@ -108,7 +108,8 @@ function SpecialPrizes() {
     setError("");
     try {
       await commerceFetch("/api/commerce/special-prizes/click", { method: "POST", body: JSON.stringify({ id: prize.id }) });
-      setSelected(prize);\n      setProviderStarted(false);
+      setSelected(prize);
+      setProviderStarted(false);
       const promoQuery = promotionToken ? `&promo=${encodeURIComponent(promotionToken)}` : "";
       const clickQuery = promotionClickId && promotionClickPrizeId === prize.id
         ? `&click=${encodeURIComponent(promotionClickId)}`
