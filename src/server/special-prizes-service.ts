@@ -357,13 +357,13 @@ const goldenGooseTestsPath = "commerce/goldenGooseTests";
 function getPrizeProviderScriptUrl(prize: SpecialPrize): string {
   let rawUrl = "";
   if (prize.scriptSnippet.trim()) {
-    const match = prize.scriptSnippet.match(/<script\\b[^>]*\\bsrc\\s*=\\s*["']([^"']+)["'][^>]*>/i);
+    const match = prize.scriptSnippet.match(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
     if (match?.[1]) rawUrl = match[1];
   }
   if (!rawUrl && prize.campaignId) rawUrl = getGoldenGooseScriptUrl(prize.campaignId);
   if (!rawUrl) throw new Error("This prize has no usable Golden Goose script URL.");
   const parsed = new URL(rawUrl);
-  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !/^\\/bc\\/[A-Za-z0-9_-]{4,100}\\.js$/i.test(parsed.pathname)) {
+  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !/^\/bc\/[A-Za-z0-9_-]{4,100}\.js$/i.test(parsed.pathname)) {
     throw new Error("The saved provider snippet is not a supported Golden Goose campaign script.");
   }
   parsed.searchParams.set("force_https", "1");
