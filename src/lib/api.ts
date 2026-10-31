@@ -344,6 +344,7 @@ export function feedInfiniteQuery(
     },
     // Refresh open feeds so newly published posts appear without requiring a
     // manual page reload. Keep this interval modest to avoid hammering Firebase.
+    staleTime: 20_000,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   });
