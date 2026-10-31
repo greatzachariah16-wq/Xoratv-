@@ -23,7 +23,9 @@ function SpecialPrizesAdmin() {
   const [bannerDraft,setBannerDraft]=useState<Banner>(defaultBanner);
   const [bannerBusy,setBannerBusy]=useState(false);
   const [uploadingBanner,setUploadingBanner]=useState(false);
-  const [testPrizeId,setTestPrizeId]=useState("");\n  const [testBusy,setTestBusy]=useState(false);\n  const [testResult,setTestResult]=useState<{testId:string;testUrl:string;status:string;prizeTitle:string;receivedAt?:string;event?:string;profit?:number}|null>(null);
+  const [testPrizeId,setTestPrizeId]=useState("");
+  const [testBusy,setTestBusy]=useState(false);
+  const [testResult,setTestResult]=useState<{testId:string;testUrl:string;status:string;prizeTitle:string;receivedAt?:string;event?:string;profit?:number}|null>(null);
   async function load(){setLoading(true);try{const [r,b,t]=await Promise.all([commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes"),commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner"),commerceFetch<{traffic:Traffic[]}>("/api/admin/commerce/special-prizes/traffic")]);setPrizes(r.prizes||[]);setTraffic(t.traffic||[]);setBannerDraft({...defaultBanner,...(b.banner||{})});}catch(e){setMessage(e instanceof Error?e.message:"Could not load Special Prizes settings.");}finally{setLoading(false);}}
   useEffect(()=>{void load();},[]);
   function edit(p:Prize){setDraft({id:p.id,title:p.title,description:p.description,details:p.details||"",steps:p.steps||[],smsInstructions:p.smsInstructions||"",screenshots:p.screenshots||[],campaignId:p.campaignId,imageUrl:p.imageUrl||"",scriptSnippet:p.scriptSnippet||"",currency:p.currency||"USD",status:p.status});setMessage("");window.scrollTo({top:0,behavior:"smooth"});}
