@@ -228,79 +228,81 @@ export async function getFeedPosts(
   offset = 0,
   limit = 24,
 ): Promise<PostRecord[]> {
-  const feedSnap = await get(ref(rtdb, `postsByFeed/${feed}`));
-  if (!feedSnap.exists()) {
-    // Fallback only when the feed index is absent.
-    const all = await getAllPosts();
-    const candidates = all.filter(
-      (p) =>
-        p.feed === feed &&
-        p.status === "published" &&
-        p.approval_status === "approved" &&
-        (feed !== "shorts" || p.playability_status === "playable" || p.source === "creator"),
-    );
-    candidates.sort((a, b) => {
-      const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-      if (scoreDiff !== 0) return scoreDiff;
-      return (b.created_at || "").localeCompare(a.created_at || "");
-    });
-    return candidates.slice(offset, offset + limit);
+  // The feed index is an optimization, not the source of truth. A creator
+  // publication can exist in /posts even when its feed index is missing/stale.
+  const [feedSnap, allPosts] = await Promise.all([
+    get(ref(rtdb, `postsByFeed/${feed}`)),
+    getAllPosts(),
+  ]);
+
+  const feedMap = feedSnap.exists()
+    ? (feedSnap.val() as Record<string, PostFeedIndexEntry>)
+    : {};
+  const indexedIds = Object.entries(feedMap)
+    .filter(([, entry]) => entry?.status === "published" && entry?.approval_status === "approved")
+    .map(([postId]) => postId);
+  const canonicalById = new Map(allPosts.map((post) => [post.id, post]));
+  const indexedPosts = indexedIds
+    .map((postId) => canonicalById.get(postId))
+    .filter((post): post is PostRecord => Boolean(post));
+
+  const merged = new Map<string, PostRecord>();
+  for (const post of indexedPosts) {
+    if (post.feed === feed && post.status === "published" && post.approval_status === "approved") {
+      merged.set(post.id, post);
+    }
   }
 
-  const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
-  const orderedIds = Object.entries(feedMap)
-    .filter(([, entry]) => entry.status === "published" && entry.approval_status === "approved")
-    // Creator uploads must not be buried behind older catalogue items simply
-    // because those items have a higher recommendation score. The feed index
-    // now carries source/kind; created_at also brings older creator index
-    // entries (written before that metadata existed) near the front.
-    .sort(([, a], [, b]) => {
-      const creatorDiff = Number(b.source === "creator") - Number(a.source === "creator");
-      if (creatorDiff !== 0) return creatorDiff;
-      const dateDiff = (b.created_at || "").localeCompare(a.created_at || "");
-      if (dateDiff !== 0) return dateDiff;
-      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-    })
-    .map(([id]) => id);
-
-  if (feed === "shorts") {
-    // Shorts only displays creator uploads. Skip other indexed videos before
-    // applying the page offset, otherwise a page with few creator uploads can
-    // look like the feed has ended even though more Shorts exist further down.
-    const eligible: PostRecord[] = [];
-    const batchSize = 8;
-    for (let start = 0; start < orderedIds.length && eligible.length < offset + limit; start += batchSize) {
-      const batch = await Promise.all(orderedIds.slice(start, start + batchSize).map((id) => getPost(id)));
-      for (const post of batch) {
-        if (
-          post &&
-          post.feed === "shorts" &&
-          post.kind === "video" &&
-          post.status === "published" &&
-          post.approval_status === "approved" &&
-          post.source === "creator" &&
-          Boolean(post.stream_url || post.media_path)
-        ) {
-          eligible.push(post);
-        }
+  // Preserve the catalog fallback when no index exists for this feed.
+  if (!feedSnap.exists()) {
+    for (const post of allPosts) {
+      if (post.feed === feed && post.status === "published" && post.approval_status === "approved") {
+        merged.set(post.id, post);
       }
     }
-    return eligible.slice(offset, offset + limit).sort((a, b) => {
-      if (b.featured !== a.featured) return b.featured ? 1 : -1;
-      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-    });
   }
 
-  // Load only this page of post records; never download video files just to
-  // build the feed. The lightweight index can contain far more than one page.
-  const postIds = orderedIds.slice(offset, offset + limit);
-  const posts = await Promise.all(postIds.map((id) => getPost(id)));
-  return posts
-    .filter((p): p is PostRecord => Boolean(p))
-    .sort((a, b) => {
-      if (b.featured !== a.featured) return b.featured ? 1 : -1;
-      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-    });
+  // Reconcile creator publications from canonical /posts records, including
+  // posts whose feed-index write was absent or stale.
+  const creatorPosts = allPosts.filter((post) =>
+    post.source === "creator" &&
+    post.feed === feed &&
+    post.status === "published" &&
+    post.approval_status === "approved" &&
+    (feed !== "shorts" || (
+      post.kind === "video" &&
+      Boolean(post.stream_url || post.media_path)
+    )) &&
+    (feed !== "home" || Boolean(post.poster_path))
+  );
+  for (const post of creatorPosts) merged.set(post.id, post);
+
+  let candidates = Array.from(merged.values());
+  if (feed === "shorts") {
+    // Shorts intentionally contains creator uploads only. Filter before
+    // pagination so non-creator catalog entries cannot create empty pages.
+    candidates = candidates.filter((post) =>
+      post.feed === "shorts" &&
+      post.kind === "video" &&
+      post.status === "published" &&
+      post.approval_status === "approved" &&
+      post.source === "creator" &&
+      Boolean(post.stream_url || post.media_path)
+    );
+  }
+
+  candidates.sort((a, b) => {
+    if (b.featured !== a.featured) return b.featured ? 1 : -1;
+    if (feed === "shorts") {
+      const dateDiff = (b.created_at || "").localeCompare(a.created_at || "");
+      if (dateDiff !== 0) return dateDiff;
+    }
+    const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return (b.created_at || "").localeCompare(a.created_at || "");
+  });
+
+  return candidates.slice(offset, offset + limit);
 }
 
 // --- COMMENTS ---
