@@ -320,7 +320,17 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
   }
 
   const eventId = String(params.get("event_id") || "").trim();
-  const event = String(params.get("event") || "").trim().toLowerCase();
+  const rawEvent = String(params.get("event") || "").trim().toLowerCase();
+  const providerStatus = String(params.get("status") || "").trim().toLowerCase();
+  const statusEventMap: Record<string, string> = {
+    pending: "hold",
+    approved: "hold-aproved",
+    rejected: "hold-canceled",
+    cancelled: "hold-canceled",
+    canceled: "hold-canceled",
+    reversed: "unsubs",
+  };
+  const event = rawEvent || statusEventMap[providerStatus] || "";
   const token = String(params.get("p1") || "").trim();
   const prizeId = String(params.get("p2") || "").trim();
   const profitText = String(params.get("profit") || "").trim();
@@ -329,26 +339,40 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     return { ok: false as const, status: 400, error: "Postback is missing a valid event_id, p1, p2 or profit." };
   }
 
+  const payableEvents = new Set(["subs", "redeem", "iclick", "rebill", "hold-aproved"]);
+  const pendingEvents = new Set(["hold"]);
+  const nonPayableEvents = new Set(["unsubs", "hold-canceled"]);
+  if (!payableEvents.has(event) && !pendingEvents.has(event) && !nonPayableEvents.has(event)) {
+    return { ok: false as const, status: 400, error: "Unsupported Golden Goose event or status." };
+  }
+
   const promotion = await queryRtdb(`commerce/promotionLinks/${token}`) as any;
   if (!promotion || promotion.service !== "special-prize" || promotion.specialPrizeId !== prizeId || !promotion.creatorId) {
     return { ok: false as const, status: 400, error: "Promotion attribution could not be verified." };
   }
-  const eventPath = conversionPath(eventId);
-  const previous = await queryRtdb(eventPath) as any;
-  if (previous) return { ok: true as const, status: 200, duplicate: true, eventId };
 
-  const payableEvents = new Set(["subs", "redeem", "iclick", "rebill", "hold-aproved"]);
-  const pendingEvents = new Set(["hold"]);
-  const knownEvents = new Set([...payableEvents, ...pendingEvents, "unsubs", "hold-canceled"]);
-  if (!knownEvents.has(event)) return { ok: false as const, status: 400, error: "Unsupported Golden Goose event." };
   const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
   const currency = /^[A-Z]{3}$/.test(String(prizeRaw?.currency || "")) ? String(prizeRaw.currency) : "USD";
-  const commission = (payableEvents.has(event) || pendingEvents.has(event)) ? Math.round(profit * 0.35 * 10000) / 10000 : 0;
+  const eventPath = conversionPath(eventId);
+  const previous = await queryRtdb(eventPath) as any;
+  if (previous && (previous.token !== token || previous.prizeId !== prizeId || previous.creatorId !== String(promotion.creatorId))) {
+    return { ok: false as const, status: 409, error: "This conversion ID is already attached to a different creator attribution." };
+  }
+
+  const incomingStatus = payableEvents.has(event) ? "approved" : pendingEvents.has(event) ? "pending" : "non_payable";
+  // A delayed pending notification must never downgrade an already-approved conversion.
+  // Explicit cancellation/reversal events may move it out of approved earnings.
+  const status = previous?.status === "approved" && incomingStatus === "pending" ? "approved" : incomingStatus;
+  const commission = status === "approved" || status === "pending"
+    ? Math.round(profit * 0.35 * 10000) / 10000
+    : 0;
   const now = new Date().toISOString();
   const conversion = {
+    ...(previous || {}),
     id: eventId,
     eventId,
     event,
+    providerStatus: providerStatus || status,
     token,
     creatorId: String(promotion.creatorId),
     prizeId,
@@ -357,12 +381,35 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     currency,
     creatorSharePercent: 35,
     creatorCommission: commission,
-    status: payableEvents.has(event) ? "approved" : pendingEvents.has(event) ? "pending" : "non_payable",
-    settlementStatus: payableEvents.has(event) ? "pending" : "not_payable",
-    receivedAt: now,
+    status,
+    settlementStatus: status === "approved" ? (previous?.settlementStatus === "paid" ? "paid" : "pending") : status === "pending" ? "not_payable" : "not_payable",
+    receivedAt: previous?.receivedAt || now,
+    updatedAt: now,
+    statusUpdatedAt: previous?.status === status ? (previous?.statusUpdatedAt || now) : now,
   };
-  await queryRtdb(eventPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(conversion) });
-  return { ok: true as const, status: 200, duplicate: false, eventId, event, creatorCommission: commission, currency, statusLabel: conversion.status };
+
+  const unchanged = previous
+    && previous.status === conversion.status
+    && Number(previous.profit || 0) === profit
+    && previous.event === event;
+  if (unchanged) return { ok: true as const, status: 200, duplicate: true, eventId, statusLabel: previous.status };
+
+  await queryRtdb(eventPath, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(conversion),
+  });
+  return {
+    ok: true as const,
+    status: 200,
+    duplicate: false,
+    updated: Boolean(previous),
+    eventId,
+    event,
+    creatorCommission: commission,
+    currency,
+    statusLabel: conversion.status,
+  };
 }
 
 export async function getCreatorSpecialPrizeEarnings(creatorId: string) {
