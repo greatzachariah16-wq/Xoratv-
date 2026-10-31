@@ -250,10 +250,16 @@ export async function getFeedPosts(
   const feedMap = feedSnap.val() as Record<string, PostFeedIndexEntry>;
   const orderedIds = Object.entries(feedMap)
     .filter(([, entry]) => entry.status === "published" && entry.approval_status === "approved")
+    // Creator uploads must not be buried behind older catalogue items simply
+    // because those items have a higher recommendation score. The feed index
+    // now carries source/kind; created_at also brings older creator index
+    // entries (written before that metadata existed) near the front.
     .sort(([, a], [, b]) => {
-      const scoreDiff = (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
-      if (scoreDiff !== 0) return scoreDiff;
-      return (b.created_at || "").localeCompare(a.created_at || "");
+      const creatorDiff = Number(b.source === "creator") - Number(a.source === "creator");
+      if (creatorDiff !== 0) return creatorDiff;
+      const dateDiff = (b.created_at || "").localeCompare(a.created_at || "");
+      if (dateDiff !== 0) return dateDiff;
+      return (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0);
     })
     .map(([id]) => id);
 
