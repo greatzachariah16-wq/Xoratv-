@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, Clock3, Database, Gift, Loader2, RefreshCw, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Database, Gift, RefreshCw, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch } from "@/lib/commerce";
