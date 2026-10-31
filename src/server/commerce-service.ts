@@ -5,6 +5,7 @@ import { listSpecialPrizes, getCreatorSpecialPrizeEarnings } from "./special-pri
 import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 import { deleteXoraContent, getXoraContent } from "./content-repository";
 import { deleteCloudinaryVideo } from "./content-media-controller";
+import { recordPeriodClaim } from "./engagement-controller";
 
 const MELE_BASE = "https://meledata.ng/api/v1/developer";
 
@@ -815,21 +816,36 @@ export async function handleMeleWebhook(request: Request) {
 
   if (matched?.id) {
     const normalizedStatus =
-      providerStatus === "delivered" || providerStatus === "success"
+      ["delivered", "success", "successful", "completed"].includes(providerStatus)
         ? "success"
-        : providerStatus === "failed"
+        : ["failed", "failure", "rejected"].includes(providerStatus)
           ? "failed"
           : "processing";
+    const webhookUpdate: Record<string, unknown> = {
+      status: normalizedStatus,
+      providerStatus,
+      webhookReceivedAt: new Date().toISOString(),
+      meleWebhookId: webhookId,
+      updatedAt: new Date().toISOString(),
+      ...(normalizedStatus === "success" ? { completedAt: new Date().toISOString() } : {}),
+    };
     await queryRtdb(`commerce/dataOrders/${matched.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: normalizedStatus,
-        providerStatus,
-        webhookReceivedAt: new Date().toISOString(),
-        meleWebhookId: webhookId,
-      }),
+      body: JSON.stringify(webhookUpdate),
     });
+    // A successful asynchronous MELE data-reward delivery counts once toward
+    // the user engagement milestones. Ordinary paid data orders are excluded.
+    if (matched.rewardType === "data_reward" && normalizedStatus === "success" && !matched.engagementRecordedAt) {
+      await recordPeriodClaim(String(matched.userId)).catch((error) => {
+        console.error("[MELE webhook] Could not record successful data reward claim:", error);
+      });
+      await queryRtdb(`commerce/dataOrders/${matched.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engagementRecordedAt: new Date().toISOString() }),
+      });
+    }
   }
 
   return {
