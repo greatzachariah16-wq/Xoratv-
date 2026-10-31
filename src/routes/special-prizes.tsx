@@ -12,7 +12,8 @@ const defaultBanner: Banner = { enabled: false, imageUrl: "", title: "Special Pr
 function SpecialPrizes() {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [banner, setBanner] = useState<Banner>(defaultBanner);
-  const [selected, setSelected] = useState<Prize | null>(null);\n  const [providerStarted, setProviderStarted] = useState(false);
+  const [selected, setSelected] = useState<Prize | null>(null);
+  const [providerStarted, setProviderStarted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
