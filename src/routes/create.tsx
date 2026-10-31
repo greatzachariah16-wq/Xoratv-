@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, Lock, Film, CheckCircle2, Gift, Sparkles } from "lucide-react";
+import { Upload, Lock, CheckCircle2, Gift, Sparkles } from "lucide-react";
 
 import {
   uploadToCloudinary,
   isCloudinaryConfigured,
-  resolveMediaUrl,
 } from "@/lib/media";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
