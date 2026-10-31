@@ -696,6 +696,7 @@ export default {
     // Creator promotion links + MELE/VTUshare + creator/course commerce APIs
     if (
       url.pathname.startsWith("/s/") ||
+      url.pathname.startsWith("/goldengoose/test/") ||
       url.pathname.startsWith("/api/commerce") ||
       url.pathname.startsWith("/api/admin/commerce") ||
       url.pathname === "/api/webhooks/mele" ||
