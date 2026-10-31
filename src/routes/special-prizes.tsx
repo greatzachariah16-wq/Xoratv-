@@ -17,6 +17,8 @@ function SpecialPrizes() {
   const [error, setError] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
   const [promotionToken, setPromotionToken] = useState("");
+  const [promotionClickId, setPromotionClickId] = useState("");
+  const [promotionClickPrizeId, setPromotionClickPrizeId] = useState("");
   const [requestedPrizeUnavailable, setRequestedPrizeUnavailable] = useState(false);
 
   async function load() {
@@ -28,6 +30,8 @@ function SpecialPrizes() {
       const params = new URLSearchParams(window.location.search);
       const wanted = params.get("offer");
       setPromotionToken(params.get("promo") || "");
+      setPromotionClickId(params.get("click") || "");
+      setPromotionClickPrizeId(wanted || "");
       const matchingPrize = wanted ? (result.prizes || []).find((p) => p.id === wanted) || null : null;
       setSelected(matchingPrize);
       setRequestedPrizeUnavailable(Boolean(wanted && !matchingPrize));
@@ -45,7 +49,9 @@ function SpecialPrizes() {
     mount.replaceChildren();
     if (selected.scriptSnippet?.trim()) {
       const snippet = selected.scriptSnippet.trim()
-        .replaceAll("{{p1}}", encodeURIComponent(promotionToken))
+        .replaceAll("{{p1}}", encodeURIComponent(
+          promotionClickId && promotionClickPrizeId === selected.id ? promotionClickId : promotionToken,
+        ))
         .replaceAll("{{p2}}", encodeURIComponent(selected.id));
       const looksLikeMarkup = /<\s*[a-z!/]/i.test(snippet);
       if (looksLikeMarkup) {
@@ -84,7 +90,10 @@ function SpecialPrizes() {
     const script = document.createElement("script");
     const providerUrl = new URL(`https://ngglznw.com/bc/${encodeURIComponent(selected.campaignId)}.js`);
     providerUrl.searchParams.set("force_https", "1");
-    if (promotionToken) providerUrl.searchParams.set("p1", promotionToken);
+    const attributionP1 = promotionClickId && promotionClickPrizeId === selected.id
+      ? promotionClickId
+      : promotionToken;
+    if (attributionP1) providerUrl.searchParams.set("p1", attributionP1);
     providerUrl.searchParams.set("p2", selected.id);
     script.src = providerUrl.toString();
     script.async = true;
@@ -92,7 +101,7 @@ function SpecialPrizes() {
     script.onerror = () => { setError("The offer provider script could not load. Please try again later."); note.textContent = "The provider script could not be loaded."; };
     mount.appendChild(script);
     return () => { mount.replaceChildren(); };
-  }, [selected?.id, selected?.campaignId, selected?.scriptSnippet, selected?.title, promotionToken]);
+  }, [selected?.id, selected?.campaignId, selected?.scriptSnippet, selected?.title, promotionToken, promotionClickId, promotionClickPrizeId]);
 
   async function openPrize(prize: Prize) {
     setError("");
@@ -100,7 +109,10 @@ function SpecialPrizes() {
       await commerceFetch("/api/commerce/special-prizes/click", { method: "POST", body: JSON.stringify({ id: prize.id }) });
       setSelected(prize);
       const promoQuery = promotionToken ? `&promo=${encodeURIComponent(promotionToken)}` : "";
-      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}`);
+      const clickQuery = promotionClickId && promotionClickPrizeId === prize.id
+        ? `&click=${encodeURIComponent(promotionClickId)}`
+        : "";
+      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}${clickQuery}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { setError(e instanceof Error ? e.message : "This prize is no longer available."); await load(); }
   }
