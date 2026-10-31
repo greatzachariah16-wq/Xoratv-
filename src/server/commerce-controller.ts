@@ -9,7 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner, resolveSpecialPrizePromotionClick, listSpecialPrizeTraffic } from "./special-prizes-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner, resolveSpecialPrizePromotionClick, listSpecialPrizeTraffic, createGoldenGooseTest, getGoldenGooseTest, renderGoldenGooseTestPage } from "./special-prizes-service";
 
 
 const headers = {
@@ -89,6 +89,41 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, click: await recordSpecialPrizeClick(String(body.id)) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "This prize is no longer available." }, 400);
+    }
+  }
+
+
+  if (path.startsWith("/goldengoose/test/") && request.method === "GET") {
+    try {
+      const testId = path.slice("/goldengoose/test/".length).split("/")[0];
+      return await renderGoldenGooseTestPage(testId);
+    } catch (e) {
+      return new Response(e instanceof Error ? e.message : "Golden Goose test link not found.", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/test" && request.method === "POST") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const body = await request.json();
+      if (!body.id) return json({ ok: false, error: "Choose a Special Prize campaign." }, 400);
+      const test = await createGoldenGooseTest(String(body.id), url.origin);
+      return json({ ok: true, test });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create Golden Goose test link." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/special-prizes/test" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      const testId = url.searchParams.get("id") || "";
+      const test = await getGoldenGooseTest(testId);
+      return json({ ok: true, test });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not read Golden Goose test." }, 404);
     }
   }
 
