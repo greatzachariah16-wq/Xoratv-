@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Lock, Film, CheckCircle2, Gift, Sparkles } from "lucide-react";
-import { addLocalPost } from "@/lib/api";
+
 import {
   uploadToCloudinary,
   isCloudinaryConfigured,
@@ -14,7 +14,7 @@ import { AppShell } from "@/components/xora/AppShell";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { cn } from "@/lib/utils";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
-import type { Enums } from "@/integrations/firebase/types";
+
 
 export const Route = createFileRoute("/create")({
   head: () => ({
@@ -32,8 +32,6 @@ export const Route = createFileRoute("/create")({
   component: CreatePage,
 });
 
-type Feed = Enums<"feed_type">;
-
 const MAX_DURATION_SECONDS = 1800; // 30 minutes
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
@@ -45,7 +43,7 @@ function CreatePage() {
   const isActiveCreator = creatorDashboard?.dashboard?.creator?.status === "active";
 
   const [kind, setKind] = useState<"video" | "text">("video");
-  const [feed, setFeed] = useState<Feed>("home");
+  
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [video, setVideo] = useState<File | null>(null);
@@ -165,50 +163,55 @@ function CreatePage() {
         mediaPath = uploaded.publicId || streamUrl;
 
         if (poster) {
-          if (isCloudinaryConfigured()) {
-            try {
-              const posterRes = await uploadToCloudinary(poster, {
-                resourceType: "image",
-                folder: "xora/posters",
-              });
-              posterPath = posterRes.url;
-            } catch (posterErr) {
-              console.warn("[Create] Cloudinary poster upload note:", posterErr);
-              posterPath = await uploadMedia("posters", user.id, poster).catch(() => null);
-            }
-          } else {
-            posterPath = await uploadMedia("posters", user.id, poster).catch(() => null);
+          if (!isCloudinaryConfigured()) {
+            throw new Error("Image uploads are temporarily unavailable. Please try again later.");
           }
+          const posterRes = await uploadToCloudinary(poster, {
+            resourceType: "image",
+            folder: "xora/posters",
+          });
+          posterPath = posterRes.url || posterRes.playbackUrl || null;
+          if (!posterPath) throw new Error("The cover image could not be saved.");
         }
       }
 
-      const postId = addLocalPost({
-        author_id: user.id,
-        kind,
-        feed: kind === "text" ? ("home" as const) : feed,
-        status: "published" as const,
-        approval_status: "approved" as const,
-        title: title.trim() || null,
-        caption: caption.trim() || null,
-        media_path: mediaPath,
-        poster_path: posterPath,
-        stream_url: streamUrl,
-        duration_seconds: durationSeconds,
-        featured: false,
-        recommendation_score: 90,
-        source: "creator",
-        playability_status: kind === "video" && feed === "shorts" ? "playable" : null,
-        special_prize_id: specialPrizeId,
-        special_prize_link_token: specialPrizeLinkToken,
+      if (kind === "text") {
+        if (!poster) throw new Error("Add a picture to your post before publishing.");
+        if (!isCloudinaryConfigured()) {
+          throw new Error("Image uploads are temporarily unavailable. Please try again later.");
+        }
+        const imageRes = await uploadToCloudinary(poster, {
+          resourceType: "image",
+          folder: "xora/posts",
+        });
+        posterPath = imageRes.url || imageRes.playbackUrl || null;
+        if (!posterPath) throw new Error("The post picture could not be saved.");
+      }
+
+      const result = await commerceFetch<{ ok: true; post: { id: string } }>("/api/commerce/creator/post", {
+        method: "POST",
+        body: JSON.stringify({
+          kind,
+          title: title.trim() || null,
+          caption: caption.trim() || null,
+          mediaPath,
+          posterPath,
+          streamUrl,
+          durationSeconds,
+          specialPrizeId,
+          specialPrizeLinkToken,
+        }),
       });
-      return postId;
+      return { postId: result.post.id, kind };
     },
-    onSuccess: (postId) => {
+    onSuccess: ({ postId, kind }) => {
       queryClient.invalidateQueries({ queryKey: ["feed"] });
       queryClient.invalidateQueries({ queryKey: ["feed-infinite"] });
       queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["commerce", "creator-dashboard"] });
       toast.success("Posted");
-      void navigate({ to: "/video/$postId", params: { postId } });
+      if (kind === "text") void navigate({ to: "/" });
+      else void navigate({ to: "/video/$postId", params: { postId } });
     },
     onError: (error) => {
       setProgress(0);
@@ -268,25 +271,9 @@ function CreatePage() {
       >
         {kind === "video" ? (
           <>
-            <div>
-              <span className="text-xs font-medium text-muted-foreground">Feed</span>
-              <div className="mt-1.5 flex gap-2">
-                {(["home", "shorts", "learn"] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setFeed(option)}
-                    className={cn(
-                      "press rounded-full border px-3 py-1.5 text-xs font-semibold capitalize",
-                      feed === option
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border text-muted-foreground",
-                    )}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+            <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5">
+              <p className="text-xs font-semibold text-primary">Publishing to Shorts</p>
+              <p className="mt-1 text-[11px] leading-5 text-muted-foreground">Creator videos appear in the Shorts feed and on your X Channel — not in the main Home feed.</p>
             </div>
 
             <label className="flex cursor-pointer flex-col items-center rounded-xl border border-dashed border-border bg-background px-4 py-8 text-center transition hover:border-primary/50">
@@ -374,6 +361,20 @@ function CreatePage() {
           </>
         ) : null}
 
+        {kind === "text" ? (
+          <label className="flex cursor-pointer flex-col items-center rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-6 text-center transition hover:border-primary/60">
+            <Upload className="size-6 text-primary" aria-hidden="true" />
+            <span className="mt-2 text-sm font-semibold">{poster ? poster.name : "Add a picture to your post"}</span>
+            <span className="mt-1 text-xs text-muted-foreground">A picture is required for every text post.</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              className="sr-only"
+              onChange={(e) => setPoster(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        ) : null}
+
         <div>
           <label htmlFor="caption" className="text-xs font-medium text-muted-foreground">
             {kind === "text" ? "Your post" : "Caption"}
@@ -410,7 +411,7 @@ function CreatePage() {
           disabled={mutation.isPending}
           className="press w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          {mutation.isPending ? "Publishing…" : "Publish"}
+          {mutation.isPending ? (kind === "video" ? "Uploading and publishing…" : "Saving and publishing…") : "Publish"}
         </button>
       </form>
     </AppShell>
