@@ -271,6 +271,15 @@ export async function getFeedPosts(
       merged.set(post.id, post);
     }
   }
+  // Preserve the original whole-catalog fallback when an index has not yet
+  // been created for this feed; otherwise only creator posts would survive.
+  if (!feedSnap.exists()) {
+    for (const post of allPosts) {
+      if (post.feed === feed && post.status === "published" && post.approval_status === "approved") {
+        merged.set(post.id, post);
+      }
+    }
+  }
   for (const post of creatorPosts) merged.set(post.id, post);
 
   const ordered = Array.from(merged.values()).sort((a, b) => {
