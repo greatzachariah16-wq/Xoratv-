@@ -18,7 +18,8 @@ function SpecialPrizesAdmin() {
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
-  const [uploadingImage,setUploadingImage]=useState(false);\n  const [uploadingScreenshots,setUploadingScreenshots]=useState(false);
+  const [uploadingImage,setUploadingImage]=useState(false);
+  const [uploadingScreenshots,setUploadingScreenshots]=useState(false);
   const [bannerDraft,setBannerDraft]=useState<Banner>(defaultBanner);
   const [bannerBusy,setBannerBusy]=useState(false);
   const [uploadingBanner,setUploadingBanner]=useState(false);
