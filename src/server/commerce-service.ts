@@ -1473,6 +1473,8 @@ export async function createCreatorPost(params: {
       recommendation_score: 90,
       status: "published",
       approval_status: "approved",
+      source: "creator",
+      kind: params.kind,
     }),
   });
   return record;
