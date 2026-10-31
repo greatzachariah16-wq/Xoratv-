@@ -8,10 +8,12 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 export const Route = createFileRoute("/admin/commerce/special-prizes")({ component: SpecialPrizesAdmin });
 type Prize = { id: string; title: string; description: string; campaignId: string; imageUrl: string; scriptSnippet: string; currency: string; status: "active" | "paused"; clicks: number; createdAt: string; updatedAt: string };
 type Banner = { enabled: boolean; imageUrl: string; updatedAt?: string };
+type Traffic = { id:string; creatorId:string; creatorUsername:string; creatorDisplayName:string; prizeId:string; prizeTitle:string; postId:string|null; source:string; sourceType:string; medium:string|null; campaign:string|null; referrerHost:string|null; clickedAt:string };
 const defaultBanner: Banner = { enabled: false, imageUrl: "" };
 const empty = { id: "", title: "", description: "", campaignId: "", imageUrl: "", scriptSnippet: "", currency: "USD", status: "active" as "active" | "paused" };
 function SpecialPrizesAdmin() {
   const [prizes,setPrizes]=useState<Prize[]>([]);
+  const [traffic,setTraffic]=useState<Traffic[]>([]);
   const [draft,setDraft]=useState(empty);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -20,7 +22,7 @@ function SpecialPrizesAdmin() {
   const [bannerDraft,setBannerDraft]=useState<Banner>(defaultBanner);
   const [bannerBusy,setBannerBusy]=useState(false);
   const [uploadingBanner,setUploadingBanner]=useState(false);
-  async function load(){setLoading(true);try{const [r,b]=await Promise.all([commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes"),commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner")]);setPrizes(r.prizes||[]);setBannerDraft({...defaultBanner,...(b.banner||{})});}catch(e){setMessage(e instanceof Error?e.message:"Could not load Special Prizes settings.");}finally{setLoading(false);}}
+  async function load(){setLoading(true);try{const [r,b,t]=await Promise.all([commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes"),commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner"),commerceFetch<{traffic:Traffic[]}>("/api/admin/commerce/special-prizes/traffic")]);setPrizes(r.prizes||[]);setTraffic(t.traffic||[]);setBannerDraft({...defaultBanner,...(b.banner||{})});}catch(e){setMessage(e instanceof Error?e.message:"Could not load Special Prizes settings.");}finally{setLoading(false);}}
   useEffect(()=>{void load();},[]);
   function edit(p:Prize){setDraft({id:p.id,title:p.title,description:p.description,campaignId:p.campaignId,imageUrl:p.imageUrl||"",scriptSnippet:p.scriptSnippet||"",currency:p.currency||"USD",status:p.status});setMessage("");window.scrollTo({top:0,behavior:"smooth"});}
   async function uploadPrizeImage(file: File){
@@ -103,6 +105,26 @@ function SpecialPrizesAdmin() {
       <section className="space-y-3"><div className="flex items-center justify-between"><h2 className="font-display text-xl font-semibold">Saved prizes ({prizes.length})</h2><button type="button" onClick={()=>void load()} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs font-semibold"><RefreshCw className={loading?"size-3.5 animate-spin":"size-3.5"}/>Refresh</button></div>
         {loading&&!prizes.length?<p className="rounded-xl border border-border p-5 text-sm text-muted-foreground">Loading catalogue…</p>:null}
         {prizes.map(p=><article key={p.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{p.title}</h3><span className={p.status==="active"?"rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600":"rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-muted-foreground"}>{p.status}</span></div><p className="mt-1 break-all text-[11px] text-muted-foreground">Campaign: {p.campaignId||"custom snippet"} · {p.currency||"USD"} · Opens: {p.clicks}</p><p className="mt-1 text-xs text-muted-foreground">{p.description}</p>{p.imageUrl?<p className="mt-1 break-all text-[10px] text-muted-foreground">Image: {p.imageUrl}</p>:null}{p.scriptSnippet?<p className="mt-1 text-[10px] text-primary">Custom provider snippet saved</p>:null}</div><button disabled={busy} type="button" onClick={()=>void toggle(p)} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">{p.status==="active"?<ToggleRight className="size-4"/>:<ToggleLeft className="size-4"/>}{p.status==="active"?"Pause":"Activate"}</button><button disabled={busy} type="button" onClick={()=>edit(p)} className="rounded-full bg-primary/10 px-3 py-2 text-xs font-semibold text-primary disabled:opacity-50">Edit</button><button disabled={busy} type="button" onClick={()=>void remove(p)} className="inline-flex items-center gap-1 rounded-full border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Trash2 className="size-3.5"/>Delete</button></article>)}
+      </section>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Attribution</p><h2 className="mt-1 font-display text-xl font-semibold">Promotion traffic ({traffic.length})</h2><p className="mt-1 text-xs text-muted-foreground">Each tracked visit shows its traffic source, the creator account and the Special Prize that was opened.</p></div>
+          <button type="button" onClick={()=>void load()} className="rounded-full border border-border px-3 py-2 text-xs font-semibold">Refresh traffic</button>
+        </div>
+        {traffic.length===0 ? <div className="rounded-2xl border border-dashed border-border bg-surface p-5 text-sm text-muted-foreground">No attributed Special Prize visits have been recorded yet. Visits through creator promotion links will appear here.</div> : (
+          <div className="space-y-2">
+            {traffic.map(item=><article key={item.id} className="rounded-2xl border border-border bg-surface p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0"><p className="text-sm font-semibold">{item.creatorDisplayName || "Xora Creator"} <span className="font-normal text-muted-foreground">{item.creatorUsername ? `@${item.creatorUsername}` : `· ${item.creatorId}`}</span></p><p className="mt-1 text-xs text-muted-foreground">Special Prize: <span className="font-medium text-foreground">{item.prizeTitle}</span></p></div>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold capitalize text-primary">{item.sourceType}</span>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <div className="rounded-xl bg-background p-3"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Traffic source</p><p className="mt-1 break-all font-semibold">{item.source || "Direct / unknown"}</p>{item.referrerHost && item.referrerHost!==item.source?<p className="mt-1 break-all text-[10px] text-muted-foreground">Referrer: {item.referrerHost}</p>:null}</div>
+                <div className="rounded-xl bg-background p-3"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Visit details</p><p className="mt-1">{new Date(item.clickedAt).toLocaleString()}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.medium ? `Medium: ${item.medium}` : "No medium tag"}{item.campaign ? ` · Campaign: ${item.campaign}` : ""}</p>{item.postId?<p className="mt-1 text-[10px] text-muted-foreground">Video post: {item.postId}</p>:null}</div>
+              </div>
+            </article>)}
+          </div>
+        )}
       </section>
     </div>
   </AdminProtectedLayout>;
