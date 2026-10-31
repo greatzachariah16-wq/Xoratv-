@@ -82,12 +82,14 @@ function DataRewardsPage() {
       });
       const status = result.claim.status;
       setNotice({
-        type: status === "success" ? "success" : "info",
+        type: status === "success" ? "success" : status === "failed" ? "error" : "info",
         text: status === "success"
           ? `${selected.dataSize} has been successfully sent to ${phone}.`
-          : "Your request reached MELE and is being processed. Check the claim history for updates.",
+          : status === "failed"
+            ? "MELE could not fulfil this reward. No successful claim was recorded. You can try again after checking the recipient number."
+            : "Your request reached MELE and is being processed. Check the claim history for updates.",
       });
-      setClaimKey("");
+      setClaimKey(status === "failed" ? "" : "");
       await rewards.refetch();
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "Could not claim this data reward." });
