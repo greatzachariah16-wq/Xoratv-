@@ -27,6 +27,7 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as XtvSeriesRouteImport } from './routes/xtv-series'
 import { Route as OffersRouteImport } from './routes/offers'
+import { Route as DataRewardsRouteImport } from './routes/data-rewards'
 import { Route as SpecialPrizesRouteImport } from './routes/special-prizes'
 import { Route as AdminCampaignsRouteImport } from './routes/admin.campaigns'
 import { Route as AdminDiscoveryRouteImport } from './routes/admin.discovery'
@@ -142,6 +143,7 @@ const XtvSeriesRoute = XtvSeriesRouteImport.update({
 } as any)
 const OffersRoute = OffersRouteImport.update({ id: '/offers', path: '/offers', getParentRoute: () => rootRouteImport } as any)
 const SpecialPrizesRoute = SpecialPrizesRouteImport.update({ id: '/special-prizes', path: '/special-prizes', getParentRoute: () => rootRouteImport } as any)
+const DataRewardsRoute = DataRewardsRouteImport.update({ id: '/data-rewards', path: '/data-rewards', getParentRoute: () => rootRouteImport } as any)
 const AdminCampaignsRoute = AdminCampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
@@ -387,6 +389,7 @@ export interface FileRouteTypes {
     | '/xtv-series'
     | '/offers'
     | '/special-prizes'
+    | '/data-rewards'
     | '/admin/commerce'
     | '/admin/campaigns'
     | '/admin/discovery'
@@ -510,6 +513,7 @@ export interface RootRouteChildren {
   XtvSeriesRoute: typeof XtvSeriesRoute
   OffersRoute: typeof OffersRoute
   SpecialPrizesRoute: typeof SpecialPrizesRoute
+  DataRewardsRoute: typeof DataRewardsRoute
   ProfileUsernameRoute: typeof ProfileUsernameRoute
   VideoPostIdRoute: typeof VideoPostIdRoute
 }
@@ -638,6 +642,7 @@ declare module '@tanstack/react-router' {
     }
     '/offers': { id: '/offers'; path: '/offers'; fullPath: '/offers'; preLoaderRoute: typeof OffersRouteImport; parentRoute: typeof rootRouteImport }
     '/special-prizes': { id: '/special-prizes'; path: '/special-prizes'; fullPath: '/special-prizes'; preLoaderRoute: typeof SpecialPrizesRouteImport; parentRoute: typeof rootRouteImport }
+    '/data-rewards': { id: '/data-rewards'; path: '/data-rewards'; fullPath: '/data-rewards'; preLoaderRoute: typeof DataRewardsRouteImport; parentRoute: typeof rootRouteImport }
     '/admin/campaigns': {
       id: '/admin/campaigns'
       path: '/campaigns'
@@ -846,6 +851,7 @@ const rootRouteChildren: RootRouteChildren = {
   XtvSeriesRoute: XtvSeriesRoute,
   OffersRoute: OffersRoute,
   SpecialPrizesRoute: SpecialPrizesRoute,
+  DataRewardsRoute: DataRewardsRoute,
   ProfileUsernameRoute: ProfileUsernameRoute,
   VideoPostIdRoute: VideoPostIdRoute,
 }
