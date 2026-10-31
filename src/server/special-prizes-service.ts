@@ -287,6 +287,7 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
   const target = new URL("/special-prizes", url.origin);
   target.searchParams.set("offer", String(promotion.specialPrizeId));
   target.searchParams.set("promo", token);
+  target.searchParams.set("click", record.id);
   if (postId) target.searchParams.set("postId", postId);
   return { promotion, targetPath: target.pathname + target.search };
 }
@@ -302,83 +303,77 @@ export async function listSpecialPrizeTraffic(limit = 250): Promise<SpecialPrize
 const conversionPath = (eventId: string) => `commerce/specialPrizeConversions/${crypto.createHash("sha256").update(eventId).digest("hex")}`;
 
 export async function recordGoldenGoosePostback(request: Request, url: URL) {
-  const configuredSecret = process.env.GOLDENGOOSE_POSTBACK_SECRET?.trim();
-  if (!configuredSecret) return { ok: false as const, status: 503, error: "Golden Goose postback secret is not configured." };
-  const suppliedSecret = url.searchParams.get("key") || request.headers.get("x-goldengoose-secret") || "";
-  if (suppliedSecret !== configuredSecret) return { ok: false as const, status: 401, error: "Invalid postback key." };
-
-  let params = new URLSearchParams(url.searchParams);
+  const secret = process.env.GOLDENGOOSE_POSTBACK_SECRET?.trim();
+  if (!secret) return { ok: false as const, status: 503, error: "Golden Goose postback secret is not configured." };
+  const supplied = url.searchParams.get("key") || request.headers.get("x-goldengoose-secret") || "";
+  if (supplied !== secret) return { ok: false as const, status: 401, error: "Invalid postback key." };
+  const params = new URLSearchParams(url.searchParams);
   if (request.method === "POST") {
-    const contentType = request.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
+    const type = request.headers.get("content-type") || "";
+    if (type.includes("application/json")) {
       const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-      for (const [key, value] of Object.entries(body)) if (value != null) params.set(key, String(value));
-    } else if (contentType.includes("application/x-www-form-urlencoded")) {
-      const body = new URLSearchParams(await request.text());
-      body.forEach((value, key) => params.set(key, value));
+      for (const [k,v] of Object.entries(body)) if (v != null) params.set(k,String(v));
+    } else if (type.includes("application/x-www-form-urlencoded")) {
+      new URLSearchParams(await request.text()).forEach((v,k)=>params.set(k,v));
     }
   }
-
-  const eventId = String(params.get("event_id") || "").trim();
-  const event = String(params.get("event") || "").trim().toLowerCase();
-  const token = String(params.get("p1") || "").trim();
-  const prizeId = String(params.get("p2") || "").trim();
-  const profitText = String(params.get("profit") || "").trim();
-  const profit = Number(profitText);
-  if (!eventId || eventId.length > 200 || !/^[A-Za-z0-9_-]{10,40}$/.test(token) || !/^[A-Za-z0-9_-]{1,100}$/.test(prizeId) || !Number.isFinite(profit) || profit < 0) {
-    return { ok: false as const, status: 400, error: "Postback is missing a valid event_id, p1, p2 or profit." };
+  const eventId=String(params.get("event_id")||"").trim();
+  const event=String(params.get("event")||"").trim().toLowerCase();
+  const p1=String(params.get("p1")||"").trim();
+  const prizeId=String(params.get("p2")||"").trim();
+  const profit=Number(String(params.get("profit")||"").trim());
+  const payable=new Set(["subs","redeem","iclick","rebill"]);
+  const pending=new Set(["hold"]);
+  const heldApproved=new Set(["hold-aproved","hold-approved"]);
+  const heldCancelled=new Set(["hold-canceled","hold-cancelled"]);
+  if(!eventId||eventId.length>200||!(/^[A-Za-z0-9_-]{10,40}$/).test(p1)||!(/^[A-Za-z0-9_-]{1,100}$/).test(prizeId)||!Number.isFinite(profit)||profit<0)
+    return {ok:false as const,status:400,error:"Postback is missing a valid event_id, p1, p2 or profit."};
+  if(![...payable,...pending,...heldApproved,...heldCancelled,"unsubs"].includes(event))
+    return {ok:false as const,status:400,error:"Unsupported Golden Goose event."};
+  const path=conversionPath(eventId);
+  if(await queryRtdb(path)) return {ok:true as const,status:200,duplicate:true,eventId};
+  let traffic:any=null, promotion:any=null;
+  if(/^[0-9a-f-]{36}$/i.test(p1)){
+    traffic=await queryRtdb(`commerce/specialPrizeTraffic/${p1}`) as any;
+    if(traffic?.id!==p1||String(traffic.prizeId)!==prizeId) traffic=null;
   }
-
-  const promotion = await queryRtdb(`commerce/promotionLinks/${token}`) as any;
-  if (!promotion || promotion.service !== "special-prize" || promotion.specialPrizeId !== prizeId || !promotion.creatorId) {
-    return { ok: false as const, status: 400, error: "Promotion attribution could not be verified." };
+  if(!traffic){
+    promotion=await queryRtdb(`commerce/promotionLinks/${p1}`) as any;
+    if(!promotion||promotion.service!=="special-prize"||String(promotion.specialPrizeId)!==prizeId||!promotion.creatorId)
+      return {ok:false as const,status:400,error:"Promotion attribution could not be verified."};
   }
-  const eventPath = conversionPath(eventId);
-  const previous = await queryRtdb(eventPath) as any;
-  if (previous) return { ok: true as const, status: 200, duplicate: true, eventId };
-
-  const payableEvents = new Set(["subs", "redeem", "iclick", "rebill", "hold-aproved"]);
-  const pendingEvents = new Set(["hold"]);
-  const knownEvents = new Set([...payableEvents, ...pendingEvents, "unsubs", "hold-canceled"]);
-  if (!knownEvents.has(event)) return { ok: false as const, status: 400, error: "Unsupported Golden Goose event." };
-  const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
-  const currency = /^[A-Z]{3}$/.test(String(prizeRaw?.currency || "")) ? String(prizeRaw.currency) : "USD";
-  const commission = (payableEvents.has(event) || pendingEvents.has(event)) ? Math.round(profit * 0.35 * 10000) / 10000 : 0;
-  const now = new Date().toISOString();
-  const conversion = {
-    id: eventId,
-    eventId,
-    event,
-    token,
-    creatorId: String(promotion.creatorId),
-    prizeId,
-    prizeTitle: String(promotion.label || prizeRaw?.title || "Special Prize"),
-    profit,
-    currency,
-    creatorSharePercent: 35,
-    creatorCommission: commission,
-    status: payableEvents.has(event) ? "approved" : pendingEvents.has(event) ? "pending" : "non_payable",
-    settlementStatus: payableEvents.has(event) ? "pending" : "not_payable",
-    receivedAt: now,
-  };
-  await queryRtdb(eventPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(conversion) });
-  return { ok: true as const, status: 200, duplicate: false, eventId, event, creatorCommission: commission, currency, statusLabel: conversion.status };
+  const creatorId=String(traffic?.creatorId||promotion?.creatorId||"");
+  const prize=await queryRtdb(`${prizesPath}/${prizeId}`) as any;
+  const currency=/^[A-Z]{3}$/.test(String(prize?.currency||""))?String(prize.currency):"USD";
+  const now=new Date().toISOString();
+  if(heldApproved.has(event)||heldCancelled.has(event)){
+    const all=await queryRtdb("commerce/specialPrizeConversions") as Record<string,any>|null;
+    const matches=Object.entries(all||{}).filter(([,v])=>v?.creatorId===creatorId&&v?.prizeId===prizeId&&v?.attributionKey===p1&&v?.event==="hold"&&v?.status==="pending");
+    if(matches.length!==1) return {ok:false as const,status:409,error:matches.length?"Multiple pending holds match this click; no earnings changed.":"No matching pending hold found; no earnings changed."};
+    const [key,old]=matches[0];
+    const status=heldApproved.has(event)?"approved":"cancelled";
+    await queryRtdb(`commerce/specialPrizeConversions/${key}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status,settlementStatus:status==="approved"?"pending":"not_payable",statusUpdatedAt:now,statusEventId:eventId})});
+    const audit={id:eventId,eventId,event,creatorId,prizeId,attributionKey:p1,token:old.token||p1,profit,currency,creatorSharePercent:35,creatorCommission:0,status:"status_update",updatesEventId:old.eventId||old.id,receivedAt:now};
+    await queryRtdb(path,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(audit)});
+    return {ok:true as const,status:200,duplicate:false,eventId,event,statusLabel:status,creatorCommission:0,currency};
+  }
+  const isPending=pending.has(event), isApproved=payable.has(event);
+  const commission=isPending||isApproved?Math.round(profit*.35*10000)/10000:0;
+  const conversion={id:eventId,eventId,event,token:String(traffic?.token||p1),attributionKey:p1,creatorId,prizeId,prizeTitle:String(traffic?.prizeTitle||promotion?.label||prize?.title||"Special Prize"),profit,currency,creatorSharePercent:35,creatorCommission:commission,status:isApproved?"approved":isPending?"pending":"non_payable",settlementStatus:isApproved?"pending":"not_payable",receivedAt:now};
+  await queryRtdb(path,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(conversion)});
+  return {ok:true as const,status:200,duplicate:false,eventId,event,creatorCommission:commission,currency,statusLabel:conversion.status};
 }
 
 export async function getCreatorSpecialPrizeEarnings(creatorId: string) {
-  const raw = await queryRtdb("commerce/specialPrizeConversions") as Record<string, any> | null;
-  const totals = new Map<string, { currency: string; confirmedCommission: number; pendingCommission: number; approvedEvents: number; pendingEvents: number }>();
-  for (const item of Object.values(raw || {})) {
-    if (item?.creatorId !== creatorId) continue;
-    const currency = /^[A-Z]{3}$/.test(String(item.currency || "")) ? String(item.currency) : "USD";
-    const current = totals.get(currency) || { currency, confirmedCommission: 0, pendingCommission: 0, approvedEvents: 0, pendingEvents: 0 };
-    if (item.status === "approved") { current.confirmedCommission += Number(item.creatorCommission || 0); current.approvedEvents += 1; }
-    if (item.status === "pending") { current.pendingCommission += Number(item.creatorCommission || 0); current.pendingEvents += 1; }
-    totals.set(currency, current);
+  const raw=await queryRtdb("commerce/specialPrizeConversions") as Record<string,any>|null;
+  const totals=new Map<string,{currency:string;confirmedCommission:number;pendingCommission:number;approvedEvents:number;pendingEvents:number}>();
+  for(const item of Object.values(raw||{})){
+    if(item?.creatorId!==creatorId) continue;
+    const currency=/^[A-Z]{3}$/.test(String(item.currency||""))?String(item.currency):"USD";
+    const row=totals.get(currency)||{currency,confirmedCommission:0,pendingCommission:0,approvedEvents:0,pendingEvents:0};
+    if(item.status==="approved"){row.confirmedCommission+=Number(item.creatorCommission||0);row.approvedEvents++;}
+    if(item.status==="pending"){row.pendingCommission+=Number(item.creatorCommission||0);row.pendingEvents++;}
+    totals.set(currency,row);
   }
-  return [...totals.values()].map((item) => ({
-    ...item,
-    confirmedCommission: Math.round(item.confirmedCommission * 10000) / 10000,
-    pendingCommission: Math.round(item.pendingCommission * 10000) / 10000,
-  }));
+  return [...totals.values()].map(v=>({...v,confirmedCommission:Math.round(v.confirmedCommission*10000)/10000,pendingCommission:Math.round(v.pendingCommission*10000)/10000}));
 }
