@@ -128,7 +128,7 @@ function SpecialPrizes() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {prizes.map((prize) => <article key={prize.id} className="group flex h-full flex-col overflow-hidden rounded-[26px] border border-primary/15 bg-surface shadow-card transition-shadow hover:shadow-lg">
           <div className="relative flex min-h-36 items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary sm:min-h-44">
-            {prize.imageUrl ? <img src={prize.imageUrl} alt="" loading="lazy" className="h-56 w-full object-contain sm:h-64" /> : <span className="grid size-20 place-items-center rounded-3xl bg-primary/10 text-primary"><Gift className="size-9"/></span>}
+            {prize.imageUrl ? <img src={prize.imageUrl} alt="" loading="lazy" className="h-44 w-full object-cover sm:h-52" /> : <span className="grid size-20 place-items-center rounded-3xl bg-primary/10 text-primary"><Gift className="size-9"/></span>}
           </div>
           <div className="flex flex-1 flex-col p-5 sm:p-6">
             <h2 className="text-lg font-bold leading-snug sm:text-xl">{prize.title}</h2>
