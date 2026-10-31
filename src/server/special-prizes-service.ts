@@ -335,6 +335,80 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
   return { promotion, targetPath: target.pathname + target.search };
 }
 
+
+type GoldenGooseTestRecord = {
+  id: string;
+  prizeId: string;
+  prizeTitle: string;
+  campaignId: string;
+  p1: string;
+  p2: string;
+  scriptUrl: string;
+  status: "waiting" | "received";
+  createdAt: string;
+  receivedAt?: string;
+  eventId?: string;
+  event?: string;
+  profit?: number;
+};
+
+const goldenGooseTestsPath = "commerce/goldenGooseTests";
+
+function getPrizeProviderScriptUrl(prize: SpecialPrize): string {
+  let rawUrl = "";
+  if (prize.scriptSnippet.trim()) {
+    const match = prize.scriptSnippet.match(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
+    if (match?.[1]) rawUrl = match[1];
+  }
+  if (!rawUrl && prize.campaignId) rawUrl = getGoldenGooseScriptUrl(prize.campaignId);
+  if (!rawUrl) throw new Error("This prize has no usable Golden Goose script URL.");
+  const parsed = new URL(rawUrl);
+  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !/^\/bc\/[A-Za-z0-9_-]{4,100}\.js$/i.test(parsed.pathname)) {
+    throw new Error("The saved provider snippet is not a supported Golden Goose campaign script.");
+  }
+  parsed.searchParams.set("force_https", "1");
+  return parsed.toString();
+}
+
+export async function createGoldenGooseTest(prizeId: string, origin: string) {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) throw new Error("Invalid Special Prize ID.");
+  const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
+  if (!prizeRaw || prizeRaw.status !== "active") throw new Error("Choose an active Special Prize campaign.");
+  const prize = normalizePrize(prizeId, prizeRaw);
+  const scriptUrl = getPrizeProviderScriptUrl(prize);
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const record: GoldenGooseTestRecord = {
+    id, prizeId, prizeTitle: prize.title, campaignId: prize.campaignId || "custom-script",
+    p1: id, p2: prizeId, scriptUrl, status: "waiting", createdAt: now,
+  };
+  await queryRtdb(`${goldenGooseTestsPath}/${id}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+  });
+  return { testId: id, testUrl: `${origin.replace(/\/$/, "")}/goldengoose/test/${id}`, status: record.status, prizeTitle: prize.title };
+}
+
+export async function getGoldenGooseTest(testId: string) {
+  if (!/^[A-Za-z0-9_-]{36}$/.test(testId)) throw new Error("Invalid test ID.");
+  const record = await queryRtdb(`${goldenGooseTestsPath}/${testId}`) as GoldenGooseTestRecord | null;
+  if (!record || record.id !== testId) throw new Error("Golden Goose test was not found.");
+  return record;
+}
+
+export async function renderGoldenGooseTestPage(testId: string): Promise<Response> {
+  const record = await getGoldenGooseTest(testId);
+  const scriptUrl = new URL(record.scriptUrl);
+  scriptUrl.searchParams.set("p1", record.p1);
+  scriptUrl.searchParams.set("p2", record.p2);
+  const safeScriptUrl = scriptUrl.toString().replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>XoraTV Golden Goose test</title><style>body{font:16px system-ui,sans-serif;background:#100f18;color:#f7f3ff;margin:0;padding:32px 18px}.card{max-width:620px;margin:8vh auto;padding:28px;border:1px solid #51476a;border-radius:22px;background:#1d1a29}small{color:#c8bddc}code{overflow-wrap:anywhere}</style></head><body><main class="card"><h1>XoraTV · Golden Goose test</h1><p>Test campaign: <strong>${escapeHtml(record.prizeTitle)}</strong></p><p><small>This isolated test click uses p1 and p2 values reserved for postback testing. It does not create creator earnings or wallet credits.</small></p><p>Attribution ID: <code>${record.p1}</code></p><div id="golden-goose-campaign">Loading campaign script…</div></main><script src="${safeScriptUrl}" async></script></body></html>`;
+  return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow" } });
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+}
+
 export async function listSpecialPrizeTraffic(limit = 250): Promise<SpecialPrizeTrafficRecord[]> {
   const raw = await queryRtdb("commerce/specialPrizeTraffic") as Record<string, SpecialPrizeTrafficRecord> | SpecialPrizeTrafficRecord[] | null;
   const records = raw ? (Array.isArray(raw) ? raw : Object.values(raw)) : [];
@@ -372,6 +446,26 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
   if (!eventId || eventId.length > 200 || !/^[A-Za-z0-9_-]{10,40}$/.test(attributionKey) || !/^[A-Za-z0-9_-]{1,100}$/.test(prizeId) || !Number.isFinite(profit) || profit < 0) {
     return { ok: false as const, status: 400, error: "Postback is missing a valid event_id, p1, p2 or profit." };
   }
+
+  // Test clicks are isolated from creator attribution and all earnings calculations.
+  const testRecord = await queryRtdb(`${goldenGooseTestsPath}/${attributionKey}`) as GoldenGooseTestRecord | null;
+  if (testRecord?.id === attributionKey && testRecord.p1 === attributionKey && testRecord.p2 === prizeId) {
+    if (!/^[a-z0-9_-]{1,80}$/.test(event)) return { ok: false as const, status: 400, error: "Invalid test event." };
+    const eventPath = conversionPath(eventId);
+    const previous = await queryRtdb(eventPath) as any;
+    if (previous) return { ok: true as const, status: 200, duplicate: true, test: true, eventId };
+    const receivedAt = new Date().toISOString();
+    await queryRtdb(`${goldenGooseTestsPath}/${attributionKey}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "received", receivedAt, eventId, event, profit }),
+    });
+    await queryRtdb(eventPath, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: eventId, eventId, event, attributionKey, prizeId, profit, status: "test_received", creatorCommission: 0, settlementStatus: "not_payable", test: true, receivedAt }),
+    });
+    return { ok: true as const, status: 200, duplicate: false, test: true, eventId, event, profit, creatorCommission: 0, statusLabel: "test_received" };
+  }
+
   if (!knownEvents.has(event)) return { ok: false as const, status: 400, error: "Unsupported Golden Goose event." };
 
   const eventPath = conversionPath(eventId);
