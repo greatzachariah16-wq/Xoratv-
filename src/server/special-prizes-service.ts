@@ -265,13 +265,13 @@ function detectTrafficBrowser(userAgent: string): string {
   const ua = String(userAgent || "").toLowerCase();
   if (!ua) return "Unknown";
   if (/opera mini|opmini|opera mobi/.test(ua)) return "Opera Mini";
-  if (/edg\\//.test(ua)) return "Microsoft Edge";
+  if (/edg\//.test(ua)) return "Microsoft Edge";
   if (/samsungbrowser/.test(ua)) return "Samsung Internet";
-  if (/opr\\//.test(ua)) return "Opera";
+  if (/opr\//.test(ua)) return "Opera";
   if (/fbav|fban|fb_iab/.test(ua)) return "Facebook In-App";
   if (/instagram/.test(ua)) return "Instagram In-App";
   if (/bytedancewebview|tiktok/.test(ua)) return "TikTok In-App";
-  if (/; wv\\)|\\bwv\\b/.test(ua)) return "Android WebView";
+  if (/; wv\)|\bwv\b/.test(ua)) return "Android WebView";
   if (/firefox|fxios/.test(ua)) return "Firefox";
   if (/chrome|crios/.test(ua)) return "Chrome";
   if (/safari/.test(ua)) return "Safari";
