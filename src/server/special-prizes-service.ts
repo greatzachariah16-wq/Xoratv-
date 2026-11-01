@@ -380,7 +380,7 @@ export async function createGoldenGooseTest(prizeId: string, origin: string, pas
   const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
   if (!prizeRaw || prizeRaw.status !== "active") throw new Error("Choose an active Special Prize campaign.");
   const prize = normalizePrize(prizeId, prizeRaw);
-  const scriptUrl = getPrizeProviderScriptUrl(prize);
+  const scriptUrl = getPrizeProviderScriptUrl(pastedSnippet);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const record: GoldenGooseTestRecord = {
