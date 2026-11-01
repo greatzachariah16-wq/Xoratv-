@@ -336,80 +336,30 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
 }
 
 
-type GoldenGooseTestRecord = {
-  id: string;
-  prizeId: string;
-  prizeTitle: string;
-  campaignId: string;
-  p1: string;
-  p2: string;
-  scriptUrl: string;
-  status: "waiting" | "received";
-  createdAt: string;
-  receivedAt?: string;
-  eventId?: string;
-  event?: string;
-  profit?: number;
-};
-
+type GoldenGooseTestRecord = { id: string; prizeId: string; prizeTitle: string; campaignId: string; p1: string; p2: string; scriptSnippet: string; status: "waiting" | "received"; createdAt: string; receivedAt?: string; eventId?: string; event?: string; profit?: number; };
 const goldenGooseTestsPath = "commerce/goldenGooseTests";
-
-function getPrizeProviderScriptUrl(snippet: string): string {
-  const value = String(snippet || "").trim();
-  if (!value) throw new Error("Paste the Golden Goose campaign script snippet first.");
-
-  // Accept a complete script tag or a bare script URL copied from the provider.
-  const tagMatch = value.match(/<script\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))[^>]*>/i);
-  const rawUrl = (tagMatch?.[1] || tagMatch?.[2] || tagMatch?.[3] || value.match(/https?:\/\/[^\s"'<>]+/i)?.[0] || value.match(/\/\/ngglznw\.com\/[^\s"'<>]+/i)?.[0] || "").trim();
-  if (!rawUrl) throw new Error("The pasted snippet must contain a Golden Goose script URL.");
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl.startsWith("//") ? `https:${rawUrl}` : rawUrl);
-  } catch {
-    throw new Error("The script URL in the pasted snippet is not valid.");
-  }
-  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !parsed.pathname.startsWith("/bc/") || parsed.pathname.length <= 4) {
-    throw new Error("Paste the Golden Goose campaign script tag or URL from ngglznw.com under /bc/.");
-  }
-  parsed.searchParams.set("force_https", "1");
-  return parsed.toString();
+export async function createGoldenGooseTest(origin: string, pastedSnippet: string) {
+  const scriptSnippet = String(pastedSnippet || "").trim();
+  if (!scriptSnippet) throw new Error("Paste the Golden Goose campaign code first.");
+  if (scriptSnippet.length > 20000) throw new Error("Campaign code must be 20,000 characters or fewer.");
+  const id = crypto.randomUUID(); const now = new Date().toISOString();
+  const record: GoldenGooseTestRecord = { id, prizeId: id, prizeTitle: "Pasted Golden Goose campaign", campaignId: "pasted-code", p1: id, p2: id, scriptSnippet, status: "waiting", createdAt: now };
+  await queryRtdb(goldenGooseTestsPath + "/" + id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
+  return { testId: id, testUrl: origin.replace(/\/$/, "") + "/goldengoose/test/" + id, status: record.status, prizeTitle: record.prizeTitle };
 }
-
-export async function createGoldenGooseTest(prizeId: string, origin: string, pastedSnippet: string) {
-  if (!/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) throw new Error("Invalid Special Prize ID.");
-  const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
-  if (!prizeRaw || prizeRaw.status !== "active") throw new Error("Choose an active Special Prize campaign.");
-  const prize = normalizePrize(prizeId, prizeRaw);
-  const scriptUrl = getPrizeProviderScriptUrl(pastedSnippet);
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  const record: GoldenGooseTestRecord = {
-    id, prizeId, prizeTitle: prize.title, campaignId: prize.campaignId || "custom-script",
-    p1: id, p2: prizeId, scriptUrl, status: "waiting", createdAt: now,
-  };
-  await queryRtdb(`${goldenGooseTestsPath}/${id}`, {
-    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
-  });
-  return { testId: id, testUrl: `${origin.replace(/\/$/, "")}/goldengoose/test/${id}`, status: record.status, prizeTitle: prize.title };
-}
-
 export async function getGoldenGooseTest(testId: string) {
   if (!/^[A-Za-z0-9_-]{36}$/.test(testId)) throw new Error("Invalid test ID.");
-  const record = await queryRtdb(`${goldenGooseTestsPath}/${testId}`) as GoldenGooseTestRecord | null;
+  const record = await queryRtdb(goldenGooseTestsPath + "/" + testId) as GoldenGooseTestRecord | null;
   if (!record || record.id !== testId) throw new Error("Golden Goose test was not found.");
   return record;
 }
-
 export async function renderGoldenGooseTestPage(testId: string): Promise<Response> {
   const record = await getGoldenGooseTest(testId);
-  const scriptUrl = new URL(record.scriptUrl);
-  scriptUrl.searchParams.set("p1", record.p1);
-  scriptUrl.searchParams.set("p2", record.p2);
-  const safeScriptUrl = scriptUrl.toString().replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>XoraTV Golden Goose test</title><style>body{font:16px system-ui,sans-serif;background:#100f18;color:#f7f3ff;margin:0;padding:32px 18px}.card{max-width:620px;margin:8vh auto;padding:28px;border:1px solid #51476a;border-radius:22px;background:#1d1a29}small{color:#c8bddc}code{overflow-wrap:anywhere}</style></head><body><main class="card"><h1>XoraTV · Golden Goose test</h1><p>Test campaign: <strong>${escapeHtml(record.prizeTitle)}</strong></p><p><small>This isolated test click uses p1 and p2 values reserved for postback testing. It does not create creator earnings or wallet credits.</small></p><p>Attribution ID: <code>${record.p1}</code></p><div id="golden-goose-campaign">Loading campaign script…</div></main><script src="${safeScriptUrl}" onerror="document.getElementById('golden-goose-campaign').textContent='Golden Goose script failed to load. Check the provider URL.'"></script></body></html>`;
+  const snippet = record.scriptSnippet.replaceAll("{{p1}}", record.p1).replaceAll("{{p2}}", record.p2);
+  const encodedSnippet = JSON.stringify(snippet).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
+  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>XoraTV Golden Goose test</title></head><body style=\"font:16px system-ui;background:#100f18;color:#f7f3ff;padding:24px\"><h1>XoraTV · Golden Goose test</h1><p>Standalone pasted-code test. No creator earnings or wallet credits.</p><p>Test p1: " + escapeHtml(record.p1) + "</p><p>Test p2: " + escapeHtml(record.p2) + "</p><div id=\"golden-goose-campaign\">Loading pasted campaign…</div><script>(function(){const mount=document.getElementById(\"golden-goose-campaign\");const snippet=" + encodedSnippet + ";const fail=function(){mount.textContent=\"Provider script failed to load.\";};const markup=/<\\s*[a-z!/]/i.test(snippet);if(!markup&&/^https?:\\/\\//i.test(snippet.trim())){const el=document.createElement(\"script\");el.src=snippet.trim();el.onerror=fail;mount.appendChild(el);return;}if(!markup){const el=document.createElement(\"script\");el.textContent=snippet;mount.appendChild(el);return;}const tpl=document.createElement(\"template\");tpl.innerHTML=snippet;for(const node of Array.from(tpl.content.childNodes)){if(node instanceof HTMLScriptElement){const el=document.createElement(\"script\");for(const attr of Array.from(node.attributes))el.setAttribute(attr.name,attr.value);el.onload=function(){mount.dataset.loaded=\"true\";};el.onerror=fail;el.textContent=node.textContent;mount.appendChild(el);}else{mount.appendChild(node.cloneNode(true));}}})();</script></body></html>";
   return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow" } });
 }
-
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 }
