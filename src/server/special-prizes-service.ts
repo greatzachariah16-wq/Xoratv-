@@ -360,19 +360,54 @@ export function getGoldenGoosePostbackUrl(origin: string) {
 
 export async function renderGoldenGooseTestPage(testId: string): Promise<Response> {
   const record = await getGoldenGooseTest(testId);
-  const trimmed = record.scriptSnippet.trim();
-  let snippet = record.scriptSnippet;
-
-  // Execute the administrator-supplied provider code as supplied. Do not
-  // rewrite the script URL or inject tracking parameters: the provider loader
-  // must first load successfully in its original form.
-  if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
-    snippet = '<script src="' + escapeHtml(trimmed) + '"></script>';
-  } else if (!trimmed.startsWith("<")) {
-    snippet = "<script>" + snippet + "</script>";
-  }
-
-  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Golden Goose campaign test</title></head><body>" + snippet + "</body></html>";
+  const safeId = JSON.stringify(record.id);
+  const safeSnippet = JSON.stringify(record.scriptSnippet);
+  // Match the live Special Prizes provider mounting flow: execute pasted
+  // markup by recreating script elements (innerHTML alone does not execute
+  // scripts), preserve non-script markup, and substitute test attribution IDs.
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Golden Goose campaign test</title><style>body{margin:0;padding:16px;font:14px system-ui;background:#fff;color:#222}#status{margin-bottom:12px;color:#666}#golden-goose-prize-script{min-height:40px}</style></head><body><p id="status">Loading the pasted provider code…</p><div id="golden-goose-prize-script"></div><script>
+  (function(){
+    const testId = ${safeId};
+    const raw = ${safeSnippet};
+    const mount = document.getElementById("golden-goose-prize-script");
+    const status = document.getElementById("status");
+    const snippet = raw.trim()
+      .replaceAll("{{p1}}", encodeURIComponent(testId))
+      .replaceAll("{{p2}}", encodeURIComponent(testId));
+    const looksLikeMarkup = /<\\s*[a-z!\\/]/i.test(snippet);
+    function loaded(){ status.textContent = "Provider code loaded."; }
+    function failed(){ status.textContent = "The provider script could not load. Check the pasted code and try again."; }
+    if (looksLikeMarkup) {
+      const template = document.createElement("template");
+      template.innerHTML = snippet;
+      for (const node of Array.from(template.content.childNodes)) {
+        if (node instanceof HTMLScriptElement) {
+          const liveScript = document.createElement("script");
+          for (const attribute of Array.from(node.attributes)) liveScript.setAttribute(attribute.name, attribute.value);
+          liveScript.onload = loaded;
+          liveScript.onerror = failed;
+          liveScript.textContent = node.textContent;
+          mount.appendChild(liveScript);
+          if (!liveScript.src) loaded();
+        } else {
+          mount.appendChild(node.cloneNode(true));
+        }
+      }
+    } else if (/^https?:\\/\\//i.test(snippet)) {
+      const script = document.createElement("script");
+      script.src = snippet;
+      script.async = true;
+      script.onload = loaded;
+      script.onerror = failed;
+      mount.appendChild(script);
+    } else {
+      const script = document.createElement("script");
+      script.textContent = snippet;
+      mount.appendChild(script);
+      loaded();
+    }
+  })();
+  </script></body></html>`;
   return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow" } });
 }
 
