@@ -359,8 +359,8 @@ function getPrizeProviderScriptUrl(snippet: string): string {
   if (!value) throw new Error("Paste the Golden Goose campaign script snippet first.");
 
   // Accept a complete script tag or a bare script URL copied from the provider.
-  const tagMatch = value.match(/<script\\b[^>]*\\bsrc\\s*=\\s*(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]*>/i);
-  const rawUrl = (tagMatch?.[1] || tagMatch?.[2] || tagMatch?.[3] || value.match(/https?:\\/\\/[^\\s"'<>]+/i)?.[0] || value.match(/\\/\\/ngglznw\\.com\\/[^\\s"'<>]+/i)?.[0] || "").trim();
+  const tagMatch = value.match(/<script\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))[^>]*>/i);
+  const rawUrl = (tagMatch?.[1] || tagMatch?.[2] || tagMatch?.[3] || value.match(/https?:\/\/[^\s"'<>]+/i)?.[0] || value.match(/\/\/ngglznw\.com\/[^\s"'<>]+/i)?.[0] || "").trim();
   if (!rawUrl) throw new Error("The pasted snippet must contain a Golden Goose script URL.");
   let parsed: URL;
   try {
