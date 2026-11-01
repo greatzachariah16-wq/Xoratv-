@@ -370,15 +370,15 @@ export async function renderGoldenGooseTestPage(testId: string): Promise<Respons
 
   // Add only the isolated p1/p2 values to the Golden Goose loader URL.
   // All remaining pasted HTML and JavaScript is sent to the browser unchanged.
-  const srcPattern = new RegExp("(<script[^>]*src\\s*=\\s*)\"([^\"]+)\"", "gi");
-  snippet = snippet.replace(srcPattern, (_match, prefix: string, rawSrc: string) => {
+  const srcPattern = new RegExp("(<script[^>]*src\\s*=\\s*)(['\"])([^'\"]+)\\2", "gi");
+  snippet = snippet.replace(srcPattern, (_match, prefix: string, quote: string, rawSrc: string) => {
     try {
       const providerUrl = new URL(rawSrc.replaceAll("&amp;", "&"), "https://xoratv-x.onrender.com");
       if (providerUrl.hostname === "ngglznw.com" && providerUrl.pathname.startsWith("/bc/")) {
         providerUrl.searchParams.set("force_https", "1");
         providerUrl.searchParams.set("p1", record.p1);
         providerUrl.searchParams.set("p2", record.p2);
-        return prefix + '"' + escapeHtml(providerUrl.toString()) + '"';
+        return prefix + quote + escapeHtml(providerUrl.toString()) + quote;
       }
     } catch { }
     return _match;
