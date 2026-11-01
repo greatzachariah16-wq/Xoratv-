@@ -23,7 +23,6 @@ function SpecialPrizesAdmin() {
   const [bannerDraft,setBannerDraft]=useState<Banner>(defaultBanner);
   const [bannerBusy,setBannerBusy]=useState(false);
   const [uploadingBanner,setUploadingBanner]=useState(false);
-  const [testPrizeId,setTestPrizeId]=useState("");
   const [testSnippet,setTestSnippet]=useState("");
   const [testBusy,setTestBusy]=useState(false);
   const [testRefreshBusy,setTestRefreshBusy]=useState(false);
