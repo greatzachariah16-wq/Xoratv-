@@ -354,28 +354,33 @@ type GoldenGooseTestRecord = {
 
 const goldenGooseTestsPath = "commerce/goldenGooseTests";
 
-function getPrizeProviderScriptUrl(prize: SpecialPrize): string {
-  let rawUrl = "";
-  if (prize.scriptSnippet.trim()) {
-    const match = prize.scriptSnippet.match(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
-    if (match?.[1]) rawUrl = match[1];
+function getPrizeProviderScriptUrl(snippet: string): string {
+  const value = String(snippet || "").trim();
+  if (!value) throw new Error("Paste the Golden Goose campaign script snippet first.");
+
+  // Accept a complete script tag or a bare script URL copied from the provider.
+  const tagMatch = value.match(/<script\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))[^>]*>/i);
+  const rawUrl = (tagMatch?.[1] || tagMatch?.[2] || tagMatch?.[3] || value.match(/https?:\/\/[^\s"'<>]+/i)?.[0] || value.match(/\/\/ngglznw\.com\/[^\s"'<>]+/i)?.[0] || "").trim();
+  if (!rawUrl) throw new Error("The pasted snippet must contain a Golden Goose script URL.");
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl.startsWith("//") ? `https:${rawUrl}` : rawUrl);
+  } catch {
+    throw new Error("The script URL in the pasted snippet is not valid.");
   }
-  if (!rawUrl && prize.campaignId) rawUrl = getGoldenGooseScriptUrl(prize.campaignId);
-  if (!rawUrl) throw new Error("This prize has no usable Golden Goose script URL.");
-  const parsed = new URL(rawUrl);
-  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !/^\/bc\/[A-Za-z0-9_-]{4,100}\.js$/i.test(parsed.pathname)) {
-    throw new Error("The saved provider snippet is not a supported Golden Goose campaign script.");
+  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !parsed.pathname.startsWith("/bc/") || parsed.pathname.length <= 4) {
+    throw new Error("Paste the Golden Goose campaign script tag or URL from ngglznw.com under /bc/.");
   }
   parsed.searchParams.set("force_https", "1");
   return parsed.toString();
 }
 
-export async function createGoldenGooseTest(prizeId: string, origin: string) {
+export async function createGoldenGooseTest(prizeId: string, origin: string, pastedSnippet: string) {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) throw new Error("Invalid Special Prize ID.");
   const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
   if (!prizeRaw || prizeRaw.status !== "active") throw new Error("Choose an active Special Prize campaign.");
   const prize = normalizePrize(prizeId, prizeRaw);
-  const scriptUrl = getPrizeProviderScriptUrl(prize);
+  const scriptUrl = getPrizeProviderScriptUrl(pastedSnippet);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const record: GoldenGooseTestRecord = {

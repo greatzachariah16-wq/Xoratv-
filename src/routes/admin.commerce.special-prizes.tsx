@@ -24,6 +24,7 @@ function SpecialPrizesAdmin() {
   const [bannerBusy,setBannerBusy]=useState(false);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [testPrizeId,setTestPrizeId]=useState("");
+  const [testSnippet,setTestSnippet]=useState("");
   const [testBusy,setTestBusy]=useState(false);
   const [testResult,setTestResult]=useState<{testId:string;testUrl:string;status:string;prizeTitle:string;receivedAt?:string;event?:string;profit?:number}|null>(null);
   async function load(){setLoading(true);try{const [r,b,t]=await Promise.all([commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes"),commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner"),commerceFetch<{traffic:Traffic[]}>("/api/admin/commerce/special-prizes/traffic")]);setPrizes(r.prizes||[]);setTraffic(t.traffic||[]);setBannerDraft({...defaultBanner,...(b.banner||{})});}catch(e){setMessage(e instanceof Error?e.message:"Could not load Special Prizes settings.");}finally{setLoading(false);}}
@@ -129,13 +130,18 @@ function SpecialPrizesAdmin() {
       {message?<p className="rounded-xl border border-border bg-muted/20 p-3 text-sm">{message}</p>:null}
 
       <section className="space-y-3 rounded-2xl border border-primary/20 bg-surface p-4 sm:p-6">
-        <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Integration diagnostics</p><h2 className="mt-1 font-display text-xl font-semibold">Golden Goose postback test</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Create an isolated test click for an active campaign. The generated tracker URL loads the saved Golden Goose script and passes a unique test p1 plus the prize p2. Test callbacks are stored separately and never create creator commissions or wallet credits.</p></div>
+        <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Integration diagnostics</p><h2 className="mt-1 font-display text-xl font-semibold">Golden Goose postback test</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Create an isolated test click for an active campaign. Paste the Golden Goose script snippet below; the generated tracker URL loads that provider script and passes a unique test p1 plus the selected prize p2. Test callbacks are stored separately and never create creator commissions or wallet credits.</p></div>
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold" htmlFor="golden-goose-test-snippet">Paste Golden Goose campaign code snippet</label>
+          <textarea id="golden-goose-test-snippet" value={testSnippet} onChange={e=>setTestSnippet(e.target.value)} rows={4} maxLength={20000} placeholder={'Paste the complete Golden Goose script tag here, e.g. <script src="https://ngglznw.com/bc/…"></script>'} className="min-h-28 w-full rounded-xl border border-border bg-background px-3 py-3 font-mono text-xs leading-relaxed" />
+          <p className="text-[11px] text-muted-foreground">Paste the code copied from Golden Goose. No campaign ID is needed, and this does not change the saved prize.</p>
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <select value={testPrizeId} onChange={e=>{setTestPrizeId(e.target.value);setTestResult(null);}} className="min-h-11 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm">
-            <option value="">Choose an active campaign…</option>
+            <option value="">Choose an active prize…</option>
             {prizes.filter(p=>p.status==="active").map(p=><option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
-          <button type="button" disabled={!testPrizeId||testBusy} onClick={async()=>{setTestBusy(true);setMessage("");setTestResult(null);try{const r=await commerceFetch<{test:{testId:string;testUrl:string;status:string;prizeTitle:string}}>("/api/admin/commerce/special-prizes/test",{method:"POST",body:JSON.stringify({id:testPrizeId})});setTestResult(r.test);setMessage("Test tracking link created. Paste it into Golden Goose's Test conversion field.");}catch(e){setMessage(e instanceof Error?e.message:"Could not create test link.");}finally{setTestBusy(false);}}} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{testBusy?<Loader2 className="size-4 animate-spin"/>:"Create test link"}</button>
+          <button type="button" disabled={!testPrizeId||!testSnippet.trim()||testBusy} onClick={async()=>{setTestBusy(true);setMessage("");setTestResult(null);try{const r=await commerceFetch<{test:{testId:string;testUrl:string;status:string;prizeTitle:string}}>("/api/admin/commerce/special-prizes/test",{method:"POST",body:JSON.stringify({id:testPrizeId,scriptSnippet:testSnippet})});setTestResult(r.test);setMessage("Test tracking link created. Paste it into Golden Goose\u0027s Test conversion field.");}catch(e){setMessage(e instanceof Error?e.message:"Could not create test link.");}finally{setTestBusy(false);}}} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{testBusy?<Loader2 className="size-4 animate-spin"/>:"Create test link"}</button>
         </div>
         {testResult?<div className="space-y-3 rounded-xl border border-border bg-background p-3">
           <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Test URL · {testResult.prizeTitle}</p><span className={testResult.status==="received"?"rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600":"rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-600"}>{testResult.status==="received"?"Postback received":"Waiting for postback"}</span></div>
