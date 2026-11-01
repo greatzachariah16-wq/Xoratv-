@@ -374,7 +374,7 @@ export async function renderGoldenGooseTestPage(testId: string): Promise<Respons
     const snippet = raw.trim()
       .replaceAll("{{p1}}", encodeURIComponent(testId))
       .replaceAll("{{p2}}", encodeURIComponent(testId));
-    const looksLikeMarkup = /<\\s*[a-z!\\/]/i.test(snippet);
+    const looksLikeMarkup = snippet.trimStart().startsWith("<");
     function loaded(){ status.textContent = "Provider code loaded."; }
     function failed(){ status.textContent = "The provider script could not load. Check the pasted code and try again."; }
     if (looksLikeMarkup) {
