@@ -9,7 +9,7 @@ import {
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner, resolveSpecialPrizePromotionClick, listSpecialPrizeTraffic, createGoldenGooseTest, getGoldenGooseTest, renderGoldenGooseTestPage } from "./special-prizes-service";
+import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner, resolveSpecialPrizePromotionClick, listSpecialPrizeTraffic, createGoldenGooseTest, getGoldenGooseTest, renderGoldenGooseTestPage, getGoldenGoosePostbackUrl } from "./special-prizes-service";
 
 
 const headers = {
@@ -125,6 +125,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, test: {
         testId: test.id,
         testUrl: `${url.origin}/goldengoose/test/${test.id}`,
+        postbackUrl: getGoldenGoosePostbackUrl(url.origin),
         status: test.status,
         prizeTitle: test.prizeTitle,
         receivedAt: test.receivedAt,
