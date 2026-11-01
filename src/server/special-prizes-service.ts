@@ -354,35 +354,28 @@ type GoldenGooseTestRecord = {
 
 const goldenGooseTestsPath = "commerce/goldenGooseTests";
 
-function getPrizeProviderScriptUrl(prize: SpecialPrize): string {
-  let snippetUrl = "";
-  if (prize.scriptSnippet.trim()) {
-    const match = prize.scriptSnippet.match(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
-    if (match?.[1]) snippetUrl = match[1].trim();
-  }
+function getPrizeProviderScriptUrl(snippet: string): string {
+  const value = String(snippet || "").trim();
+  if (!value) throw new Error("Paste the Golden Goose campaign script snippet first.");
 
-  // Prefer a recognized provider snippet, but don't let an unrelated or differently
-  // formatted saved embed block a test when the campaign ID is available.
-  if (snippetUrl) {
-    try {
-      const parsed = new URL(snippetUrl);
-      const supported = parsed.protocol === "https:"
-        && parsed.hostname === "ngglznw.com"
-        && /^\/bc\/[A-Za-z0-9_-]{4,100}\.js$/i.test(parsed.pathname);
-      if (supported) {
-        parsed.searchParams.set("force_https", "1");
-        return parsed.toString();
-      }
-    } catch {
-      // Fall through to the canonical URL generated from the saved campaign ID.
-    }
+  // Accept a complete script tag or a bare script URL copied from the provider.
+  const tagMatch = value.match(/<script\\b[^>]*\\bsrc\\s*=\\s*(?:"([^"]+)"|'([^']+)'|([^\\s>]+))[^>]*>/i);
+  const rawUrl = (tagMatch?.[1] || tagMatch?.[2] || tagMatch?.[3] || value.match(/https?:\\/\\/[^\\s"'<>]+/i)?.[0] || value.match(/\\/\\/ngglznw\\.com\\/[^\\s"'<>]+/i)?.[0] || "").trim();
+  if (!rawUrl) throw new Error("The pasted snippet must contain a Golden Goose script URL.");
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl.startsWith("//") ? `https:${rawUrl}` : rawUrl);
+  } catch {
+    throw new Error("The script URL in the pasted snippet is not valid.");
   }
-
-  if (prize.campaignId) return getGoldenGooseScriptUrl(prize.campaignId);
-  throw new Error("This prize needs a valid Golden Goose campaign ID or a script URL in the format https://ngglznw.com/bc/{campaign_id}.js. Edit the prize and add its campaign ID to create a test link.");
+  if (parsed.protocol !== "https:" || parsed.hostname !== "ngglznw.com" || !parsed.pathname.startsWith("/bc/") || parsed.pathname.length <= 4) {
+    throw new Error("Paste the Golden Goose campaign script tag or URL from ngglznw.com under /bc/.");
+  }
+  parsed.searchParams.set("force_https", "1");
+  return parsed.toString();
 }
 
-export async function createGoldenGooseTest(prizeId: string, origin: string) {
+export async function createGoldenGooseTest(prizeId: string, origin: string, pastedSnippet: string) {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) throw new Error("Invalid Special Prize ID.");
   const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
   if (!prizeRaw || prizeRaw.status !== "active") throw new Error("Choose an active Special Prize campaign.");
