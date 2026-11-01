@@ -345,7 +345,7 @@ export async function createGoldenGooseTest(origin: string, pastedSnippet: strin
   const id = crypto.randomUUID(); const now = new Date().toISOString();
   const record: GoldenGooseTestRecord = { id, prizeId: id, prizeTitle: "Pasted Golden Goose campaign", campaignId: "pasted-code", p1: id, p2: id, scriptSnippet, status: "waiting", createdAt: now };
   await queryRtdb(goldenGooseTestsPath + "/" + id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
-  return { testId: id, testUrl: origin.replace(/\/$/, "") + "/goldengoose/test/" + id, status: record.status, prizeTitle: record.prizeTitle };
+  return { testId: id, testUrl: origin.replace(/\/$/, "") + "/goldengoose/test/" + id, postbackUrl: getGoldenGoosePostbackUrl(origin), status: record.status, prizeTitle: record.prizeTitle };
 }
 export async function getGoldenGooseTest(testId: string) {
   if (!/^[A-Za-z0-9_-]{36}$/.test(testId)) throw new Error("Invalid test ID.");
@@ -353,12 +353,55 @@ export async function getGoldenGooseTest(testId: string) {
   if (!record || record.id !== testId) throw new Error("Golden Goose test was not found.");
   return record;
 }
+export function getGoldenGoosePostbackUrl(origin: string) {
+  return origin.replace(/\\/$/, "") + "/api/webhooks/goldengoose?event_id={event_id}&event={event}&p1={p1}&p2={p2}&profit={profit}";
+}
+
 export async function renderGoldenGooseTestPage(testId: string): Promise<Response> {
   const record = await getGoldenGooseTest(testId);
-  const snippet = record.scriptSnippet.replaceAll("{{p1}}", record.p1).replaceAll("{{p2}}", record.p2);
-  const encodedSnippet = JSON.stringify(snippet).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
-  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>XoraTV Golden Goose test</title></head><body style=\"font:16px system-ui;background:#100f18;color:#f7f3ff;padding:24px\"><h1>XoraTV · Golden Goose test</h1><p>Standalone pasted-code test. No creator earnings or wallet credits.</p><p>Test p1: " + escapeHtml(record.p1) + "</p><p>Test p2: " + escapeHtml(record.p2) + "</p><div id=\"golden-goose-campaign\">Loading pasted campaign…</div><script>(function(){const mount=document.getElementById(\"golden-goose-campaign\");const snippet=" + encodedSnippet + ";const testP1=" + JSON.stringify(record.p1) + ";const testP2=" + JSON.stringify(record.p2) + ";const fail=function(){mount.textContent=\"Provider script failed to load.\";};const addTracking=function(el){try{const u=new URL(el.src,location.href);if(u.hostname===\"ngglznw.com\"&&u.pathname.indexOf(\"/bc/\")===0){u.searchParams.set(\"p1\",testP1);u.searchParams.set(\"p2\",testP2);el.src=u.toString();}}catch(e){}};const markup=/<\\s*[a-z!/]/i.test(snippet);if(!markup&&/^https?:\\/\\//i.test(snippet.trim())){const el=document.createElement(\"script\");el.src=snippet.trim();addTracking(el);el.onerror=fail;mount.appendChild(el);return;}if(!markup){const el=document.createElement(\"script\");el.textContent=snippet;mount.appendChild(el);return;}const tpl=document.createElement(\"template\");tpl.innerHTML=snippet;for(const node of Array.from(tpl.content.childNodes)){if(node instanceof HTMLScriptElement){const el=document.createElement(\"script\");for(const attr of Array.from(node.attributes))el.setAttribute(attr.name,attr.value);el.onload=function(){mount.dataset.loaded=\"true\";};el.onerror=fail;if(el.src)addTracking(el);el.textContent=node.textContent;mount.appendChild(el);}else{mount.appendChild(node.cloneNode(true));}}})();</script></body></html>";
-  return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow" } });
+  let snippet = record.scriptSnippet
+    .replaceAll("{{p1}}", record.p1)
+    .replaceAll("{{p2}}", record.p2);
+
+  // If the admin pasted a bare Golden Goose script URL, turn only that URL into
+  // a normal script element. Full HTML snippets are otherwise served unchanged.
+  if (/^https?:\\/\\//i.test(snippet.trim())) {
+    snippet = '<script src="' + escapeHtml(snippet.trim()) + '"></script>';
+  } else if (!/<\\s*[a-z!/]/i.test(snippet)) {
+    // A JavaScript-only paste must be placed in a script element for the browser
+    // to execute it as part of the original HTML parse.
+    snippet = "<script>" + snippet + "</script>";
+  }
+
+  // Attach isolated attribution to the Golden Goose loader URL while retaining
+  // every other pasted element, attribute, and script in its original markup.
+  snippet = snippet.replace(/(<script\\b[^>]*\\bsrc\\s*=\\s*)(["'])([^"']+)\\2/gi, (_match, prefix: string, quote: string, rawSrc: string) => {
+    try {
+      const providerUrl = new URL(rawSrc.replace(/&amp;/gi, "&"), "https://xoratv-x.onrender.com");
+      if (providerUrl.hostname === "ngglznw.com" && providerUrl.pathname.startsWith("/bc/")) {
+        providerUrl.searchParams.set("force_https", "1");
+        providerUrl.searchParams.set("p1", record.p1);
+        providerUrl.searchParams.set("p2", record.p2);
+        return prefix + quote + escapeHtml(providerUrl.toString()) + quote;
+      }
+    } catch {
+      // Leave a provider URL untouched if it cannot be parsed.
+    }
+    return _match;
+  });
+
+  // The provider code is emitted into the document itself, not parsed into a
+  // template and rebuilt with new script nodes. This preserves parser-time
+  // behaviour such as document.write and provider bootstrap code.
+  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Golden Goose campaign test</title></head><body>" + snippet + "</body></html>";
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, max-age=0",
+      "X-Robots-Tag": "noindex, nofollow",
+    },
+  });
 }
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
