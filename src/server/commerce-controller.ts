@@ -107,10 +107,9 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
     try {
       const body = await request.json();
-      if (!body.id) return json({ ok: false, error: "Choose a Special Prize campaign." }, 400);
       const snippet = String(body.scriptSnippet || "").trim();
-      if (!snippet) return json({ ok: false, error: "Paste the Golden Goose campaign script snippet." }, 400);
-      const test = await createGoldenGooseTest(String(body.id), url.origin, snippet);
+      if (!snippet) return json({ ok: false, error: "Paste the Golden Goose campaign code first." }, 400);
+      const test = await createGoldenGooseTest(url.origin, snippet);
       return json({ ok: true, test });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not create Golden Goose test link." }, 400);
