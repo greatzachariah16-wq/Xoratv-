@@ -393,12 +393,30 @@ export async function renderGoldenGooseTestPage(testId: string): Promise<Respons
   // Match the live Special Prizes provider mounting flow: execute pasted
   // markup by recreating script elements (innerHTML alone does not execute
   // scripts), preserve non-script markup, and substitute test attribution IDs.
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Golden Goose campaign test</title><style>body{margin:0;padding:16px;font:14px system-ui;background:#fff;color:#222}#status{margin-bottom:12px;color:#666}#golden-goose-prize-script{min-height:40px}</style></head><body><p id="status">Loading the pasted provider code…</p><div id="golden-goose-prize-script"></div><script>
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Golden Goose campaign test</title><style>body{margin:0;padding:16px;font:14px system-ui;background:#fff;color:#222}#status{margin-bottom:12px;color:#666}#golden-goose-prize-script{min-height:40px}</style></head><body><p id="status">Loading the pasted provider code…</p><section style="margin:12px 0;padding:12px;border:1px solid #ddd;border-radius:10px"><strong>Webhook connection test</strong><p style="margin:6px 0;color:#666">Send a safe test subscription callback directly to the live XoraTV webhook. It is recorded as a test and cannot create creator earnings.</p><button id="send-test-callback" type="button" style="padding:10px 14px;border:0;border-radius:8px;background:#222;color:#fff;font-weight:600">Send test callback</button><pre id="callback-result" style="white-space:pre-wrap;overflow-wrap:anywhere;color:#444"></pre></section><div id="golden-goose-prize-script"></div><script>
   (function(){
     const testId = ${safeId};
     const raw = ${safeSnippet};
     const mount = document.getElementById("golden-goose-prize-script");
     const status = document.getElementById("status");
+    const callbackButton = document.getElementById("send-test-callback");
+    const callbackResult = document.getElementById("callback-result");
+    callbackButton.addEventListener("click", async function(){
+      callbackButton.disabled = true;
+      callbackButton.textContent = "Sending callback…";
+      callbackResult.textContent = "Calling the live /api/webhooks/goldengoose endpoint…";
+      const params = new URLSearchParams({event_id: (crypto.randomUUID ? crypto.randomUUID() : "xora-test-" + Date.now()), event: "subs", p1: testId, p2: testId, profit: "0.39"});
+      try {
+        const response = await fetch("/api/webhooks/goldengoose?" + params.toString(), {method:"GET", cache:"no-store"});
+        const body = await response.json().catch(async function(){return {raw: await response.text()};});
+        callbackResult.textContent = "HTTP " + response.status + "\\n" + JSON.stringify(body, null, 2) + (body.test ? "\\n\\nTEST CALLBACK RECEIVED AND RECORDED. No creator earnings were created." : "");
+      } catch(error) {
+        callbackResult.textContent = "REQUEST FAILED: " + (error && error.message ? error.message : String(error));
+      } finally {
+        callbackButton.disabled = false;
+        callbackButton.textContent = "Send test callback again";
+      }
+    });
     const snippet = raw.trim()
       .replaceAll("{{p1}}", encodeURIComponent(testId))
       .replaceAll("{{p2}}", encodeURIComponent(testId));
