@@ -17,6 +17,8 @@ function SpecialPrizes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
+  const [diagnosticScriptUrl, setDiagnosticScriptUrl] = useState("");
+  const loaderDebugEnabled = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("loader-debug") === "1";
   const [promotionToken, setPromotionToken] = useState("");
   const [promotionClickId, setPromotionClickId] = useState("");
   const [promotionClickPrizeId, setPromotionClickPrizeId] = useState("");
@@ -49,6 +51,7 @@ function SpecialPrizes() {
     if (!mount) return;
     mount.replaceChildren();
     if (selected.scriptSnippet?.trim()) {
+      setDiagnosticScriptUrl("");
       const snippet = selected.scriptSnippet.trim()
         .replaceAll("{{p1}}", encodeURIComponent(
           promotionClickId && promotionClickPrizeId === selected.id ? promotionClickId : promotionToken,
@@ -75,7 +78,21 @@ function SpecialPrizes() {
       } else {
         const liveScript = document.createElement("script");
         liveScript.textContent = snippet;
-        mount.appendChild(liveScript);
+        if (loaderDebugEnabled) {
+          const head = document.head;
+          const originalAppendChild = head.appendChild.bind(head);
+          head.appendChild = ((node: Node) => {
+            if (node instanceof HTMLScriptElement && node.src.includes("fastofferflow.com/bc/")) {
+              setDiagnosticScriptUrl(node.src);
+              node.addEventListener("load", () => setScriptReady(true), { once: true });
+              node.addEventListener("error", () => setError("The campaign loader request failed."), { once: true });
+            }
+            return originalAppendChild(node);
+          }) as typeof head.appendChild;
+          try { mount.appendChild(liveScript); } finally { head.appendChild = originalAppendChild; }
+        } else {
+          mount.appendChild(liveScript);
+        }
         setScriptReady(true);
       }
       return () => { mount.replaceChildren(); };
@@ -152,6 +169,7 @@ function SpecialPrizes() {
         {providerStarted?<div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" role="presentation" onClick={(event)=>{if(event.target===event.currentTarget)setProviderStarted(false);}}>
           <section role="dialog" aria-modal="true" aria-label="Secure offer provider" className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[28px] border border-border bg-surface p-4 shadow-2xl sm:rounded-[28px] sm:p-6">
             <div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Secure offer provider</p><p className="mt-1 text-xs text-muted-foreground">Complete the provider steps here without leaving XoraTV.</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold">{scriptReady ? "Connected" : "Connecting"}</span><button type="button" onClick={()=>setProviderStarted(false)} aria-label="Close provider panel" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground hover:bg-secondary">×</button></div></div>
+            {loaderDebugEnabled ? <div className="mb-3 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs"><p className="font-semibold">Temporary loader diagnostics</p><p className="mt-1 text-muted-foreground">This panel appears only when the page URL includes <code>?loader-debug=1</code>.</p>{diagnosticScriptUrl ? <><p className="mt-2 break-all font-mono">{diagnosticScriptUrl}</p><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => void navigator.clipboard?.writeText(diagnosticScriptUrl)} className="rounded-full border border-border px-3 py-1.5 font-semibold">Copy script URL</button><a href={diagnosticScriptUrl} target="_blank" rel="noreferrer" className="rounded-full bg-primary px-3 py-1.5 font-semibold text-primary-foreground">Open script response</a></div></> : <p className="mt-2 text-muted-foreground">Waiting to detect the campaign script URL…</p>}</div> : null}
             <div id="golden-goose-prize-script" className="min-h-28 rounded-xl border border-border/60 bg-background p-3" />
             <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">If you complete the subscription successfully, check the SMS or confirmation details described above. Keep any confirmation message until the provider has verified your participation.</p>
           </section>
