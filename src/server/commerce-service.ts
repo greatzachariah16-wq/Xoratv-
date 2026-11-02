@@ -990,7 +990,9 @@ export async function getPromotionTarget(token: string) {
 
 export async function resolvePromotionLink(token: string) {
   const link = await getPromotionLink(token);
-  if (!link) return null;
+  // Special Prize links are resolved only by the offer-aware redirect handler.
+  // Never count or reuse a revoked token through the generic redirect fallback.
+  if (!link || link.status === "revoked" || link.service === "special-prize") return null;
   const now = new Date().toISOString();
   await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
   const targetPath = link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : link.service === "special-prize" ? "/special-prizes" : "/data";
