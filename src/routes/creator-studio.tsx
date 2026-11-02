@@ -327,6 +327,27 @@ function XChannel(){
           <div><h4 className="text-sm font-bold">Your top offers</h4><p className="mt-1 text-[10px] text-muted-foreground">Offers receiving the most clicks from your links.</p>{specialPrizeAnalytics.offerBreakdown?.length?<div className="mt-3 space-y-2">{specialPrizeAnalytics.offerBreakdown.slice(0,6).map((item:any,index:number)=><div key={item.prizeId} className="flex items-center gap-3 rounded-xl bg-background p-3"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-[10px] font-bold text-primary">{index+1}</span><p className="min-w-0 flex-1 truncate text-xs font-semibold">{item.prizeTitle}</p><b className="text-sm tabular-nums">{Number(item.clicks||0).toLocaleString()}</b></div>)}</div>:<p className="mt-3 rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">Your offer ranking will appear when visitors use your tracked links.</p>}</div>
         </div>
         <div className="border-t border-border p-5 sm:p-6"><h4 className="text-sm font-bold">Recent click activity</h4><p className="mt-1 text-[10px] text-muted-foreground">The latest visits attributed to your creator promotions.</p>{specialPrizeAnalytics.recentClicks?.length?<div className="mt-3 space-y-2">{specialPrizeAnalytics.recentClicks.map((item:any)=><div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-background p-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">{item.prizeTitle||"Special Prize"}</p><p className="mt-1 text-[10px] text-muted-foreground capitalize">{item.sourceType||"unknown"} · {item.browserName||"Browser unknown"}{item.postId?" · From creator video":""}</p></div><time className="text-[10px] text-muted-foreground">{new Date(item.clickedAt).toLocaleString()}</time></div>)}</div>:<p className="mt-3 rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">No clicks have been attributed to your creator account yet.</p>}</div>
+        <div className="border-t border-border p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h4 className="text-sm font-bold">Golden Goose postback monitor</h4><p className="mt-1 text-[10px] leading-5 text-muted-foreground">Server-reported callbacks received by XoraTV. This section refreshes automatically.</p></div>
+            <span className="rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold">Live server records</span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-background p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Incoming postbacks</p><p className="mt-2 text-3xl font-bold tabular-nums">{Number(specialPrizeAnalytics.incomingPostbacks||0).toLocaleString()}</p><p className="mt-1 text-[10px] text-muted-foreground">Callbacks that reached XoraTV's server</p></div>
+            <div className="rounded-xl border border-border bg-background p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Failed / rejected</p><p className="mt-2 text-3xl font-bold tabular-nums">{Number(specialPrizeAnalytics.failedPostbacks||0).toLocaleString()}</p><p className="mt-1 text-[10px] text-muted-foreground">Callbacks XoraTV could not process</p></div>
+          </div>
+          <div className="mt-5">
+            <h5 className="text-xs font-bold">Recent incoming postbacks</h5>
+            {specialPrizeAnalytics.recentPostbacks?.length?<div className="mt-3 space-y-2">{specialPrizeAnalytics.recentPostbacks.map((item:any)=><article key={item.id} className="rounded-xl border border-border bg-background p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2"><span className={"rounded-full px-2 py-1 text-[9px] font-bold uppercase "+(item.outcome==="failed"?"bg-destructive/10 text-destructive":"bg-primary/10 text-primary")}>{item.outcome==="failed"?"Failed":item.outcome==="duplicate"?"Duplicate":"Received"}</span><b className="text-xs">{String(item.event||"Unknown event").toUpperCase()}</b><span className="text-[10px] text-muted-foreground">HTTP {Number(item.httpStatus||0)}</span></div>
+                <time className="text-[10px] text-muted-foreground">{item.receivedAt?new Date(item.receivedAt).toLocaleString():"Time unavailable"}</time>
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground">Offer: {item.prizeId||"Not supplied"} · Payout: {item.profit==null?"Not supplied":Number(item.profit).toFixed(4)}</p>
+              {item.error?<p className="mt-2 rounded-lg bg-destructive/5 p-2 text-[11px] leading-5 text-destructive"><b>Reason:</b> {item.error}</p>:<p className="mt-2 text-[10px] text-muted-foreground">{item.outcome==="duplicate"?"This event ID had already been processed.":"XoraTV accepted the callback."}</p>}
+            </article>)}</div>:<p className="mt-3 rounded-xl border border-dashed border-border p-4 text-xs leading-5 text-muted-foreground">No Golden Goose callbacks have reached XoraTV for your tracked promotions yet. Once Golden Goose calls the server, each result will appear here.</p>}
+          </div>
+        </div>
       </section>
       <div className="grid gap-3 sm:grid-cols-2">
         <article className="rounded-2xl border border-border bg-surface p-5 shadow-card">

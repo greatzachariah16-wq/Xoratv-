@@ -429,7 +429,7 @@ export async function listSpecialPrizeTraffic(limit = 250): Promise<SpecialPrize
 
 const conversionPath = (eventId: string) => `commerce/specialPrizeConversions/${crypto.createHash("sha256").update(eventId).digest("hex")}`;
 
-export async function recordGoldenGoosePostback(request: Request, url: URL) {
+async function processGoldenGoosePostback(request: Request, url: URL) {
   // Golden Goose does not provide a shared postback secret. Validate every event
   // against XoraTV's recorded click/promotion and prize attribution below.
   const params = new URLSearchParams(url.searchParams);
@@ -448,8 +448,8 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
   const attributionKey = String(params.get("p1") || "").trim();
   const prizeId = String(params.get("p2") || "").trim();
   const profit = Number(String(params.get("profit") || "").trim());
-  const approvedEvents = new Set(["subs", "redeem", "iclick", "rebill"]);
-  const pendingEvents = new Set(["hold"]);
+  const approvedEvents = new Set(["redeem", "redeem_rebill", "iclick", "rebill"]);
+  const pendingEvents = new Set(["subs", "hold"]);
   const holdApprovedEvents = new Set(["hold-aproved", "hold-approved"]);
   const holdCancelledEvents = new Set(["hold-canceled", "hold-cancelled"]);
   const knownEvents = new Set([...approvedEvents, ...pendingEvents, ...holdApprovedEvents, ...holdCancelledEvents, "unsubs"]);
@@ -500,21 +500,22 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
   const currency = /^[A-Z]{3}$/.test(String(prizeRaw?.currency || "")) ? String(prizeRaw.currency) : "USD";
   const now = new Date().toISOString();
 
-  if (holdApprovedEvents.has(event) || holdCancelledEvents.has(event)) {
+  if (holdApprovedEvents.has(event) || holdCancelledEvents.has(event) || event === "unsubs") {
     const all = await queryRtdb("commerce/specialPrizeConversions") as Record<string, any> | null;
+    const targetEvent = event === "unsubs" ? "subs" : "hold";
     const matches = Object.entries(all || {}).filter(([, item]) =>
       item?.creatorId === creatorId && item?.prizeId === prizeId &&
       (item?.attributionKey === attributionKey || (!item?.attributionKey && item?.token === attributionKey)) &&
-      item?.event === "hold" && item?.status === "pending"
+      item?.event === targetEvent && item?.status === "pending"
     );
     if (matches.length !== 1) return {
       ok: false as const, status: 409,
       error: matches.length === 0
-        ? "No matching pending hold was found for this click; no status change was made."
-        : "Multiple pending holds match this click; no status change was made to prevent incorrect attribution.",
+        ? `No matching pending ${targetEvent} event was found for this click; no status change was made.`
+        : `Multiple pending ${targetEvent} events match this click; no status change was made to prevent incorrect attribution.`,
     };
     const [recordKey, pending] = matches[0];
-    const nextStatus = holdApprovedEvents.has(event) ? "approved" : "cancelled";
+    const nextStatus = event === "unsubs" || holdCancelledEvents.has(event) ? "cancelled" : "approved";
     await queryRtdb(`commerce/specialPrizeConversions/${recordKey}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -539,6 +540,44 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     return { ok: true as const, status: 200, duplicate: false, eventId, event, statusLabel: nextStatus, creatorCommission: 0, currency };
   }
 
+  if (event === "redeem") {
+    const all = await queryRtdb("commerce/specialPrizeConversions") as Record<string, any> | null;
+    const matches = Object.entries(all || {}).filter(([, item]) =>
+      item?.creatorId === creatorId && item?.prizeId === prizeId &&
+      (item?.attributionKey === attributionKey || (!item?.attributionKey && item?.token === attributionKey)) &&
+      item?.event === "subs" && item?.status === "pending"
+    );
+    if (matches.length > 1) return {
+      ok: false as const, status: 409,
+      error: "Multiple pending subscription events match this click; no conversion was approved to prevent duplicate creator earnings.",
+    };
+    if (matches.length === 1) {
+      const [recordKey, pending] = matches[0];
+      await queryRtdb(`commerce/specialPrizeConversions/${recordKey}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "approved",
+          settlementStatus: "pending",
+          profit,
+          currency,
+          creatorCommission: Math.round(profit * 0.35 * 10000) / 10000,
+          statusUpdatedAt: now,
+          statusEventId: eventId,
+        }),
+      });
+      await queryRtdb(eventPath, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: eventId, eventId, event, attributionKey, creatorId, prizeId,
+          token: String(pending.token || attributionKey), profit, currency,
+          creatorSharePercent: 35, creatorCommission: 0, status: "status_update",
+          settlementStatus: "not_payable", updatesEventId: String(pending.eventId || pending.id || ""), receivedAt: now,
+        }),
+      });
+      return { ok: true as const, status: 200, duplicate: false, eventId, event, statusLabel: "approved", creatorCommission: 0, currency };
+    }
+  }
+
   const isApproved = approvedEvents.has(event);
   const isPending = pendingEvents.has(event);
   const commission = isApproved || isPending ? Math.round(profit * 0.35 * 10000) / 10000 : 0;
@@ -552,6 +591,85 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
   };
   await queryRtdb(eventPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(conversion) });
   return { ok: true as const, status: 200, duplicate: false, eventId, event, creatorCommission: commission, currency, statusLabel: conversion.status };
+}
+
+
+const goldenGoosePostbackLogPath = "commerce/goldenGoosePostbacks";
+
+async function getGoldenGooseCallbackParams(request: Request, url: URL) {
+  const params = new URLSearchParams(url.searchParams);
+  if (request.method === "POST") {
+    const raw = await request.clone().text().catch(() => "");
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      try {
+        const body = JSON.parse(raw) as Record<string, unknown>;
+        for (const [key, value] of Object.entries(body)) if (value != null) params.set(key, String(value));
+      } catch { /* the handler will return the precise malformed-body response */ }
+    } else if (contentType.includes("application/x-www-form-urlencoded")) {
+      new URLSearchParams(raw).forEach((value, key) => params.set(key, value));
+    }
+  }
+  return params;
+}
+
+/** Always record the callback outcome so creators can see what reached XoraTV and why it was rejected. */
+export async function recordGoldenGoosePostback(request: Request, url: URL) {
+  const params = await getGoldenGooseCallbackParams(request, url);
+  const eventId = String(params.get("event_id") || "").slice(0, 200);
+  const event = String(params.get("event") || "").trim().toLowerCase().slice(0, 80);
+  const attributionKey = String(params.get("p1") || "").trim().slice(0, 120);
+  const prizeId = String(params.get("p2") || "").trim().slice(0, 100);
+  const profitRaw = String(params.get("profit") || "").trim().slice(0, 40);
+  let creatorId = "";
+  if (attributionKey) {
+    try {
+      if (/^[A-Za-z0-9_-]{36}$/.test(attributionKey)) {
+        const traffic = await queryRtdb(`commerce/specialPrizeTraffic/${attributionKey}`) as any;
+        if (traffic?.id === attributionKey) creatorId = String(traffic.creatorId || "");
+      }
+      if (!creatorId) {
+        const promotion = await queryRtdb(`commerce/promotionLinks/${attributionKey}`) as any;
+        if (promotion?.service === "special-prize") creatorId = String(promotion.creatorId || "");
+      }
+    } catch { /* callback processing still runs; diagnostics record unresolved attribution */ }
+  }
+
+  let result: any;
+  try {
+    result = await processGoldenGoosePostback(request, url);
+  } catch (error) {
+    result = {
+      ok: false,
+      status: 500,
+      error: error instanceof Error ? error.message : "Unexpected Golden Goose postback processing error.",
+    };
+  }
+
+  const receivedAt = new Date().toISOString();
+  const log = {
+    id: crypto.randomUUID(),
+    provider: "golden_goose",
+    creatorId: creatorId || null,
+    eventId: eventId || null,
+    event: event || null,
+    attributionKey: attributionKey || null,
+    prizeId: prizeId || null,
+    profit: profitRaw && Number.isFinite(Number(profitRaw)) ? Number(profitRaw) : null,
+    receivedAt,
+    outcome: result?.ok ? (result?.duplicate ? "duplicate" : "accepted") : "failed",
+    httpStatus: Number(result?.status || 500),
+    error: result?.ok ? null : String(result?.error || "Postback rejected without an error message.").slice(0, 1000),
+    statusLabel: result?.statusLabel || null,
+  };
+  try {
+    await queryRtdb(`${goldenGoosePostbackLogPath}/${log.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(log),
+    });
+  } catch (error) {
+    console.error("[Golden Goose] Could not persist postback diagnostic:", error instanceof Error ? error.message : "unknown error");
+  }
+  return result;
 }
 
 export async function getCreatorSpecialPrizeEarnings(creatorId: string) {
@@ -569,9 +687,10 @@ export async function getCreatorSpecialPrizeEarnings(creatorId: string) {
 }
 
 export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
-  const [trafficRaw, conversionsRaw] = await Promise.all([
+  const [trafficRaw, conversionsRaw, postbacksRaw] = await Promise.all([
     queryRtdb("commerce/specialPrizeTraffic") as Promise<Record<string, any> | null>,
     queryRtdb("commerce/specialPrizeConversions") as Promise<Record<string, any> | null>,
+    queryRtdb(goldenGoosePostbackLogPath) as Promise<Record<string, any> | null>,
   ]);
   const clicks = Object.values(trafficRaw || {})
     .filter((item: any) => item && item.creatorId === creatorId && item.id && item.clickedAt)
@@ -598,7 +717,13 @@ export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
     offerCounts.set(prizeId, current);
   }
   const conversions = Object.values(conversionsRaw || {}).filter((item: any) => item && item.creatorId === creatorId);
+  const postbacks = Object.values(postbacksRaw || {})
+    .filter((item: any) => item && item.creatorId === creatorId)
+    .sort((a: any, b: any) => String(b.receivedAt || "").localeCompare(String(a.receivedAt || "")));
   return {
+    incomingPostbacks: postbacks.length,
+    failedPostbacks: postbacks.filter((item: any) => item.outcome === "failed").length,
+    recentPostbacks: postbacks.slice(0, 20),
     totalClicks: clicks.length,
     clicksToday: clicks.filter((item: any) => timestamp(item) >= todayStart.getTime()).length,
     clicksLast7Days: clicks.filter((item: any) => timestamp(item) >= weekStart).length,

@@ -55,7 +55,7 @@ export function purchasedCoursesQuery(userId?: string) {
   });
 }
 export function creatorDashboardQuery(userId?: string) {
-  return queryOptions({ queryKey: ["commerce","creator-dashboard",userId], enabled: Boolean(userId), queryFn: () => commerceFetch<{ok:true;dashboard:any}>(`/api/commerce/creator/dashboard?userId=${encodeURIComponent(userId || "")}`) });
+  return queryOptions({ queryKey: ["commerce","creator-dashboard",userId], enabled: Boolean(userId), refetchInterval: 15000, queryFn: () => commerceFetch<{ok:true;dashboard:any}>(`/api/commerce/creator/dashboard?userId=${encodeURIComponent(userId || "")}`) });
 }
 export function meleHealthQuery() {
   return queryOptions({
