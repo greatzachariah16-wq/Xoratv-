@@ -223,15 +223,13 @@ export async function deleteSpecialPrize(id: string) {
     link && link.service === "special-prize" && String(link.specialPrizeId || "") === id && link.status !== "revoked",
   );
   if (invalidated.length) {
-    const updates: Record<string, unknown> = {};
-    for (const [token] of invalidated) {
-      updates[token] = { status: "revoked", revokedAt, revocationReason: "special-prize-deleted" };
-    }
-    await queryRtdb("commerce/promotionLinks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    await Promise.all(invalidated.map(([token]) =>
+      queryRtdb(`commerce/promotionLinks/${token}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "revoked", revokedAt, revocationReason: "special-prize-deleted" }),
+      }),
+    ));
   }
 
   await queryRtdb(`${prizesPath}/${id}`, { method: "DELETE" });
