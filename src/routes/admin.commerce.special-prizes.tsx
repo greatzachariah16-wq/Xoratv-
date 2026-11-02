@@ -26,9 +26,21 @@ function SpecialPrizesAdmin() {
   const [testSnippet,setTestSnippet]=useState("");
   const [testBusy,setTestBusy]=useState(false);
   const [testRefreshBusy,setTestRefreshBusy]=useState(false);
+  const [webhookCheckBusy,setWebhookCheckBusy]=useState(false);
+  const [webhookCheckResult,setWebhookCheckResult]=useState<{ok:boolean;status:number;body:string;checkedAt:string}|null>(null);
   const [testResult,setTestResult]=useState<{testId:string;testUrl:string;postbackUrl:string;status:string;prizeTitle:string;receivedAt?:string;event?:string;profit?:number}|null>(null);
   async function load(){setLoading(true);try{const [r,b,t]=await Promise.all([commerceFetch<{prizes:Prize[]}>("/api/admin/commerce/special-prizes"),commerceFetch<{banner:Banner}>("/api/admin/commerce/special-prizes/banner"),commerceFetch<{traffic:Traffic[]}>("/api/admin/commerce/special-prizes/traffic")]);setPrizes(r.prizes||[]);setTraffic(t.traffic||[]);setBannerDraft({...defaultBanner,...(b.banner||{})});}catch(e){setMessage(e instanceof Error?e.message:"Could not load Special Prizes settings.");}finally{setLoading(false);}}
   useEffect(()=>{void load();},[]);
+  async function checkWebhookReachability(){
+    setWebhookCheckBusy(true);setWebhookCheckResult(null);setMessage("");
+    try{
+      const response=await fetch("/api/webhooks/goldengoose?healthcheck=1",{method:"GET",cache:"no-store",credentials:"same-origin"});
+      const body=await response.text();
+      setWebhookCheckResult({ok:response.ok,status:response.status,body,checkedAt:new Date().toISOString()});
+    }catch(error){
+      setWebhookCheckResult({ok:false,status:0,body:error instanceof Error?error.message:"Could not reach the webhook endpoint.",checkedAt:new Date().toISOString()});
+    }finally{setWebhookCheckBusy(false);}
+  }
   function edit(p:Prize){setDraft({id:p.id,title:p.title,description:p.description,details:p.details||"",steps:p.steps||[],smsInstructions:p.smsInstructions||"",screenshots:p.screenshots||[],campaignId:p.campaignId,imageUrl:p.imageUrl||"",scriptSnippet:p.scriptSnippet||"",currency:p.currency||"USD",status:p.status});setMessage("");window.scrollTo({top:0,behavior:"smooth"});}
   async function uploadPrizeImage(file: File){
     setUploadingImage(true);setMessage("");
@@ -130,7 +142,9 @@ function SpecialPrizesAdmin() {
       {message?<p className="rounded-xl border border-border bg-muted/20 p-3 text-sm">{message}</p>:null}
 
       <section className="space-y-3 rounded-2xl border border-primary/20 bg-surface p-4 sm:p-6">
-        <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Integration diagnostics</p><h2 className="mt-1 font-display text-xl font-semibold">Golden Goose postback test</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Paste the campaign code and XoraTV creates a standalone test link. It executes the pasted HTML and JavaScript using the same dynamic script-insertion technique as the public Special Prizes page. No saved campaign selection is required.</p></div>
+        <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Integration diagnostics</p><h2 className="mt-1 font-display text-xl font-semibold">Webhook connection test</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Check whether this live XoraTV webhook URL is reachable. This test does not contact Golden Goose, require campaign code, or create creator earnings.</p></div>
+        <div className="rounded-xl border border-border bg-background p-3 space-y-3"><p className="break-all font-mono text-[11px]">https://xoratv-x.onrender.com/api/webhooks/goldengoose</p><button type="button" disabled={webhookCheckBusy} onClick={()=>void checkWebhookReachability()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{webhookCheckBusy?<Loader2 className="size-4 animate-spin"/>:<RefreshCw className="size-4"/>}{webhookCheckBusy?"Checking endpoint…":"Test webhook connection"}</button>{webhookCheckResult?<div className="rounded-lg border border-border p-3"><p className={webhookCheckResult.ok?"text-sm font-semibold text-emerald-600":"text-sm font-semibold text-destructive"}>{webhookCheckResult.ok?"Endpoint reachable":"Endpoint check failed"}</p><p className="mt-1 text-xs">HTTP status: {webhookCheckResult.status||"No response"}</p><p className="mt-1 text-[10px] text-muted-foreground">Checked {new Date(webhookCheckResult.checkedAt).toLocaleString()}</p><pre className="mt-2 whitespace-pre-wrap break-all text-[10px] text-muted-foreground">{webhookCheckResult.body}</pre></div>:null}</div>
+        <div className="border-t border-border pt-4"><h3 className="text-sm font-semibold">Provider callback test (optional)</h3><p className="mt-1 text-xs text-muted-foreground">Use this separate test only when you want to check campaign code or provider callbacks.</p></div>
         <div className="space-y-2"><label className="block text-xs font-semibold" htmlFor="golden-goose-test-snippet">Paste Golden Goose campaign code</label>
           <textarea id="golden-goose-test-snippet" value={testSnippet} onChange={e=>setTestSnippet(e.target.value)} rows={5} maxLength={20000} placeholder={"Paste the complete Golden Goose HTML / JavaScript code here…"} className="min-h-32 w-full rounded-xl border border-border bg-background px-3 py-3 font-mono text-xs leading-relaxed" />
           <p className="text-[11px] text-muted-foreground">The complete snippet is preserved, including script tags, attributes, inline setup and surrounding markup. Tracking placeholders {"{{p1}}"} and {"{{p2}}"} are replaced with isolated test IDs.</p></div>

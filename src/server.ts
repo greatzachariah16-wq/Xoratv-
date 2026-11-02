@@ -679,6 +679,10 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/webhooks/goldengoose" && request.method === "GET" && url.searchParams.get("healthcheck") === "1") {
+      return new Response(JSON.stringify({ ok: true, service: "goldengoose-webhook", endpoint: "/api/webhooks/goldengoose", reachable: true, check: "route_reachability_only" }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    }
+
     if (url.pathname === "/api/webhooks/goldengoose" && (request.method === "GET" || request.method === "POST")) {
       try {
         const result = await recordGoldenGoosePostback(request, url);
