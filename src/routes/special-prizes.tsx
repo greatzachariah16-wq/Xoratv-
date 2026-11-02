@@ -17,7 +17,7 @@ function SpecialPrizes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
-  const [diagnosticScriptUrl, setDiagnosticScriptUrl] = useState("");
+  const [diagnosticScriptUrl, setDiagnosticScriptUrl] = useState(() => { try { return typeof window !== "undefined" ? window.localStorage.getItem("xora-mtn-loader-diagnostic-url") || "" : ""; } catch { return ""; } });
   const loaderDebugEnabled = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("loader-debug") === "1";
   const [promotionToken, setPromotionToken] = useState("");
   const [promotionClickId, setPromotionClickId] = useState("");
@@ -84,6 +84,7 @@ function SpecialPrizes() {
           head.appendChild = ((node: Node) => {
             if (node instanceof HTMLScriptElement && node.src.includes("fastofferflow.com/bc/")) {
               setDiagnosticScriptUrl(node.src);
+              try { window.localStorage.setItem("xora-mtn-loader-diagnostic-url", node.src); } catch { /* storage may be unavailable */ }
               node.addEventListener("load", () => setScriptReady(true), { once: true });
               node.addEventListener("error", () => setError("The campaign loader request failed."), { once: true });
             }
@@ -193,6 +194,11 @@ function SpecialPrizes() {
           </div>
         </article>)}
         </div>
+        {loaderDebugEnabled ? <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-bold">Saved MTN loader diagnostic</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">The captured script URL is saved on this device, so you can return from the offer redirect and copy it here.</p>
+          {diagnosticScriptUrl ? <><p className="mt-3 break-all rounded-lg bg-background p-3 font-mono text-[11px]">{diagnosticScriptUrl}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void navigator.clipboard?.writeText(diagnosticScriptUrl)} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Copy script URL</button><a href={diagnosticScriptUrl} target="_blank" rel="noreferrer" className="rounded-full border border-border px-4 py-2 text-xs font-semibold">Open script response</a><button type="button" onClick={() => { setDiagnosticScriptUrl(""); try { window.localStorage.removeItem("xora-mtn-loader-diagnostic-url"); } catch { /* storage may be unavailable */ } }} className="rounded-full border border-border px-4 py-2 text-xs font-semibold">Clear saved URL</button></div></> : <p className="mt-3 text-xs text-muted-foreground">No URL captured yet. Open the MTN offer and tap Subscribe; return here after the redirect.</p>}
+        </section> : null}
         <button type="button" onClick={() => void load()} disabled={loading} className="mx-auto flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold"><RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"}/>Refresh prizes</button>
       </section>}
       <p className="text-center text-[11px] text-muted-foreground">Offers may be changed or paused by XoraTV at any time. Third-party terms apply.</p>
