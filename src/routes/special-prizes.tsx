@@ -135,7 +135,8 @@ function SpecialPrizes() {
       const providerAttributionQuery = hasAttributedClick
         ? `&p1=${encodeURIComponent(promotionClickId)}&p2=${encodeURIComponent(prize.id)}`
         : "";
-      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}${clickQuery}${providerAttributionQuery}`);
+      const debugQuery = loaderDebugEnabled ? "&loader-debug=1" : "";
+      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}${clickQuery}${providerAttributionQuery}${debugQuery}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { setError(e instanceof Error ? e.message : "This prize is no longer available."); await load(); }
   }
