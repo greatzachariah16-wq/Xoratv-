@@ -351,6 +351,16 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
     body: JSON.stringify({ clicks: Math.max(0, Number(promotion.clicks || 0) + 1), updatedAt: clickedAt }),
   });
 
+  // Golden Goose's Test Conversion follows the tracker URL through an HTTP
+  // redirect to the campaign Promo URL. This opt-in query flag keeps the
+  // normal creator journey unchanged while allowing that direct redirect.
+  if (url.searchParams.get("gg-test") === "1") {
+    const campaignPromoUrl = new URL("https://hdazigf.com/cl/b3f26dfee438d943");
+    campaignPromoUrl.searchParams.set("p1", record.id);
+    campaignPromoUrl.searchParams.set("p2", String(promotion.specialPrizeId));
+    return { promotion, targetPath: campaignPromoUrl.toString() };
+  }
+
   const target = new URL("/special-prizes", url.origin);
   target.searchParams.set("offer", String(promotion.specialPrizeId));
   target.searchParams.set("promo", token);
