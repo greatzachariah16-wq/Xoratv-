@@ -111,10 +111,14 @@ function SpecialPrizes() {
       setSelected(prize);
       setProviderStarted(false);
       const promoQuery = promotionToken ? `&promo=${encodeURIComponent(promotionToken)}` : "";
-      const clickQuery = promotionClickId && promotionClickPrizeId === prize.id
+      const hasAttributedClick = Boolean(promotionClickId && promotionClickPrizeId === prize.id);
+      const clickQuery = hasAttributedClick
         ? `&click=${encodeURIComponent(promotionClickId)}`
         : "";
-      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}${clickQuery}`);
+      const providerAttributionQuery = hasAttributedClick
+        ? `&p1=${encodeURIComponent(promotionClickId)}&p2=${encodeURIComponent(prize.id)}`
+        : "";
+      window.history.replaceState({}, "", `/special-prizes?offer=${encodeURIComponent(prize.id)}${promoQuery}${clickQuery}${providerAttributionQuery}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { setError(e instanceof Error ? e.message : "This prize is no longer available."); await load(); }
   }
