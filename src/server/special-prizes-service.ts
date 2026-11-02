@@ -649,9 +649,10 @@ export async function getCreatorSpecialPrizeEarnings(creatorId: string) {
 }
 
 export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
-  const [trafficRaw, conversionsRaw] = await Promise.all([
+  const [trafficRaw, conversionsRaw, postbacksRaw] = await Promise.all([
     queryRtdb("commerce/specialPrizeTraffic") as Promise<Record<string, any> | null>,
     queryRtdb("commerce/specialPrizeConversions") as Promise<Record<string, any> | null>,
+    queryRtdb(goldenGoosePostbackLogPath) as Promise<Record<string, any> | null>,
   ]);
   const clicks = Object.values(trafficRaw || {})
     .filter((item: any) => item && item.creatorId === creatorId && item.id && item.clickedAt)
@@ -678,7 +679,13 @@ export async function getCreatorSpecialPrizeAnalytics(creatorId: string) {
     offerCounts.set(prizeId, current);
   }
   const conversions = Object.values(conversionsRaw || {}).filter((item: any) => item && item.creatorId === creatorId);
+  const postbacks = Object.values(postbacksRaw || {})
+    .filter((item: any) => item && item.creatorId === creatorId)
+    .sort((a: any, b: any) => String(b.receivedAt || "").localeCompare(String(a.receivedAt || "")));
   return {
+    incomingPostbacks: postbacks.length,
+    failedPostbacks: postbacks.filter((item: any) => item.outcome === "failed").length,
+    recentPostbacks: postbacks.slice(0, 20),
     totalClicks: clicks.length,
     clicksToday: clicks.filter((item: any) => timestamp(item) >= todayStart.getTime()).length,
     clicksLast7Days: clicks.filter((item: any) => timestamp(item) >= weekStart).length,
