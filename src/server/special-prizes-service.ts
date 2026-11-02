@@ -626,11 +626,11 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     try {
       if (/^[A-Za-z0-9_-]{36}$/.test(attributionKey)) {
         const traffic = await queryRtdb(`commerce/specialPrizeTraffic/${attributionKey}`) as any;
-        if (traffic?.id === attributionKey && (!prizeId || traffic?.prizeId === prizeId)) creatorId = String(traffic.creatorId || "");
+        if (traffic?.id === attributionKey) creatorId = String(traffic.creatorId || "");
       }
       if (!creatorId) {
         const promotion = await queryRtdb(`commerce/promotionLinks/${attributionKey}`) as any;
-        if (promotion?.service === "special-prize" && (!prizeId || promotion.specialPrizeId === prizeId)) creatorId = String(promotion.creatorId || "");
+        if (promotion?.service === "special-prize") creatorId = String(promotion.creatorId || "");
       }
     } catch { /* callback processing still runs; diagnostics record unresolved attribution */ }
   }
