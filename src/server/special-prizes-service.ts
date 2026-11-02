@@ -527,7 +527,7 @@ async function processGoldenGoosePostback(request: Request, url: URL) {
     const safeEvent = /^[a-z0-9_-]{1,80}$/.test(event) ? event : "test";
     const eventPath = conversionPath(safeEventId);
     const previous = await queryRtdb(eventPath) as any;
-    if (previous) return { ok: true as const, status: 200, duplicate: true, test: true, eventId };
+    if (previous) return { ok: true as const, status: 200, duplicate: true, test: true, eventId: safeEventId };
     const receivedAt = new Date().toISOString();
     await queryRtdb(`${goldenGooseTestsPath}/${attributionKey}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -562,7 +562,6 @@ async function processGoldenGoosePostback(request: Request, url: URL) {
 
   if (!eventId || eventId.length > 200 || !event || !/^[a-z0-9_-]{1,80}$/.test(event)) return { ok: false as const, status: 400, error: "Live postbacks require event_id and event. Test callbacks may send only p1 and profit." };
   if (prizeId && !/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) return { ok: false as const, status: 400, error: "Invalid prize ID." };
-  }
 
   if (!knownEvents.has(event)) return { ok: false as const, status: 400, error: "Unsupported Golden Goose event." };
 
