@@ -208,8 +208,32 @@ export async function deleteSpecialPrize(id: string) {
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) throw new Error("Invalid prize ID.");
   const existing = await queryRtdb(`${prizesPath}/${id}`) as any;
   if (!existing) throw new Error("Special prize was not found.");
+
+  const revokedAt = new Date().toISOString();
+  // Pause first so no link can continue sending users into an offer while its
+  // creator links are being retired. Historical traffic and conversions remain.
+  await queryRtdb(`${prizesPath}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "paused", updatedAt: revokedAt, deletedAt: revokedAt }),
+  });
+
+  const rawLinks = await queryRtdb("commerce/promotionLinks") as Record<string, any> | null;
+  const invalidated = Object.entries(rawLinks || {}).filter(([, link]) =>
+    link && link.service === "special-prize" && String(link.specialPrizeId || "") === id && link.status !== "revoked",
+  );
+  if (invalidated.length) {
+    await Promise.all(invalidated.map(([token]) =>
+      queryRtdb(`commerce/promotionLinks/${token}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "revoked", revokedAt, revocationReason: "special-prize-deleted" }),
+      }),
+    ));
+  }
+
   await queryRtdb(`${prizesPath}/${id}`, { method: "DELETE" });
-  return { id, deleted: true };
+  return { id, deleted: true, invalidatedLinks: invalidated.length };
 }
 
 
@@ -282,7 +306,7 @@ function detectTrafficBrowser(userAgent: string): string {
 export async function resolveSpecialPrizePromotionClick(token: string, request: Request, url: URL) {
   if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return null;
   const promotion = await queryRtdb(`commerce/promotionLinks/${token}`) as any;
-  if (!promotion || promotion.service !== "special-prize" || !promotion.creatorId || !promotion.specialPrizeId) return null;
+  if (!promotion || promotion.service !== "special-prize" || promotion.status === "revoked" || !promotion.creatorId || !promotion.specialPrizeId) return null;
 
   const prize = await queryRtdb(`${prizesPath}/${promotion.specialPrizeId}`) as any;
   if (!prize || prize.status !== "active") return null;
