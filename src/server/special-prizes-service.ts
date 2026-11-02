@@ -657,12 +657,31 @@ async function getGoldenGooseCallbackParams(request: Request, url: URL) {
 
 /** Always record the callback outcome so creators can see what reached XoraTV and why it was rejected. */
 export async function recordGoldenGoosePostback(request: Request, url: URL) {
+  const traceId = crypto.randomUUID();
+  const logPrefix = "[Golden Goose Webhook]";
   const params = await getGoldenGooseCallbackParams(request, url);
   const eventId = String(params.get("event_id") || "").slice(0, 200);
   const event = String(params.get("event") || "").trim().toLowerCase().slice(0, 80);
   const attributionKey = String(params.get("p1") || "").trim().slice(0, 120);
   const prizeId = String(params.get("p2") || "").trim().slice(0, 100);
   const profitRaw = String(params.get("profit") || "").trim().slice(0, 40);
+  const maskedAttribution = attributionKey
+    ? (attributionKey.length <= 8 ? "[short-id]" : `${attributionKey.slice(0, 3)}…${attributionKey.slice(-4)}`)
+    : null;
+
+  console.info(logPrefix, JSON.stringify({
+    stage: "callback_received",
+    traceId,
+    method: request.method,
+    contentType: request.headers.get("content-type") || null,
+    eventId: eventId || null,
+    event: event || null,
+    attributionPresent: Boolean(attributionKey),
+    attributionHint: maskedAttribution,
+    prizeId: prizeId || null,
+    profit: profitRaw && Number.isFinite(Number(profitRaw)) ? Number(profitRaw) : null,
+  }));
+
   let creatorId = "";
   if (attributionKey) {
     try {
@@ -674,7 +693,28 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
         const promotion = await queryRtdb(`commerce/promotionLinks/${attributionKey}`) as any;
         if (promotion?.service === "special-prize") creatorId = String(promotion.creatorId || "");
       }
-    } catch { /* callback processing still runs; diagnostics record unresolved attribution */ }
+      console.info(logPrefix, JSON.stringify({
+        stage: "attribution_resolved",
+        traceId,
+        resolved: Boolean(creatorId),
+        creatorId: creatorId || null,
+        prizeId: prizeId || null,
+        attributionHint: maskedAttribution,
+      }));
+    } catch (error) {
+      console.error(logPrefix, JSON.stringify({
+        stage: "attribution_lookup_error",
+        traceId,
+        message: error instanceof Error ? error.message : "Unknown attribution lookup error",
+      }));
+    }
+  } else {
+    console.warn(logPrefix, JSON.stringify({
+      stage: "attribution_missing",
+      traceId,
+      eventId: eventId || null,
+      event: event || null,
+    }));
   }
 
   let result: any;
@@ -688,9 +728,25 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     };
   }
 
+  console.info(logPrefix, JSON.stringify({
+    stage: "callback_processed",
+    traceId,
+    eventId: eventId || null,
+    event: event || null,
+    creatorId: creatorId || null,
+    prizeId: prizeId || null,
+    ok: Boolean(result?.ok),
+    httpStatus: Number(result?.status || 500),
+    duplicate: Boolean(result?.duplicate),
+    test: Boolean(result?.test),
+    statusLabel: result?.statusLabel || null,
+    creatorCommission: Number.isFinite(Number(result?.creatorCommission)) ? Number(result.creatorCommission) : null,
+    error: result?.ok ? null : String(result?.error || "Postback rejected without an error message.").slice(0, 1000),
+  }));
+
   const receivedAt = new Date().toISOString();
   const log = {
-    id: crypto.randomUUID(),
+    id: traceId,
     provider: "golden_goose",
     creatorId: creatorId || null,
     eventId: eventId || null,
@@ -708,8 +764,19 @@ export async function recordGoldenGoosePostback(request: Request, url: URL) {
     await queryRtdb(`${goldenGoosePostbackLogPath}/${log.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(log),
     });
+    console.info(logPrefix, JSON.stringify({
+      stage: "diagnostic_persisted",
+      traceId,
+      outcome: log.outcome,
+      httpStatus: log.httpStatus,
+      creatorId: creatorId || null,
+    }));
   } catch (error) {
-    console.error("[Golden Goose] Could not persist postback diagnostic:", error instanceof Error ? error.message : "unknown error");
+    console.error(logPrefix, JSON.stringify({
+      stage: "diagnostic_persist_error",
+      traceId,
+      message: error instanceof Error ? error.message : "Unknown diagnostic persistence error",
+    }));
   }
   return result;
 }
