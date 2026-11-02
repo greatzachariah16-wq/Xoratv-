@@ -268,6 +268,8 @@ export type SpecialPrizeTrafficRecord = {
   referrerHost: string | null;
   browserName: string;
   clickedAt: string;
+  /** Set only on the opt-in Golden Goose tracker test link; callbacks never create earnings. */
+  goldenGooseTest?: boolean;
 };
 
 function safeTrafficValue(value: string | null, max = 120): string | null {
@@ -339,6 +341,7 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
     referrerHost,
     browserName,
     clickedAt,
+    goldenGooseTest: url.searchParams.get("gg-test") === "1",
   };
   await queryRtdb(`commerce/specialPrizeTraffic/${record.id}`, {
     method: "PUT",
@@ -495,37 +498,70 @@ async function processGoldenGoosePostback(request: Request, url: URL) {
     }
   }
 
-  const eventId = String(params.get("event_id") || "").trim();
-  const event = String(params.get("event") || "").trim().toLowerCase();
+  const suppliedEventId = String(params.get("event_id") || "").trim();
+  const rawEvent = String(params.get("event") || "").trim().toLowerCase();
+  // Golden Goose's documented Test Conversion flow guarantees p1 and profit;
+  // optional placeholders can arrive empty or literally as {event_id}/{event}/{p2}.
+  const eventIdValue = suppliedEventId && !/[{}]/.test(suppliedEventId) ? suppliedEventId : "";
+  const eventValue = rawEvent && !/[{}]/.test(rawEvent) ? rawEvent : "";
   const attributionKey = String(params.get("p1") || "").trim();
-  const prizeId = String(params.get("p2") || "").trim();
+  const rawPrizeId = String(params.get("p2") || "").trim();
+  const prizeIdValue = rawPrizeId && !/[{}]/.test(rawPrizeId) ? rawPrizeId : "";
   const profit = Number(String(params.get("profit") || "").trim());
+  const eventId = eventIdValue || "";
+  const event = eventValue || "";
+  let prizeId = prizeIdValue;
   const approvedEvents = new Set(["redeem", "redeem_rebill", "iclick", "rebill"]);
   const pendingEvents = new Set(["subs", "hold"]);
   const holdApprovedEvents = new Set(["hold-aproved", "hold-approved"]);
   const holdCancelledEvents = new Set(["hold-canceled", "hold-cancelled"]);
   const knownEvents = new Set([...approvedEvents, ...pendingEvents, ...holdApprovedEvents, ...holdCancelledEvents, "unsubs"]);
-  if (!eventId || eventId.length > 200 || !/^[A-Za-z0-9_-]{10,40}$/.test(attributionKey) || !/^[A-Za-z0-9_-]{1,100}$/.test(prizeId) || !Number.isFinite(profit) || profit < 0) {
-    return { ok: false as const, status: 400, error: "Postback is missing a valid event_id, p1, p2 or profit." };
+  if (!/^[A-Za-z0-9_-]{10,40}$/.test(attributionKey) || !Number.isFinite(profit) || profit < 0) {
+    return { ok: false as const, status: 400, error: "Postback is missing a valid p1 or profit." };
   }
 
-  // Test clicks are isolated from creator attribution and all earnings calculations.
+  // The standalone admin test page uses its own test ID as p1 and p2.
   const testRecord = await queryRtdb(`${goldenGooseTestsPath}/${attributionKey}`) as GoldenGooseTestRecord | null;
-  if (testRecord?.id === attributionKey && testRecord.p1 === attributionKey && testRecord.p2 === prizeId) {
-    if (!/^[a-z0-9_-]{1,80}$/.test(event)) return { ok: false as const, status: 400, error: "Invalid test event." };
-    const eventPath = conversionPath(eventId);
+  if (testRecord?.id === attributionKey && testRecord.p1 === attributionKey && (!prizeId || testRecord.p2 === prizeId)) {
+    const safeEventId = eventId || `xora-test-${crypto.randomUUID()}`;
+    const safeEvent = /^[a-z0-9_-]{1,80}$/.test(event) ? event : "test";
+    const eventPath = conversionPath(safeEventId);
     const previous = await queryRtdb(eventPath) as any;
     if (previous) return { ok: true as const, status: 200, duplicate: true, test: true, eventId };
     const receivedAt = new Date().toISOString();
     await queryRtdb(`${goldenGooseTestsPath}/${attributionKey}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "received", receivedAt, eventId, event, profit }),
+      body: JSON.stringify({ status: "received", receivedAt, eventId: safeEventId, event: safeEvent, profit }),
     });
     await queryRtdb(eventPath, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: eventId, eventId, event, attributionKey, prizeId, profit, status: "test_received", creatorCommission: 0, settlementStatus: "not_payable", test: true, receivedAt }),
+      body: JSON.stringify({ id: safeEventId, eventId: safeEventId, event: safeEvent, attributionKey, prizeId: testRecord.p2, profit, status: "test_received", creatorCommission: 0, settlementStatus: "not_payable", test: true, receivedAt }),
     });
-    return { ok: true as const, status: 200, duplicate: false, test: true, eventId, event, profit, creatorCommission: 0, statusLabel: "test_received" };
+    return { ok: true as const, status: 200, duplicate: false, test: true, eventId: safeEventId, event: safeEvent, profit, creatorCommission: 0, statusLabel: "test_received" };
+  }
+
+  // A creator's opt-in ?gg-test=1 tracker link is a safe test click too.
+  // Golden Goose's test callback can omit event_id, event and p2; the original
+  // click record supplies the prize ID and is deliberately excluded from earnings.
+  let testTraffic: any = null;
+  if (/^[A-Za-z0-9_-]{36}$/.test(attributionKey)) {
+    testTraffic = await queryRtdb(`commerce/specialPrizeTraffic/${attributionKey}`) as any;
+    if (testTraffic?.id !== attributionKey) testTraffic = null;
+  }
+  if (testTraffic?.goldenGooseTest === true) {
+    if (prizeId && prizeId !== String(testTraffic.prizeId || "")) return { ok: false as const, status: 400, error: "Test click prize attribution does not match." };
+    const safeEventId = eventId || `xora-test-${crypto.randomUUID()}`;
+    const safeEvent = /^[a-z0-9_-]{1,80}$/.test(event) ? event : "test";
+    const eventPath = conversionPath(safeEventId);
+    const previous = await queryRtdb(eventPath) as any;
+    if (previous) return { ok: true as const, status: 200, duplicate: true, test: true, eventId: safeEventId };
+    const receivedAt = new Date().toISOString();
+    await queryRtdb(eventPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: safeEventId, eventId: safeEventId, event: safeEvent, attributionKey, prizeId: String(testTraffic.prizeId), profit, status: "test_received", creatorCommission: 0, settlementStatus: "not_payable", test: true, receivedAt }) });
+    return { ok: true as const, status: 200, duplicate: false, test: true, eventId: safeEventId, event: safeEvent, profit, creatorCommission: 0, statusLabel: "test_received" };
+  }
+
+  if (!eventId || eventId.length > 200 || !event || !/^[a-z0-9_-]{1,80}$/.test(event)) return { ok: false as const, status: 400, error: "Live postbacks require event_id and event. Test callbacks may send only p1 and profit." };
+  if (prizeId && !/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) return { ok: false as const, status: 400, error: "Invalid prize ID." };
   }
 
   if (!knownEvents.has(event)) return { ok: false as const, status: 400, error: "Unsupported Golden Goose event." };
@@ -538,14 +574,17 @@ async function processGoldenGoosePostback(request: Request, url: URL) {
   let promotion: any = null;
   if (/^[A-Za-z0-9_-]{36}$/.test(attributionKey)) {
     traffic = await queryRtdb(`commerce/specialPrizeTraffic/${attributionKey}`) as any;
-    if (traffic?.id !== attributionKey || traffic?.prizeId !== prizeId) traffic = null;
+    if (traffic?.id !== attributionKey || (prizeId && traffic?.prizeId !== prizeId)) traffic = null;
+    else if (traffic && !prizeId) prizeId = String(traffic.prizeId || "");
   }
   if (!traffic) {
     promotion = await queryRtdb(`commerce/promotionLinks/${attributionKey}`) as any;
-    if (!promotion || promotion.service !== "special-prize" || promotion.specialPrizeId !== prizeId || !promotion.creatorId) {
+    if (!promotion || promotion.service !== "special-prize" || (prizeId && promotion.specialPrizeId !== prizeId) || !promotion.creatorId) {
       return { ok: false as const, status: 400, error: "Promotion attribution could not be verified." };
     }
+    if (!prizeId) prizeId = String(promotion.specialPrizeId || "");
   }
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(prizeId)) return { ok: false as const, status: 400, error: "Prize attribution could not be verified." };
   const creatorId = String(traffic?.creatorId || promotion?.creatorId || "");
   if (!creatorId) return { ok: false as const, status: 400, error: "Creator attribution could not be verified." };
   const prizeRaw = await queryRtdb(`${prizesPath}/${prizeId}`) as any;
