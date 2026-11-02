@@ -331,6 +331,10 @@ export async function resolveSpecialPrizePromotionClick(token: string, request: 
   target.searchParams.set("offer", String(promotion.specialPrizeId));
   target.searchParams.set("promo", token);
   target.searchParams.set("click", record.id);
+  // Pass the click and offer identifiers at the landing-page handoff. The
+  // provider loader stays untouched and can read Golden Goose p1/p2 from the URL.
+  target.searchParams.set("p1", record.id);
+  target.searchParams.set("p2", String(promotion.specialPrizeId));
   if (postId) target.searchParams.set("postId", postId);
   return { promotion, targetPath: target.pathname + target.search };
 }
