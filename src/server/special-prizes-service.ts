@@ -540,6 +540,44 @@ async function processGoldenGoosePostback(request: Request, url: URL) {
     return { ok: true as const, status: 200, duplicate: false, eventId, event, statusLabel: nextStatus, creatorCommission: 0, currency };
   }
 
+  if (event === "redeem") {
+    const all = await queryRtdb("commerce/specialPrizeConversions") as Record<string, any> | null;
+    const matches = Object.entries(all || {}).filter(([, item]) =>
+      item?.creatorId === creatorId && item?.prizeId === prizeId &&
+      (item?.attributionKey === attributionKey || (!item?.attributionKey && item?.token === attributionKey)) &&
+      item?.event === "subs" && item?.status === "pending"
+    );
+    if (matches.length > 1) return {
+      ok: false as const, status: 409,
+      error: "Multiple pending subscription events match this click; no conversion was approved to prevent duplicate creator earnings.",
+    };
+    if (matches.length === 1) {
+      const [recordKey, pending] = matches[0];
+      await queryRtdb(`commerce/specialPrizeConversions/${recordKey}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "approved",
+          settlementStatus: "pending",
+          profit,
+          currency,
+          creatorCommission: Math.round(profit * 0.35 * 10000) / 10000,
+          statusUpdatedAt: now,
+          statusEventId: eventId,
+        }),
+      });
+      await queryRtdb(eventPath, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: eventId, eventId, event, attributionKey, creatorId, prizeId,
+          token: String(pending.token || attributionKey), profit, currency,
+          creatorSharePercent: 35, creatorCommission: 0, status: "status_update",
+          settlementStatus: "not_payable", updatesEventId: String(pending.eventId || pending.id || ""), receivedAt: now,
+        }),
+      });
+      return { ok: true as const, status: 200, duplicate: false, eventId, event, statusLabel: "approved", creatorCommission: 0, currency };
+    }
+  }
+
   const isApproved = approvedEvents.has(event);
   const isPending = pendingEvents.has(event);
   const commission = isApproved || isPending ? Math.round(profit * 0.35 * 10000) / 10000 : 0;
