@@ -853,6 +853,9 @@ export type CreatorPromotionLink = {
   clicks: number;
   createdAt: string;
   updatedAt: string;
+  status?: "active" | "revoked";
+  revokedAt?: string;
+  revocationReason?: string;
 };
 
 function promotionLinkPath(token: string) { return "commerce/promotionLinks/" + token; }
@@ -882,6 +885,11 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
   const courseIdInput = String(params.courseId || "").trim();
   const prizeIdInput = String(params.specialPrizeId || "").trim();
   if (params.service === "special-prize" && !prizeIdInput) throw new Error("Choose a special prize to promote.");
+  // Validate the current offer before considering reuse of an older creator link.
+  const activeSpecialPrize = params.service === "special-prize"
+    ? (await listSpecialPrizes(false)).find((item) => item.id === prizeIdInput) || null
+    : null;
+  if (params.service === "special-prize" && !activeSpecialPrize) throw new Error("That special prize is no longer available. Refresh the offer list and choose an active offer.");
   const existingLinks = await getCreatorPromotionLinks(params.creatorId);
   const existing = existingLinks.find((link) =>
     link.service === params.service &&
@@ -902,10 +910,11 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
     targetPath = "/learn?course=" + encodeURIComponent(course.id);
   } else if (params.service === "special-prize") {
     specialPrizeId = prizeIdInput;
-    const prize = (await listSpecialPrizes(false)).find((item) => item.id === specialPrizeId);
-    if (!prize) throw new Error("That special prize is no longer available.");
-    label = prize.title;
-    targetPath = "/special-prizes?offer=" + encodeURIComponent(prize.id);
+    // Use the already-validated current offer so edits to its snippet/title are
+    // reflected without reusing links to a deleted offer.
+    if (!activeSpecialPrize) throw new Error("That special prize is no longer available.");
+    label = activeSpecialPrize.title;
+    targetPath = "/special-prizes?offer=" + encodeURIComponent(activeSpecialPrize.id);
   }
   let token = "";
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -920,7 +929,34 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
 }
 
 export async function getCreatorPromotionLinks(creatorId: string): Promise<CreatorPromotionLink[]> {
-  return (await readPromotionLinks()).filter((link) => link.creatorId === creatorId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const links = await readPromotionLinks();
+  // Existing links created before revocation support are reconciled against the
+  // current catalogue. A deleted offer cannot remain in the creator's active list.
+  const savedPrizes = await listSpecialPrizes(true);
+  const savedPrizeIds = new Set(savedPrizes.map((prize) => prize.id));
+  const staleLinks = links.filter((link) =>
+    link?.service === "special-prize" &&
+    link.status !== "revoked" &&
+    Boolean(link.specialPrizeId) &&
+    !savedPrizeIds.has(String(link.specialPrizeId)),
+  );
+  const revokedAt = new Date().toISOString();
+  await Promise.all(staleLinks.map((link) =>
+    queryRtdb(promotionLinkPath(link.token), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "revoked", revokedAt, revocationReason: "special-prize-deleted" }),
+    }).catch(() => undefined),
+  ));
+  const staleTokens = new Set(staleLinks.map((link) => link.token));
+  return links
+    .filter((link) =>
+      link.creatorId === creatorId &&
+      link.status !== "revoked" &&
+      !staleTokens.has(link.token) &&
+      (link.service !== "special-prize" || savedPrizeIds.has(String(link.specialPrizeId || ""))),
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 async function getPromotionLink(token: string): Promise<CreatorPromotionLink | null> {
