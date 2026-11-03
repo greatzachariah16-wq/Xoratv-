@@ -791,7 +791,7 @@ function dataRewardClaimPath(reference: string) {
   return `commerce/dataRewardClaims/${reference}`;
 }
 
-async function updateCpaAccountWithEtag(
+export async function updateCpaAccountWithEtag(
   userId: string,
   updater: (account: Record<string, any>) => Record<string, any>,
 ) {
