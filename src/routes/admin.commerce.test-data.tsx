@@ -3,12 +3,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { AdminProtectedLayout } from "@/components/admin/AdminProtectedLayout";
-import { commerceFetch, melePlansQuery, vtusharePlansQuery, meleHealthQuery, vtushareHealthQuery, type MelePlan, type VtusharePlan } from "@/lib/commerce";
+import { commerceFetch, vtusharePlansQuery, meleHealthQuery, vtushareHealthQuery, type MelePlan, type VtusharePlan } from "@/lib/commerce";
 
 export const Route = createFileRoute("/admin/commerce/test-data")({ component: TestData });
 
 function TestData() {
-  const mele = useQuery(melePlansQuery(true));
+  // Load MELE's raw live plans directly. The public Xora catalogue uses catalogId,
+  // while live purchases require MELE's provider plan_id.
+  const mele = useQuery({
+    queryKey: ["admin", "mele-live-plans"],
+    queryFn: () => commerceFetch<{ ok: true; plans: MelePlan[] }>("/api/admin/commerce/mele-plans"),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
   const vt = useQuery(vtusharePlansQuery(true));
   const mh = useQuery(meleHealthQuery());
   const vh = useQuery(vtushareHealthQuery());
@@ -125,7 +132,9 @@ function TestData() {
                   {melePlans.map(p => <option key={p.plan_id} value={p.plan_id}>{p.data_size} · ₦{p.price} · {p.validity}</option>)}
                 </select>
               </div>
-              <p className="text-[10px] text-muted-foreground">MELE: {mh.data?.health?.connected ? "connected" : "not connected"} · {melePlans.length} plans for {network}{melePlans[0] ? ` · Cheapest: ₦${melePlans[0].price}` : ""}</p>
+              <p className="text-[10px] text-muted-foreground">MELE live API: {mele.isLoading ? "loading live plans…" : mele.isError ? "live catalogue unavailable" : "live catalogue"} · {melePlans.length} plans for {network}{melePlans[0] ? ` · Cheapest: ₦${melePlans[0].price}` : ""} · Connection: {mh.data?.health?.connected ? "connected" : "checking / unavailable"}</p>
+              {mele.isError ? <p className="text-xs text-destructive">{mele.error instanceof Error ? mele.error.message : "Could not load MELE live plans."}</p> : null}
+              {!mh.data?.health?.connected && mh.data?.health?.error ? <p className="text-[10px] text-muted-foreground">MELE wallet check: {mh.data.health.error}</p> : null}
             </>
           ) : (
             <>
