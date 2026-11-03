@@ -3,7 +3,7 @@ import { getAuthenticatedUserId } from "./session-auth";
 import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, createCreatorPost, getPromotionTarget,
   getPublicDataPlans,
-  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
+  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
@@ -35,6 +35,35 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
   if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
     return new Response(null, { status: 204, headers });
+  }
+
+  if (path === "/api/commerce/data-rewards" && request.method === "GET") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view your Data Rewards." }, 401);
+    try {
+      return json({ ok: true, ...(await getDataRewardStatus(authenticatedUserId)) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load your Data Rewards." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/data-rewards/claim" && request.method === "POST") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to claim data rewards." }, 401);
+    try {
+      const body = await request.json() as Record<string, unknown>;
+      const claim = await claimMeleDataReward({
+        userId: authenticatedUserId,
+        tierId: String(body.tierId || "") as any,
+        network: String(body.network || "").toUpperCase() as any,
+        phoneNumber: String(body.phoneNumber || ""),
+      });
+      return json({ ok: true, claim });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Data reward claim failed.";
+      const conflict = /still being processed|still being confirmed|again after|already claimed|insufficient/i.test(message);
+      return json({ ok: false, error: message }, conflict ? 409 : 400);
+    }
   }
 
   if (path === "/api/webhooks/mele" && request.method === "GET") {
