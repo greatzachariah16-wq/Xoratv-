@@ -240,29 +240,89 @@ export async function redeemCpaPoints(params: {
   if (existing?.userId === params.userId && existing?.status === "redeemed") {
     return { points: Number(existing.points || 0), remainingPoints: Number(existing.remainingPoints || 0), duplicate: true };
   }
-  const account = await getOrCreateCpaUser(params.userId);
-  if (["processing", "provider_pending"].includes(String((account as any).dataRewardClaim?.status || ""))) {
-    throw new Error("Your data reward is still being confirmed. Wait for its delivery update before spending Xora Points.");
+
+  const { getCleanDbUrl, getFirebaseAccessToken } = await import("./xseries-service-account");
+  const base = getCleanDbUrl();
+  const token = await getFirebaseAccessToken();
+  if (!base || !token) throw new Error("Secure Xora Points updates are unavailable right now.");
+  const target = `${base}/commerce/cpaUsers/${encodeURIComponent(params.userId)}.json`;
+  const redemptionKey = crypto.createHash("sha256").update(params.reference).digest("hex");
+  let result: { points: number; remainingPoints: number; duplicate?: boolean } | null = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const read = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      headers: { "X-Firebase-ETag": "true" },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!read.ok) throw new Error(`Unable to read Xora Points (HTTP ${read.status}).`);
+    const raw = await read.json().catch(() => null) as any;
+    const etag = read.headers.get("etag");
+    const account = raw && typeof raw === "object"
+      ? raw
+      : await getOrCreateCpaUser(params.userId) as any;
+    const prior = account.pointRedemptions?.[redemptionKey];
+    if (prior?.status === "redeemed") {
+      result = { points: Number(prior.points || requested), remainingPoints: Number(account.points || 0), duplicate: true };
+      break;
+    }
+    if (["processing", "provider_pending"].includes(String(account.dataRewardClaim?.status || ""))) {
+      throw new Error("Your data reward is still being confirmed. Wait for its delivery update before spending Xora Points.");
+    }
+    const balance = Math.max(0, Math.floor(Number(account.points || 0)));
+    if (balance < requested) throw new Error("Insufficient Xora Points.");
+    const now = new Date().toISOString();
+    const remainingPoints = balance - requested;
+    const redemption = {
+      id: params.reference,
+      userId: params.userId,
+      points: requested,
+      purpose: params.purpose,
+      description: params.description,
+      status: "redeemed",
+      createdAt: now,
+      remainingPoints,
+    };
+    const updated = {
+      ...account,
+      points: remainingPoints,
+      lifetimeRedeemed: Number(account.lifetimeRedeemed || 0) + requested,
+      pointRedemptions: {
+        ...(account.pointRedemptions || {}),
+        [redemptionKey]: redemption,
+      },
+      updatedAt: now,
+    };
+    const write = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "if-match": etag || "null_etag" },
+      body: JSON.stringify(updated),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (write.ok) {
+      result = { points: requested, remainingPoints, duplicate: false };
+      break;
+    }
+    if (write.status !== 412) throw new Error(`Unable to update Xora Points (HTTP ${write.status}).`);
   }
-  if (account.points < requested) throw new Error("Insufficient Xora Points.");
-  const now = new Date().toISOString();
-  const remainingPoints = account.points - requested;
-  const redemption = {
-    id: params.reference,
-    userId: params.userId,
-    points: requested,
-    purpose: params.purpose,
-    description: params.description,
-    status: "redeemed",
-    createdAt: now,
-    remainingPoints,
-  };
-  await queryRtdb(redemptionPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(redemption) });
-  await queryRtdb(cpaUserPath(params.userId), {
-    method: "PUT", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...account, points: remainingPoints, lifetimeRedeemed: Number(account.lifetimeRedeemed || 0) + requested, updatedAt: now }),
-  });
-  return { points: requested, remainingPoints, duplicate: false };
+
+  if (!result) throw new Error("Xora Points changed repeatedly. Please retry the redemption.");
+  if (!result.duplicate) {
+    await queryRtdb(redemptionPath, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: params.reference,
+        userId: params.userId,
+        points: requested,
+        purpose: params.purpose,
+        description: params.description,
+        status: "redeemed",
+        createdAt: new Date().toISOString(),
+        remainingPoints: result.remainingPoints,
+      }),
+    });
+  }
+  return result;
 }
 
 export async function refundCpaPoints(params: { userId: string; points: number; reference: string; description: string }) {
