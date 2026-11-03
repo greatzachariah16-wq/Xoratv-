@@ -862,12 +862,22 @@ export async function settleMeleDataRewardClaim(params: {
 }) {
   const claim = await queryRtdb(dataRewardClaimPath(params.reference)) as any;
   if (!claim?.userId) return { matched: false, status: "unmatched" as const };
-  if (claim.status === "success") return { matched: true, status: "success" as const, duplicate: true };
-  if (claim.status === "failed" && !["delivered", "success", "successful", "completed", "complete"].includes(String(params.providerStatus || "").trim().toLowerCase())) {
+  const status = String(params.providerStatus || "").trim().toLowerCase();
+  const accountSnapshot = await queryRtdb(`commerce/cpaUsers/${encodeURIComponent(String(claim.userId))}`) as any;
+  const accountClaim = accountSnapshot?.dataRewardClaim;
+  const alreadySuccessful = claim.status === "success" ||
+    accountSnapshot?.dataRewardLastClaim?.reference === params.reference ||
+    (accountClaim?.reference === params.reference && accountClaim.status === "success");
+  if (alreadySuccessful) {
+    await updateDataRewardClaimRecord(params.reference, { status: "success", providerStatus: status || claim.providerStatus || "success" }).catch(() => null);
+    return { matched: true, status: "success" as const, duplicate: true };
+  }
+  const alreadyFailed = claim.status === "failed" ||
+    (accountClaim?.reference === params.reference && accountClaim.status === "failed");
+  if (alreadyFailed && !["delivered", "success", "successful", "completed", "complete"].includes(status)) {
+    await updateDataRewardClaimRecord(params.reference, { status: "failed", providerStatus: status || claim.providerStatus || "failed" }).catch(() => null);
     return { matched: true, status: "failed" as const, duplicate: true };
   }
-
-  const status = String(params.providerStatus || "").trim().toLowerCase();
   const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status);
   const failed = ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled"].includes(status);
   const now = new Date().toISOString();
@@ -908,7 +918,7 @@ export async function settleMeleDataRewardClaim(params: {
       providerStatus: status,
       providerPayload: params.providerPayload ?? claim.providerPayload ?? null,
       completedAt: finalClaim?.completedAt || now,
-    });
+    }).catch(() => null);
     return { matched: true, status: "success" as const, duplicate: finalClaim?.completedAt !== now };
   }
 
@@ -933,7 +943,7 @@ export async function settleMeleDataRewardClaim(params: {
       providerStatus: status,
       providerPayload: params.providerPayload ?? claim.providerPayload ?? null,
       failedAt: now,
-    });
+    }).catch(() => null);
     return { matched: true, status: "failed" as const };
   }
 
@@ -956,7 +966,7 @@ export async function settleMeleDataRewardClaim(params: {
     status: "provider_pending",
     providerStatus: status || "processing",
     providerPayload: params.providerPayload ?? claim.providerPayload ?? null,
-  });
+  }).catch(() => null);
   return { matched: true, status: "provider_pending" as const };
 }
 
@@ -1130,7 +1140,6 @@ export async function claimMeleDataReward(params: {
       rewardSize: tier.size,
       deliveredSize: selected.data_size,
       points: tier.points,
-      remainingPoints: (await getCpaWallet(params.userId)).points,
       message: `Your ${selected.data_size} data reward has been delivered.`,
     };
   }
