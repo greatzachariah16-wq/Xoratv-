@@ -695,24 +695,6 @@ export async function handleVtushareWebhook(request: Request) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id: webhookId, reference, payload, receivedAt: new Date().toISOString() }),
   });
-  const rewardClaim = await queryRtdb(dataRewardClaimPath(reference)) as any;
-  if (rewardClaim?.userId && rewardClaim?.reference === reference) {
-    const rewardResult = await settleMeleDataRewardClaim({
-      reference,
-      providerStatus,
-      providerPayload: payload,
-    });
-    return {
-      ok: true as const,
-      status: 200,
-      reference,
-      providerStatus,
-      matchedOrderId: null,
-      matchedRewardClaim: true,
-      rewardClaimStatus: rewardResult.status,
-    };
-  }
-
   const orders = (await queryRtdb("commerce/dataOrders")) as Record<string, any> | null;
   const matched = Object.values(orders || {}).find(
     (order) => order?.vtushareReference === reference || order?.reference === reference,
@@ -1195,6 +1177,24 @@ export async function handleMeleWebhook(request: Request) {
       receivedAt: new Date().toISOString(),
     }),
   });
+
+  const rewardClaim = await queryRtdb(dataRewardClaimPath(reference)) as any;
+  if (rewardClaim?.userId && rewardClaim?.reference === reference) {
+    const rewardResult = await settleMeleDataRewardClaim({
+      reference,
+      providerStatus,
+      providerPayload: payload,
+    });
+    return {
+      ok: true as const,
+      status: 200,
+      reference,
+      providerStatus,
+      matchedOrderId: null,
+      matchedRewardClaim: true,
+      rewardClaimStatus: rewardResult.status,
+    };
+  }
 
   const orders = (await queryRtdb("commerce/dataOrders")) as Record<string, any> | null;
   const matched = Object.values(orders || {}).find(
