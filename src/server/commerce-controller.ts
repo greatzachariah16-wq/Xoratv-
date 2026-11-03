@@ -701,6 +701,19 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     return json({ ok: true, health });
   }
 
+  if (path === "/api/admin/commerce/mele-plans" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    try {
+      // Force a live provider request using MELE_DATA_API_KEY; never return the
+      // public Xora catalogue or a cached plan list for a real purchase test.
+      const plans = await getMelePlans(true);
+      return json({ ok: true, plans, source: "mele-live" });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load MELE live plans." }, 502);
+    }
+  }
+
   if (path === "/api/admin/commerce/mele-wallet" && request.method === "GET") {
     const session = verifyAdminSession(request);
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
