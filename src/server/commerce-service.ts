@@ -1009,7 +1009,12 @@ export async function claimMeleDataReward(params: {
   const phoneNumber = String(params.phoneNumber || "").replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
 
-  const plans = await getMelePlans(true);
+  let plans: MelePlan[];
+  try {
+    plans = await getMelePlans(true);
+  } catch {
+    throw new Error("Data rewards are temporarily unavailable. Please try again shortly.");
+  }
   const matchingPlans = plans
     .filter((plan) => plan.network === params.network)
     .map((plan) => ({ plan, sizeMb: parseDataRewardSizeMb(plan) }))
@@ -1018,7 +1023,7 @@ export async function claimMeleDataReward(params: {
   const candidates = exactPlans.length ? exactPlans : matchingPlans;
   candidates.sort((a, b) => a.plan.price - b.plan.price || a.sizeMb - b.sizeMb);
   const selected = candidates[0]?.plan;
-  if (!selected) throw new Error(`MELE has no ${params.network} bundle matching ${tier.size} right now.`);
+  if (!selected) throw new Error(`No ${params.network} bundle is available for this reward right now.`);
 
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
@@ -1099,19 +1104,18 @@ export async function claimMeleDataReward(params: {
       rewardSize: tier.size,
       deliveredSize: selected.data_size,
       points: tier.points,
-      message: "MELE is still confirming this request. Your points have not been deducted; please wait for the delivery update.",
+      message: "Your data request is awaiting delivery confirmation. Your points have not been deducted; please wait for the update.",
     };
   }
 
   const normalized = normalizeMeleRewardStatus(body);
   if (normalized.failed || (!response.ok && response.status < 500)) {
-    const message = body?.message || body?.error || `MELE rejected the data request (HTTP ${response.status}).`;
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: normalized.status || "failed",
       providerPayload: body,
     });
-    throw new Error(String(message));
+    throw new Error("The data request could not be completed. Your Xora Points were not deducted. Please try again later.");
   }
 
   if (normalized.succeeded) {
@@ -1127,7 +1131,7 @@ export async function claimMeleDataReward(params: {
       deliveredSize: selected.data_size,
       points: tier.points,
       remainingPoints: (await getCpaWallet(params.userId)).points,
-      message: `MELE confirmed your ${selected.data_size} data delivery.`,
+      message: `Your ${selected.data_size} data reward has been delivered.`,
     };
   }
 
@@ -1142,7 +1146,7 @@ export async function claimMeleDataReward(params: {
     rewardSize: tier.size,
     deliveredSize: selected.data_size,
     points: tier.points,
-    message: "MELE accepted the request. Your points will only be deducted after delivery is confirmed.",
+    message: "Your data request is processing. Your points will only be deducted after delivery is confirmed.",
   };
 }
 
