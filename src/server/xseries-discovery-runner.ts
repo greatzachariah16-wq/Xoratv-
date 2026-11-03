@@ -132,12 +132,18 @@ export function startXseriesDiscoveryScheduler() {
     ) || 360,
   );
 
-  // Initial cycle delayed by 20s to allow server initialization
-  setTimeout(() => {
-    runXseriesDiscoveryCycle().catch((e) =>
-      console.warn("[Xseries Discovery] Initial cycle error:", e),
-    );
-  }, 20000);
+  // Avoid running a full crawler while the production site is serving its
+  // first visitors after boot. Enable an initial run explicitly when needed.
+  if (process.env.XSERIES_DISCOVERY_RUN_ON_START === "true") {
+    setTimeout(() => {
+      runXseriesDiscoveryCycle().catch((e) =>
+        console.warn("[Xseries Discovery] Initial cycle error:", e),
+      );
+    }, 5 * 60 * 1000);
+    console.log("[Xseries Discovery] Startup cycle enabled; delayed five minutes.");
+  } else {
+    console.log("[Xseries Discovery] Skipping startup cycle to protect page response time.");
+  }
 
   timer = setInterval(
     () => {
