@@ -695,6 +695,24 @@ export async function handleVtushareWebhook(request: Request) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id: webhookId, reference, payload, receivedAt: new Date().toISOString() }),
   });
+  const rewardClaim = await queryRtdb(dataRewardClaimPath(reference)) as any;
+  if (rewardClaim?.userId && rewardClaim?.reference === reference) {
+    const rewardResult = await settleMeleDataRewardClaim({
+      reference,
+      providerStatus,
+      providerPayload: payload,
+    });
+    return {
+      ok: true as const,
+      status: 200,
+      reference,
+      providerStatus,
+      matchedOrderId: null,
+      matchedRewardClaim: true,
+      rewardClaimStatus: rewardResult.status,
+    };
+  }
+
   const orders = (await queryRtdb("commerce/dataOrders")) as Record<string, any> | null;
   const matched = Object.values(orders || {}).find(
     (order) => order?.vtushareReference === reference || order?.reference === reference,
@@ -774,6 +792,347 @@ function webhookSecretIsValid(request: Request) {
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ||
     "";
   return supplied === expected;
+}
+
+
+const DATA_REWARD_TIERS = {
+  "100mb": { size: "100 MB", points: 25, targetMb: 100 },
+  "200mb": { size: "200 MB", points: 50, targetMb: 200 },
+  "300mb": { size: "300 MB", points: 75, targetMb: 300 },
+  "1gb": { size: "1 GB", points: 350, targetMb: 1024 },
+} as const;
+
+type DataRewardTierId = keyof typeof DATA_REWARD_TIERS;
+type DataRewardNetwork = MelePlan["network"];
+
+function dataRewardClaimPath(reference: string) {
+  return \`commerce/dataRewardClaims/\${reference}\`;
+}
+
+async function updateCpaAccountWithEtag(
+  userId: string,
+  updater: (account: Record<string, any>) => Record<string, any>,
+) {
+  const { getCleanDbUrl, getFirebaseAccessToken } = await import("./xseries-service-account");
+  const base = getCleanDbUrl();
+  const token = await getFirebaseAccessToken();
+  if (!base || !token) throw new Error("Secure Xora Points updates are unavailable right now.");
+  const target = \`\${base}/commerce/cpaUsers/\${encodeURIComponent(userId)}.json\`;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const read = await fetch(\`\${target}?access_token=\${encodeURIComponent(token)}\`, {
+      headers: { "X-Firebase-ETag": "true" },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!read.ok) throw new Error(\`Unable to read Xora Points (HTTP \${read.status}).\`);
+    const current = await read.json().catch(() => null) as Record<string, any> | null;
+    const etag = read.headers.get("etag");
+    const account = current && typeof current === "object"
+      ? current
+      : { userId, trackingId: "", points: 0, lifetimeEarned: 0, lifetimeRedeemed: 0 };
+    const updated = updater(account);
+    const write = await fetch(\`\${target}?access_token=\${encodeURIComponent(token)}\`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "if-match": etag || "null_etag",
+      },
+      body: JSON.stringify(updated),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (write.ok) return updated;
+    if (write.status !== 412) throw new Error(\`Unable to update Xora Points (HTTP \${write.status}).\`);
+  }
+  throw new Error("Xora Points changed repeatedly. Please retry the claim.");
+}
+
+function parseDataRewardSizeMb(plan: MelePlan) {
+  const text = \`\${plan.data_size} \${plan.plan_name}\`.toLowerCase().replace(/,/g, "");
+  const match = text.match(/(\d+(?:\.\d+)?)\s*(gb|g|mb|m)\b/i);
+  if (!match) return 0;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return /^g/i.test(match[2]) ? amount * 1024 : amount;
+}
+
+function normalizeMeleRewardStatus(body: any) {
+  const data = body?.data && typeof body.data === "object" ? body.data : body;
+  const status = String(data?.status ?? body?.status ?? data?.state ?? body?.state ?? "").trim().toLowerCase();
+  const successFlag = data?.success ?? body?.success;
+  const failed = successFlag === false || ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled"].includes(status);
+  const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status) ||
+    (successFlag === true && !["pending", "processing", "queued", "initiated", "accepted", "in_progress"].includes(status));
+  return { status, failed, succeeded };
+}
+
+async function updateDataRewardClaimRecord(reference: string, patch: Record<string, unknown>) {
+  await queryRtdb(dataRewardClaimPath(reference), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...patch, updatedAt: new Date().toISOString() }),
+  });
+}
+
+export async function settleMeleDataRewardClaim(params: {
+  reference: string;
+  providerStatus: string;
+  providerPayload?: unknown;
+}) {
+  const claim = await queryRtdb(dataRewardClaimPath(params.reference)) as any;
+  if (!claim?.userId) return { matched: false, status: "unmatched" as const };
+
+  const status = String(params.providerStatus || "").trim().toLowerCase();
+  const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status);
+  const failed = ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled"].includes(status);
+  const now = new Date().toISOString();
+
+  if (succeeded) {
+    const updated = await updateCpaAccountWithEtag(String(claim.userId), (account) => {
+      const currentClaim = account.dataRewardClaim;
+      if (currentClaim?.reference !== params.reference) {
+        if (account.dataRewardLastClaim?.reference === params.reference) return account;
+        throw new Error("The pending data reward no longer matches this provider reference.");
+      }
+      if (currentClaim.status === "success") return account;
+      const points = Number(claim.points || currentClaim.points || 0);
+      if (!Number.isFinite(points) || points <= 0) throw new Error("The data reward points value is invalid.");
+      if (Number(account.points || 0) < points) {
+        throw new Error("The data reward was delivered, but the points balance needs manual reconciliation.");
+      }
+      const completedClaim = {
+        ...currentClaim,
+        status: "success",
+        providerStatus: status,
+        providerPayload: params.providerPayload ?? currentClaim.providerPayload ?? null,
+        completedAt: now,
+      };
+      return {
+        ...account,
+        points: Number(account.points || 0) - points,
+        lifetimeRedeemed: Number(account.lifetimeRedeemed || 0) + points,
+        dataRewardLastClaimAt: now,
+        dataRewardLastClaim: completedClaim,
+        dataRewardClaim: completedClaim,
+        updatedAt: now,
+      };
+    });
+    const finalClaim = updated.dataRewardClaim || updated.dataRewardLastClaim;
+    await updateDataRewardClaimRecord(params.reference, {
+      status: "success",
+      providerStatus: status,
+      providerPayload: params.providerPayload ?? claim.providerPayload ?? null,
+      completedAt: finalClaim?.completedAt || now,
+    });
+    return { matched: true, status: "success" as const, duplicate: finalClaim?.completedAt !== now };
+  }
+
+  if (failed) {
+    await updateCpaAccountWithEtag(String(claim.userId), (account) => {
+      const currentClaim = account.dataRewardClaim;
+      if (currentClaim?.reference !== params.reference || currentClaim.status === "success") return account;
+      return {
+        ...account,
+        dataRewardClaim: {
+          ...currentClaim,
+          status: "failed",
+          providerStatus: status,
+          providerPayload: params.providerPayload ?? null,
+          failedAt: now,
+        },
+        updatedAt: now,
+      };
+    });
+    await updateDataRewardClaimRecord(params.reference, {
+      status: "failed",
+      providerStatus: status,
+      providerPayload: params.providerPayload ?? claim.providerPayload ?? null,
+      failedAt: now,
+    });
+    return { matched: true, status: "failed" as const };
+  }
+
+  await updateCpaAccountWithEtag(String(claim.userId), (account) => {
+    const currentClaim = account.dataRewardClaim;
+    if (currentClaim?.reference !== params.reference || currentClaim.status === "success" || currentClaim.status === "failed") return account;
+    return {
+      ...account,
+      dataRewardClaim: {
+        ...currentClaim,
+        status: "provider_pending",
+        providerStatus: status || "processing",
+        providerPayload: params.providerPayload ?? currentClaim.providerPayload ?? null,
+        updatedAt: now,
+      },
+      updatedAt: now,
+    };
+  });
+  await updateDataRewardClaimRecord(params.reference, {
+    status: "provider_pending",
+    providerStatus: status || "processing",
+    providerPayload: params.providerPayload ?? claim.providerPayload ?? null,
+  });
+  return { matched: true, status: "provider_pending" as const };
+}
+
+export async function getDataRewardStatus(userId: string) {
+  const [wallet, account] = await Promise.all([
+    getCpaWallet(userId),
+    queryRtdb(\`commerce/cpaUsers/\${encodeURIComponent(userId)}\`) as Promise<any>,
+  ]);
+  const lastClaimAt = account?.dataRewardLastClaimAt || null;
+  const lastClaimMs = lastClaimAt ? Date.parse(String(lastClaimAt)) : NaN;
+  const cooldownUntil = Number.isFinite(lastClaimMs) ? new Date(lastClaimMs + 86400000).toISOString() : null;
+  const cooldownRemainingMs = cooldownUntil ? Math.max(0, Date.parse(cooldownUntil) - Date.now()) : 0;
+  const claim = account?.dataRewardClaim || null;
+  const pending = ["processing", "provider_pending"].includes(String(claim?.status || ""));
+  return {
+    wallet,
+    claim,
+    lastClaim: account?.dataRewardLastClaim || null,
+    cooldownUntil: cooldownRemainingMs > 0 ? cooldownUntil : null,
+    cooldownRemainingMs,
+    pending,
+  };
+}
+
+export async function claimMeleDataReward(params: {
+  userId: string;
+  tierId: DataRewardTierId;
+  network: DataRewardNetwork;
+  phoneNumber: string;
+}) {
+  const tier = DATA_REWARD_TIERS[params.tierId];
+  if (!tier) throw new Error("Choose a valid data reward.");
+  if (!["MTN", "GLO", "AIRTEL", "9MOBILE"].includes(params.network)) throw new Error("Choose a valid mobile network.");
+  const phoneNumber = String(params.phoneNumber || "").replace(/\D/g, "");
+  if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
+
+  const plans = await getMelePlans(true);
+  const matchingPlans = plans
+    .filter((plan) => plan.network === params.network)
+    .map((plan) => ({ plan, sizeMb: parseDataRewardSizeMb(plan) }))
+    .filter((item) => item.sizeMb >= tier.targetMb)
+    .sort((a, b) => a.sizeMb - b.sizeMb || a.plan.price - b.plan.price);
+  const selected = matchingPlans[0]?.plan;
+  if (!selected) throw new Error(\`MELE has no \${params.network} bundle matching \${tier.size} right now.\`);
+
+  const reference = id("xora_reward").slice(0, 70);
+  const createdAt = new Date().toISOString();
+  const claimRecord = {
+    reference,
+    userId: params.userId,
+    tierId: params.tierId,
+    rewardSize: tier.size,
+    points: tier.points,
+    network: params.network,
+    deliveredSize: selected.data_size,
+    planId: selected.plan_id,
+    planName: selected.plan_name,
+    providerPrice: selected.price,
+    phoneNumber,
+    provider: "mele",
+    status: "processing",
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  await updateCpaAccountWithEtag(params.userId, (account) => {
+    const existingClaim = account.dataRewardClaim;
+    if (["processing", "provider_pending"].includes(String(existingClaim?.status || ""))) {
+      throw new Error("Your previous data reward is still being processed. Please wait for its delivery confirmation.");
+    }
+    const lastClaimMs = account.dataRewardLastClaimAt ? Date.parse(String(account.dataRewardLastClaimAt)) : NaN;
+    if (Number.isFinite(lastClaimMs) && Date.now() < lastClaimMs + 86400000) {
+      const next = new Date(lastClaimMs + 86400000).toLocaleString("en-NG");
+      throw new Error(\`You can claim data again after \${next}.\`);
+    }
+    if (Number(account.points || 0) < tier.points) {
+      throw new Error(\`You need at least \${tier.points} Xora Points to claim \${tier.size}.\`);
+    }
+    return { ...account, dataRewardClaim: claimRecord, updatedAt: createdAt };
+  });
+
+  try {
+    await queryRtdb(dataRewardClaimPath(reference), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(claimRecord),
+    });
+  } catch (error) {
+    await settleMeleDataRewardClaim({ reference, providerStatus: "failed", providerPayload: { message: "Could not create the claim record." } }).catch(() => null);
+    throw error;
+  }
+
+  let response: Response;
+  let body: any;
+  try {
+    response = await meleFetch("/data/purchase", {
+      method: "POST",
+      body: JSON.stringify({
+        network: selected.network,
+        phone_number: phoneNumber,
+        plan_id: selected.plan_id,
+        reference,
+      }),
+    });
+    body = await response.json().catch(() => null);
+  } catch (error) {
+    await settleMeleDataRewardClaim({
+      reference,
+      providerStatus: "processing",
+      providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted." },
+    }).catch(() => null);
+    return {
+      status: "provider_pending" as const,
+      reference,
+      rewardSize: tier.size,
+      deliveredSize: selected.data_size,
+      points: tier.points,
+      message: "MELE is still confirming this request. Your points have not been deducted; please wait for the delivery update.",
+    };
+  }
+
+  const normalized = normalizeMeleRewardStatus(body);
+  if (normalized.failed || (!response.ok && response.status < 500)) {
+    const message = body?.message || body?.error || \`MELE rejected the data request (HTTP \${response.status}).\`;
+    await settleMeleDataRewardClaim({
+      reference,
+      providerStatus: normalized.status || "failed",
+      providerPayload: body,
+    });
+    throw new Error(String(message));
+  }
+
+  if (normalized.succeeded) {
+    await settleMeleDataRewardClaim({
+      reference,
+      providerStatus: normalized.status || "success",
+      providerPayload: body,
+    });
+    return {
+      status: "success" as const,
+      reference,
+      rewardSize: tier.size,
+      deliveredSize: selected.data_size,
+      points: tier.points,
+      remainingPoints: (await getCpaWallet(params.userId)).points,
+      message: \`MELE confirmed your \${selected.data_size} data delivery.\`,
+    };
+  }
+
+  await settleMeleDataRewardClaim({
+    reference,
+    providerStatus: normalized.status || "processing",
+    providerPayload: body,
+  });
+  return {
+    status: "provider_pending" as const,
+    reference,
+    rewardSize: tier.size,
+    deliveredSize: selected.data_size,
+    points: tier.points,
+    message: "MELE accepted the request. Your points will only be deducted after delivery is confirmed.",
+  };
 }
 
 export async function handleMeleWebhook(request: Request) {
