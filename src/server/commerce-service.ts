@@ -128,6 +128,20 @@ function normalizeMelePlan(p: any): MelePlan {
   };
 }
 
+async function submitMeleDataPurchase(plan: MelePlan, phoneNumber: string, reference: string) {
+  const response = await meleFetch("/data/purchase", {
+    method: "POST",
+    body: JSON.stringify({
+      network: plan.network,
+      phone_number: phoneNumber,
+      plan_id: plan.plan_id,
+      reference,
+    }),
+  });
+  const body = await response.json().catch(() => null);
+  return { response, body };
+}
+
 export async function getMelePlans(force = false): Promise<MelePlan[]> {
   if (!force) {
     const cached = (await queryRtdb("commerce/dataPlans")) as MelePlan[] | Record<string, MelePlan> | null;
@@ -1092,16 +1106,9 @@ export async function claimMeleDataReward(params: {
   let response: Response;
   let body: any;
   try {
-    response = await meleFetch("/data/purchase", {
-      method: "POST",
-      body: JSON.stringify({
-        network: selected.network,
-        phone_number: phoneNumber,
-        plan_id: selected.plan_id,
-        reference,
-      }),
-    });
-    body = await response.json().catch(() => null);
+    const purchase = await submitMeleDataPurchase(selected, phoneNumber, reference);
+    response = purchase.response;
+    body = purchase.body;
   } catch (error) {
     await settleMeleDataRewardClaim({
       reference,
@@ -1534,11 +1541,7 @@ export async function testMelePurchase(params: {
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const reference = id("mele_test").slice(0, 75);
-  const res = await meleFetch("/data/purchase", {
-    method: "POST",
-    body: JSON.stringify({ network: plan.network, phone_number: phoneNumber, plan_id: plan.plan_id, reference }),
-  });
-  const body = await res.json().catch(() => null);
+  const { response: res, body } = await submitMeleDataPurchase(plan, phoneNumber, reference);
   if (!res.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${res.status}).`);
   return { reference, plan, phoneNumber, response: body };
 }
