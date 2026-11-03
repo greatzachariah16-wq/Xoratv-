@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { getAuthenticatedUserId } from "./session-auth";
 import { queryRtdb } from "./xseries-service-account";
+import { updateCpaAccountWithEtag } from "./commerce-service";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -83,15 +84,44 @@ async function applyExistingWalletReward(params: {
     }) });
   }
 
-  if (points || reversePoints) {
-    const pointsPath = `commerce/cpaUsers/${encodeURIComponent(userId)}`;
-    const account = await queryRtdb(pointsPath) as any || { userId, trackingId: "", points: 0, lifetimeEarned: 0, lifetimeRedeemed: 0 };
-    const nextPoints = Math.max(0, Number(account.points || 0) + points - reversePoints);
-    await queryRtdb(pointsPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-      ...account, userId, points: nextPoints,
-      lifetimeEarned: Number(account.lifetimeEarned || 0) + points,
-      updatedAt: now,
-    }) });
+  if (points || reversePoints || status === "2") {
+    const pointsKey = crypto.createHash("sha256").update(transId).digest("hex");
+    await updateCpaAccountWithEtag(userId, (account) => {
+      const rewardLedger = { ...(account.cpxResearchRewards || {}) };
+      const previous = rewardLedger[pointsKey];
+      if (previous?.status === "reversed" || previous?.providerStatus === status) return account;
+      if (status === "2") {
+        const amountToReverse = Math.max(Number(previous?.pointsReward || 0), reversePoints);
+        rewardLedger[pointsKey] = {
+          transactionId: transId,
+          status: "reversed",
+          providerStatus: status,
+          pointsReward: amountToReverse,
+          updatedAt: now,
+        };
+        return {
+          ...account,
+          points: Math.max(0, Number(account.points || 0) - amountToReverse),
+          cpxResearchRewards: rewardLedger,
+          updatedAt: now,
+        };
+      }
+      if (status !== "1" || type !== "complete" || prior?.status === "2" || previous) return account;
+      rewardLedger[pointsKey] = {
+        transactionId: transId,
+        status: "credited",
+        providerStatus: status,
+        pointsReward: points,
+        updatedAt: now,
+      };
+      return {
+        ...account,
+        points: Number(account.points || 0) + points,
+        lifetimeEarned: Number(account.lifetimeEarned || 0) + points,
+        cpxResearchRewards: rewardLedger,
+        updatedAt: now,
+      };
+    });
   }
 
   await queryRtdb(ledgerPath, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({

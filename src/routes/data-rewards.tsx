@@ -15,13 +15,33 @@ const REWARD_TIERS = [
 ] as const;
 
 type PointsWallet = { points: number; lifetimeEarned: number; lifetimeRedeemed: number };
+type RewardStatus = {
+  status?: string;
+  reference?: string;
+  message?: string;
+  rewardSize?: string;
+  deliveredSize?: string;
+  points?: number;
+  completedAt?: string;
+};
+type DataRewardSnapshot = {
+  wallet: PointsWallet;
+  claim: RewardStatus | null;
+  lastClaim: RewardStatus | null;
+  cooldownUntil: string | null;
+  cooldownRemainingMs: number;
+  pending: boolean;
+};
 
 function DataRewards() {
   const { user } = useAuth();
   const [wallet, setWallet] = useState<PointsWallet | null>(null);
   const [selected, setSelected] = useState<string>("200mb");
+  const [network, setNetwork] = useState<"MTN" | "GLO" | "AIRTEL" | "9MOBILE">("MTN");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [rewardStatus, setRewardStatus] = useState<Omit<DataRewardSnapshot, "wallet"> | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -30,10 +50,17 @@ function DataRewards() {
     setLoading(true);
     setError("");
     try {
-      const result = await commerceFetch<{ ok: true; wallet: PointsWallet }>(
-        `/api/offers/wallet?userId=${encodeURIComponent(user.id)}`,
+      const result = await commerceFetch<{ ok: true } & DataRewardSnapshot>(
+        "/api/commerce/data-rewards",
       );
       setWallet(result.wallet);
+      setRewardStatus({
+        claim: result.claim,
+        lastClaim: result.lastClaim,
+        cooldownUntil: result.cooldownUntil,
+        cooldownRemainingMs: result.cooldownRemainingMs,
+        pending: result.pending,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Your Xora Points balance could not be loaded.");
     } finally {
@@ -42,6 +69,32 @@ function DataRewards() {
   }
 
   useEffect(() => { void refreshWallet(); }, [user?.id]);
+
+  async function submitClaim() {
+    if (!user || claiming) return;
+    setClaiming(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await commerceFetch<{ ok: true; claim: RewardStatus }>("/api/commerce/data-rewards/claim", {
+        method: "POST",
+        body: JSON.stringify({
+          tierId: selected,
+          network,
+          phoneNumber: phone.replace(/\s+/g, ""),
+        }),
+      });
+      setNotice(result.claim.message || (result.claim.status === "success"
+        ? "Your data reward has been delivered."
+        : "Your data request is being processed. Your points have not been deducted."));
+      await refreshWallet();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Your data reward could not be claimed.");
+      await refreshWallet();
+    } finally {
+      setClaiming(false);
+    }
+  }
 
   const tier = REWARD_TIERS.find((item) => item.id === selected) || REWARD_TIERS[1];
   const validPhone = /^0[789][01]\d{8}$/.test(phone.replace(/\s+/g, ""));
@@ -97,14 +150,17 @@ function DataRewards() {
 
       <section className="rounded-[26px] border border-[#eadfd5] bg-[#fffdf9] p-5 shadow-sm">
         <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-[#f0e4d9] text-[#65483c]"><Smartphone className="size-5" /></div><div><h2 className="text-base font-semibold">Where should we send it?</h2><p className="text-xs text-muted-foreground">Enter the Nigerian phone number to receive your data.</p></div></div>
+        <label className="mt-4 block text-xs font-semibold text-foreground">Mobile network<select value={network} onChange={(e) => setNetwork(e.target.value as typeof network)} className="mt-2 h-12 w-full rounded-xl border border-[#e5d8cc] bg-white px-3 text-sm outline-none focus:border-[#8b6b5d]"><option value="MTN">MTN</option><option value="GLO">Glo</option><option value="AIRTEL">Airtel</option><option value="9MOBILE">9mobile</option></select></label>
         <label className="mt-4 block text-xs font-semibold text-foreground">Recipient phone number<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, "").slice(0, 13))} inputMode="tel" autoComplete="tel" placeholder="08012345678" className="mt-2 h-12 w-full rounded-xl border border-[#e5d8cc] bg-white px-3 text-sm outline-none focus:border-[#8b6b5d]" /></label>
-        <div className="mt-4 flex items-start gap-3 rounded-xl bg-[#f7f0e9] p-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#65483c]" /><p className="text-[11px] leading-5 text-[#6e5a50]">A successful reward claim starts your 24-hour cooldown. Failed fulfilment attempts will not use your daily claim.</p></div>
+        <div className="mt-4 flex items-start gap-3 rounded-xl bg-[#f7f0e9] p-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#65483c]" /><p className="text-[11px] leading-5 text-[#6e5a50]">One successful claim every 24 hours. Your points are deducted only after delivery is confirmed. Failed deliveries do not use your daily claim.</p></div>
+        {rewardStatus?.pending ? <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">Your previous data request is still awaiting delivery confirmation. Your points have not been deducted, and another claim is temporarily paused to prevent duplicate delivery.</p> : null}
+        {rewardStatus?.cooldownRemainingMs ? <p className="mt-3 rounded-xl border border-[#eadfd5] bg-[#f7f0e9] p-3 text-xs text-[#65483c]">Your next data reward is available after {new Date(rewardStatus.cooldownUntil || "").toLocaleString()}.</p> : null}
         {error ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</p> : null}
         {notice ? <p className="mt-3 rounded-xl border border-[#eadfd5] bg-[#f7f0e9] p-3 text-xs text-[#65483c]">{notice}</p> : null}
-        <button type="button" disabled={!validPhone || !enoughPoints || loading} onClick={() => setNotice("Reward fulfilment is not open yet. Your points have not been deducted.")} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#65483c] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
-          <ShieldCheck className="size-4" /> Claim {tier.size} · {tier.points} points
+        <button type="button" disabled={!validPhone || !enoughPoints || loading || claiming || Boolean(rewardStatus?.pending) || Number(rewardStatus?.cooldownRemainingMs || 0) > 0} onClick={() => void submitClaim()} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#65483c] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+          <ShieldCheck className="size-4" /> {claiming ? "Sending data…" : rewardStatus?.pending ? "Delivery pending" : Number(rewardStatus?.cooldownRemainingMs || 0) > 0 ? "Daily claim used" : `Claim ${tier.size} · ${tier.points} points`}
         </button>
-        <p className="mt-3 text-center text-[10px] leading-5 text-muted-foreground">Your Xora Points are not deducted on this preview. Claims will open after secure fulfilment and duplicate-claim protection are connected.</p>
+        <p className="mt-3 text-center text-[10px] leading-5 text-muted-foreground">Your data is sent to the selected number. Xora Points are only deducted after successful delivery confirmation.</p>
       </section>
     </main>
   </AppShell>;
