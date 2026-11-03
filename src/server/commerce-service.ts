@@ -806,7 +806,7 @@ type DataRewardTierId = keyof typeof DATA_REWARD_TIERS;
 type DataRewardNetwork = MelePlan["network"];
 
 function dataRewardClaimPath(reference: string) {
-  return \`commerce/dataRewardClaims/\${reference}\`;
+  return `commerce/dataRewardClaims/${reference}`;
 }
 
 async function updateCpaAccountWithEtag(
@@ -817,21 +817,21 @@ async function updateCpaAccountWithEtag(
   const base = getCleanDbUrl();
   const token = await getFirebaseAccessToken();
   if (!base || !token) throw new Error("Secure Xora Points updates are unavailable right now.");
-  const target = \`\${base}/commerce/cpaUsers/\${encodeURIComponent(userId)}.json\`;
+  const target = `${base}/commerce/cpaUsers/${encodeURIComponent(userId)}.json`;
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const read = await fetch(\`\${target}?access_token=\${encodeURIComponent(token)}\`, {
+    const read = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
       headers: { "X-Firebase-ETag": "true" },
       signal: AbortSignal.timeout(12000),
     });
-    if (!read.ok) throw new Error(\`Unable to read Xora Points (HTTP \${read.status}).\`);
+    if (!read.ok) throw new Error(`Unable to read Xora Points (HTTP ${read.status}).`);
     const current = await read.json().catch(() => null) as Record<string, any> | null;
     const etag = read.headers.get("etag");
     const account = current && typeof current === "object"
       ? current
       : { userId, trackingId: "", points: 0, lifetimeEarned: 0, lifetimeRedeemed: 0 };
     const updated = updater(account);
-    const write = await fetch(\`\${target}?access_token=\${encodeURIComponent(token)}\`, {
+    const write = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -841,13 +841,13 @@ async function updateCpaAccountWithEtag(
       signal: AbortSignal.timeout(12000),
     });
     if (write.ok) return updated;
-    if (write.status !== 412) throw new Error(\`Unable to update Xora Points (HTTP \${write.status}).\`);
+    if (write.status !== 412) throw new Error(`Unable to update Xora Points (HTTP ${write.status}).`);
   }
   throw new Error("Xora Points changed repeatedly. Please retry the claim.");
 }
 
 function parseDataRewardSizeMb(plan: MelePlan) {
-  const text = \`\${plan.data_size} \${plan.plan_name}\`.toLowerCase().replace(/,/g, "");
+  const text = `${plan.data_size} ${plan.plan_name}`.toLowerCase().replace(/,/g, "");
   const match = text.match(/(\d+(?:\.\d+)?)\s*(gb|g|mb|m)\b/i);
   if (!match) return 0;
   const amount = Number(match[1]);
@@ -880,6 +880,10 @@ export async function settleMeleDataRewardClaim(params: {
 }) {
   const claim = await queryRtdb(dataRewardClaimPath(params.reference)) as any;
   if (!claim?.userId) return { matched: false, status: "unmatched" as const };
+  if (claim.status === "success") return { matched: true, status: "success" as const, duplicate: true };
+  if (claim.status === "failed" && !["delivered", "success", "successful", "completed", "complete"].includes(String(params.providerStatus || "").trim().toLowerCase())) {
+    return { matched: true, status: "failed" as const, duplicate: true };
+  }
 
   const status = String(params.providerStatus || "").trim().toLowerCase();
   const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status);
@@ -974,21 +978,37 @@ export async function settleMeleDataRewardClaim(params: {
   return { matched: true, status: "provider_pending" as const };
 }
 
+function publicDataRewardClaim(claim: any) {
+  if (!claim || typeof claim !== "object") return null;
+  return {
+    reference: claim.reference || null,
+    status: claim.status || null,
+    rewardSize: claim.rewardSize || null,
+    deliveredSize: claim.deliveredSize || null,
+    points: Number(claim.points || 0),
+    network: claim.network || null,
+    providerStatus: claim.providerStatus || null,
+    createdAt: claim.createdAt || null,
+    completedAt: claim.completedAt || null,
+    failedAt: claim.failedAt || null,
+  };
+}
+
 export async function getDataRewardStatus(userId: string) {
   const [wallet, account] = await Promise.all([
     getCpaWallet(userId),
-    queryRtdb(\`commerce/cpaUsers/\${encodeURIComponent(userId)}\`) as Promise<any>,
+    queryRtdb(`commerce/cpaUsers/${encodeURIComponent(userId)}`) as Promise<any>,
   ]);
   const lastClaimAt = account?.dataRewardLastClaimAt || null;
   const lastClaimMs = lastClaimAt ? Date.parse(String(lastClaimAt)) : NaN;
   const cooldownUntil = Number.isFinite(lastClaimMs) ? new Date(lastClaimMs + 86400000).toISOString() : null;
   const cooldownRemainingMs = cooldownUntil ? Math.max(0, Date.parse(cooldownUntil) - Date.now()) : 0;
-  const claim = account?.dataRewardClaim || null;
+  const claim = publicDataRewardClaim(account?.dataRewardClaim);
   const pending = ["processing", "provider_pending"].includes(String(claim?.status || ""));
   return {
     wallet,
     claim,
-    lastClaim: account?.dataRewardLastClaim || null,
+    lastClaim: publicDataRewardClaim(account?.dataRewardLastClaim),
     cooldownUntil: cooldownRemainingMs > 0 ? cooldownUntil : null,
     cooldownRemainingMs,
     pending,
@@ -1014,7 +1034,7 @@ export async function claimMeleDataReward(params: {
     .filter((item) => item.sizeMb >= tier.targetMb)
     .sort((a, b) => a.sizeMb - b.sizeMb || a.plan.price - b.plan.price);
   const selected = matchingPlans[0]?.plan;
-  if (!selected) throw new Error(\`MELE has no \${params.network} bundle matching \${tier.size} right now.\`);
+  if (!selected) throw new Error(`MELE has no ${params.network} bundle matching ${tier.size} right now.`);
 
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
@@ -1044,10 +1064,10 @@ export async function claimMeleDataReward(params: {
     const lastClaimMs = account.dataRewardLastClaimAt ? Date.parse(String(account.dataRewardLastClaimAt)) : NaN;
     if (Number.isFinite(lastClaimMs) && Date.now() < lastClaimMs + 86400000) {
       const next = new Date(lastClaimMs + 86400000).toLocaleString("en-NG");
-      throw new Error(\`You can claim data again after \${next}.\`);
+      throw new Error(`You can claim data again after ${next}.`);
     }
     if (Number(account.points || 0) < tier.points) {
-      throw new Error(\`You need at least \${tier.points} Xora Points to claim \${tier.size}.\`);
+      throw new Error(`You need at least ${tier.points} Xora Points to claim ${tier.size}.`);
     }
     return { ...account, dataRewardClaim: claimRecord, updatedAt: createdAt };
   });
@@ -1059,7 +1079,14 @@ export async function claimMeleDataReward(params: {
       body: JSON.stringify(claimRecord),
     });
   } catch (error) {
-    await settleMeleDataRewardClaim({ reference, providerStatus: "failed", providerPayload: { message: "Could not create the claim record." } }).catch(() => null);
+    await updateCpaAccountWithEtag(params.userId, (account) => {
+      if (account.dataRewardClaim?.reference !== reference) return account;
+      return {
+        ...account,
+        dataRewardClaim: { ...account.dataRewardClaim, status: "failed", failedAt: new Date().toISOString(), providerStatus: "claim_record_error" },
+        updatedAt: new Date().toISOString(),
+      };
+    }).catch(() => null);
     throw error;
   }
 
@@ -1094,7 +1121,7 @@ export async function claimMeleDataReward(params: {
 
   const normalized = normalizeMeleRewardStatus(body);
   if (normalized.failed || (!response.ok && response.status < 500)) {
-    const message = body?.message || body?.error || \`MELE rejected the data request (HTTP \${response.status}).\`;
+    const message = body?.message || body?.error || `MELE rejected the data request (HTTP ${response.status}).`;
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: normalized.status || "failed",
@@ -1116,7 +1143,7 @@ export async function claimMeleDataReward(params: {
       deliveredSize: selected.data_size,
       points: tier.points,
       remainingPoints: (await getCpaWallet(params.userId)).points,
-      message: \`MELE confirmed your \${selected.data_size} data delivery.\`,
+      message: `MELE confirmed your ${selected.data_size} data delivery.`,
     };
   }
 
