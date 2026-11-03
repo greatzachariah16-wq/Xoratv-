@@ -1031,9 +1031,11 @@ export async function claimMeleDataReward(params: {
   const matchingPlans = plans
     .filter((plan) => plan.network === params.network)
     .map((plan) => ({ plan, sizeMb: parseDataRewardSizeMb(plan) }))
-    .filter((item) => item.sizeMb >= tier.targetMb)
-    .sort((a, b) => a.sizeMb - b.sizeMb || a.plan.price - b.plan.price);
-  const selected = matchingPlans[0]?.plan;
+    .filter((item) => item.sizeMb >= tier.targetMb);
+  const exactPlans = matchingPlans.filter((item) => item.sizeMb === tier.targetMb);
+  const candidates = exactPlans.length ? exactPlans : matchingPlans;
+  candidates.sort((a, b) => a.plan.price - b.plan.price || a.sizeMb - b.sizeMb);
+  const selected = candidates[0]?.plan;
   if (!selected) throw new Error(`MELE has no ${params.network} bundle matching ${tier.size} right now.`);
 
   const reference = id("xora_reward").slice(0, 70);
