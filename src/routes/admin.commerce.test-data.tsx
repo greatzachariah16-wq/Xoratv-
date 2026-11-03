@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { AdminProtectedLayout } from "@/components/admin/AdminProtectedLayout";
@@ -26,9 +26,20 @@ function TestData() {
   const [error, setError] = useState("");
 
   const melePlans = useMemo(
-    () => ((mele.data?.plans || []) as MelePlan[]).filter(p => p.network === network),
+    () => ((mele.data?.plans || []) as MelePlan[])
+      .filter(p => p.network === network)
+      .sort((a, b) => Number(a.price) - Number(b.price) || String(a.data_size).localeCompare(String(b.data_size))),
     [mele.data, network],
   );
+
+  // Start with the cheapest available MELE bundle for the selected network.
+  useEffect(() => {
+    if (!melePlans.length) {
+      setPlanId("");
+      return;
+    }
+    setPlanId(String(melePlans[0].plan_id));
+  }, [melePlans]);
   const vtPlans = (vt.data?.plans || []) as VtusharePlan[];
 
   const selectedMele = melePlans.find(p => String(p.plan_id) === planId);
@@ -114,7 +125,7 @@ function TestData() {
                   {melePlans.map(p => <option key={p.plan_id} value={p.plan_id}>{p.data_size} · ₦{p.price} · {p.validity}</option>)}
                 </select>
               </div>
-              <p className="text-[10px] text-muted-foreground">MELE: {mh.data?.health?.connected ? "connected" : "not connected"} · {melePlans.length} plans for {network}</p>
+              <p className="text-[10px] text-muted-foreground">MELE: {mh.data?.health?.connected ? "connected" : "not connected"} · {melePlans.length} plans for {network}{melePlans[0] ? ` · Cheapest: ₦${melePlans[0].price}` : ""}</p>
             </>
           ) : (
             <>
@@ -139,10 +150,10 @@ function TestData() {
 
           <label className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
             <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5 size-4" />
-            <span>I understand this test can charge the selected provider wallet and send real data to the recipient number.</span>
+            <span><strong>Required before purchase:</strong> I understand this test can charge the selected provider wallet and send real data to the recipient number. The purchase button remains available; if this box is not ticked, it will explain what is missing instead of appearing disabled.</span>
           </label>
 
-          <button type="button" disabled={busy || !confirmed} onClick={() => void run()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => void run()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <ShieldCheck className="size-3.5" />}
             {busy ? "Running provider purchase…" : "Run real test purchase"}
           </button>
