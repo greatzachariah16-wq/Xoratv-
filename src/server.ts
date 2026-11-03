@@ -50,6 +50,13 @@ async function runScheduledShortsVerification() {
 }
 
 function startShortsVerificationScheduler() {
+  // A full sweep can spawn hundreds of FFmpeg/provider checks and starve
+  // page requests on the single production instance. Keep it opt-in only.
+  if (process.env.SHORTS_VERIFICATION_AUTO_ENABLED !== "true") {
+    console.log("[Shorts Verification] Automatic full-catalog checks are disabled.");
+    return;
+  }
+
   // Run once after startup, then repeat independently of user activity.
   setTimeout(() => {
     void runScheduledShortsVerification();
