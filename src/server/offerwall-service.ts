@@ -328,14 +328,80 @@ export async function redeemCpaPoints(params: {
 export async function refundCpaPoints(params: { userId: string; points: number; reference: string; description: string }) {
   const requested = Math.max(0, Math.floor(Number(params.points) || 0));
   if (!requested) return { points: 0 };
-  const account = await getOrCreateCpaUser(params.userId);
-  const now = new Date().toISOString();
   const refundId = `refund_${params.reference}`;
-  if (await queryRtdb(`commerce/cpaPointRedemptions/${refundId}`)) return { points: 0, duplicate: true };
-  const updatedPoints = account.points + requested;
-  await queryRtdb(`commerce/cpaPointRedemptions/${refundId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: refundId, userId: params.userId, points: requested, purpose: "refund", status: "refunded", description: params.description, createdAt: now, remainingPoints: updatedPoints }) });
-  await queryRtdb(cpaUserPath(params.userId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...account, points: updatedPoints, lifetimeRedeemed: Math.max(0, Number(account.lifetimeRedeemed || 0) - requested), updatedAt: now }) });
-  return { points: requested, remainingPoints: updatedPoints };
+  const refundPath = `commerce/cpaPointRedemptions/${refundId}`;
+  const existing = await queryRtdb(refundPath) as any;
+  if (existing?.userId === params.userId && existing?.status === "refunded") {
+    return { points: 0, duplicate: true, remainingPoints: Number(existing.remainingPoints || 0) };
+  }
+
+  const { getCleanDbUrl, getFirebaseAccessToken } = await import("./xseries-service-account");
+  const base = getCleanDbUrl();
+  const token = await getFirebaseAccessToken();
+  if (!base || !token) throw new Error("Secure Xora Points updates are unavailable right now.");
+  const target = `${base}/commerce/cpaUsers/${encodeURIComponent(params.userId)}.json`;
+  const refundKey = crypto.createHash("sha256").update(refundId).digest("hex");
+  let result: { points: number; remainingPoints: number; duplicate?: boolean } | null = null;
+  const now = new Date().toISOString();
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const read = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      headers: { "X-Firebase-ETag": "true" },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!read.ok) throw new Error(`Unable to read Xora Points (HTTP ${read.status}).`);
+    const raw = await read.json().catch(() => null) as any;
+    const etag = read.headers.get("etag");
+    const account = raw && typeof raw === "object"
+      ? raw
+      : await getOrCreateCpaUser(params.userId) as any;
+    const prior = account.pointRefunds?.[refundKey];
+    if (prior?.status === "refunded") {
+      result = { points: 0, remainingPoints: Number(account.points || 0), duplicate: true };
+      break;
+    }
+    const remainingPoints = Number(account.points || 0) + requested;
+    const updated = {
+      ...account,
+      points: remainingPoints,
+      lifetimeRedeemed: Math.max(0, Number(account.lifetimeRedeemed || 0) - requested),
+      pointRefunds: {
+        ...(account.pointRefunds || {}),
+        [refundKey]: { id: refundId, points: requested, status: "refunded", createdAt: now, remainingPoints },
+      },
+      updatedAt: now,
+    };
+    const write = await fetch(`${target}?access_token=${encodeURIComponent(token)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "if-match": etag || "null_etag" },
+      body: JSON.stringify(updated),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (write.ok) {
+      result = { points: requested, remainingPoints, duplicate: false };
+      break;
+    }
+    if (write.status !== 412) throw new Error(`Unable to update Xora Points (HTTP ${write.status}).`);
+  }
+
+  if (!result) throw new Error("Xora Points changed repeatedly. Please retry the refund.");
+  if (!existing || !existing.userId) {
+    await queryRtdb(refundPath, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: refundId,
+        userId: params.userId,
+        points: requested,
+        purpose: "refund",
+        status: "refunded",
+        description: params.description,
+        createdAt: now,
+        remainingPoints: result.remainingPoints,
+      }),
+    });
+  }
+  return result;
 }
 
 /**
@@ -484,11 +550,11 @@ export async function handleCpaPostback(request: Request) {
 
   await queryRtdb(conversionPath(conversionId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(conversion) });
 
-  const account = await getOrCreateCpaUser(userId);
-  await queryRtdb(cpaUserPath(userId), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...account, points: account.points + points, lifetimeEarned: account.lifetimeEarned + points, updatedAt: now }),
+  await creditCpaPoints({
+    userId,
+    points,
+    reference: conversionId,
+    description: `CPAGrip offer completion: ${offerId}`,
   });
 
   if (creatorId) {
