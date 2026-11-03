@@ -241,6 +241,9 @@ export async function redeemCpaPoints(params: {
     return { points: Number(existing.points || 0), remainingPoints: Number(existing.remainingPoints || 0), duplicate: true };
   }
   const account = await getOrCreateCpaUser(params.userId);
+  if (["processing", "provider_pending"].includes(String((account as any).dataRewardClaim?.status || ""))) {
+    throw new Error("Your data reward is still being confirmed. Wait for its delivery update before spending Xora Points.");
+  }
   if (account.points < requested) throw new Error("Insufficient Xora Points.");
   const now = new Date().toISOString();
   const remainingPoints = account.points - requested;
