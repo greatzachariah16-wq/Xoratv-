@@ -119,9 +119,11 @@ function DataRewards() {
       setRewardStatus((current) => current ? { ...current, claim: result.claim, pending: ["processing", "provider_pending"].includes(String(result.claim.status || "")) } : current);
       setNotice(result.claim.status === "success"
         ? "MELE confirmed delivery. Your data reward is complete."
-        : result.claim.status === "failed"
-          ? "MELE confirmed that this request failed. No points were used."
-          : "MELE has not confirmed delivery yet. Your request remains safely on hold.");
+        : result.claim.providerStatus === "not_found"
+          ? "MELE returned no transaction for the previous reference. You can safely submit a fresh claim."
+          : result.claim.status === "failed"
+            ? "MELE confirmed that this request failed. No points were used."
+            : "MELE has not confirmed delivery yet. Your request remains safely on hold.");
       await refreshWallet();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not check the MELE transaction.");
