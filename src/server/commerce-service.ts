@@ -984,7 +984,7 @@ export async function settleMeleDataRewardClaim(params: {
     return { matched: true, status: "failed" as const, duplicate: true };
   }
   const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status);
-  const failed = ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled"].includes(status);
+  const failed = ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled", "not_found", "not-found"].includes(status);
   const now = new Date().toISOString();
 
   if (succeeded) {
