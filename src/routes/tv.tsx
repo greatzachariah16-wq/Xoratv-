@@ -36,7 +36,7 @@ export const Route = createFileRoute("/tv")({
   head: () => ({
     meta: [
       { title: "Live TV | Xora" },
-      { name: "description", content: "Live television powered by IPTV Nexus." },
+      { name: "description", content: "Watch live television, browse channels and see what is on now with XoraTV." },
     ],
   }),
   component: LiveTvPage,
@@ -100,7 +100,7 @@ function LiveTvPage() {
           </span>
           <div>
             <h1 className="font-display text-2xl font-semibold tracking-tight">Live TV</h1>
-            <p className="text-sm text-muted-foreground">Live television with a real TV Guide, powered by IPTV Nexus.</p>
+            <p className="text-sm text-muted-foreground">Live television with a guide to what is on now and what is coming next.</p>
           </div>
         </div>
 
@@ -142,7 +142,7 @@ function LiveTvPage() {
                   {selected.country || "International"} · {selected.quality || "Live"}
                 </p>
               </div>
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">IPTV Nexus</span>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">XoraTV Live</span>
             </div>
           </div>
         </section>
