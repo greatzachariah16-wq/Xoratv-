@@ -53,8 +53,8 @@ let appGradle = fs.readFileSync(appGradlePath, "utf8");
 // The Java package, Android namespace, application ID and relative manifest
 // activity name must agree so Android can launch io.xora.app.MainActivity.
 appGradle = appGradle
-  .replace(/namespace\\s*=\\s*"[^"]+"/, 'namespace = "io.xora.app"')
-  .replace(/applicationId\\s+"[^"]+"/, 'applicationId "io.xora.app"');
+  .replace(/namespace\s*=\s*"[^"]+"/, 'namespace = "io.xora.app"')
+  .replace(/applicationId\s+"[^"]+"/, 'applicationId "io.xora.app"');
 if (!appGradle.includes('namespace = "io.xora.app"') || !appGradle.includes('applicationId "io.xora.app"')) {
   throw new Error("Could not apply Xora Android namespace/applicationId to app/build.gradle.");
 }
