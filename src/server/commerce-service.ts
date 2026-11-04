@@ -1138,6 +1138,15 @@ export async function claimMeleDataReward(params: {
     if (Number(account.points || 0) < tier.points) {
       throw new Error(`You need at least ${tier.points} Xora Points to claim ${tier.size}.`);
     }
+    // Only a referred user's first successful Data Reward can create attribution.
+    // Once qualified, keep the original creator on later claims for the 3-claim
+    // engagement signal; otherwise never attach a new token to an existing user.
+    const hasPreviousSuccessfulClaim = Boolean(
+      account.dataRewardLastClaimAt || account.dataRewardLastClaim?.status === "success"
+    );
+    if (hasPreviousSuccessfulClaim && !existingReferral?.creatorId) {
+      claimRecord.referralCreatorId = null;
+    }
     return { ...account, dataRewardClaim: claimRecord, updatedAt: createdAt };
   });
 
