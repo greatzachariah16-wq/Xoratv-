@@ -61,7 +61,11 @@ Keep the app's other permissions, activities and manifest attributes.
 
 ### Register the native plugin
 
-The template's MainActivity registers XoraStartupPlugin before the Capacitor bridge is created. The website's src/lib/native-startup.ts calls the plugin after the root React app hydrates. This is intentionally guarded: normal website and PWA users never see a native-only dependency or behavior.
+The template's MainActivity registers XoraStartupPlugin before the Capacitor bridge is created. Copy web/xora-startup.ts into src/lib/native-startup.ts after @capacitor/core is installed, then call notifyNativeShellReady() from a useEffect in RootComponent. The wrapper uses Capacitor's supported registerPlugin() API and checks Capacitor.isNativePlatform(), so normal website and PWA users do nothing.
+
+### Website-side bridge hook
+
+The web-side module is included at web/xora-startup.ts. It uses @capacitor/core's registerPlugin() API (not the removed legacy Capacitor.Plugins registry). Add @capacitor/core to the web app only when the Capacitor project is actually being added, then copy that module into src/lib and call its ready notifier after the root React app hydrates.
 
 ### Important remote-site note
 
