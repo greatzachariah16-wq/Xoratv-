@@ -25,12 +25,15 @@ async function request<T = unknown>(body?: Record<string, unknown>): Promise<Api
 export async function customSignUp(email: string, password: string, username: string, firstName: string, lastName: string) {
   const result = await request({action:"register", email, password, username, firstName, lastName});
   if (!result.user || !result.recoveryCode) throw new Error("Recovery code was not returned.");
+  if (window.sessionStorage.getItem("xora_data_reward_referral")) window.sessionStorage.setItem("xora_referral_signup_completed","1");
   window.dispatchEvent(new Event("xora-auth-changed"));
   return { user: result.user, recoveryCode: result.recoveryCode, message: result.message || "Account created." };
 }
 export async function customSignIn(identifier: string, password: string) {
   const result = await request({action:"login", identifier, password});
   if (!result.user) throw new Error("Sign-in did not return a user session.");
+  window.sessionStorage.removeItem("xora_data_reward_referral");
+  window.sessionStorage.removeItem("xora_referral_signup_completed");
   window.dispatchEvent(new Event("xora-auth-changed"));
   return result.user.profile;
 }
