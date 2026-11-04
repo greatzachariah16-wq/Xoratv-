@@ -1,6 +1,6 @@
 # Xora Android native splash kit
 
-This is a reusable native splash/loading layer for the Capacitor Android shell. The current Xora repository is still a web/PWA project, so these Android source files are a drop-in template for the Android project when that shell is generated. The web app now includes a safe startup-ready signal; it is a no-op in Chrome, Firefox and the installed PWA.
+This is a reusable native splash/loading layer for the Capacitor Android shell. Xora is a web-first product with a Capacitor 8 Android shell. The same live XoraTV website is loaded inside the Android WebView, while the browser website and PWA remain fully supported. The startup handshake is a no-op in ordinary browsers and the installed PWA.
 
 ## Design
 
@@ -8,7 +8,7 @@ The splash is deliberately split into two layers:
 
 1. **OS launch splash:** warm Xora cream background with a crisp Xora play mark. Android 12+ renders this using the system splash API; Android 6–11 use AndroidX compatibility support.
 2. **Xora loading screen:** a full-screen midnight-plum / soft-violet view with a slowly rotating orbit, XORA wordmark, progress bar and connection message. It remains visible while the WebView loads the website. At 1.1 seconds the OS launch splash is released, so a sleeping Render service cannot hold the Android system splash indefinitely.
-3. **Retry state:** after 25 seconds the loading view explains that the connection is taking longer than usual and shows a Retry button. When the React app hydrates, the website calls XoraStartup.ready() and the native overlay fades away.
+3. **Retry state:** after 50 seconds the loading view explains that the connection is taking longer than usual and shows a Retry button. When the React app hydrates, the website calls XoraStartup.ready() and the native overlay fades away.
 
 The look is lightweight: XML vector/shape drawables and Android property animation, with no Lottie, video, remote image, or extra animation library. It is suitable for the user's Android 8.1 device and newer Android versions.
 
@@ -65,11 +65,11 @@ The template's MainActivity registers XoraStartupPlugin before the Capacitor bri
 
 ### Website-side bridge hook
 
-The web-side module is included at web/xora-startup.ts. It uses @capacitor/core's registerPlugin() API (not the removed legacy Capacitor.Plugins registry). Add @capacitor/core to the web app only when the Capacitor project is actually being added, then copy that module into src/lib and call its ready notifier after the root React app hydrates.
+The web-side module is included at web/xora-startup.ts. It uses @capacitor/core's registerPlugin() API (not the removed legacy Capacitor.Plugins registry). The bridge is now installed in src/lib/native-startup.ts and RootComponent calls it after hydration.
 
 ### Important remote-site note
 
-This kit handles the startup visuals and readiness handshake only. It does not configure the production WebView URL. Capacitor documents server.url as a live-reload/development setting, not a production deployment strategy; do not put the Render URL into server.url just to make this splash work. The production remote-site transport must be wired and tested separately before building an APK.
+This kit handles the startup visuals and readiness handshake only. It does not configure the production WebView URL. Capacitor documents server.url as a live-reload/development setting, not a production deployment strategy; Xora intentionally sets server.url to the live Render origin because the requested Android app loads the live website remotely. Capacitor documents this option as intended for live reload, not as its preferred production deployment mode. This is a deliberate architecture trade-off: keep the URL HTTPS and under Xora's control, do not add broad navigation allowlists, and treat XSS on the hosted site as a native-app security risk. The more hardened long-term architecture is a locally bundled web shell with Render retained as the backend/API service.
 
 ## References used
 

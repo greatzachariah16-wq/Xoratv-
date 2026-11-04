@@ -19,7 +19,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private static final long SYSTEM_SPLASH_MS = 1100L;
     private static final long SLOW_CONNECTION_MS = 6500L;
-    private static final long RETRY_PROMPT_MS = 25000L;
+    private static final long RETRY_PROMPT_MS = 50000L;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean releaseSystemSplash = false;
@@ -40,7 +40,7 @@ public class MainActivity extends BridgeActivity {
 
     private final Runnable retryPromptTask = () -> {
         if (!xoraReady && retryButton != null) {
-            setStatus("Still connecting. Check your connection, then try again.");
+            setStatus("Still connecting after 50 seconds. Check your connection, then try again.");
             retryButton.setVisibility(View.VISIBLE);
         }
     };

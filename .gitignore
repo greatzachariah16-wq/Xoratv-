@@ -42,3 +42,11 @@ crawler-diagnostic-result.json
 *.njsproj
 *.sln
 *.sw?
+
+
+# Capacitor / Android generated build files
+android/.gradle/
+android/local.properties
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
