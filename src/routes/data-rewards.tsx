@@ -7,6 +7,9 @@ import { commerceFetch } from "@/lib/commerce";
 
 export const Route = createFileRoute("/data-rewards")({ component: DataRewards });
 
+// TEMPORARY: remove this bypass after the live data-claim test.
+const DATA_REWARD_POINTS_TEST_BYPASS = true;
+
 const REWARD_TIERS = [
   { id: "100mb", size: "100 MB", points: 25 },
   { id: "200mb", size: "200 MB", points: 50 },
@@ -105,7 +108,7 @@ function DataRewards() {
 
   const tier = REWARD_TIERS.find((item) => item.id === selected) || REWARD_TIERS[1];
   const validPhone = /^0[789][01]\d{8}$/.test(phone.replace(/\s+/g, ""));
-  const enoughPoints = Number(wallet?.points || 0) >= tier.points;
+  const enoughPoints = DATA_REWARD_POINTS_TEST_BYPASS || Number(wallet?.points || 0) >= tier.points;
 
   if (!user) {
     return <AppShell wide><main className="mx-auto max-w-md rounded-3xl border border-[#eadfd5] bg-[#fffdf9] p-7 text-center shadow-sm">
@@ -144,12 +147,12 @@ function DataRewards() {
         <div className="mt-4 grid grid-cols-2 gap-3">
           {REWARD_TIERS.map((item) => {
             const active = selected === item.id;
-            const affordable = Number(wallet?.points || 0) >= item.points;
+            const affordable = DATA_REWARD_POINTS_TEST_BYPASS || Number(wallet?.points || 0) >= item.points;
             return <button key={item.id} type="button" onClick={() => setSelected(item.id)} aria-pressed={active} className={`rounded-2xl border p-4 text-left transition ${active ? "border-[#65483c] bg-[#f4ebe3] ring-1 ring-[#65483c]" : "border-[#eadfd5] bg-white hover:border-[#c8b3a4]"}`}>
               <div className="flex items-center justify-between"><div className="grid size-9 place-items-center rounded-xl bg-[#f0e4d9] text-[#65483c]"><Database className="size-4" /></div>{active ? <CheckCircle2 className="size-5 text-[#65483c]" /> : <span className="size-5 rounded-full border border-[#d8c8bc]" />}</div>
               <p className="mt-4 font-display text-2xl font-semibold text-[#3d302b]">{item.size}</p>
-              <p className="mt-1 text-sm font-bold text-[#65483c]">{item.points} points</p>
-              <p className={`mt-2 text-[10px] font-medium ${affordable ? "text-emerald-700" : "text-muted-foreground"}`}>{affordable ? "Points available" : "More points needed"}</p>
+              <p className="mt-1 text-sm font-bold text-[#65483c]">{DATA_REWARD_POINTS_TEST_BYPASS ? "No points required" : `${item.points} points`}</p>
+              <p className={`mt-2 text-[10px] font-medium ${affordable ? "text-emerald-700" : "text-muted-foreground"}`}>{DATA_REWARD_POINTS_TEST_BYPASS ? "Temporary claim test" : affordable ? "Points available" : "More points needed"}</p>
             </button>;
           })}
         </div>
@@ -165,7 +168,7 @@ function DataRewards() {
         {error ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</p> : null}
         {notice ? <p className="mt-3 rounded-xl border border-[#eadfd5] bg-[#f7f0e9] p-3 text-xs text-[#65483c]">{notice}</p> : null}
         <button type="button" disabled={!validPhone || !enoughPoints || loading || claiming || Boolean(rewardStatus?.pending) || Number(rewardStatus?.cooldownRemainingMs || 0) > 0} onClick={() => void submitClaim()} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#65483c] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
-          <ShieldCheck className="size-4" /> {claiming ? "Sending data…" : rewardStatus?.pending ? "Delivery pending" : Number(rewardStatus?.cooldownRemainingMs || 0) > 0 ? "Daily claim used" : `Claim ${tier.size} · ${tier.points} points`}
+          <ShieldCheck className="size-4" /> {claiming ? "Sending data…" : rewardStatus?.pending ? "Delivery pending" : Number(rewardStatus?.cooldownRemainingMs || 0) > 0 ? "Daily claim used" : DATA_REWARD_POINTS_TEST_BYPASS ? `Test claim ${tier.size} · no points` : `Claim ${tier.size} · ${tier.points} points`}
         </button>
         <p className="mt-3 text-center text-[10px] leading-5 text-muted-foreground">Your data is sent to the selected number. Xora Points are only deducted after successful delivery confirmation.</p>
       </section>
