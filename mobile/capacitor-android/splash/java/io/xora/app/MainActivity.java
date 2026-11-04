@@ -138,7 +138,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         mainHandler.removeCallbacksAndMessages(null);
         if (ringAnimator != null) ringAnimator.cancel();
         super.onDestroy();
