@@ -1263,7 +1263,7 @@ export async function claimMeleDataReward(params: {
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: "processing",
-      providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted.", walletBalanceBefore: walletBalance, mode: walletMode || "unknown" },
+      providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted." },
     }).catch(() => null);
     return {
       status: "provider_pending" as const,
