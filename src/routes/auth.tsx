@@ -94,6 +94,6 @@ function RecoveryCode({ code, onContinue }: { code: string; onContinue: () => vo
         {screen==="signup"&&<SignUp onScreen={setScreen} onRecovery={setRecoveryCode}/>}
         {screen==="signin"&&<SignIn onScreen={setScreen}/>}
         {screen==="forgot"&&<ForgotPassword onScreen={setScreen} onRecovery={setRecoveryCode}/>}
-        {screen==="recovery-code"&&<RecoveryCode code={recoveryCode} onContinue={()=>window.location.assign("/")}/>}
+        {screen==="recovery-code"&&<RecoveryCode code={recoveryCode} onContinue={()=>{window.sessionStorage.removeItem("xora_referral_signup_completed");window.location.assign("/");}}/>}
       </div></div></main></div>;
 }
