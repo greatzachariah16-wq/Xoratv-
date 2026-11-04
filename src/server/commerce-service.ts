@@ -978,8 +978,11 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
   return { referralQualified: true, duplicate: !result.created, event: result.record };
 }
 
-// TEMPORARY: remove this bypass after the live data-claim test.
-const DATA_REWARD_POINTS_TEST_BYPASS = true;
+function dataRewardTierForPlan(plan: MelePlan) {
+  const sizeMb = parseDataRewardSizeMb(plan);
+  return (Object.entries(DATA_REWARD_TIERS) as [DataRewardTierId, (typeof DATA_REWARD_TIERS)[DataRewardTierId]][])
+    .find(([, tier]) => sizeMb === tier.targetMb) || null;
+}
 
 export async function settleMeleDataRewardClaim(params: {
   reference: string;
@@ -1019,12 +1022,14 @@ export async function settleMeleDataRewardClaim(params: {
       }
       if (currentClaim.status === "success") return account;
       const points = Number(claim.points || currentClaim.points || 0);
-      if (!Number.isFinite(points) || points < 0 || (!DATA_REWARD_POINTS_TEST_BYPASS && points === 0)) throw new Error("The data reward points value is invalid.");
-      if (points > 0 && Number(account.points || 0) < points) {
-        throw new Error("The data reward was delivered, but the points balance needs manual reconciliation.");
+      if (!Number.isFinite(points) || points < 0) throw new Error("The data reward points value is invalid.");
+      const reservedPoints = currentClaim.pointsReserved ? points : 0;
+      if (reservedPoints > Number(account.pendingPoints || 0)) {
+        throw new Error("The data reward was delivered, but its reserved points need manual reconciliation.");
       }
       const completedClaim = {
         ...currentClaim,
+        pointsReserved: false,
         status: "success",
         providerStatus: status,
         providerPayload: params.providerPayload ?? currentClaim.providerPayload ?? null,
@@ -1032,8 +1037,8 @@ export async function settleMeleDataRewardClaim(params: {
       };
       return {
         ...account,
-        points: Number(account.points || 0) - points,
-        lifetimeRedeemed: Number(account.lifetimeRedeemed || 0) + points,
+        pendingPoints: Math.max(0, Number(account.pendingPoints || 0) - reservedPoints),
+        lifetimeRedeemed: Number(account.lifetimeRedeemed || 0) + reservedPoints,
         dataRewardLastClaimAt: now,
         dataRewardLastClaim: completedClaim,
         dataRewardClaim: completedClaim,
@@ -1055,10 +1060,14 @@ export async function settleMeleDataRewardClaim(params: {
     await updateCpaAccountWithEtag(String(claim.userId), (account) => {
       const currentClaim = account.dataRewardClaim;
       if (currentClaim?.reference !== params.reference || currentClaim.status === "success") return account;
+      const reservedPoints = currentClaim.pointsReserved ? Number(currentClaim.points || 0) : 0;
       return {
         ...account,
+        points: Number(account.points || 0) + reservedPoints,
+        pendingPoints: Math.max(0, Number(account.pendingPoints || 0) - reservedPoints),
         dataRewardClaim: {
           ...currentClaim,
+          pointsReserved: false,
           status: "failed",
           providerStatus: status,
           providerPayload: params.providerPayload ?? null,
@@ -1127,7 +1136,7 @@ export async function getDataRewardStatus(userId: string) {
   const claim = publicDataRewardClaim(account?.dataRewardClaim);
   const pending = ["processing", "provider_pending"].includes(String(claim?.status || ""));
   return {
-    wallet,
+    wallet: { ...wallet, pendingPoints: Number(account?.pendingPoints || 0) },
     claim,
     lastClaim: publicDataRewardClaim(account?.dataRewardLastClaim),
     cooldownUntil: cooldownRemainingMs > 0 ? cooldownUntil : null,
@@ -1157,11 +1166,16 @@ export async function claimMeleDataReward(params: {
   const resolvedCreatorId = existingReferral?.creatorId || await resolveCreatorAttribution(params.referralCode, "data-reward");
   const referralCreator = resolvedCreatorId ? await getCreator(String(resolvedCreatorId)) : null;
   const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
+  const matchedTier = dataRewardTierForPlan(selected);
+  if (!matchedTier) {
+    throw new Error("Unsupported bundle. Choose 100 MB, 200 MB, 300 MB or 1 GB to redeem with Xora Points.");
+  }
+  const [tierId, tier] = matchedTier;
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
   const claimRecord = {
-    reference, userId: params.userId, tierId: null, rewardSize: selected.data_size, points: 0,
-    network: params.network, deliveredSize: selected.data_size, planId: selected.plan_id,
+    reference, userId: params.userId, tierId, rewardSize: selected.data_size, points: tier.points,
+    pointsReserved: true, network: params.network, deliveredSize: selected.data_size, planId: selected.plan_id,
     planName: selected.plan_name, providerPrice: selected.price, phoneNumber, provider: "mele",
     referralCreatorId, status: "processing", createdAt, updatedAt: createdAt,
   };
@@ -1174,16 +1188,34 @@ export async function claimMeleDataReward(params: {
     if (Number.isFinite(lastClaimMs) && Date.now() < lastClaimMs + 86400000) {
       throw new Error(`You can request data again after ${new Date(lastClaimMs + 86400000).toLocaleString("en-NG")}.`);
     }
+    const availablePoints = Number(account.points || 0);
+    if (!Number.isFinite(availablePoints) || availablePoints < tier.points) {
+      throw new Error(`You need ${tier.points} Xora Points for this bundle. Your available balance is ${Math.max(0, availablePoints)} points.`);
+    }
     const hasPreviousSuccessfulClaim = Boolean(account.dataRewardLastClaimAt || account.dataRewardLastClaim?.status === "success");
     if (hasPreviousSuccessfulClaim && !existingReferral?.creatorId) claimRecord.referralCreatorId = null;
-    return { ...account, dataRewardClaim: claimRecord, updatedAt: createdAt };
+    return {
+      ...account,
+      points: availablePoints - tier.points,
+      pendingPoints: Number(account.pendingPoints || 0) + tier.points,
+      dataRewardClaim: claimRecord,
+      updatedAt: createdAt,
+    };
   });
 
   try {
     await queryRtdb(dataRewardClaimPath(reference), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(claimRecord) });
   } catch (error) {
-    await updateCpaAccountWithEtag(params.userId, (account) => account.dataRewardClaim?.reference !== reference ? account : {
-      ...account, dataRewardClaim: { ...account.dataRewardClaim, status: "failed", failedAt: new Date().toISOString(), providerStatus: "claim_record_error" }, updatedAt: new Date().toISOString(),
+    await updateCpaAccountWithEtag(params.userId, (account) => {
+      if (account.dataRewardClaim?.reference !== reference) return account;
+      const reserved = account.dataRewardClaim.pointsReserved ? Number(account.dataRewardClaim.points || 0) : 0;
+      return {
+        ...account,
+        points: Number(account.points || 0) + reserved,
+        pendingPoints: Math.max(0, Number(account.pendingPoints || 0) - reserved),
+        dataRewardClaim: { ...account.dataRewardClaim, pointsReserved: false, status: "failed", failedAt: new Date().toISOString(), providerStatus: "claim_record_error" },
+        updatedAt: new Date().toISOString(),
+      };
     }).catch(() => null);
     throw error;
   }
