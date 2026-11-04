@@ -54,6 +54,7 @@ function XChannel(){
   const [linkBusy,setLinkBusy]=useState(false);
   const [specialPrizes,setSpecialPrizes]=useState<any[]>([]);
   const [specialPrizeLinkBusy,setSpecialPrizeLinkBusy]=useState("");
+  const [referralLinkBusy,setReferralLinkBusy]=useState(false);
   const [copiedPromotion,setCopiedPromotion]=useState("");
   const [featuredBusy,setFeaturedBusy]=useState(false);
   const [featuredError,setFeaturedError]=useState("");
@@ -146,6 +147,18 @@ function XChannel(){
       catch{window.prompt("Copy your Special Prize promotion link",shareUrl);}
     }catch(e){alert(e instanceof Error?e.message:"Could not create your Special Prize promotion link.");}
     finally{setSpecialPrizeLinkBusy("");}
+  }
+
+  async function createDataRewardReferralLink(){
+    setReferralLinkBusy(true);
+    try{
+      const result=await commerceFetch<{link:{token:string}}>("/api/commerce/creator/data-reward-link",{method:"POST",body:JSON.stringify({})});
+      const shareUrl=window.location.origin+"/s/"+result.link.token;
+      try{await navigator.clipboard.writeText(shareUrl);setCopiedPromotion(result.link.token);setTimeout(()=>setCopiedPromotion(""),2500);}
+      catch{window.prompt("Copy your audience referral link",shareUrl);}
+      await refetch();
+    }catch(e){alert(e instanceof Error?e.message:"Could not create your audience referral link.");}
+    finally{setReferralLinkBusy(false);}
   }
 
   async function copyPromotionLink(token:string){
