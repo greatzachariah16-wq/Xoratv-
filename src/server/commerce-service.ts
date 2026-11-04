@@ -1102,7 +1102,7 @@ export async function claimMeleDataReward(params: {
   const existingReferral = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(params.userId)}`) as any;
   const resolvedCreatorId = existingReferral?.creatorId || await resolveCreatorAttribution(params.referralCode, "data-reward");
   const referralCreator = resolvedCreatorId ? await getCreator(String(resolvedCreatorId)) : null;
-  const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(referralCreator.id) : null;
+  const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
 
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
