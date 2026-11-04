@@ -1234,12 +1234,27 @@ export async function claimMeleDataReward(params: {
     throw error;
   }
 
-  let response: Response;
   let body: any;
+  let httpRejection: string | null = null;
   try {
-    const purchase = await submitMelePurchase({ plan: selected, phoneNumber, reference });
-    response = purchase.response;
-    body = purchase.body;
+    // Use the exact same live-plan lookup, phone validation, purchase endpoint,
+    // API-key authentication, request payload, and HTTP success rule as Admin > Test Data.
+    const purchase = await testMelePurchase({
+      network: params.network,
+      planId: selected.plan_id,
+      phoneNumber,
+      reference,
+      allowHttpError: true,
+    });
+    body = purchase.response;
+    if (!purchase.httpOk && purchase.httpStatus < 500) {
+      await settleMeleDataRewardClaim({
+        reference,
+        providerStatus: "failed",
+        providerPayload: body,
+      });
+      httpRejection = body?.message || `MELE rejected the data request (HTTP ${purchase.httpStatus}). No points were used.`;
+    }
   } catch (error) {
     // A timeout is ambiguous: query MELE by the same idempotency reference before
     // leaving the claim pending. Never issue a second purchase automatically.
@@ -1275,6 +1290,8 @@ export async function claimMeleDataReward(params: {
     };
   }
 
+  if (httpRejection) throw new Error(httpRejection);
+
   let normalized = normalizeMeleRewardStatus(body);
   if (!normalized.failed && !normalized.succeeded) {
     // MELE can acknowledge a request before the carrier finishes it. Requery
@@ -1292,7 +1309,7 @@ export async function claimMeleDataReward(params: {
       // Keep the original provider response and expose a safe pending state.
     }
   }
-  if (normalized.failed || (!response.ok && response.status < 500)) {
+  if (normalized.failed) {
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: normalized.status || "failed",
@@ -1706,16 +1723,18 @@ export async function testMelePurchase(params: {
   network: MelePlan["network"];
   planId: number;
   phoneNumber: string;
+  reference?: string;
+  allowHttpError?: boolean;
 }) {
   const plans = await getMelePlans(true);
   const plan = plans.find((p) => Number(p.plan_id) === Number(params.planId) && p.network === params.network);
   if (!plan) throw new Error("That plan is not in the current live MELE catalog.");
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
-  const reference = id("mele_test").slice(0, 75);
+  const reference = params.reference || id("mele_test").slice(0, 75);
   const { response, body } = await submitMelePurchase({ plan, phoneNumber, reference });
-  if (!response.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${response.status}).`);
-  return { reference, plan, phoneNumber, response: body };
+  if (!response.ok && !params.allowHttpError) throw new Error(body?.message || `MELE purchase test failed (HTTP ${response.status}).`);
+  return { reference, plan, phoneNumber, response: body, httpOk: response.ok, httpStatus: response.status };
 }
 
 export async function createCreatorProfile(params: {
