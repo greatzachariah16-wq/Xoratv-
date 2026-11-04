@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, Clock3, Database, Gift, RefreshCw, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Database, Gift, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch } from "@/lib/commerce";
@@ -44,6 +44,7 @@ function DataRewards() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [rewardStatus, setRewardStatus] = useState<Omit<DataRewardSnapshot, "wallet"> | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -106,6 +107,29 @@ function DataRewards() {
     }
   }
 
+  async function checkPendingClaim() {
+    const reference = rewardStatus?.claim?.reference;
+    if (!reference || checkingStatus) return;
+    setCheckingStatus(true);
+    setError("");
+    try {
+      const result = await commerceFetch<{ ok: true; claim: RewardStatus }>(
+        `/api/commerce/data-rewards/claim-status?reference=${encodeURIComponent(reference)}`,
+      );
+      setRewardStatus((current) => current ? { ...current, claim: result.claim, pending: ["processing", "provider_pending"].includes(String(result.claim.status || "")) } : current);
+      setNotice(result.claim.status === "success"
+        ? "MELE confirmed delivery. Your data reward is complete."
+        : result.claim.status === "failed"
+          ? "MELE confirmed that this request failed. No points were used."
+          : "MELE has not confirmed delivery yet. Your request remains safely on hold.");
+      await refreshWallet();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not check the MELE transaction.");
+    } finally {
+      setCheckingStatus(false);
+    }
+  }
+
   const tier = REWARD_TIERS.find((item) => item.id === selected) || REWARD_TIERS[1];
   const validPhone = /^0[789][01]\d{8}$/.test(phone.replace(/\s+/g, ""));
   const enoughPoints = DATA_REWARD_POINTS_TEST_BYPASS || Number(wallet?.points || 0) >= tier.points;
@@ -127,23 +151,15 @@ function DataRewards() {
         <button type="button" onClick={() => void refreshWallet()} disabled={loading} aria-label="Refresh points balance" className="grid size-10 place-items-center rounded-xl border border-[#eadfd5] bg-[#fffdf9] text-[#65483c] disabled:opacity-50"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /></button>
       </header>
 
-      <section className="relative overflow-hidden rounded-[28px] bg-[#65483c] p-5 text-white shadow-sm">
-        <div className="absolute -right-8 -top-10 size-40 rounded-full bg-white/10" />
-        <div className="relative flex items-start justify-between gap-3">
-          <div><div className="flex items-center gap-2 text-sm font-medium text-white/80"><Sparkles className="size-4" /> Your Xora Points</div>
-            <p className="mt-3 font-display text-4xl font-semibold tracking-tight">{loading && wallet === null ? "…" : Number(wallet?.points || 0).toLocaleString()} <span className="text-lg font-medium text-white/75">XP</span></p>
-            <p className="mt-2 text-xs text-white/70">Available points for data rewards</p>
-          </div>
-          <div className="grid size-12 place-items-center rounded-2xl bg-white/10"><Gift className="size-6" /></div>
-        </div>
-        <div className="relative mt-5 grid grid-cols-2 gap-3 border-t border-white/15 pt-4">
-          <div><p className="text-[10px] text-white/65">Lifetime earned</p><p className="mt-1 text-sm font-semibold">{Number(wallet?.lifetimeEarned || 0).toLocaleString()} XP</p></div>
-          <div><p className="text-[10px] text-white/65">Lifetime redeemed</p><p className="mt-1 text-sm font-semibold">{Number(wallet?.lifetimeRedeemed || 0).toLocaleString()} XP</p></div>
+      <section className="rounded-[24px] border border-[#eadfd5] bg-[#fffdf9] p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="grid size-11 place-items-center rounded-2xl bg-[#f0e4d9] text-[#65483c]"><Gift className="size-5" /></div>
+          <div><p className="text-sm font-semibold text-[#3d302b]">Points requirement paused</p><p className="mt-1 text-xs text-muted-foreground">Data claims currently require no Xora Points. Your points balance will not be changed.</p></div>
         </div>
       </section>
 
       <section className="rounded-[26px] border border-[#eadfd5] bg-[#fffdf9] p-5 shadow-sm">
-        <div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">Choose your data reward</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">One successful claim every 24 hours. Points are shown beside each bundle.</p></div><span className="rounded-full bg-[#f3e9df] px-3 py-1.5 text-[10px] font-semibold text-[#65483c]">XoraTV data</span></div>
+        <div className="flex items-start justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">Choose your data reward</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">One successful claim every 24 hours. The points requirement is temporarily disabled.</p></div><span className="rounded-full bg-[#f3e9df] px-3 py-1.5 text-[10px] font-semibold text-[#65483c]">XoraTV data</span></div>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {REWARD_TIERS.map((item) => {
             const active = selected === item.id;
@@ -162,8 +178,8 @@ function DataRewards() {
         <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-[#f0e4d9] text-[#65483c]"><Smartphone className="size-5" /></div><div><h2 className="text-base font-semibold">Where should we send it?</h2><p className="text-xs text-muted-foreground">Enter the Nigerian phone number to receive your data.</p></div></div>
         <label className="mt-4 block text-xs font-semibold text-foreground">Mobile network<select value={network} onChange={(e) => setNetwork(e.target.value as typeof network)} className="mt-2 h-12 w-full rounded-xl border border-[#e5d8cc] bg-white px-3 text-sm outline-none focus:border-[#8b6b5d]"><option value="MTN">MTN</option><option value="GLO">Glo</option><option value="AIRTEL">Airtel</option><option value="9MOBILE">9mobile</option></select></label>
         <label className="mt-4 block text-xs font-semibold text-foreground">Recipient phone number<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, "").slice(0, 13))} inputMode="tel" autoComplete="tel" placeholder="08012345678" className="mt-2 h-12 w-full rounded-xl border border-[#e5d8cc] bg-white px-3 text-sm outline-none focus:border-[#8b6b5d]" /></label>
-        <div className="mt-4 flex items-start gap-3 rounded-xl bg-[#f7f0e9] p-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#65483c]" /><p className="text-[11px] leading-5 text-[#6e5a50]">One successful claim every 24 hours. Your points are deducted only after delivery is confirmed. Failed deliveries do not use your daily claim.</p></div>
-        {rewardStatus?.pending ? <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">Your previous data request is still awaiting delivery confirmation. Your points have not been deducted, and another claim is temporarily paused to prevent duplicate delivery.</p> : null}
+        <div className="mt-4 flex items-start gap-3 rounded-xl bg-[#f7f0e9] p-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-[#65483c]" /><p className="text-[11px] leading-5 text-[#6e5a50]">One successful claim every 24 hours. Points are temporarily disabled. Failed deliveries do not use your daily claim.</p></div>
+        {rewardStatus?.pending ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><p>Your previous data request is awaiting MELE confirmation. No points are required, and another claim is paused to prevent duplicate purchases.</p><button type="button" onClick={() => void checkPendingClaim()} disabled={checkingStatus} className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 font-semibold disabled:opacity-50"><RefreshCw className={`size-3 ${checkingStatus ? "animate-spin" : ""}`} />{checkingStatus ? "Checking MELE…" : "Check transaction status"}</button></div> : null}
         {rewardStatus?.cooldownRemainingMs ? <p className="mt-3 rounded-xl border border-[#eadfd5] bg-[#f7f0e9] p-3 text-xs text-[#65483c]">Your next data reward is available after {new Date(rewardStatus.cooldownUntil || "").toLocaleString()}.</p> : null}
         {error ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</p> : null}
         {notice ? <p className="mt-3 rounded-xl border border-[#eadfd5] bg-[#f7f0e9] p-3 text-xs text-[#65483c]">{notice}</p> : null}

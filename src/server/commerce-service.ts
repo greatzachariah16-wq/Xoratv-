@@ -714,8 +714,32 @@ export async function handleVtushareWebhook(request: Request) {
 export async function getMeleWallet() {
   const res = await meleFetch("/wallet/");
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.message || "Unable to read MELE wallet.");
+  if (!res.ok || body?.success === false || body?.status === false) throw new Error(body?.message || `Unable to read MELE wallet (HTTP ${res.status}).`);
   return body;
+}
+
+async function getMeleDataPurchaseStatus(reference: string) {
+  const res = await meleFetch(`/data/status/?ref=${encodeURIComponent(reference)}`, { method: "GET" });
+  const body = await res.json().catch(() => null);
+  if (res.status === 404) return { found: false, body, httpStatus: res.status };
+  if (!res.ok) throw new Error(body?.message || `MELE status lookup failed (HTTP ${res.status}).`);
+  return { found: true, body, httpStatus: res.status };
+}
+
+export async function refreshMeleDataRewardClaim(userId: string, reference: string) {
+  const claim = await queryRtdb(dataRewardClaimPath(reference)) as any;
+  if (!claim || claim.userId !== userId) throw new Error("Data reward claim not found.");
+  if (["success", "failed"].includes(String(claim.status || ""))) return publicDataRewardClaim(claim);
+  const result = await getMeleDataPurchaseStatus(reference);
+  if (!result.found) return publicDataRewardClaim(claim);
+  const normalized = normalizeMeleRewardStatus(result.body);
+  await settleMeleDataRewardClaim({
+    reference,
+    providerStatus: normalized.status || (normalized.succeeded ? "delivered" : normalized.failed ? "failed" : "processing"),
+    providerPayload: result.body,
+  });
+  const latest = await queryRtdb(dataRewardClaimPath(reference)) as any;
+  return publicDataRewardClaim(latest || claim);
 }
 
 export async function getMeleHealth() {
@@ -839,8 +863,13 @@ function parseDataRewardSizeMb(plan: MelePlan) {
 
 function normalizeMeleRewardStatus(body: any) {
   const data = body?.data && typeof body.data === "object" ? body.data : body;
-  const status = String(data?.status ?? body?.status ?? data?.state ?? body?.state ?? "").trim().toLowerCase();
-  const successFlag = data?.success ?? body?.success;
+  const rawStatus = data?.status ?? data?.state ?? (typeof body?.status === "string" ? body.status : undefined) ?? body?.state;
+  const status = String(rawStatus ?? "").trim().toLowerCase();
+  const successFlag = typeof data?.success === "boolean" ? data.success
+    : typeof body?.success === "boolean" ? body.success
+    : typeof data?.status === "boolean" ? data.status
+    : typeof body?.status === "boolean" ? body.status
+    : undefined;
   const failed = successFlag === false || ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled"].includes(status);
   const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status) ||
     (successFlag === true && !["pending", "processing", "queued", "initiated", "accepted", "in_progress"].includes(status));
@@ -1107,6 +1136,26 @@ export async function claimMeleDataReward(params: {
   const referralCreator = resolvedCreatorId ? await getCreator(String(resolvedCreatorId)) : null;
   const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
 
+  // Confirm the API token points at a funded LIVE wallet before recording or attempting a purchase.
+  let walletBody: any;
+  try {
+    walletBody = await getMeleWallet();
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Could not verify the MELE wallet.");
+  }
+  const walletData = walletBody?.data ?? walletBody;
+  const walletMode = String(walletData?.mode || (walletData?.livemode === true ? "live" : walletData?.livemode === false ? "test" : "")).toLowerCase();
+  if (walletData?.livemode === false || walletMode === "test") {
+    throw new Error("The connected MELE API token is in test mode. Switch the server to your live MELE API key before claiming real data.");
+  }
+  const walletBalance = Number(walletData?.balance);
+  if (!Number.isFinite(walletBalance)) {
+    throw new Error("MELE did not return a valid wallet balance. No data purchase was attempted.");
+  }
+  if (walletBalance < Number(selected.price || 0)) {
+    throw new Error(`Your MELE wallet has insufficient balance for this bundle. Required: ₦${Number(selected.price).toLocaleString("en-NG")}; available: ₦${walletBalance.toLocaleString("en-NG")}.`);
+  }
+
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
   const claimRecord = {
@@ -1120,6 +1169,8 @@ export async function claimMeleDataReward(params: {
     planId: selected.plan_id,
     planName: selected.plan_name,
     providerPrice: selected.price,
+    meleWalletBalanceBefore: walletBalance,
+    meleMode: walletMode || "unknown",
     phoneNumber,
     provider: "mele",
     referralCreatorId,
@@ -1185,29 +1236,64 @@ export async function claimMeleDataReward(params: {
     });
     body = await response.json().catch(() => null);
   } catch (error) {
+    // A timeout is ambiguous: query MELE by the same idempotency reference before
+    // leaving the claim pending. Never issue a second purchase automatically.
+    try {
+      const lookup = await getMeleDataPurchaseStatus(reference);
+      if (lookup.found) {
+        body = lookup.body;
+        const checked = normalizeMeleRewardStatus(body);
+        if (checked.succeeded || checked.failed) {
+          await settleMeleDataRewardClaim({ reference, providerStatus: checked.status || (checked.succeeded ? "delivered" : "failed"), providerPayload: body });
+          return {
+            status: checked.succeeded ? "success" as const : "failed" as const,
+            reference, rewardSize: tier.size, deliveredSize: selected.data_size, points: 0,
+            message: checked.succeeded ? `Your ${selected.data_size} data reward has been delivered.` : "MELE confirmed that this data purchase failed. No points were deducted.",
+          };
+        }
+      }
+    } catch {
+      // Preserve the original request outcome; status can be checked again later.
+    }
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: "processing",
-      providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted." },
+      providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted.", walletBalanceBefore: walletBalance, mode: walletMode || "unknown" },
     }).catch(() => null);
     return {
       status: "provider_pending" as const,
       reference,
       rewardSize: tier.size,
       deliveredSize: selected.data_size,
-      points: tier.points,
-      message: "Your data request is awaiting delivery confirmation. Your points have not been deducted; please wait for the update.",
+      points: 0,
+      message: "MELE has not yet confirmed this request. We are checking the transaction reference; please do not submit another claim.",
     };
   }
 
-  const normalized = normalizeMeleRewardStatus(body);
+  let normalized = normalizeMeleRewardStatus(body);
+  if (!normalized.failed && !normalized.succeeded) {
+    // MELE can acknowledge a request before the carrier finishes it. Requery
+    // the original reference once so an already-final result is not left pending.
+    try {
+      const lookup = await getMeleDataPurchaseStatus(reference);
+      if (lookup.found) {
+        const checked = normalizeMeleRewardStatus(lookup.body);
+        if (checked.failed || checked.succeeded) {
+          body = lookup.body;
+          normalized = checked;
+        }
+      }
+    } catch {
+      // Keep the original provider response and expose a safe pending state.
+    }
+  }
   if (normalized.failed || (!response.ok && response.status < 500)) {
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: normalized.status || "failed",
       providerPayload: body,
     });
-    throw new Error("The data request could not be completed. Your Xora Points were not deducted. Please try again later.");
+    throw new Error("MELE rejected the data request. No points were used. Please try again later.");
   }
 
   if (normalized.succeeded) {
@@ -1221,7 +1307,7 @@ export async function claimMeleDataReward(params: {
       reference,
       rewardSize: tier.size,
       deliveredSize: selected.data_size,
-      points: tier.points,
+      points: 0,
       message: `Your ${selected.data_size} data reward has been delivered.`,
     };
   }
@@ -1236,8 +1322,8 @@ export async function claimMeleDataReward(params: {
     reference,
     rewardSize: tier.size,
     deliveredSize: selected.data_size,
-    points: tier.points,
-    message: "Your data request is processing. Your points will only be deducted after delivery is confirmed.",
+    points: 0,
+    message: "MELE is processing your request. No points are required; check the transaction status before trying again.",
   };
 }
 
