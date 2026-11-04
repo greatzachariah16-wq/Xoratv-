@@ -1235,6 +1235,7 @@ export async function claimMeleDataReward(params: {
   }
 
   let body: any;
+  let httpRejection: string | null = null;
   try {
     // Use the exact same live-plan lookup, phone validation, purchase endpoint,
     // API-key authentication, request payload, and HTTP success rule as Admin > Test Data.
@@ -1252,7 +1253,7 @@ export async function claimMeleDataReward(params: {
         providerStatus: "failed",
         providerPayload: body,
       });
-      throw new Error(body?.message || `MELE rejected the data request (HTTP ${purchase.httpStatus}). No points were used.`);
+      httpRejection = body?.message || `MELE rejected the data request (HTTP ${purchase.httpStatus}). No points were used.`;
     }
   } catch (error) {
     // A timeout is ambiguous: query MELE by the same idempotency reference before
@@ -1288,6 +1289,8 @@ export async function claimMeleDataReward(params: {
       message: "MELE has not yet confirmed this request. We are checking the transaction reference; please do not submit another claim.",
     };
   }
+
+  if (httpRejection) throw new Error(httpRejection);
 
   let normalized = normalizeMeleRewardStatus(body);
   if (!normalized.failed && !normalized.succeeded) {
