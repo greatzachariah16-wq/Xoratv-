@@ -92,7 +92,7 @@ export function CpxLiveTvGate({ children }: { children: ReactNode }) {
         </p>
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="size-4 text-primary" />
-          Your IPTV player remains unchanged; this gate controls access to the Live TV page only.
+          Your Live TV experience stays the same; this page controls access to Live TV only.
         </div>
       </div>
 
