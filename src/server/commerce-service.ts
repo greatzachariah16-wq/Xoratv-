@@ -1243,8 +1243,17 @@ export async function claimMeleDataReward(params: {
       planId: selected.plan_id,
       phoneNumber,
       reference,
+      allowHttpError: true,
     });
     body = purchase.response;
+    if (!purchase.httpOk && purchase.httpStatus < 500) {
+      await settleMeleDataRewardClaim({
+        reference,
+        providerStatus: "failed",
+        providerPayload: body,
+      });
+      throw new Error(body?.message || `MELE rejected the data request (HTTP ${purchase.httpStatus}). No points were used.`);
+    }
   } catch (error) {
     // A timeout is ambiguous: query MELE by the same idempotency reference before
     // leaving the claim pending. Never issue a second purchase automatically.
@@ -1712,6 +1721,7 @@ export async function testMelePurchase(params: {
   planId: number;
   phoneNumber: string;
   reference?: string;
+  allowHttpError?: boolean;
 }) {
   const plans = await getMelePlans(true);
   const plan = plans.find((p) => Number(p.plan_id) === Number(params.planId) && p.network === params.network);
@@ -1720,8 +1730,8 @@ export async function testMelePurchase(params: {
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const reference = params.reference || id("mele_test").slice(0, 75);
   const { response, body } = await submitMelePurchase({ plan, phoneNumber, reference });
-  if (!response.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${response.status}).`);
-  return { reference, plan, phoneNumber, response: body };
+  if (!response.ok && !params.allowHttpError) throw new Error(body?.message || `MELE purchase test failed (HTTP ${response.status}).`);
+  return { reference, plan, phoneNumber, response: body, httpOk: response.ok, httpStatus: response.status };
 }
 
 export async function createCreatorProfile(params: {
