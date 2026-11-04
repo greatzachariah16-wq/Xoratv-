@@ -3,7 +3,7 @@ import { getAuthenticatedUserId } from "./session-auth";
 import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, createCreatorPost, getPromotionTarget,
   getPublicDataPlans,
-  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
+  getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, refreshMeleDataRewardClaim, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
@@ -44,6 +44,19 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, ...(await getDataRewardStatus(authenticatedUserId)) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not load your Data Rewards." }, 500);
+    }
+  }
+
+  if (path === "/api/commerce/data-rewards/claim-status" && request.method === "GET") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to check your data reward." }, 401);
+    const reference = String(url.searchParams.get("reference") || "").trim();
+    if (!reference) return json({ ok: false, error: "A transaction reference is required." }, 400);
+    try {
+      const claim = await refreshMeleDataRewardClaim(authenticatedUserId, reference);
+      return json({ ok: true, claim });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not check the MELE transaction." }, 400);
     }
   }
 
