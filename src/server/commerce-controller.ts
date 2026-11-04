@@ -47,6 +47,17 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     }
   }
 
+  if (path === "/api/commerce/data-rewards/plans" && request.method === "GET") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view available data plans." }, 401);
+    try {
+      const plans = await getMelePlans(true);
+      return json({ ok: true, plans: plans.map((plan) => ({ plan_id: plan.plan_id, network: plan.network, plan_name: plan.plan_name, data_size: plan.data_size, validity: plan.validity, price: plan.price })), source: "mele-live" });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load live data plans." }, 502);
+    }
+  }
+
   if (path === "/api/commerce/data-rewards/claim-status" && request.method === "GET") {
     const authenticatedUserId = await getAuthenticatedUserId(request);
     if (!authenticatedUserId) return json({ ok: false, error: "Sign in to check your data reward." }, 401);
@@ -67,7 +78,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       const body = await request.json() as Record<string, unknown>;
       const claim = await claimMeleDataReward({
         userId: authenticatedUserId,
-        tierId: String(body.tierId || "") as any,
+        planId: Number(body.planId),
         network: String(body.network || "").toUpperCase() as any,
         phoneNumber: String(body.phoneNumber || ""),
         referralCode: String(body.referralCode || ""),
