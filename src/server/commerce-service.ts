@@ -1234,12 +1234,17 @@ export async function claimMeleDataReward(params: {
     throw error;
   }
 
-  let response: Response;
   let body: any;
   try {
-    const purchase = await submitMelePurchase({ plan: selected, phoneNumber, reference });
-    response = purchase.response;
-    body = purchase.body;
+    // Use the exact same live-plan lookup, phone validation, purchase endpoint,
+    // API-key authentication, request payload, and HTTP success rule as Admin > Test Data.
+    const purchase = await testMelePurchase({
+      network: params.network,
+      planId: selected.plan_id,
+      phoneNumber,
+      reference,
+    });
+    body = purchase.response;
   } catch (error) {
     // A timeout is ambiguous: query MELE by the same idempotency reference before
     // leaving the claim pending. Never issue a second purchase automatically.
@@ -1292,7 +1297,7 @@ export async function claimMeleDataReward(params: {
       // Keep the original provider response and expose a safe pending state.
     }
   }
-  if (normalized.failed || (!response.ok && response.status < 500)) {
+  if (normalized.failed) {
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: normalized.status || "failed",
@@ -1706,13 +1711,14 @@ export async function testMelePurchase(params: {
   network: MelePlan["network"];
   planId: number;
   phoneNumber: string;
+  reference?: string;
 }) {
   const plans = await getMelePlans(true);
   const plan = plans.find((p) => Number(p.plan_id) === Number(params.planId) && p.network === params.network);
   if (!plan) throw new Error("That plan is not in the current live MELE catalog.");
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
-  const reference = id("mele_test").slice(0, 75);
+  const reference = params.reference || id("mele_test").slice(0, 75);
   const { response, body } = await submitMelePurchase({ plan, phoneNumber, reference });
   if (!response.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${response.status}).`);
   return { reference, plan, phoneNumber, response: body };
