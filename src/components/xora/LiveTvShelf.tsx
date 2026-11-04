@@ -41,7 +41,7 @@ export function LiveTvShelf() {
             </span>
             <h2 className="font-display text-lg font-semibold tracking-tight">Live TV</h2>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Live channels powered by IPTV Nexus.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Browse live channels and discover what is on now.</p>
         </div>
         <Link
           to="/tv"
