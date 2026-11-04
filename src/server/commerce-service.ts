@@ -1270,14 +1270,30 @@ export async function claimMeleDataReward(params: {
     };
   }
 
-  const normalized = normalizeMeleRewardStatus(body);
+  let normalized = normalizeMeleRewardStatus(body);
+  if (!normalized.failed && !normalized.succeeded) {
+    // MELE can acknowledge a request before the carrier finishes it. Requery
+    // the original reference once so an already-final result is not left pending.
+    try {
+      const lookup = await getMeleDataPurchaseStatus(reference);
+      if (lookup.found) {
+        const checked = normalizeMeleRewardStatus(lookup.body);
+        if (checked.failed || checked.succeeded) {
+          body = lookup.body;
+          normalized = checked;
+        }
+      }
+    } catch {
+      // Keep the original provider response and expose a safe pending state.
+    }
+  }
   if (normalized.failed || (!response.ok && response.status < 500)) {
     await settleMeleDataRewardClaim({
       reference,
       providerStatus: normalized.status || "failed",
       providerPayload: body,
     });
-    throw new Error("The data request could not be completed. Your Xora Points were not deducted. Please try again later.");
+    throw new Error("MELE rejected the data request. No points were used. Please try again later.");
   }
 
   if (normalized.succeeded) {
