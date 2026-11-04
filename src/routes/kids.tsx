@@ -77,6 +77,7 @@ async function loadKidsChannels(query: string): Promise<Channel[]> {
 function KidsPage() {
   const navigate = useNavigate();
   const { channel: requestedChannel } = Route.useSearch();
+  const [activeSection, setActiveSection] = useState<"cartoons" | "live">("cartoons");
   const [search, setSearch] = useState("");
   const [cartoonSearch, setCartoonSearch] = useState("");
   const [submittedCartoonSearch, setSubmittedCartoonSearch] = useState("");
@@ -136,6 +137,20 @@ function KidsPage() {
           </div>
         </section>
 
+        <section className="grid gap-3 sm:grid-cols-2">
+          <button type="button" onClick={() => setActiveSection("cartoons")} aria-pressed={activeSection === "cartoons"} className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition ${activeSection === "cartoons" ? "border-primary bg-primary/5 shadow-sm" : "border-border/70 bg-surface hover:border-primary/40"}`}>
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#eee5ff] text-primary"><Film className="size-6" /></span>
+            <span className="min-w-0 flex-1"><span className="block font-display text-base font-semibold">Cartoons & Animation</span><span className="mt-1 block text-xs text-muted-foreground">Discover animated favourites</span></span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+          <button type="button" onClick={() => setActiveSection("live")} aria-pressed={activeSection === "live"} className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition ${activeSection === "live" ? "border-primary bg-primary/5 shadow-sm" : "border-border/70 bg-surface hover:border-primary/40"}`}>
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#e4f6ed] text-emerald-700"><Tv className="size-6" /></span>
+            <span className="min-w-0 flex-1"><span className="block font-display text-base font-semibold">Explore Live Kids Channels</span><span className="mt-1 block text-xs text-muted-foreground">Watch kids channels live</span></span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        </section>
+
+        {activeSection === "cartoons" && (
         <section className="space-y-4 rounded-[1.75rem] border border-primary/15 bg-surface p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -225,6 +240,10 @@ function KidsPage() {
           <p className="text-[11px] leading-5 text-muted-foreground">The catalogue uses public animation metadata; VidRift handles playback. Availability depends on the external player. AniList titles use episode numbers; the original TV-series entries use season and episode numbers.</p>
         </section>
 
+        )}
+
+        {activeSection === "live" && (
+        <>
         <section className="rounded-[1.75rem] border border-border/70 bg-surface p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div><div className="flex items-center gap-2"><Tv className="size-4 text-primary" /><h2 className="font-display text-xl font-semibold">Kids channels</h2></div><p className="mt-1 text-xs text-muted-foreground">Explore playable channels selected for kids.</p></div>
@@ -259,6 +278,8 @@ function KidsPage() {
             ))}
           </div>
         </section>
+        </>
+        )}
       </div>
     </AppShell>
   );
