@@ -76,10 +76,17 @@ function RecoveryCode({ code, onContinue }: { code: string; onContinue: () => vo
   const [copied,setCopied]=useState(false);
   return <div><div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-accent"><ShieldCheck className="h-6 w-6 text-primary"/></div><ScreenHeader title="Save your recovery code" subtitle="This code is shown only once. If you lose it and are logged out, XoraTV cannot recover the account for you."/><Notice tone="error">Keep this code private. Anyone with it and your username/email could reset your password.</Notice><div className="my-5 rounded-xl border border-border bg-background p-4 text-center font-mono text-base font-bold tracking-wider">{code}</div><div className="space-y-3"><PrimaryButton type="button" onClick={async()=>{try{await navigator.clipboard.writeText(code);setCopied(true);toast.success("Recovery code copied.");}catch{toast.error("Copy failed. Please select and copy the code manually.");}}}>{copied?"Copied":"Copy recovery code"}</PrimaryButton><PrimaryButton type="button" onClick={onContinue}>I've saved my code — continue</PrimaryButton></div></div>;
 }function AuthPage() {
-  const [screen,setScreen]=useState<Screen>("signin");
+  const [screen,setScreen]=useState<Screen>(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("mode")==="signup"?"signup":"signin");
   const [recoveryCode,setRecoveryCode]=useState("");
   const {user,loading}=useAuth();const navigate=useNavigate();
-  useEffect(()=>{if(!loading&&user&&screen!=="recovery-code")void navigate({to:"/"});},[user,loading,navigate,screen]);
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const referral=params.get("ref")||"";
+    if(params.get("mode")==="signup"&&/^[A-Za-z0-9_-]{10,40}$/.test(referral)){
+      window.sessionStorage.setItem("xora_data_reward_referral",referral);
+    }
+  },[]);
+  useEffect(()=>{if(!loading&&user&&screen!=="recovery-code"){window.sessionStorage.removeItem("xora_data_reward_referral");void navigate({to:"/"});}},[user,loading,navigate,screen]);
   return <div className="xora-auth-page min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
     <aside className="xora-auth-brand relative hidden overflow-hidden lg:block"><div className="xora-auth-glow xora-auth-glow-one"/><div className="xora-auth-glow xora-auth-glow-two"/><div className="relative flex h-full flex-col justify-between p-12 xl:p-16"><Brand light/><div className="max-w-md"><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Stories from everywhere</p><h2 className="text-4xl font-semibold leading-tight text-white xl:text-5xl">Watch, share and create the culture you love.</h2><p className="mt-5 text-base leading-relaxed text-white/70">Join a community of creators and viewers bringing stories, music and entertainment to the world.</p></div><p className="text-xs text-white/45">A little closer, every day.</p></div></aside>
     <main className="flex min-h-screen flex-col px-4 py-6 sm:px-8 lg:py-10"><div className="mx-auto flex w-full max-w-[440px] items-center justify-between lg:justify-end"><div className="lg:hidden"><Brand/></div><span className="xora-auth-pill rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Your XoraTV account</span></div>
