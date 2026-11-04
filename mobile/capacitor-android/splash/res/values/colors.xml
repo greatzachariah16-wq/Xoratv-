@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="xora_splash_cream">#FAF6EF</color>
+    <color name="xora_splash_ink">#140F20</color>
+    <color name="xora_splash_plum">#211431</color>
+    <color name="xora_splash_violet">#9B7BDF</color>
+    <color name="xora_splash_lavender">#C7B3FF</color>
+    <color name="xora_splash_text">#FFFDFC</color>
+    <color name="xora_splash_muted">#C8BED7</color>
+</resources>

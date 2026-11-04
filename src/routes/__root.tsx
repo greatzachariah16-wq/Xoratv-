@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { notifyNativeShellReady } from "../lib/native-startup";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
@@ -160,6 +161,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    // No-op on the website/PWA; dismisses the native startup overlay in the Android shell.
+    notifyNativeShellReady();
+  }, []);
 
   useEffect(() => {
     const handleGlobalError = (event: ErrorEvent) => {
