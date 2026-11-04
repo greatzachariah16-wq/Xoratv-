@@ -731,7 +731,18 @@ export async function refreshMeleDataRewardClaim(userId: string, reference: stri
   if (!claim || claim.userId !== userId) throw new Error("Data reward claim not found.");
   if (["success", "failed"].includes(String(claim.status || ""))) return publicDataRewardClaim(claim);
   const result = await getMeleDataPurchaseStatus(reference);
-  if (!result.found) return publicDataRewardClaim(claim);
+  if (!result.found) {
+    // MELE returned HTTP 404 for this exact idempotency reference. It has no
+    // transaction to reconcile, so release the pending lock and allow a fresh
+    // user-initiated attempt. Never infer this from a timeout or generic error.
+    await settleMeleDataRewardClaim({
+      reference,
+      providerStatus: "not_found",
+      providerPayload: { httpStatus: result.httpStatus, checkedAt: new Date().toISOString(), message: "MELE returned 404: no transaction exists for this reference." },
+    });
+    const latest = await queryRtdb(dataRewardClaimPath(reference)) as any;
+    return publicDataRewardClaim(latest || claim);
+  }
   const normalized = normalizeMeleRewardStatus(result.body);
   await settleMeleDataRewardClaim({
     reference,
@@ -870,7 +881,7 @@ function normalizeMeleRewardStatus(body: any) {
     : typeof data?.status === "boolean" ? data.status
     : typeof body?.status === "boolean" ? body.status
     : undefined;
-  const failed = successFlag === false || ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled"].includes(status);
+  const failed = successFlag === false || ["failed", "failure", "error", "rejected", "declined", "cancelled", "canceled", "not_found", "not-found"].includes(status);
   const succeeded = ["delivered", "success", "successful", "completed", "complete"].includes(status) ||
     (successFlag === true && !["pending", "processing", "queued", "initiated", "accepted", "in_progress"].includes(status));
   return { status, failed, succeeded };
