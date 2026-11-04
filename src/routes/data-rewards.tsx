@@ -13,7 +13,7 @@ type RewardStatus = { status?: string; reference?: string; message?: string; rew
 type DataRewardSnapshot = { wallet: { points: number; pendingPoints?: number; lifetimeRedeemed?: number } | null; claim: RewardStatus | null; lastClaim: RewardStatus | null; cooldownUntil: string | null; cooldownRemainingMs: number; pending: boolean };
 const REWARD_TIERS = [{ size: "100 MB", points: 25, mb: 100 }, { size: "200 MB", points: 50, mb: 200 }, { size: "300 MB", points: 75, mb: 300 }, { size: "1 GB", points: 350, mb: 1024 }];
 function planSizeMb(plan: MelePlan) {
-  const match = `${plan.data_size} ${plan.plan_name}`.toLowerCase().replace(/,/g, "").match(/(\\d+(?:\\.\\d+)?)\\s*(gb|g|mb|m)\\b/i);
+  const match = `${plan.data_size} ${plan.plan_name}`.toLowerCase().replace(/,/g, "").match(/(\d+(?:\.\d+)?)\s*(gb|g|mb|m)\b/i);
   if (!match) return 0;
   const amount = Number(match[1]);
   return /^g/i.test(match[2]) ? amount * 1024 : amount;
