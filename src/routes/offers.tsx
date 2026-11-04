@@ -224,6 +224,11 @@ function OfferWall() {
                 </button>
               </div>
               <div className="space-y-3 p-5">
+                <Link to="/data-rewards" onClick={() => setShowUsePoints(false)} className="flex items-center gap-4 rounded-[20px] border border-primary/30 bg-primary/5 p-4 press">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Gift className="size-6" /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">Claim a data reward</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Redeem 25, 50, 75 or 350 points for 100 MB, 200 MB, 300 MB or 1 GB. One successful claim every 24 hours.</span></span>
+                  <ArrowRight className="size-4 shrink-0 text-primary" />
+                </Link>
                 <Link to="/data" onClick={() => setShowUsePoints(false)} className="flex items-center gap-4 rounded-[20px] border border-border bg-background p-4 press">
                   <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Smartphone className="size-6" /></span>
                   <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">Buy data</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Use your Xora Points for up to 50% off a data purchase.</span></span>
