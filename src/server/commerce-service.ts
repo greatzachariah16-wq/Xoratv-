@@ -915,6 +915,9 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
   return { referralQualified: true, duplicate: !result.created, event: result.record };
 }
 
+// TEMPORARY: remove this bypass after the live data-claim test.
+const DATA_REWARD_POINTS_TEST_BYPASS = true;
+
 export async function settleMeleDataRewardClaim(params: {
   reference: string;
   providerStatus: string;
@@ -953,8 +956,8 @@ export async function settleMeleDataRewardClaim(params: {
       }
       if (currentClaim.status === "success") return account;
       const points = Number(claim.points || currentClaim.points || 0);
-      if (!Number.isFinite(points) || points <= 0) throw new Error("The data reward points value is invalid.");
-      if (Number(account.points || 0) < points) {
+      if (!Number.isFinite(points) || points < 0 || (!DATA_REWARD_POINTS_TEST_BYPASS && points === 0)) throw new Error("The data reward points value is invalid.");
+      if (points > 0 && Number(account.points || 0) < points) {
         throw new Error("The data reward was delivered, but the points balance needs manual reconciliation.");
       }
       const completedClaim = {
@@ -1111,7 +1114,7 @@ export async function claimMeleDataReward(params: {
     userId: params.userId,
     tierId: params.tierId,
     rewardSize: tier.size,
-    points: tier.points,
+    points: DATA_REWARD_POINTS_TEST_BYPASS ? 0 : tier.points,
     network: params.network,
     deliveredSize: selected.data_size,
     planId: selected.plan_id,
@@ -1135,7 +1138,7 @@ export async function claimMeleDataReward(params: {
       const next = new Date(lastClaimMs + 86400000).toLocaleString("en-NG");
       throw new Error(`You can claim data again after ${next}.`);
     }
-    if (Number(account.points || 0) < tier.points) {
+    if (!DATA_REWARD_POINTS_TEST_BYPASS && Number(account.points || 0) < tier.points) {
       throw new Error(`You need at least ${tier.points} Xora Points to claim ${tier.size}.`);
     }
     // Only a referred user's first successful Data Reward can create attribution.
