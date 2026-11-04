@@ -1138,126 +1138,65 @@ export async function getDataRewardStatus(userId: string) {
 
 export async function claimMeleDataReward(params: {
   userId: string;
-  tierId: DataRewardTierId;
+  planId: number;
   network: DataRewardNetwork;
   phoneNumber: string;
   referralCode?: string | null;
 }) {
-  const tier = DATA_REWARD_TIERS[params.tierId];
-  if (!tier) throw new Error("Choose a valid data reward.");
   if (!["MTN", "GLO", "AIRTEL", "9MOBILE"].includes(params.network)) throw new Error("Choose a valid mobile network.");
   const phoneNumber = String(params.phoneNumber || "").replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
 
   let plans: MelePlan[];
-  try {
-    plans = await getMelePlans(true);
-  } catch {
-    throw new Error("Data rewards are temporarily unavailable. Please try again shortly.");
-  }
-  const matchingPlans = plans
-    .filter((plan) => plan.network === params.network)
-    .map((plan) => ({ plan, sizeMb: parseDataRewardSizeMb(plan) }))
-    .filter((item) => item.sizeMb >= tier.targetMb);
-  const exactPlans = matchingPlans.filter((item) => item.sizeMb === tier.targetMb);
-  const candidates = exactPlans.length ? exactPlans : matchingPlans;
-  candidates.sort((a, b) => a.plan.price - b.plan.price || a.sizeMb - b.sizeMb);
-  const selected = candidates[0]?.plan;
-  if (!selected) throw new Error(`No ${params.network} bundle is available for this reward right now.`);
+  try { plans = await getMelePlans(true); }
+  catch { throw new Error("Data plans are temporarily unavailable. Please try again shortly."); }
+  const selected = plans.find((plan) => Number(plan.plan_id) === Number(params.planId) && plan.network === params.network);
+  if (!selected) throw new Error("That data plan is no longer available. Refresh the plans and choose again.");
 
   const existingReferral = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(params.userId)}`) as any;
   const resolvedCreatorId = existingReferral?.creatorId || await resolveCreatorAttribution(params.referralCode, "data-reward");
   const referralCreator = resolvedCreatorId ? await getCreator(String(resolvedCreatorId)) : null;
   const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
-
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
   const claimRecord = {
-    reference,
-    userId: params.userId,
-    tierId: params.tierId,
-    rewardSize: tier.size,
-    points: DATA_REWARD_POINTS_TEST_BYPASS ? 0 : tier.points,
-    network: params.network,
-    deliveredSize: selected.data_size,
-    planId: selected.plan_id,
-    planName: selected.plan_name,
-    providerPrice: selected.price,
-    phoneNumber,
-    provider: "mele",
-    referralCreatorId,
-    status: "processing",
-    createdAt,
-    updatedAt: createdAt,
+    reference, userId: params.userId, tierId: null, rewardSize: selected.data_size, points: 0,
+    network: params.network, deliveredSize: selected.data_size, planId: selected.plan_id,
+    planName: selected.plan_name, providerPrice: selected.price, phoneNumber, provider: "mele",
+    referralCreatorId, status: "processing", createdAt, updatedAt: createdAt,
   };
 
   await updateCpaAccountWithEtag(params.userId, (account) => {
-    const existingClaim = account.dataRewardClaim;
-    if (["processing", "provider_pending"].includes(String(existingClaim?.status || ""))) {
-      throw new Error("Your previous data reward is still being processed. Please wait for its delivery confirmation.");
+    if (["processing", "provider_pending"].includes(String(account.dataRewardClaim?.status || ""))) {
+      throw new Error("Your previous data request is still being processed. Please wait for its delivery confirmation.");
     }
     const lastClaimMs = account.dataRewardLastClaimAt ? Date.parse(String(account.dataRewardLastClaimAt)) : NaN;
     if (Number.isFinite(lastClaimMs) && Date.now() < lastClaimMs + 86400000) {
-      const next = new Date(lastClaimMs + 86400000).toLocaleString("en-NG");
-      throw new Error(`You can claim data again after ${next}.`);
+      throw new Error(`You can request data again after ${new Date(lastClaimMs + 86400000).toLocaleString("en-NG")}.`);
     }
-    if (!DATA_REWARD_POINTS_TEST_BYPASS && Number(account.points || 0) < tier.points) {
-      throw new Error(`You need at least ${tier.points} Xora Points to claim ${tier.size}.`);
-    }
-    // Only a referred user's first successful Data Reward can create attribution.
-    // Once qualified, keep the original creator on later claims for the 3-claim
-    // engagement signal; otherwise never attach a new token to an existing user.
-    const hasPreviousSuccessfulClaim = Boolean(
-      account.dataRewardLastClaimAt || account.dataRewardLastClaim?.status === "success"
-    );
-    if (hasPreviousSuccessfulClaim && !existingReferral?.creatorId) {
-      claimRecord.referralCreatorId = null;
-    }
+    const hasPreviousSuccessfulClaim = Boolean(account.dataRewardLastClaimAt || account.dataRewardLastClaim?.status === "success");
+    if (hasPreviousSuccessfulClaim && !existingReferral?.creatorId) claimRecord.referralCreatorId = null;
     return { ...account, dataRewardClaim: claimRecord, updatedAt: createdAt };
   });
 
   try {
-    await queryRtdb(dataRewardClaimPath(reference), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(claimRecord),
-    });
+    await queryRtdb(dataRewardClaimPath(reference), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(claimRecord) });
   } catch (error) {
-    await updateCpaAccountWithEtag(params.userId, (account) => {
-      if (account.dataRewardClaim?.reference !== reference) return account;
-      return {
-        ...account,
-        dataRewardClaim: { ...account.dataRewardClaim, status: "failed", failedAt: new Date().toISOString(), providerStatus: "claim_record_error" },
-        updatedAt: new Date().toISOString(),
-      };
+    await updateCpaAccountWithEtag(params.userId, (account) => account.dataRewardClaim?.reference !== reference ? account : {
+      ...account, dataRewardClaim: { ...account.dataRewardClaim, status: "failed", failedAt: new Date().toISOString(), providerStatus: "claim_record_error" }, updatedAt: new Date().toISOString(),
     }).catch(() => null);
     throw error;
   }
 
   let body: any;
-  let httpRejection: string | null = null;
   try {
-    // Use the exact same live-plan lookup, phone validation, purchase endpoint,
-    // API-key authentication, request payload, and HTTP success rule as Admin > Test Data.
-    const purchase = await testMelePurchase({
-      network: params.network,
-      planId: selected.plan_id,
-      phoneNumber,
-      reference,
-      allowHttpError: true,
-    });
+    const purchase = await testMelePurchase({ network: params.network, planId: selected.plan_id, phoneNumber, reference, allowHttpError: true });
     body = purchase.response;
     if (!purchase.httpOk && purchase.httpStatus < 500) {
-      await settleMeleDataRewardClaim({
-        reference,
-        providerStatus: "failed",
-        providerPayload: body,
-      });
-      httpRejection = body?.message || `MELE rejected the data request (HTTP ${purchase.httpStatus}). No points were used.`;
+      await settleMeleDataRewardClaim({ reference, providerStatus: "failed", providerPayload: body });
+      return { status: "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: body?.message || `MELE rejected the purchase (HTTP ${purchase.httpStatus}).` };
     }
   } catch (error) {
-    // A timeout is ambiguous: query MELE by the same idempotency reference before
-    // leaving the claim pending. Never issue a second purchase automatically.
     try {
       const lookup = await getMeleDataPurchaseStatus(reference);
       if (lookup.found) {
@@ -1265,88 +1204,34 @@ export async function claimMeleDataReward(params: {
         const checked = normalizeMeleRewardStatus(body);
         if (checked.succeeded || checked.failed) {
           await settleMeleDataRewardClaim({ reference, providerStatus: checked.status || (checked.succeeded ? "delivered" : "failed"), providerPayload: body });
-          return {
-            status: checked.succeeded ? "success" as const : "failed" as const,
-            reference, rewardSize: tier.size, deliveredSize: selected.data_size, points: 0,
-            message: checked.succeeded ? `Your ${selected.data_size} data reward has been delivered.` : "MELE confirmed that this data purchase failed. No points were deducted.",
-          };
+          return { status: checked.succeeded ? "success" as const : "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: checked.succeeded ? `Your ${selected.data_size} bundle has been delivered.` : "MELE confirmed that this purchase failed." };
         }
       }
-    } catch {
-      // Preserve the original request outcome; status can be checked again later.
-    }
-    await settleMeleDataRewardClaim({
-      reference,
-      providerStatus: "processing",
-      providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted." },
-    }).catch(() => null);
-    return {
-      status: "provider_pending" as const,
-      reference,
-      rewardSize: tier.size,
-      deliveredSize: selected.data_size,
-      points: 0,
-      message: "MELE has not yet confirmed this request. We are checking the transaction reference; please do not submit another claim.",
-    };
+    } catch { /* retain pending state if status cannot be checked */ }
+    await settleMeleDataRewardClaim({ reference, providerStatus: "processing", providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted." } }).catch(() => null);
+    return { status: "provider_pending" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "MELE has not confirmed the result yet. Check this transaction before trying again." };
   }
-
-  if (httpRejection) throw new Error(httpRejection);
 
   let normalized = normalizeMeleRewardStatus(body);
   if (!normalized.failed && !normalized.succeeded) {
-    // MELE can acknowledge a request before the carrier finishes it. Requery
-    // the original reference once so an already-final result is not left pending.
     try {
       const lookup = await getMeleDataPurchaseStatus(reference);
       if (lookup.found) {
         const checked = normalizeMeleRewardStatus(lookup.body);
-        if (checked.failed || checked.succeeded) {
-          body = lookup.body;
-          normalized = checked;
-        }
+        if (checked.failed || checked.succeeded) { body = lookup.body; normalized = checked; }
       }
-    } catch {
-      // Keep the original provider response and expose a safe pending state.
-    }
+    } catch { /* preserve original response */ }
   }
   if (normalized.failed) {
-    await settleMeleDataRewardClaim({
-      reference,
-      providerStatus: normalized.status || "failed",
-      providerPayload: body,
-    });
-    throw new Error("MELE rejected the data request. No points were used. Please try again later.");
+    await settleMeleDataRewardClaim({ reference, providerStatus: normalized.status || "failed", providerPayload: body });
+    return { status: "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "MELE could not complete this data purchase." };
   }
-
   if (normalized.succeeded) {
-    await settleMeleDataRewardClaim({
-      reference,
-      providerStatus: normalized.status || "success",
-      providerPayload: body,
-    });
-    return {
-      status: "success" as const,
-      reference,
-      rewardSize: tier.size,
-      deliveredSize: selected.data_size,
-      points: 0,
-      message: `Your ${selected.data_size} data reward has been delivered.`,
-    };
+    await settleMeleDataRewardClaim({ reference, providerStatus: normalized.status || "success", providerPayload: body });
+    return { status: "success" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: `Your ${selected.data_size} bundle has been delivered.` };
   }
-
-  await settleMeleDataRewardClaim({
-    reference,
-    providerStatus: normalized.status || "processing",
-    providerPayload: body,
-  });
-  return {
-    status: "provider_pending" as const,
-    reference,
-    rewardSize: tier.size,
-    deliveredSize: selected.data_size,
-    points: 0,
-    message: "MELE is processing your request. No points are required; check the transaction status before trying again.",
-  };
+  await settleMeleDataRewardClaim({ reference, providerStatus: normalized.status || "processing", providerPayload: body });
+  return { status: "provider_pending" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "MELE is processing your request. Check the transaction status before trying again." };
 }
 
 export async function handleMeleWebhook(request: Request) {
