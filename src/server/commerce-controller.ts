@@ -57,6 +57,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
         tierId: String(body.tierId || "") as any,
         network: String(body.network || "").toUpperCase() as any,
         phoneNumber: String(body.phoneNumber || ""),
+        referralCode: String(body.referralCode || ""),
       });
       return json({ ok: true, claim });
     } catch (e) {
@@ -444,6 +445,18 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       return json({ ok: true, creator: await saveCreatorFeaturedImage(String(body.userId), String(body.featuredImageUrl)) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Could not save featured image." }, 400);
+    }
+  }
+
+  if (path === "/api/commerce/creator/data-reward-link" && request.method === "POST") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in before creating a referral link." }, 401);
+    try {
+      const creator = await getCreator(authenticatedUserId);
+      if (!creator || creator.status !== "active") return json({ ok: false, error: "Only active X Channel creators can create referral links." }, 403);
+      return json({ ok: true, link: await createCreatorPromotionLink({ creatorId: authenticatedUserId, service: "data-reward" }) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create your referral link." }, 400);
     }
   }
 

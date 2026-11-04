@@ -68,7 +68,13 @@ function DataRewards() {
     }
   }
 
-  useEffect(() => { void refreshWallet(); }, [user?.id]);
+  useEffect(() => {
+    const promo = new URLSearchParams(window.location.search).get("promo");
+    if (promo && /^[A-Za-z0-9_-]{10,40}$/.test(promo)) {
+      window.sessionStorage.setItem("xora_data_reward_referral", promo);
+    }
+    void refreshWallet();
+  }, [user?.id]);
 
   async function submitClaim() {
     if (!user || claiming) return;
@@ -81,6 +87,7 @@ function DataRewards() {
         body: JSON.stringify({
           tierId: selected,
           network,
+          referralCode: new URLSearchParams(window.location.search).get("promo") || window.sessionStorage.getItem("xora_data_reward_referral") || "",
           phoneNumber: phone.replace(/\s+/g, ""),
         }),
       });
