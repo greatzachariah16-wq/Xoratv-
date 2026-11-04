@@ -1228,7 +1228,7 @@ export async function claimMeleDataReward(params: {
     body = purchase.response;
     if (!purchase.httpOk && purchase.httpStatus < 500) {
       await settleMeleDataRewardClaim({ reference, providerStatus: "failed", providerPayload: body });
-      return { status: "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: body?.message || `MELE rejected the purchase (HTTP ${purchase.httpStatus}).` };
+      return { status: "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "Your data request could not be completed. Your reserved points have been returned." };
     }
   } catch (error) {
     try {
@@ -1238,12 +1238,12 @@ export async function claimMeleDataReward(params: {
         const checked = normalizeMeleRewardStatus(body);
         if (checked.succeeded || checked.failed) {
           await settleMeleDataRewardClaim({ reference, providerStatus: checked.status || (checked.succeeded ? "delivered" : "failed"), providerPayload: body });
-          return { status: checked.succeeded ? "success" as const : "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: checked.succeeded ? `Your ${selected.data_size} bundle has been delivered.` : "MELE confirmed that this purchase failed." };
+          return { status: checked.succeeded ? "success" as const : "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: checked.succeeded ? `Your ${selected.data_size} bundle has been delivered.` : "Your data request could not be completed." };
         }
       }
     } catch { /* retain pending state if status cannot be checked */ }
     await settleMeleDataRewardClaim({ reference, providerStatus: "processing", providerPayload: { message: error instanceof Error ? error.message : "MELE response was interrupted." } }).catch(() => null);
-    return { status: "provider_pending" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "MELE has not confirmed the result yet. Check this transaction before trying again." };
+    return { status: "provider_pending" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "Delivery has not been confirmed yet. Check this request before trying again." };
   }
 
   let normalized = normalizeMeleRewardStatus(body);
@@ -1258,14 +1258,14 @@ export async function claimMeleDataReward(params: {
   }
   if (normalized.failed) {
     await settleMeleDataRewardClaim({ reference, providerStatus: normalized.status || "failed", providerPayload: body });
-    return { status: "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "MELE could not complete this data purchase." };
+    return { status: "failed" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "Your data request could not be completed." };
   }
   if (normalized.succeeded) {
     await settleMeleDataRewardClaim({ reference, providerStatus: normalized.status || "success", providerPayload: body });
     return { status: "success" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: `Your ${selected.data_size} bundle has been delivered.` };
   }
   await settleMeleDataRewardClaim({ reference, providerStatus: normalized.status || "processing", providerPayload: body });
-  return { status: "provider_pending" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "MELE is processing your request. Check the transaction status before trying again." };
+  return { status: "provider_pending" as const, reference, rewardSize: selected.data_size, deliveredSize: selected.data_size, points: 0, message: "Your data request is still processing. Check its status before trying again." };
 }
 
 export async function handleMeleWebhook(request: Request) {
