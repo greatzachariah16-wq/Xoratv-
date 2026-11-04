@@ -718,6 +718,29 @@ export async function getMeleWallet() {
   return body;
 }
 
+/**
+ * The single MELE purchase transport used by both the admin test and customer
+ * Data Reward claims. Keep the endpoint, authentication, payload and response
+ * parsing identical so a tested purchase path is the production purchase path.
+ */
+async function submitMelePurchase(params: {
+  plan: MelePlan;
+  phoneNumber: string;
+  reference: string;
+}) {
+  const response = await meleFetch("/data/purchase", {
+    method: "POST",
+    body: JSON.stringify({
+      network: params.plan.network,
+      phone_number: params.phoneNumber,
+      plan_id: params.plan.plan_id,
+      reference: params.reference,
+    }),
+  });
+  const body = await response.json().catch(() => null);
+  return { response, body };
+}
+
 async function getMeleDataPurchaseStatus(reference: string) {
   const res = await meleFetch(`/data/status/?ref=${encodeURIComponent(reference)}`, { method: "GET" });
   const body = await res.json().catch(() => null);
@@ -1147,26 +1170,6 @@ export async function claimMeleDataReward(params: {
   const referralCreator = resolvedCreatorId ? await getCreator(String(resolvedCreatorId)) : null;
   const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
 
-  // Confirm the API token points at a funded LIVE wallet before recording or attempting a purchase.
-  let walletBody: any;
-  try {
-    walletBody = await getMeleWallet();
-  } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "Could not verify the MELE wallet.");
-  }
-  const walletData = walletBody?.data ?? walletBody;
-  const walletMode = String(walletData?.mode || (walletData?.livemode === true ? "live" : walletData?.livemode === false ? "test" : "")).toLowerCase();
-  if (walletData?.livemode === false || walletMode === "test") {
-    throw new Error("The connected MELE API token is in test mode. Switch the server to your live MELE API key before claiming real data.");
-  }
-  const walletBalance = Number(walletData?.balance);
-  if (!Number.isFinite(walletBalance)) {
-    throw new Error("MELE did not return a valid wallet balance. No data purchase was attempted.");
-  }
-  if (walletBalance < Number(selected.price || 0)) {
-    throw new Error(`Your MELE wallet has insufficient balance for this bundle. Required: ₦${Number(selected.price).toLocaleString("en-NG")}; available: ₦${walletBalance.toLocaleString("en-NG")}.`);
-  }
-
   const reference = id("xora_reward").slice(0, 70);
   const createdAt = new Date().toISOString();
   const claimRecord = {
@@ -1180,8 +1183,6 @@ export async function claimMeleDataReward(params: {
     planId: selected.plan_id,
     planName: selected.plan_name,
     providerPrice: selected.price,
-    meleWalletBalanceBefore: walletBalance,
-    meleMode: walletMode || "unknown",
     phoneNumber,
     provider: "mele",
     referralCreatorId,
@@ -1236,16 +1237,9 @@ export async function claimMeleDataReward(params: {
   let response: Response;
   let body: any;
   try {
-    response = await meleFetch("/data/purchase", {
-      method: "POST",
-      body: JSON.stringify({
-        network: selected.network,
-        phone_number: phoneNumber,
-        plan_id: selected.plan_id,
-        reference,
-      }),
-    });
-    body = await response.json().catch(() => null);
+    const purchase = await submitMelePurchase({ plan: selected, phoneNumber, reference });
+    response = purchase.response;
+    body = purchase.body;
   } catch (error) {
     // A timeout is ambiguous: query MELE by the same idempotency reference before
     // leaving the claim pending. Never issue a second purchase automatically.
@@ -1719,12 +1713,8 @@ export async function testMelePurchase(params: {
   const phoneNumber = String(params.phoneNumber).replace(/\D/g, "");
   if (!/^0\d{10}$/.test(phoneNumber)) throw new Error("Enter a valid 11-digit Nigerian phone number.");
   const reference = id("mele_test").slice(0, 75);
-  const res = await meleFetch("/data/purchase", {
-    method: "POST",
-    body: JSON.stringify({ network: plan.network, phone_number: phoneNumber, plan_id: plan.plan_id, reference }),
-  });
-  const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${res.status}).`);
+  const { response, body } = await submitMelePurchase({ plan, phoneNumber, reference });
+  if (!response.ok) throw new Error(body?.message || `MELE purchase test failed (HTTP ${response.status}).`);
   return { reference, plan, phoneNumber, response: body };
 }
 
