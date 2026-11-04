@@ -38,6 +38,7 @@ const NAV = [
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: Tv },
   { to: "/tv", label: "Live TV", icon: Radio },
+  { to: "/xsports", label: "XSports", icon: Radio },
   { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/data-rewards", label: "Data Rewards", icon: Wifi },
