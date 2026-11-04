@@ -837,8 +837,10 @@ function webhookSecretIsValid(request: Request) {
 
 const DATA_REWARD_TIERS = {
   "100mb": { size: "100 MB", points: 25, targetMb: 100 },
+  "110mb": { size: "110 MB", points: 30, targetMb: 110 },
   "200mb": { size: "200 MB", points: 50, targetMb: 200 },
   "300mb": { size: "300 MB", points: 75, targetMb: 300 },
+  "500mb": { size: "500 MB", points: 200, targetMb: 500 },
   "1gb": { size: "1 GB", points: 350, targetMb: 1024 },
 } as const;
 
@@ -1168,7 +1170,7 @@ export async function claimMeleDataReward(params: {
   const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
   const matchedTier = dataRewardTierForPlan(selected);
   if (!matchedTier) {
-    throw new Error("Unsupported bundle. Choose 100 MB, 200 MB, 300 MB or 1 GB to redeem with Xora Points.");
+    throw new Error("Unsupported bundle. Choose 100 MB, 110 MB, 200 MB, 300 MB, 500 MB or 1 GB to redeem with Xora Points.");
   }
   const [tierId, tier] = matchedTier;
   const reference = id("xora_reward").slice(0, 70);
