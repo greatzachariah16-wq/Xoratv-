@@ -254,8 +254,8 @@ function KidsPage() {
           </div>
 
           {selected ? (
-            <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-border/60 bg-black shadow-lg">
-              <NativeVideoPlayer streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} autoPlay className="aspect-video w-full" />
+            <div className="relative left-1/2 mt-5 w-screen -translate-x-1/2 overflow-hidden border-y border-border/60 bg-black shadow-xl sm:w-full sm:rounded-[1.5rem] sm:border">
+              <NativeVideoPlayer streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} autoPlay className="!h-[65vh] !min-h-[360px] !max-h-[760px] !aspect-auto w-full sm:!h-auto sm:!min-h-0 sm:!aspect-video lg:!aspect-[21/9]" />
               <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
                 <div className="min-w-0"><h3 className="truncate font-display text-sm font-semibold">{selected.name}</h3><p className="mt-1 text-xs text-muted-foreground">{selected.country || "International"} · {selected.quality || "Live"}</p></div>
                 <span className="hidden shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary sm:inline-flex"><Heart className="size-3" /> Kids</span>
