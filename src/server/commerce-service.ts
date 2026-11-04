@@ -1373,7 +1373,7 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
   const existingLinks = await getCreatorPromotionLinks(params.creatorId);
   const existing = existingLinks.find((link) =>
     link.service === params.service &&
-    (params.service === "data" || (params.service === "course" && link.courseId === courseIdInput) || (params.service === "special-prize" && link.specialPrizeId === prizeIdInput)),
+    (params.service === "data" || params.service === "data-reward" || (params.service === "course" && link.courseId === courseIdInput) || (params.service === "special-prize" && link.specialPrizeId === prizeIdInput)),
   );
   if (existing) return existing;
 
@@ -1403,7 +1403,7 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
   }
   if (!token) throw new Error("Could not generate a unique promotion link. Please try again.");
   const now = new Date().toISOString();
-  if (params.service === "data-reward") targetPath = "/data-rewards?promo=" + encodeURIComponent(token);
+  if (params.service === "data-reward") targetPath = "/auth?mode=signup&ref=" + encodeURIComponent(token);
   const record: CreatorPromotionLink = { token, creatorId: params.creatorId, service: params.service, courseId, specialPrizeId, label, targetPath, clicks: 0, createdAt: now, updatedAt: now };
   await queryRtdb(promotionLinkPath(token), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
   return record;
@@ -1476,9 +1476,14 @@ export async function resolvePromotionLink(token: string) {
   if (!link || link.status === "revoked" || link.service === "special-prize") return null;
   const now = new Date().toISOString();
   await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
-  const targetPath = link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : link.service === "special-prize" ? "/special-prizes" : "/data";
+  const targetPath = link.service === "data-reward" ? "/auth" : link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : link.service === "special-prize" ? "/special-prizes" : "/data";
   const target = new URL(targetPath, "https://xoratv.local");
-  target.searchParams.set("promo", link.token);
+  if (link.service === "data-reward") {
+    target.searchParams.set("mode", "signup");
+    target.searchParams.set("ref", link.token);
+  } else {
+    target.searchParams.set("promo", link.token);
+  }
   if (link.service === "offer" && link.offerId) target.searchParams.set("offer", link.offerId);
   if (link.service === "special-prize" && link.specialPrizeId) target.searchParams.set("offer", link.specialPrizeId);
   return { ...link, targetPath: target.pathname + target.search };
