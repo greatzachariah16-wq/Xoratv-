@@ -52,9 +52,9 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view available data plans." }, 401);
     try {
       const plans = await getMelePlans(true);
-      return json({ ok: true, plans: plans.map((plan) => ({ plan_id: plan.plan_id, network: plan.network, plan_name: plan.plan_name, data_size: plan.data_size, validity: plan.validity, price: plan.price })), source: "mele-live" });
+      return json({ ok: true, plans: plans.map((plan) => ({ plan_id: plan.plan_id, network: plan.network, plan_name: plan.plan_name, data_size: plan.data_size, validity: plan.validity, price: plan.price })) });
     } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load live data plans." }, 502);
+      return json({ ok: false, error: "Current data plans are temporarily unavailable. Please try again shortly." }, 502);
     }
   }
 
@@ -67,7 +67,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       const claim = await refreshMeleDataRewardClaim(authenticatedUserId, reference);
       return json({ ok: true, claim });
     } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not check the MELE transaction." }, 400);
+      return json({ ok: false, error: "Could not check the transaction status. Please try again." }, 400);
     }
   }
 

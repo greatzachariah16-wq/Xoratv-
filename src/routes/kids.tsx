@@ -227,7 +227,7 @@ function KidsPage() {
 
         <section className="rounded-[1.75rem] border border-border/70 bg-surface p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><div className="flex items-center gap-2"><Tv className="size-4 text-primary" /><h2 className="font-display text-xl font-semibold">Kids channels</h2></div><p className="mt-1 text-xs text-muted-foreground">Playable channels from IPTV-org's Kids catalogue.</p></div>
+            <div><div className="flex items-center gap-2"><Tv className="size-4 text-primary" /><h2 className="font-display text-xl font-semibold">Kids channels</h2></div><p className="mt-1 text-xs text-muted-foreground">Explore playable channels selected for kids.</p></div>
             <div className="flex w-full gap-2 sm:max-w-md">
               <div className="relative flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a kids channel..." className="h-10 rounded-xl border-border/70 bg-background/70 pl-9" /></div>
               <Button variant="outline" className="h-10 rounded-xl" onClick={() => void query.refetch()} aria-label="Refresh kids channels"><RefreshCw className={`size-4 ${query.isFetching ? "animate-spin" : ""}`} /></Button>
