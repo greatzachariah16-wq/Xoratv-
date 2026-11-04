@@ -370,11 +370,12 @@ function XChannel(){
           <p className="mt-3 text-xs leading-5 text-muted-foreground">Minimum withdrawal: <b>$5 USD</b>. Pending or held conversions are shown separately and are not yet withdrawable.</p>
         </article>
         <article className="rounded-2xl border border-border bg-surface p-5 shadow-card">
-          <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Creator referrals</p><span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-700">Data rewards launch</span></div>
-          <p className="mt-3 font-display text-3xl font-semibold">₦0.00</p>
-          <p className="mt-1 text-xs text-muted-foreground">Successful referrals · ₦50 each</p>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">Minimum withdrawal: <b>₦500</b>. A referral qualifies after the person claims their first data reward. The first successful claim earns the ₦50 referral reward. Three successful claims are the active-engagement signal.</p>
-          <p className="mt-2 text-[11px] font-medium text-amber-700">Referral rewards remain inactive until the data-reward claim system is connected.</p>
+          <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Creator referrals</p><span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Verified claims</span></div>
+          <p className="mt-3 font-display text-3xl font-semibold">₦{Number(dashboard?.referralEarnings?.balance||0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{Number(dashboard?.referralEarnings?.successfulReferrals||0).toLocaleString()} successful first-claim referrals · ₦50 each</p>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">Minimum withdrawal: <b>₦500</b>. The first verified data-reward delivery earns ₦50 once. Three successful claims separately mark an audience member as actively engaged.</p>
+          <p className="mt-2 text-xs text-muted-foreground">{Number(dashboard?.referralEarnings?.activeAudience||0).toLocaleString()} referred audience members have reached the three-claim engagement signal.</p>
+          <button type="button" onClick={()=>void createDataRewardReferralLink()} disabled={referralLinkBusy} className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 text-xs font-semibold text-primary disabled:opacity-50"><Copy className="size-3.5"/>{referralLinkBusy?"Creating link…":"Copy audience referral link"}</button>
         </article>
       </div>
       <div className="rounded-2xl border border-border bg-surface p-5 shadow-card">
