@@ -257,7 +257,7 @@ function KidsPage() {
           </div>
           {selected ? (
             <div className="w-full overflow-hidden bg-black">
-              <NativeVideoPlayer streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} autoPlay className="aspect-video w-full" />
+              <NativeVideoPlayer streamUrl={`/api/tv/stream/${encodeURIComponent(selected.id)}/index.m3u8?channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} autoPlay liveTv className="aspect-video w-full" />
               <div className="flex items-center justify-between gap-3 bg-card px-4 py-4">
                 <div className="min-w-0"><h3 className="truncate font-display text-sm font-semibold">{selected.name}</h3><p className="mt-1 text-xs text-muted-foreground">{selected.country || "International"} · {selected.quality || "Live"}</p></div>
                 <span className="hidden shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary sm:inline-flex"><Heart className="size-3" /> Kids</span>
