@@ -3,25 +3,30 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
-  Bell,
+  BadgePercent,
   BarChart3,
+  BellRing,
+  ClipboardCheck,
+  Clapperboard,
+  Film,
+  Gem,
   GraduationCap,
-  Home,
+  Headset,
+  House,
+  Menu,
+  MessagesSquare,
+  MonitorPlay,
   Plus,
+  RadioTower,
   Search,
   Settings,
   Shield,
-  Clapperboard,
-  Tv,
-  User,
-  Wallet,
-  Gift,
-  ClipboardList,
-  Radio,
-  Baby,
-  Wifi,
-  Menu,
-  MessageCircle,
+  Signal,
+  Smartphone,
+  TvMinimalPlay,
+  UserRound,
+  UserRoundPen,
+  WalletCards,
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,24 +40,54 @@ import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Home", icon: Home },
+  { to: "/", label: "Home", icon: House },
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
-  { to: "/xtv-series", label: "X Series", icon: Tv },
-  { to: "/tv", label: "Live TV", icon: Radio },
+  { to: "/xtv-series", label: "X Series", icon: MonitorPlay },
+  { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
   { to: "/xsports", label: "XSports", icon: XSportsIcon },
-  { to: "/kids", label: "Xora Kids", icon: Baby },
+  { to: "/kids", label: "Xora Kids", icon: Gem },
   { to: "/learn", label: "Learn", icon: GraduationCap },
-  { to: "/data-rewards", label: "Data Rewards", icon: Wifi },
-  { to: "/chat", label: "Community Chat", icon: MessageCircle },
-  { to: "/creator-studio", label: "X Channel", icon: Radio },
-  { to: "/special-prizes", label: "Special Prizes", icon: Gift },
-  { to: "/catalog", label: "Movie Catalog", icon: Clapperboard },
-  { to: "/offers", label: "Offers", icon: Gift },
-  { to: "/rewards", label: "Rewards", icon: Wallet },
-  { to: "/surveys", label: "Surveys", icon: ClipboardList },
-  { to: "/notifications", label: "Notifications", icon: Bell },
-  { to: "/support", label: "Support", icon: MessageCircle },
+  { to: "/creator-studio", label: "X Channel", icon: RadioTower },
+  { to: "/chat", label: "Community Chat", icon: MessagesSquare },
+  { to: "/catalog", label: "Movie Catalog", icon: Film },
+  { to: "/special-prizes", label: "Special Prizes", icon: Gem },
+  { to: "/offers", label: "Offers", icon: BadgePercent },
+  { to: "/data-rewards", label: "Data Rewards", icon: Signal },
+  { to: "/data", label: "Buy Data", icon: Smartphone },
+  { to: "/rewards", label: "Rewards", icon: WalletCards },
+  { to: "/surveys", label: "Surveys", icon: ClipboardCheck },
+  { to: "/search", label: "Search", icon: Search },
+  { to: "/wallet", label: "Xora Wallet", icon: WalletCards },
+  { to: "/notifications", label: "Notifications", icon: BellRing },
+  { to: "/support", label: "Support", icon: Headset },
 ] as const;
+
+type NavIconComponent = (typeof NAV)[number]["icon"];
+
+function NavIconTile({
+  icon: Icon,
+  active = false,
+  compact = false,
+}: {
+  icon: NavIconComponent;
+  active?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-[14px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_2px_6px_rgba(82,54,39,0.08)] transition-all",
+        compact ? "size-9 rounded-xl" : "size-10",
+        active
+          ? "border-[#d9a98e] bg-gradient-to-br from-[#f7dfcf] via-[#f5e9dc] to-[#fffaf3] text-[#a84f30] shadow-[0_3px_9px_rgba(177,82,50,0.14)]"
+          : "border-[#eadccf] bg-gradient-to-br from-[#fffaf3] via-[#f5ece2] to-[#eadbcd] text-[#91644f] group-hover:border-[#d8ad96] group-hover:text-[#a84f30]",
+      )}
+    >
+      <span className="pointer-events-none absolute inset-x-2 top-0 h-px bg-white/90" />
+      <Icon className="relative size-[21px] stroke-[1.8] drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]" aria-hidden="true" />
+    </span>
+  );
+}
 
 function useUnreadCount() {
   const { user } = useAuth();
@@ -120,51 +155,17 @@ export function AppShell({
                     : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
                 )}
               >
-                <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl border shadow-sm transition-all", active ? "border-primary/20 bg-gradient-to-br from-primary to-primary/75 text-primary-foreground shadow-primary/20" : "border-border/70 bg-gradient-to-br from-card via-secondary/80 to-muted/70 text-foreground/80 group-hover:border-primary/20 group-hover:text-primary")}><Icon className="size-5 stroke-[2.2]" aria-hidden="true" /></span>
+                <NavIconTile icon={Icon} active={active} compact />
                 <span className="min-w-0 flex-1">{label}</span>
+                {to === "/wallet" && user ? (
+                  <span className="ml-auto text-[11px] font-semibold tabular-nums text-muted-foreground">₦{Number(walletData?.wallet?.balance || 0).toLocaleString()}</span>
+                ) : null}
                 {to === "/notifications" && unread > 0 ? (
-                  <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                    {unread}
-                  </span>
+                  <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{unread}</span>
                 ) : null}
               </Link>
             );
           })}
-          <Link
-            to="/surveys"
-            className={cn(
-              "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-              pathname.startsWith("/surveys")
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            <ClipboardList className="size-4.5" aria-hidden="true" /> Surveys
-          </Link>
-          <Link
-            to="/search"
-            className={cn(
-              "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-              pathname.startsWith("/search")
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            <Search className="size-4.5" aria-hidden="true" />
-            Search
-          </Link>
-          <Link
-            to="/wallet"
-            className={cn(
-              "press flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-              pathname.startsWith("/wallet")
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            <span className="flex items-center gap-3"><Wallet className="size-4.5" aria-hidden="true" /> Xora Wallet</span>
-            {user ? <span className="text-xs font-semibold">₦{Number(walletData?.wallet?.balance || 0).toLocaleString()}</span> : null}
-          </Link>
           {currentProfile ? (
             <Link
               to="/profile/$username"
@@ -176,7 +177,7 @@ export function AppShell({
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <User className="size-4.5" aria-hidden="true" /> Profile
+              <NavIconTile icon={UserRound} compact active={pathname.startsWith("/profile")} /> Profile
             </Link>
           ) : (
             <Link
@@ -188,7 +189,7 @@ export function AppShell({
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <User className="size-4.5" aria-hidden="true" /> Sign in
+              <NavIconTile icon={UserRound} compact active={pathname.startsWith("/auth")} /> Sign in
             </Link>
           )}
           {isAdmin ? (
@@ -197,13 +198,13 @@ export function AppShell({
                 to="/admin"
                 className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                <Shield className="size-4.5" aria-hidden="true" /> Admin
+                <NavIconTile icon={Shield} compact /> Admin
               </Link>
               <Link
                 to="/admin/commerce"
                 className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                <BarChart3 className="size-4.5" aria-hidden="true" /> Commerce
+                <NavIconTile icon={BarChart3} compact /> Commerce
               </Link>
             </>
           ) : null}
@@ -213,7 +214,7 @@ export function AppShell({
           to="/create"
           className="press mt-6 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-card"
         >
-          <Plus className="size-4" aria-hidden="true" /> Create
+          <Plus className="size-4 stroke-[2.2]" aria-hidden="true" /> Create
         </Link>
 
         <div className="mt-4 shrink-0 space-y-2">
@@ -227,7 +228,7 @@ export function AppShell({
             )}
             aria-label="Settings"
           >
-            <Settings className="size-4.5" aria-hidden="true" />
+            <NavIconTile icon={Settings} compact active={pathname.startsWith("/settings")} />
             Settings
           </Link>
           <div className="rounded-xl border border-border bg-surface p-3">
@@ -253,14 +254,14 @@ export function AppShell({
         </Link>
         <div className="flex items-center gap-0.5 sm:gap-1">
           <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <Search className="size-5" aria-hidden="true" />
+            <Search className="size-[21px] stroke-[1.8]" aria-hidden="true" />
           </Link>
           <Link to="/wallet" aria-label="Xora Wallet" className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <Wallet className="size-5" aria-hidden="true" />
+            <WalletCards className="size-[21px] stroke-[1.8]" aria-hidden="true" />
             {user && Number(walletData?.wallet?.balance || 0) > 0 ? <span className="absolute right-1 top-1 min-w-2 rounded-full bg-primary px-1 text-[8px] font-bold leading-3 text-primary-foreground">{Number(walletData?.wallet?.balance || 0) >= 1000 ? "₦+" : "₦"}</span> : null}
           </Link>
           <Link to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <Bell className="size-5" aria-hidden="true" />
+            <BellRing className="size-[21px] stroke-[1.8]" aria-hidden="true" />
             {unread > 0 ? <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
           </Link>
           <button
@@ -300,25 +301,11 @@ export function AppShell({
                       active ? "border-primary/25 bg-gradient-to-br from-primary/15 via-primary/8 to-card text-foreground shadow-md" : "border-border/70 bg-card/75 text-foreground hover:border-primary/20 hover:bg-secondary/70",
                     )}
                   >
-                    <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl border shadow-inner", active ? "border-primary/20 bg-gradient-to-br from-primary to-primary/75 text-primary-foreground" : "border-border/70 bg-gradient-to-br from-secondary via-card to-muted text-foreground/80")}>
-                      <Icon className="size-5 stroke-[2.2]" aria-hidden="true" />
-                    </span>
+                    <NavIconTile icon={Icon} active={active} />
                     <span className="min-w-0 flex-1 leading-tight">{label}</span>
                   </Link>
                 );
               })}
-              <Link to="/surveys" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><ClipboardList className="size-4.5" aria-hidden="true" /></span>
-                Surveys
-              </Link>
-              <Link to="/search" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Search className="size-4.5" aria-hidden="true" /></span>
-                Search
-              </Link>
-              <Link to="/wallet" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Wallet className="size-4.5" aria-hidden="true" /></span>
-                Xora Wallet
-              </Link>
               {currentProfile ? (
                 <Link to="/profile/$username" params={{ username: currentProfile.username }} onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
                   <span className="grid size-9 place-items-center overflow-hidden rounded-xl bg-secondary"><UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={30} /></span>
@@ -326,12 +313,30 @@ export function AppShell({
                 </Link>
               ) : (
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                  <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><User className="size-4.5" aria-hidden="true" /></span>
+                  <NavIconTile icon={UserRound} compact />
                   Sign in
                 </Link>
               )}
+              {currentProfile ? (
+                <Link to="/edit-profile" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                  <NavIconTile icon={UserRoundPen} compact />
+                  Edit profile
+                </Link>
+              ) : null}
+              {isAdmin ? (
+                <>
+                  <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                    <NavIconTile icon={Shield} compact />
+                    Admin
+                  </Link>
+                  <Link to="/admin/commerce" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
+                    <NavIconTile icon={BarChart3} compact />
+                    Commerce
+                  </Link>
+                </>
+              ) : null}
               <Link to="/settings" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><Settings className="size-4.5" aria-hidden="true" /></span>
+                <NavIconTile icon={Settings} compact active={pathname.startsWith("/settings")} />
                 Settings
               </Link>
             </nav>
