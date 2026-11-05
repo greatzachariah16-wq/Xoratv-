@@ -40,6 +40,15 @@ public class XoraVlcActivity extends Activity {
     private int currentStreamIndex;
     private final ArrayList<String> streamUrls = new ArrayList<>();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable streamStartupTimeout = () -> {
+        if (mediaPlayer == null || userPaused || playbackFailed || mediaPlayer.isPlaying()) return;
+        Log.w("XoraLibVLC", "Candidate " + (currentStreamIndex + 1) + " timed out before playback started");
+        if (!tryNextStream("This source took too long; trying another")) {
+            playbackFailed = true;
+            statusText.setText("This channel did not start. Try another channel or retry.");
+            playPauseButton.setText("Retry");
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -143,6 +152,7 @@ public class XoraVlcActivity extends Activity {
                         statusText.setText("Buffering " + Math.round(event.getBuffering()) + "% · source " + (currentStreamIndex + 1));
                         break;
                     case MediaPlayer.Event.Playing:
+                        mainHandler.removeCallbacks(streamStartupTimeout);
                         playbackFailed = false;
                         statusText.setText("LIVE");
                         playPauseButton.setText("Pause");
@@ -152,6 +162,7 @@ public class XoraVlcActivity extends Activity {
                         playPauseButton.setText("Play");
                         break;
                     case MediaPlayer.Event.Stopped:
+                        mainHandler.removeCallbacks(streamStartupTimeout);
                         if (retryInProgress || userPaused) break;
                         if (!playbackFailed && tryNextStream("This source stopped before playback")) break;
                         if (!playbackFailed) {
@@ -161,6 +172,7 @@ public class XoraVlcActivity extends Activity {
                         playPauseButton.setText("Retry");
                         break;
                     case MediaPlayer.Event.EncounteredError:
+                        mainHandler.removeCallbacks(streamStartupTimeout);
                         Log.e("XoraLibVLC", "Stream error on candidate " + (currentStreamIndex + 1) + " of " + streamUrls.size());
                         if (!tryNextStream("Source failed; trying another")) {
                             playbackFailed = true;
@@ -192,7 +204,11 @@ public class XoraVlcActivity extends Activity {
         media.addOption(":http-reconnect");
         mediaPlayer.setMedia(media);
         media.release();
+        mainHandler.removeCallbacks(streamStartupTimeout);
         mediaPlayer.play();
+        // Do not leave the viewer on an endless buffering screen. Give each
+        // ranked source 25 seconds, then move to the next candidate/decoder.
+        mainHandler.postDelayed(streamStartupTimeout, 25000);
     }
 
     private boolean tryNextStream(String reason) {
@@ -236,6 +252,7 @@ public class XoraVlcActivity extends Activity {
 
     @Override
     protected void onStop() {
+        mainHandler.removeCallbacks(streamStartupTimeout);
         if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
         super.onStop();
     }
@@ -243,11 +260,15 @@ public class XoraVlcActivity extends Activity {
     @Override
     protected void onRestart() {
         super.onRestart();
-        if (mediaPlayer != null && !userPaused) mediaPlayer.play();
+        if (mediaPlayer != null && !userPaused) {
+            mediaPlayer.play();
+            mainHandler.postDelayed(streamStartupTimeout, 25000);
+        }
     }
 
     @Override
     protected void onDestroy() {
+        mainHandler.removeCallbacks(streamStartupTimeout);
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             mediaPlayer.detachViews();

@@ -78,23 +78,15 @@ export function NativeVideoPlayer({
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
-  // Shorts use a direct MP4 rendition instead of HLS. This is deliberately
-  // boring and reliable on older Android WebViews/devices while still using
-  // Cloudinary's low-resolution delivery transformation.
-  // Shorts follow the proven Xora Sparkle Hub playback path: use the stored
-  // playable URL directly and let the native <video> element handle it.
-  // Homepage playback keeps its existing stream handling unchanged.
-  // Shorts must receive a real MP4 URL. Prefer the stored Cloudinary delivery
-  // URL exactly as uploaded; do not rewrite it before the browser sees it.
-  // The previous URL rewriting could turn an otherwise valid rendition into a
-  // URL the Android WebView could not decode. We still keep the original URL
-  // available as a native-player retry below.
+  // Shorts use the stored MP4 directly first for compatibility with older
+  // Android WebViews. A 240p Cloudinary rendition remains available as fallback.
   const src = effectiveStream || signedSrc;
+  // Start Shorts with the stored, original MP4 URL. This avoids relying on a
+  // delivery transformation that may not be available for every uploaded
+  // asset or older Android WebView. Keep a 240p rendition as the recovery path.
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
-  // Creator uploads are stored at their original quality. Deliver a Cloudinary
-  // 240p MP4 to Shorts first so mobile networks and older Android devices do
-  // not have to download the full-resolution source before playback can start.
-  const activeSrc = feed === "shorts" && src ? get240pDeliveryUrl(src) : src;
+  const shortsFallbackSrc = feed === "shorts" && src ? get240pDeliveryUrl(src) : null;
+  const activeSrc = feed === "shorts" && src ? (originalShortsSrc || src) : src;
   const nativeVlcOnly = liveTv && isNativeVlcPlatform();
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
@@ -629,14 +621,14 @@ export function NativeVideoPlayer({
                 shortsRecoveryTimerRef.current = null;
                 const video = videoRef.current;
                 if (!video) return;
-                if (!shortsRetriedOriginal.current && originalShortsSrc && originalShortsSrc !== activeSrc) {
+                if (!shortsRetriedOriginal.current && shortsFallbackSrc && shortsFallbackSrc !== activeSrc) {
                   shortsRetriedOriginal.current = true;
                   setFailed(false);
                   setWaiting(true);
-                  video.src = originalShortsSrc;
+                  video.src = shortsFallbackSrc;
                   video.load();
                   if (autoPlay) void video.play().catch(() => {});
-                } else if (shortsRetriedOriginal.current) {
+                } else {
                   setWaiting(false);
                   setFailed(true);
                 }
@@ -650,10 +642,10 @@ export function NativeVideoPlayer({
                 shortsRecoveryTimerRef.current = null;
                 const video = videoRef.current;
                 if (!video) return;
-                if (!shortsRetriedOriginal.current && originalShortsSrc && originalShortsSrc !== activeSrc) {
+                if (!shortsRetriedOriginal.current && shortsFallbackSrc && shortsFallbackSrc !== activeSrc) {
                   shortsRetriedOriginal.current = true;
                   setFailed(false);
-                  video.src = originalShortsSrc;
+                  video.src = shortsFallbackSrc;
                   video.load();
                   if (autoPlay) void video.play().catch(() => {});
                 } else {
@@ -674,18 +666,27 @@ export function NativeVideoPlayer({
             shortsRecoveryTimerRef.current = null;
             setWaiting(false);
           }}
-          onError={() => {
+          onError={(event) => {
+            const mediaError = event.currentTarget.error;
+            console.warn("[Xora video] Media playback error", {
+              feed,
+              code: mediaError?.code ?? null,
+              message: mediaError?.message ?? null,
+              currentSrc: event.currentTarget.currentSrc,
+              networkState: event.currentTarget.networkState,
+              readyState: event.currentTarget.readyState,
+            });
             if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
             shortsRecoveryTimerRef.current = null;
             const video = videoRef.current;
-            // If a Cloudinary delivery transformation is rejected by the
-            // device/WebView, retry the same asset's original MP4 once.
-            if (feed === "shorts" && originalShortsSrc && !shortsRetriedOriginal.current && originalShortsSrc !== activeSrc) {
+            // If the original MP4 cannot play, retry the same asset's
+            // low-resolution Cloudinary rendition once.
+            if (feed === "shorts" && shortsFallbackSrc && !shortsRetriedOriginal.current && shortsFallbackSrc !== activeSrc) {
               shortsRetriedOriginal.current = true;
               setFailed(false);
               setWaiting(true);
               if (video) {
-                video.src = originalShortsSrc;
+                video.src = shortsFallbackSrc;
                 video.load();
                 if (autoPlay) void video.play().catch(() => {});
               }

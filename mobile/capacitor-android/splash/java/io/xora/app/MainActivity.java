@@ -89,45 +89,51 @@ public class MainActivity extends BridgeActivity {
         retryButton = startupOverlay.findViewById(R.id.xora_startup_retry);
         retryButton.setOnClickListener(view -> retryWebsite());
 
-        startFacebookStyleDots();
+        startSpinKitStyleDots();
     }
 
-    private void startFacebookStyleDots() {
+    /**
+     * Three sequential dots using SpinKit's lightweight transform/opacity
+     * animation approach, adapted to the Facebook-style vertical bounce.
+     * Native property animators keep this loader smooth on older Android WebViews.
+     */
+    private void startSpinKitStyleDots() {
         int[] dotIds = {
             R.id.xora_loading_dot_1,
             R.id.xora_loading_dot_2,
             R.id.xora_loading_dot_3
         };
         dotAnimators = new ObjectAnimator[dotIds.length];
+
         for (int i = 0; i < dotIds.length; i++) {
             View dot = startupOverlay.findViewById(dotIds[i]);
             PropertyValuesHolder vertical = PropertyValuesHolder.ofKeyframe(
                 View.TRANSLATION_Y,
                 Keyframe.ofFloat(0f, 0f),
-                Keyframe.ofFloat(0.30f, -dp(8)),
-                Keyframe.ofFloat(0.60f, 0f),
+                Keyframe.ofFloat(0.28f, -dp(9)),
+                Keyframe.ofFloat(0.58f, 0f),
                 Keyframe.ofFloat(1f, 0f)
             );
             PropertyValuesHolder scaleX = PropertyValuesHolder.ofKeyframe(
                 View.SCALE_X,
-                Keyframe.ofFloat(0f, 0.88f),
-                Keyframe.ofFloat(0.30f, 1.08f),
-                Keyframe.ofFloat(0.60f, 0.88f),
-                Keyframe.ofFloat(1f, 0.88f)
+                Keyframe.ofFloat(0f, 0.86f),
+                Keyframe.ofFloat(0.28f, 1.08f),
+                Keyframe.ofFloat(0.58f, 0.92f),
+                Keyframe.ofFloat(1f, 0.86f)
             );
             PropertyValuesHolder scaleY = PropertyValuesHolder.ofKeyframe(
                 View.SCALE_Y,
-                Keyframe.ofFloat(0f, 0.88f),
-                Keyframe.ofFloat(0.30f, 1.08f),
-                Keyframe.ofFloat(0.60f, 0.88f),
-                Keyframe.ofFloat(1f, 0.88f)
+                Keyframe.ofFloat(0f, 0.86f),
+                Keyframe.ofFloat(0.28f, 1.08f),
+                Keyframe.ofFloat(0.58f, 0.92f),
+                Keyframe.ofFloat(1f, 0.86f)
             );
             PropertyValuesHolder opacity = PropertyValuesHolder.ofKeyframe(
                 View.ALPHA,
-                Keyframe.ofFloat(0f, 0.42f),
-                Keyframe.ofFloat(0.30f, 1f),
-                Keyframe.ofFloat(0.60f, 0.42f),
-                Keyframe.ofFloat(1f, 0.42f)
+                Keyframe.ofFloat(0f, 0.48f),
+                Keyframe.ofFloat(0.28f, 1f),
+                Keyframe.ofFloat(0.58f, 0.58f),
+                Keyframe.ofFloat(1f, 0.48f)
             );
             ObjectAnimator bounce = ObjectAnimator.ofPropertyValuesHolder(
                 dot,
@@ -136,8 +142,8 @@ public class MainActivity extends BridgeActivity {
                 scaleY,
                 opacity
             );
-            bounce.setDuration(950L);
-            bounce.setStartDelay(i * 140L);
+            bounce.setDuration(820L);
+            bounce.setStartDelay(i * 155L);
             bounce.setRepeatCount(ObjectAnimator.INFINITE);
             bounce.setInterpolator(new AccelerateDecelerateInterpolator());
             dotAnimators[i] = bounce;
