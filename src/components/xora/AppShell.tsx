@@ -22,7 +22,6 @@ import {
   Wifi,
   Menu,
   MessageCircle,
-  Download,
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +46,6 @@ const NAV = [
   { to: "/chat", label: "Community Chat", icon: MessageCircle },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
   { to: "/special-prizes", label: "Special Prizes", icon: Gift },
-  { to: "/download", label: "Download App", icon: Download },
 ] as const;
 
 function useUnreadCount() {
@@ -110,14 +108,14 @@ export function AppShell({
                 key={to}
                 to={to}
                 className={cn(
-                  "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                  "press group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold tracking-[0.01em] transition-all",
                   active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    ? "bg-gradient-to-r from-primary/15 via-primary/8 to-transparent text-foreground ring-1 ring-primary/20 shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
                 )}
               >
-                <Icon className="size-4.5" aria-hidden="true" />
-                {label}
+                <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl border shadow-sm transition-all", active ? "border-primary/20 bg-gradient-to-br from-primary to-primary/75 text-primary-foreground shadow-primary/20" : "border-border/70 bg-gradient-to-br from-card via-secondary/80 to-muted/70 text-foreground/80 group-hover:border-primary/20 group-hover:text-primary")}><Icon className="size-5 stroke-[2.2]" aria-hidden="true" /></span>
+                <span className="min-w-0 flex-1">{label}</span>
                 {to === "/notifications" && unread > 0 ? (
                   <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
                     {unread}
@@ -292,14 +290,14 @@ export function AppShell({
                     to={to}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium",
-                      active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary",
+                      "press flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold shadow-sm transition-all",
+                      active ? "border-primary/25 bg-gradient-to-br from-primary/15 via-primary/8 to-card text-foreground shadow-md" : "border-border/70 bg-card/75 text-foreground hover:border-primary/20 hover:bg-secondary/70",
                     )}
                   >
-                    <span className={cn("grid size-9 place-items-center rounded-xl", active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
-                      <Icon className="size-4.5" aria-hidden="true" />
+                    <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl border shadow-inner", active ? "border-primary/20 bg-gradient-to-br from-primary to-primary/75 text-primary-foreground" : "border-border/70 bg-gradient-to-br from-secondary via-card to-muted text-foreground/80")}>
+                      <Icon className="size-5 stroke-[2.2]" aria-hidden="true" />
                     </span>
-                    {label}
+                    <span className="min-w-0 flex-1 leading-tight">{label}</span>
                   </Link>
                 );
               })}

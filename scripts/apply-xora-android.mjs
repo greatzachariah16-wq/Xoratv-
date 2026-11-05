@@ -27,7 +27,7 @@ copyDirectory(path.join(splashRoot, "res"), appRes);
 
 const javaDestination = path.join(appMain, "java/io/xora/app");
 fs.mkdirSync(javaDestination, { recursive: true });
-for (const name of ["MainActivity.java", "XoraStartupPlugin.java"]) {
+for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugin.java", "XoraVlcActivity.java"]) {
   fs.copyFileSync(path.join(splashRoot, "java/io/xora/app", name), path.join(javaDestination, name));
 }
 
@@ -38,6 +38,12 @@ manifest = manifest
   .replace('android:theme="@style/AppTheme"', 'android:theme="@style/Theme.Xora"');
 if (!manifest.includes("android.permission.INTERNET")) {
   manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>');
+}
+if (!manifest.includes("io.xora.app.XoraVlcActivity")) {
+  manifest = manifest.replace(
+    "</application>",
+    '        <activity android:name="io.xora.app.XoraVlcActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />\n    </application>',
+  );
 }
 fs.writeFileSync(manifestPath, manifest);
 
@@ -57,6 +63,12 @@ appGradle = appGradle
   .replace(/applicationId\s+"[^"]+"/, 'applicationId "io.xora.app"');
 if (!appGradle.includes('namespace = "io.xora.app"') || !appGradle.includes('applicationId "io.xora.app"')) {
   throw new Error("Could not apply Xora Android namespace/applicationId to app/build.gradle.");
+}
+if (!appGradle.includes("libvlc-all")) {
+  appGradle = appGradle.replace(
+    "dependencies {",
+    'dependencies {\n    implementation "org.videolan.android:libvlc-all:3.7.7"',
+  );
 }
 if (!appGradle.includes("core-splashscreen")) {
   appGradle = appGradle.replace(
