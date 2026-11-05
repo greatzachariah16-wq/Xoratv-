@@ -12,7 +12,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { resolveMediaUrl, useSignedUrl } from "@/lib/media";
-import { getOriginalVideoUrl } from "@/lib/cloudinary";
+import { getOriginalVideoUrl, get240pDeliveryUrl } from "@/lib/cloudinary";
 import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
@@ -78,11 +78,6 @@ export function NativeVideoPlayer({
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
-  const shortsMaxResolution = feed === "shorts" ? 240 : dataSaver.maxResolutionHeight;
-  const shortsMaxBitrate = feed === "shorts" ? Math.min(dataSaver.maxBitrateKbps, 450) : dataSaver.maxBitrateKbps;
-  const shortsMaxBuffer = feed === "shorts" ? Math.min(dataSaver.maxBufferLengthSeconds, 5) : dataSaver.maxBufferLengthSeconds;
-  const shortsMaxBufferSize = feed === "shorts" ? Math.min(dataSaver.maxBufferSizeMb, 4) : dataSaver.maxBufferSizeMb;
-
   // Shorts use a direct MP4 rendition instead of HLS. This is deliberately
   // boring and reliable on older Android WebViews/devices while still using
   // Cloudinary's low-resolution delivery transformation.
@@ -95,9 +90,12 @@ export function NativeVideoPlayer({
   // URL the Android WebView could not decode. We still keep the original URL
   // available as a native-player retry below.
   const src = effectiveStream || signedSrc;
-  const activeSrc = src;
-  const nativeVlcOnly = liveTv && isNativeVlcPlatform();
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
+  // Creator uploads are stored at their original quality. Deliver a Cloudinary
+  // 240p MP4 to Shorts first so mobile networks and older Android devices do
+  // not have to download the full-resolution source before playback can start.
+  const activeSrc = feed === "shorts" && src ? get240pDeliveryUrl(src) : src;
+  const nativeVlcOnly = liveTv && isNativeVlcPlatform();
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
 
@@ -308,7 +306,7 @@ export function NativeVideoPlayer({
     if (liveTv && isNativeVlcPlatform()) return;
 
     const telemetryId = postId || `${title}-${src}`;
-    startPlaybackTelemetry(telemetryId, src);
+    startPlaybackTelemetry(telemetryId, activeSrc);
 
     // Only Shorts use this direct native path. Homepage keeps the existing
     // provider/HLS handling below.
@@ -600,7 +598,7 @@ export function NativeVideoPlayer({
         <video
           key={activeSrc}
           ref={videoRef}
-          src={/\.m3u8(?:[?#]|$)/i.test(src) ? undefined : src}
+          src={/\.m3u8(?:[?#]|$)/i.test(activeSrc || "") ? undefined : activeSrc || undefined}
           poster={poster ?? undefined}
           playsInline
           loop={loop}
@@ -614,14 +612,16 @@ export function NativeVideoPlayer({
           onClick={toggle}
           onPlay={handlePlay}
           onPause={handlePause}
+          onLoadStart={() => setWaiting(true)}
           onWaiting={() => setWaiting(true)}
+          onStalled={() => setWaiting(true)}
           onPlaying={() => setWaiting(false)}
           onCanPlay={() => setWaiting(false)}
           onError={() => {
             const video = videoRef.current;
             // If a Cloudinary delivery transformation is rejected by the
             // device/WebView, retry the same asset's original MP4 once.
-            if (feed === "shorts" && originalShortsSrc && !shortsRetriedOriginal.current && originalShortsSrc !== src) {
+            if (feed === "shorts" && originalShortsSrc && !shortsRetriedOriginal.current && originalShortsSrc !== activeSrc) {
               shortsRetriedOriginal.current = true;
               setFailed(false);
               if (video) {
