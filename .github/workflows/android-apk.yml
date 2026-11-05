@@ -14,6 +14,12 @@ on:
       - "src/routes/__root.tsx"
       - "src/routes/download.tsx"
       - "src/components/xora/AppShell.tsx"
+      - "src/components/xora/VideoPlayer.tsx"
+      - "src/routes/tv.tsx"
+      - "src/routes/xsports.tsx"
+      - "src/routes/kids.tsx"
+      - "src/lib/native-vlc.ts"
+      - "src/routeTree.gen.ts"
       - ".github/workflows/android-apk.yml"
   push:
     branches: [main]
