@@ -50,6 +50,14 @@ import { Route as AdminCampaignsManageRouteImport } from './routes/admin.campaig
 import { Route as ChatRoomIdRouteImport } from './routes/chat.$roomId'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as VideoPostIdRouteImport } from './routes/video.$postId'
+import { Route as TvRouteImport } from './routes/tv'
+import { Route as XSportsRouteImport } from './routes/xsports'
+import { Route as KidsRouteImport } from './routes/kids'
+import { Route as CreatorStudioRouteImport } from './routes/creator-studio'
+import { Route as DataRouteImport } from './routes/data'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as EditProfileRouteImport } from './routes/edit-profile'
+import { Route as SourceLabRouteImport } from './routes/source-lab'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -240,6 +248,46 @@ const VideoPostIdRoute = VideoPostIdRouteImport.update({
   path: '/video/$postId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TvRoute = TvRouteImport.update({
+  id: '/tv',
+  path: '/tv',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const XSportsRoute = XSportsRouteImport.update({
+  id: '/xsports',
+  path: '/xsports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KidsRoute = KidsRouteImport.update({
+  id: '/kids',
+  path: '/kids',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorStudioRoute = CreatorStudioRouteImport.update({
+  id: '/creator-studio',
+  path: '/creator-studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataRoute = DataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditProfileRoute = EditProfileRouteImport.update({
+  id: '/edit-profile',
+  path: '/edit-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SourceLabRoute = SourceLabRouteImport.update({
+  id: '/source-lab',
+  path: '/source-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -281,7 +329,15 @@ export interface FileRoutesByFullPath {
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
-  '/video/$postId': typeof VideoPostIdRoute
+  '/video/$postId': typeof VideoPostIdRoute  '/tv': typeof TvRoute
+  '/xsports': typeof XSportsRoute
+  '/kids': typeof KidsRoute
+  '/creator-studio': typeof CreatorStudioRoute
+  '/data': typeof DataRoute
+  '/download': typeof DownloadRoute
+  '/edit-profile': typeof EditProfileRoute
+  '/source-lab': typeof SourceLabRoute
+
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -323,7 +379,15 @@ export interface FileRoutesByTo {
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
-  '/video/$postId': typeof VideoPostIdRoute
+  '/video/$postId': typeof VideoPostIdRoute  '/tv': typeof TvRoute
+  '/xsports': typeof XSportsRoute
+  '/kids': typeof KidsRoute
+  '/creator-studio': typeof CreatorStudioRoute
+  '/data': typeof DataRoute
+  '/download': typeof DownloadRoute
+  '/edit-profile': typeof EditProfileRoute
+  '/source-lab': typeof SourceLabRoute
+
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -366,7 +430,15 @@ export interface FileRoutesById {
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
-  '/video/$postId': typeof VideoPostIdRoute
+  '/video/$postId': typeof VideoPostIdRoute  '/tv': typeof TvRoute
+  '/xsports': typeof XSportsRoute
+  '/kids': typeof KidsRoute
+  '/creator-studio': typeof CreatorStudioRoute
+  '/data': typeof DataRoute
+  '/download': typeof DownloadRoute
+  '/edit-profile': typeof EditProfileRoute
+  '/source-lab': typeof SourceLabRoute
+
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -410,7 +482,15 @@ export interface FileRouteTypes {
     | '/admin/campaigns/manage'
     | '/chat/$roomId'
     | '/profile/$username'
-    | '/video/$postId'
+    | '/video/$postId'    | '/tv'
+    | '/xsports'
+    | '/kids'
+    | '/creator-studio'
+    | '/data'
+    | '/download'
+    | '/edit-profile'
+    | '/source-lab'
+
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -450,7 +530,15 @@ export interface FileRouteTypes {
     | '/admin/xseris'
     | '/chat/$roomId'
     | '/profile/$username'
-    | '/video/$postId'
+    | '/video/$postId'    | '/tv'
+    | '/xsports'
+    | '/kids'
+    | '/creator-studio'
+    | '/data'
+    | '/download'
+    | '/edit-profile'
+    | '/source-lab'
+
   id:
     | '__root__'
     | '/'
@@ -490,7 +578,15 @@ export interface FileRouteTypes {
     | '/admin/xseris'
     | '/chat/$roomId'
     | '/profile/$username'
-    | '/video/$postId'
+    | '/video/$postId'    | '/tv'
+    | '/xsports'
+    | '/kids'
+    | '/creator-studio'
+    | '/data'
+    | '/download'
+    | '/edit-profile'
+    | '/source-lab'
+
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -516,6 +612,14 @@ export interface RootRouteChildren {
   DataRewardsRoute: typeof DataRewardsRoute
   ProfileUsernameRoute: typeof ProfileUsernameRoute
   VideoPostIdRoute: typeof VideoPostIdRoute
+  TvRoute: typeof TvRoute
+  XSportsRoute: typeof XSportsRoute
+  KidsRoute: typeof KidsRoute
+  CreatorStudioRoute: typeof CreatorStudioRoute
+  DataRoute: typeof DataRoute
+  DownloadRoute: typeof DownloadRoute
+  EditProfileRoute: typeof EditProfileRoute
+  SourceLabRoute: typeof SourceLabRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -642,6 +746,62 @@ declare module '@tanstack/react-router' {
     }
     '/offers': { id: '/offers'; path: '/offers'; fullPath: '/offers'; preLoaderRoute: typeof OffersRouteImport; parentRoute: typeof rootRouteImport }
     '/special-prizes': { id: '/special-prizes'; path: '/special-prizes'; fullPath: '/special-prizes'; preLoaderRoute: typeof SpecialPrizesRouteImport; parentRoute: typeof rootRouteImport }
+    '/tv': {
+      id: '/tv'
+      path: '/tv'
+      fullPath: '/tv'
+      preLoaderRoute: typeof TvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/xsports': {
+      id: '/xsports'
+      path: '/xsports'
+      fullPath: '/xsports'
+      preLoaderRoute: typeof XSportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kids': {
+      id: '/kids'
+      path: '/kids'
+      fullPath: '/kids'
+      preLoaderRoute: typeof KidsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creator-studio': {
+      id: '/creator-studio'
+      path: '/creator-studio'
+      fullPath: '/creator-studio'
+      preLoaderRoute: typeof CreatorStudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data': {
+      id: '/data'
+      path: '/data'
+      fullPath: '/data'
+      preLoaderRoute: typeof DataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit-profile': {
+      id: '/edit-profile'
+      path: '/edit-profile'
+      fullPath: '/edit-profile'
+      preLoaderRoute: typeof EditProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/source-lab': {
+      id: '/source-lab'
+      path: '/source-lab'
+      fullPath: '/source-lab'
+      preLoaderRoute: typeof SourceLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/data-rewards': { id: '/data-rewards'; path: '/data-rewards'; fullPath: '/data-rewards'; preLoaderRoute: typeof DataRewardsRouteImport; parentRoute: typeof rootRouteImport }
     '/admin/campaigns': {
       id: '/admin/campaigns'
@@ -854,6 +1014,14 @@ const rootRouteChildren: RootRouteChildren = {
   DataRewardsRoute: DataRewardsRoute,
   ProfileUsernameRoute: ProfileUsernameRoute,
   VideoPostIdRoute: VideoPostIdRoute,
+  TvRoute: TvRoute,
+  XSportsRoute: XSportsRoute,
+  KidsRoute: KidsRoute,
+  CreatorStudioRoute: CreatorStudioRoute,
+  DataRoute: DataRoute,
+  DownloadRoute: DownloadRoute,
+  EditProfileRoute: EditProfileRoute,
+  SourceLabRoute: SourceLabRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
