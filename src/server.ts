@@ -1119,6 +1119,19 @@ export default {
           /mpegurl/i.test(contentType) ||
           /\.m3u8(?:[?#]|$)/i.test(targetUrl.pathname + targetUrl.search);
 
+        // Keep a lightweight server-side trace of playlist responses so a
+        // native LibVLC buffering failure can be distinguished from a dead
+        // upstream source or an unexpected content type.
+        if (isHls) {
+          console.info("[IPTV Proxy] Playlist response", {
+            channelId,
+            attempt,
+            status: upstream.status,
+            contentType: contentType || "unknown",
+            host: targetUrl.hostname,
+          });
+        }
+
         if (isHls) {
           const body = await upstream.text();
           // Resolve relative media/variant URLs against the final upstream URL after redirects.
