@@ -39,6 +39,8 @@ type Props = {
   externalPoster?: string | null;
   source?: string | null;
   streamUrl?: string | null;
+  /** Android-only proxied URL for LibVLC; web playback keeps using streamUrl. */
+  nativeStreamUrl?: string | null;
   vertical?: boolean;
   title?: string;
   autoPlay?: boolean;
@@ -58,6 +60,7 @@ export function NativeVideoPlayer({
   externalUrl,
   externalPoster,
   streamUrl,
+  nativeStreamUrl,
   vertical = false,
   title = "Video",
   autoPlay = false,
@@ -300,6 +303,8 @@ export function NativeVideoPlayer({
     const video = videoRef.current;
     if (!video) return;
     if (!activeSrc) return;
+    // Native Android live TV is rendered only by LibVLC, never the WebView media element.
+    if (liveTv && isNativeVlcPlatform()) return;
 
     const telemetryId = postId || `${title}-${src}`;
     startPlaybackTelemetry(telemetryId, src);
@@ -488,8 +493,9 @@ export function NativeVideoPlayer({
     const video = videoRef.current;
     if (!video || !activeSrc) return;
     if (liveTv && isNativeVlcPlatform()) {
-      void openNativeVlc({ url: activeSrc, title }).then((opened) => {
-        if (!opened && video.paused) void video.play().catch(() => setFailed(true));
+      void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
+        console.error("[Xora] LibVLC failed to open stream:", error);
+        setFailed(true);
       });
       return;
     }
@@ -506,7 +512,7 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc, liveTv, title]);
+  }, [activeSrc, liveTv, nativeStreamUrl, title]);
 
   const seekTo = useCallback((seconds: number) => {
     const video = videoRef.current;
@@ -519,7 +525,10 @@ export function NativeVideoPlayer({
   useEffect(() => {
     if (!autoPlay) return;
     if (liveTv && isNativeVlcPlatform() && activeSrc) {
-      void openNativeVlc({ url: activeSrc, title });
+      void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
+        console.error("[Xora] LibVLC failed to open stream:", error);
+        setFailed(true);
+      });
       return;
     }
     const video = videoRef.current;
@@ -540,7 +549,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc, liveTv, title]);
+  }, [autoPlay, activeSrc, liveTv, nativeStreamUrl, title]);
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
