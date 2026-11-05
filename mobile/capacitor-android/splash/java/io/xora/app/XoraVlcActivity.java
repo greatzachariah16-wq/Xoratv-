@@ -45,7 +45,7 @@ public class XoraVlcActivity extends Activity {
         Log.w("XoraLibVLC", "Candidate " + (currentStreamIndex + 1) + " timed out before playback started");
         if (!tryNextStream("This source took too long; trying another")) {
             playbackFailed = true;
-            statusText.setText("This channel did not start. Try another channel or retry.");
+            statusText.setText("This channel is temporarily unavailable. Please try again.");
             playPauseButton.setText("Retry");
         }
     };
@@ -146,10 +146,10 @@ public class XoraVlcActivity extends Activity {
                 switch (event.type) {
                     case MediaPlayer.Event.Opening:
                         playbackFailed = false;
-                        statusText.setText("Opening source " + (currentStreamIndex + 1) + " of " + streamUrls.size() + "…");
+                        statusText.setText("Connecting…");
                         break;
                     case MediaPlayer.Event.Buffering:
-                        statusText.setText("Buffering " + Math.round(event.getBuffering()) + "% · source " + (currentStreamIndex + 1));
+                        statusText.setText("Buffering " + Math.round(event.getBuffering()) + "%");
                         break;
                     case MediaPlayer.Event.Playing:
                         mainHandler.removeCallbacks(streamStartupTimeout);
@@ -167,7 +167,7 @@ public class XoraVlcActivity extends Activity {
                         if (!playbackFailed && tryNextStream("This source stopped before playback")) break;
                         if (!playbackFailed) {
                             playbackFailed = true;
-                            statusText.setText("Stream stopped before video started. All available sources were tried.");
+                            statusText.setText("Connection interrupted. Please try again.");
                         }
                         playPauseButton.setText("Retry");
                         break;
@@ -176,7 +176,7 @@ public class XoraVlcActivity extends Activity {
                         Log.e("XoraLibVLC", "Stream error on candidate " + (currentStreamIndex + 1) + " of " + streamUrls.size());
                         if (!tryNextStream("Source failed; trying another")) {
                             playbackFailed = true;
-                            statusText.setText("Unable to play this channel. All sources and the software-decoder retry failed.");
+                            statusText.setText("This channel is temporarily unavailable. Please try again.");
                             playPauseButton.setText("Retry");
                         }
                         break;
@@ -188,7 +188,7 @@ public class XoraVlcActivity extends Activity {
         } catch (Exception error) {
             playbackFailed = true;
             Log.e("XoraLibVLC", "Native player startup failed.", error);
-            statusText.setText("VLC could not start this stream.");
+            statusText.setText("Unable to start playback. Please try again.");
             playPauseButton.setText("Retry");
         }
     }
@@ -221,7 +221,7 @@ public class XoraVlcActivity extends Activity {
         }
         if (!softwareDecoderAttempted) {
             softwareDecoderAttempted = true;
-            switchStream("Retrying with software decoding…", false);
+            switchStream("Reconnecting…", false);
             return true;
         }
         return false;
