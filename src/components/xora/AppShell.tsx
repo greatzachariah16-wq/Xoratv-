@@ -46,6 +46,12 @@ const NAV = [
   { to: "/chat", label: "Community Chat", icon: MessageCircle },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
   { to: "/special-prizes", label: "Special Prizes", icon: Gift },
+  { to: "/catalog", label: "Movie Catalog", icon: Clapperboard },
+  { to: "/offers", label: "Offers", icon: Gift },
+  { to: "/rewards", label: "Rewards", icon: Wallet },
+  { to: "/surveys", label: "Surveys", icon: ClipboardList },
+  { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/support", label: "Support", icon: MessageCircle },
 ] as const;
 
 function useUnreadCount() {
@@ -96,11 +102,11 @@ export function AppShell({
         Skip to content
       </a>
 
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-border bg-sidebar px-4 py-6 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col overflow-y-auto border-r border-border bg-sidebar px-4 py-6 lg:flex">
         <Link to="/" className="press flex items-center px-2">
           <Logo />
         </Link>
-        <nav aria-label="Primary" className="mt-8 flex flex-col gap-1">
+        <nav aria-label="Primary" className="mt-8 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pb-3">
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
             return (
@@ -210,7 +216,7 @@ export function AppShell({
           <Plus className="size-4" aria-hidden="true" /> Create
         </Link>
 
-        <div className="mt-auto space-y-2">
+        <div className="mt-4 shrink-0 space-y-2">
           <Link
             to="/settings"
             className={cn(
@@ -276,7 +282,7 @@ export function AppShell({
 
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute inset-x-3 top-[4.25rem] overflow-hidden rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="absolute inset-x-3 top-[4.25rem] max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-2 rounded-[1.1rem] bg-gradient-to-r from-primary/10 via-primary/5 to-secondary p-3">
               <p className="font-display text-sm font-semibold">Explore XoraTV</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Everything you need, one tap away.</p>

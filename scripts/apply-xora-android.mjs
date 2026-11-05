@@ -64,12 +64,8 @@ appGradle = appGradle
 if (!appGradle.includes('namespace = "io.xora.app"') || !appGradle.includes('applicationId "io.xora.app"')) {
   throw new Error("Could not apply Xora Android namespace/applicationId to app/build.gradle.");
 }
-if (!appGradle.includes('abiFilters "arm64-v8a", "armeabi-v7a"')) {
-  appGradle = appGradle.replace(
-    /defaultConfig\s*\{/,
-    'defaultConfig {\n        ndk { abiFilters "arm64-v8a", "armeabi-v7a" }',
-  );
-}
+// Keep every LibVLC ABI supplied by the official full artifact. Do not filter architectures.
+appGradle = appGradle.replace(/\s*ndk\s*\{\s*abiFilters[^}]*\}/, "");
 if (!appGradle.includes("libvlc-all")) {
   appGradle = appGradle.replace(
     "dependencies {",

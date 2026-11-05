@@ -39,6 +39,8 @@ type Props = {
   externalPoster?: string | null;
   source?: string | null;
   streamUrl?: string | null;
+  /** Android-only proxied URL for LibVLC; web playback keeps using streamUrl. */
+  nativeStreamUrl?: string | null;
   vertical?: boolean;
   title?: string;
   autoPlay?: boolean;
@@ -58,6 +60,7 @@ export function NativeVideoPlayer({
   externalUrl,
   externalPoster,
   streamUrl,
+  nativeStreamUrl,
   vertical = false,
   title = "Video",
   autoPlay = false,
@@ -93,6 +96,7 @@ export function NativeVideoPlayer({
   // available as a native-player retry below.
   const src = effectiveStream || signedSrc;
   const activeSrc = src;
+  const nativeVlcOnly = liveTv && isNativeVlcPlatform();
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
@@ -300,6 +304,8 @@ export function NativeVideoPlayer({
     const video = videoRef.current;
     if (!video) return;
     if (!activeSrc) return;
+    // Native Android live TV is rendered only by LibVLC, never the WebView media element.
+    if (liveTv && isNativeVlcPlatform()) return;
 
     const telemetryId = postId || `${title}-${src}`;
     startPlaybackTelemetry(telemetryId, src);
@@ -485,14 +491,16 @@ export function NativeVideoPlayer({
   };
 
   const toggle = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !activeSrc) return;
     if (liveTv && isNativeVlcPlatform()) {
-      void openNativeVlc({ url: activeSrc, title }).then((opened) => {
-        if (!opened && video.paused) void video.play().catch(() => setFailed(true));
+      if (!activeSrc) return;
+      void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
+        console.error("[Xora] LibVLC failed to open stream:", error);
+        setFailed(true);
       });
       return;
     }
+    const video = videoRef.current;
+    if (!video || !activeSrc) return;
     if (video.paused || video.ended) {
       const attempt = video.play();
       if (attempt) {
@@ -506,7 +514,7 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc, liveTv, title]);
+  }, [activeSrc, liveTv, nativeStreamUrl, title]);
 
   const seekTo = useCallback((seconds: number) => {
     const video = videoRef.current;
@@ -519,7 +527,10 @@ export function NativeVideoPlayer({
   useEffect(() => {
     if (!autoPlay) return;
     if (liveTv && isNativeVlcPlatform() && activeSrc) {
-      void openNativeVlc({ url: activeSrc, title });
+      void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
+        console.error("[Xora] LibVLC failed to open stream:", error);
+        setFailed(true);
+      });
       return;
     }
     const video = videoRef.current;
@@ -540,7 +551,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc, liveTv, title]);
+  }, [autoPlay, activeSrc, liveTv, nativeStreamUrl, title]);
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
@@ -585,7 +596,7 @@ export function NativeVideoPlayer({
         className,
       )}
     >
-      {src ? (
+      {src && !nativeVlcOnly ? (
         <video
           key={activeSrc}
           ref={videoRef}
@@ -659,7 +670,13 @@ export function NativeVideoPlayer({
         </button>
       ) : null}
 
-      {/* Controls overlay */}
+      {nativeVlcOnly ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
+          <span className="rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-white/90">
+            NATIVE LIBVLC PLAYER
+          </span>
+        </div>
+      ) : (
       <div
         className={cn(
           "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
@@ -779,6 +796,7 @@ export function NativeVideoPlayer({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

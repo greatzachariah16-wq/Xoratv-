@@ -7,17 +7,17 @@ type NativeVlcPlugin = {
 const NativeVlc = registerPlugin<NativeVlcPlugin>("XoraVlc");
 
 export function isNativeVlcPlatform(): boolean {
-  return Capacitor.isNativePlatform();
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-/** Open the Android LibVLC player. Returns false on web or when the native plugin is unavailable. */
-export async function openNativeVlc(options: { url: string; title?: string }): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) return false;
-  try {
-    await NativeVlc.open(options);
-    return true;
-  } catch (error) {
-    console.warn("[Xora] Native VLC playback is unavailable; falling back to the web player.", error);
-    return false;
+/** Open the native Android LibVLC player. Never fall back to the WebView player. */
+export async function openNativeVlc(options: { url: string; title?: string }): Promise<void> {
+  if (!isNativeVlcPlatform()) {
+    throw new Error("Native LibVLC is available only in the XoraTV Android app.");
   }
+  const absoluteUrl = new URL(options.url, window.location.origin);
+  if (absoluteUrl.protocol !== "https:") {
+    throw new Error("LibVLC requires a secure HTTPS stream URL.");
+  }
+  await NativeVlc.open({ ...options, url: absoluteUrl.toString() });
 }

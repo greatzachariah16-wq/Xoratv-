@@ -14,55 +14,54 @@
         android:gravity="center"
         android:orientation="vertical">
 
-        <FrameLayout
-            android:layout_width="136dp"
-            android:layout_height="136dp">
-
-            <View
-                android:id="@+id/xora_startup_ring"
-                android:layout_width="132dp"
-                android:layout_height="132dp"
-                android:layout_gravity="center"
-                android:background="@drawable/xora_splash_ring" />
-
-            <ImageView
-                android:layout_width="88dp"
-                android:layout_height="88dp"
-                android:layout_gravity="center"
-                android:contentDescription="Xora"
-                android:src="@drawable/xora_launch_mark" />
-        </FrameLayout>
-
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
             android:fontFamily="sans"
-            android:letterSpacing="0.22"
+            android:letterSpacing="0.18"
             android:text="XORA"
-            android:textColor="@color/xora_splash_text"
+            android:textColor="@color/xora_splash_ink"
             android:textSize="29sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="9dp"
-            android:letterSpacing="0.12"
+            android:layout_marginTop="8dp"
+            android:letterSpacing="0.10"
             android:text="YOUR WORLD. YOUR ENTERTAINMENT."
             android:textColor="@color/xora_splash_muted"
             android:textSize="10sp"
             android:textStyle="bold" />
 
-        <ProgressBar
-            android:id="@+id/xora_startup_progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="168dp"
-            android:layout_height="3dp"
-            android:layout_marginTop="38dp"
-            android:indeterminate="true"
-            android:indeterminateTint="@color/xora_splash_lavender"
-            android:progressTint="@color/xora_splash_lavender" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginTop="34dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/xora_loading_dot_1"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginHorizontal="6dp"
+                android:background="@drawable/xora_loading_dot" />
+
+            <View
+                android:id="@+id/xora_loading_dot_2"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginHorizontal="6dp"
+                android:background="@drawable/xora_loading_dot" />
+
+            <View
+                android:id="@+id/xora_loading_dot_3"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginHorizontal="6dp"
+                android:background="@drawable/xora_loading_dot" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/xora_startup_status"
@@ -84,7 +83,7 @@
             android:minWidth="142dp"
             android:text="Try again"
             android:textAllCaps="false"
-            android:textColor="@color/xora_splash_ink"
+            android:textColor="@color/xora_splash_cream"
             android:textStyle="bold"
             android:visibility="gone" />
     </LinearLayout>
@@ -95,6 +94,6 @@
         android:layout_gravity="bottom|center_horizontal"
         android:gravity="center"
         android:text="A little patience. A lot to explore."
-        android:textColor="#9F92B0"
+        android:textColor="@color/xora_splash_muted"
         android:textSize="11sp" />
 </FrameLayout>
