@@ -168,25 +168,27 @@ export function AppShell({
             );
           })}
           {currentProfile ? (
-            <Link
-              to="/profile/$username"
-              params={{ username: currentProfile.username }}
-              className={cn(
-                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                pathname.startsWith("/profile")
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              )}
-            >
-              <NavIconTile icon={UserRound} compact active={pathname.startsWith("/profile")} /> Profile
-            </Link>
-            <Link
-              to="/edit-profile"
-              className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              <NavIconTile icon={UserRoundPen} compact active={pathname.startsWith("/edit-profile")} />
-              Edit profile
-            </Link>
+            <>
+              <Link
+                to="/profile/$username"
+                params={{ username: currentProfile.username }}
+                className={cn(
+                  "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                  pathname.startsWith("/profile")
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                )}
+              >
+                <NavIconTile icon={UserRound} compact active={pathname.startsWith("/profile")} /> Profile
+              </Link>
+              <Link
+                to="/edit-profile"
+                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <NavIconTile icon={UserRoundPen} compact active={pathname.startsWith("/edit-profile")} />
+                Edit profile
+              </Link>
+            </>
           ) : (
             <Link
               to="/auth"
