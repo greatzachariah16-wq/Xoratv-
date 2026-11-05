@@ -104,6 +104,7 @@ async function loadChannels(): Promise<NexusChannel[]> {
       const text = await response.text();
       const lines = text.split(/\r?\n/);
       const channels: NexusChannel[] = [];
+      const channelsById = new Map<string, NexusChannel>();
       let pending: Record<string, string> | null = null;
       let streamReferrer: string | null = null;
       let streamUserAgent: string | null = null;
@@ -137,19 +138,34 @@ async function loadChannels(): Promise<NexusChannel[]> {
           continue;
         }
         if (!line.startsWith("#") && pending?.["tvg-id"] && /^https?:\/\//i.test(line)) {
-          const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
-          channels.push({
-            id: pending["tvg-id"],
-            name: pending.name || pending["tvg-name"] || pending["tvg-id"],
-            country: pending["tvg-country"] || undefined,
-            categories,
-            languages: pending["tvg-language"] ? pending["tvg-language"].split(/[;,]/).map((item) => item.trim()) : undefined,
-            logo: pending["tvg-logo"] || undefined,
-            score: Number(pending["nexus-score"] || 0) || undefined,
-            online: true,
-            best_quality: pending["nexus-quality"] || undefined,
-            streams: [{ url: line, rank: 0, referrer: streamReferrer, user_agent: streamUserAgent, health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 } }],
-          });
+          const channelId = pending["tvg-id"];
+          const stream = {
+            url: line,
+            rank: channelsById.get(channelId)?.streams?.length || 0,
+            referrer: streamReferrer,
+            user_agent: streamUserAgent,
+            health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 },
+          };
+          const existing = channelsById.get(channelId);
+          if (existing) {
+            existing.streams = [...(existing.streams || []), stream];
+          } else {
+            const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
+            const channel: NexusChannel = {
+              id: channelId,
+              name: pending.name || pending["tvg-name"] || channelId,
+              country: pending["tvg-country"] || undefined,
+              categories,
+              languages: pending["tvg-language"] ? pending["tvg-language"].split(/[;,]/).map((item) => item.trim()) : undefined,
+              logo: pending["tvg-logo"] || undefined,
+              score: Number(pending["nexus-score"] || 0) || undefined,
+              online: true,
+              best_quality: pending["nexus-quality"] || undefined,
+              streams: [stream],
+            };
+            channelsById.set(channelId, channel);
+            channels.push(channel);
+          }
           pending = null;
         }
       }
