@@ -15,51 +15,43 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/xora_startup_mark"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans"
-            android:letterSpacing="0.18"
-            android:text="XORA"
+            android:includeFontPadding="false"
+            android:letterSpacing="-0.06"
+            android:text="X"
             android:textColor="@color/xora_splash_ink"
-            android:textSize="29sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:letterSpacing="0.10"
-            android:text="YOUR WORLD. YOUR ENTERTAINMENT."
-            android:textColor="@color/xora_splash_muted"
-            android:textSize="10sp"
+            android:textSize="64sp"
             android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="28dp"
-            android:layout_marginTop="34dp"
+            android:layout_marginTop="18dp"
             android:gravity="center"
             android:orientation="horizontal">
 
             <View
                 android:id="@+id/xora_loading_dot_1"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:layout_marginHorizontal="6dp"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginHorizontal="5dp"
                 android:background="@drawable/xora_loading_dot" />
 
             <View
                 android:id="@+id/xora_loading_dot_2"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:layout_marginHorizontal="6dp"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginHorizontal="5dp"
                 android:background="@drawable/xora_loading_dot" />
 
             <View
                 android:id="@+id/xora_loading_dot_3"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:layout_marginHorizontal="6dp"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginHorizontal="5dp"
                 android:background="@drawable/xora_loading_dot" />
         </LinearLayout>
 
@@ -67,7 +59,7 @@
             android:id="@+id/xora_startup_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="17dp"
+            android:layout_marginTop="24dp"
             android:gravity="center"
             android:minHeight="42dp"
             android:text="Connecting to XoraTV…"
@@ -87,13 +79,4 @@
             android:textStyle="bold"
             android:visibility="gone" />
     </LinearLayout>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:gravity="center"
-        android:text="A little patience. A lot to explore."
-        android:textColor="@color/xora_splash_muted"
-        android:textSize="11sp" />
 </FrameLayout>
