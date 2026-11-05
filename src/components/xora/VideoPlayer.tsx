@@ -78,17 +78,8 @@ export function NativeVideoPlayer({
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
-  // Shorts use a direct MP4 rendition instead of HLS. This is deliberately
-  // boring and reliable on older Android WebViews/devices while still using
-  // Cloudinary's low-resolution delivery transformation.
-  // Shorts follow the proven Xora Sparkle Hub playback path: use the stored
-  // playable URL directly and let the native <video> element handle it.
-  // Homepage playback keeps its existing stream handling unchanged.
-  // Shorts must receive a real MP4 URL. Prefer the stored Cloudinary delivery
-  // URL exactly as uploaded; do not rewrite it before the browser sees it.
-  // The previous URL rewriting could turn an otherwise valid rendition into a
-  // URL the Android WebView could not decode. We still keep the original URL
-  // available as a native-player retry below.
+  // Shorts use the stored MP4 directly first for compatibility with older
+  // Android WebViews. A 240p Cloudinary rendition remains available as fallback.
   const src = effectiveStream || signedSrc;
   // Start Shorts with the stored, original MP4 URL. This avoids relying on a
   // delivery transformation that may not be available for every uploaded
