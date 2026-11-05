@@ -111,7 +111,7 @@ function XSportsPage() {
                 <button type="button" onClick={() => setSelectedId(null)} className="press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"><X className="size-3.5" /> Close player</button>
               </div>
               <div className="overflow-hidden rounded-2xl border border-border bg-ink shadow-card">
-                <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
+                <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} nativeStreamUrl={`/api/tv/stream?provider=nexus&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
               </div>
             </section>
           )}
