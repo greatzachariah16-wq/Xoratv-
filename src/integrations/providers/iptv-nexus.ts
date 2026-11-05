@@ -105,7 +105,8 @@ async function loadChannels(): Promise<NexusChannel[]> {
       const lines = text.split(/\r?\n/);
       const channels: NexusChannel[] = [];
       let pending: Record<string, string> | null = null;
-      let requiresHeaders = false;
+      let streamReferrer: string | null = null;
+      let streamUserAgent: string | null = null;
 
       const parseAttrs = (line: string) => {
         const attrs: Record<string, string> = {};
@@ -120,32 +121,35 @@ async function loadChannels(): Promise<NexusChannel[]> {
         if (!line) continue;
         if (line.startsWith("#EXTINF:")) {
           pending = parseAttrs(line);
-          requiresHeaders = false;
+          streamReferrer = null;
+          streamUserAgent = null;
           const comma = line.indexOf(",");
           const displayName = comma >= 0 ? line.slice(comma + 1).trim() : "";
           if (displayName && pending) pending.name = displayName;
           continue;
         }
-        if (line.startsWith("#EXTVLCOPT:http-referrer:") || line.startsWith("#EXTVLCOPT:http-user-agent:")) {
-          requiresHeaders = true;
+        if (line.startsWith("#EXTVLCOPT:http-referrer:")) {
+          streamReferrer = line.slice("#EXTVLCOPT:http-referrer:".length).trim() || null;
+          continue;
+        }
+        if (line.startsWith("#EXTVLCOPT:http-user-agent:")) {
+          streamUserAgent = line.slice("#EXTVLCOPT:http-user-agent:".length).trim() || null;
           continue;
         }
         if (!line.startsWith("#") && pending?.["tvg-id"] && /^https?:\/\//i.test(line)) {
-          if (!requiresHeaders) {
-            const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
-            channels.push({
-              id: pending["tvg-id"],
-              name: pending.name || pending["tvg-name"] || pending["tvg-id"],
-              country: pending["tvg-country"] || undefined,
-              categories,
-              languages: pending["tvg-language"] ? pending["tvg-language"].split(/[;,]/).map((item) => item.trim()) : undefined,
-              logo: pending["tvg-logo"] || undefined,
-              score: Number(pending["nexus-score"] || 0) || undefined,
-              online: true,
-              best_quality: pending["nexus-quality"] || undefined,
-              streams: [{ url: line, rank: 0, health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 } }],
-            });
-          }
+          const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
+          channels.push({
+            id: pending["tvg-id"],
+            name: pending.name || pending["tvg-name"] || pending["tvg-id"],
+            country: pending["tvg-country"] || undefined,
+            categories,
+            languages: pending["tvg-language"] ? pending["tvg-language"].split(/[;,]/).map((item) => item.trim()) : undefined,
+            logo: pending["tvg-logo"] || undefined,
+            score: Number(pending["nexus-score"] || 0) || undefined,
+            online: true,
+            best_quality: pending["nexus-quality"] || undefined,
+            streams: [{ url: line, rank: 0, referrer: streamReferrer, user_agent: streamUserAgent, health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 } }],
+          });
           pending = null;
         }
       }
@@ -160,9 +164,7 @@ async function loadChannels(): Promise<NexusChannel[]> {
     (stream) =>
       stream?.url &&
       /^https?:\/\//i.test(stream.url) &&
-      (stream.health?.status === undefined || stream.health.status === "online") &&
-      !stream.referrer &&
-      !stream.user_agent,
+      (stream.health?.status === undefined || stream.health.status === "online"),
   );
   return streams.sort((a, b) => {
     const scoreA = a.health?.score || 0;
