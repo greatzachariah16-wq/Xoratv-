@@ -1,6 +1,8 @@
 package io.xora.app;
 
+import android.animation.Keyframe;
 import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -99,14 +101,42 @@ public class MainActivity extends BridgeActivity {
         dotAnimators = new ObjectAnimator[dotIds.length];
         for (int i = 0; i < dotIds.length; i++) {
             View dot = startupOverlay.findViewById(dotIds[i]);
-            ObjectAnimator bounce = ObjectAnimator.ofFloat(
-                dot,
+            PropertyValuesHolder vertical = PropertyValuesHolder.ofKeyframe(
                 View.TRANSLATION_Y,
-                0f,
-                -dp(8),
-                0f
+                Keyframe.ofFloat(0f, 0f),
+                Keyframe.ofFloat(0.30f, -dp(8)),
+                Keyframe.ofFloat(0.60f, 0f),
+                Keyframe.ofFloat(1f, 0f)
             );
-            bounce.setDuration(720L);
+            PropertyValuesHolder scaleX = PropertyValuesHolder.ofKeyframe(
+                View.SCALE_X,
+                Keyframe.ofFloat(0f, 0.88f),
+                Keyframe.ofFloat(0.30f, 1.08f),
+                Keyframe.ofFloat(0.60f, 0.88f),
+                Keyframe.ofFloat(1f, 0.88f)
+            );
+            PropertyValuesHolder scaleY = PropertyValuesHolder.ofKeyframe(
+                View.SCALE_Y,
+                Keyframe.ofFloat(0f, 0.88f),
+                Keyframe.ofFloat(0.30f, 1.08f),
+                Keyframe.ofFloat(0.60f, 0.88f),
+                Keyframe.ofFloat(1f, 0.88f)
+            );
+            PropertyValuesHolder opacity = PropertyValuesHolder.ofKeyframe(
+                View.ALPHA,
+                Keyframe.ofFloat(0f, 0.42f),
+                Keyframe.ofFloat(0.30f, 1f),
+                Keyframe.ofFloat(0.60f, 0.42f),
+                Keyframe.ofFloat(1f, 0.42f)
+            );
+            ObjectAnimator bounce = ObjectAnimator.ofPropertyValuesHolder(
+                dot,
+                vertical,
+                scaleX,
+                scaleY,
+                opacity
+            );
+            bounce.setDuration(950L);
             bounce.setStartDelay(i * 140L);
             bounce.setRepeatCount(ObjectAnimator.INFINITE);
             bounce.setInterpolator(new AccelerateDecelerateInterpolator());
