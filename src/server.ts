@@ -21,7 +21,7 @@ import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo } from "./integrations/providers/iptv-org";
-import { fetchNexusChannels, getNexusChannel, getNexusGuide } from "./integrations/providers/iptv-nexus";
+import { fetchNexusChannels, getNexusChannel, getNexusGuide, getNexusPlaybackCandidates } from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
