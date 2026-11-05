@@ -22,6 +22,7 @@ import {
   Wifi,
   Menu,
   MessageCircle,
+  Download,
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,7 @@ const NAV = [
   { to: "/chat", label: "Community Chat", icon: MessageCircle },
   { to: "/creator-studio", label: "X Channel", icon: Radio },
   { to: "/special-prizes", label: "Special Prizes", icon: Gift },
+  { to: "/download", label: "Download App", icon: Download },
 ] as const;
 
 function useUnreadCount() {
