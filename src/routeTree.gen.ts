@@ -58,6 +58,10 @@ import { Route as DataRouteImport } from './routes/data'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as EditProfileRouteImport } from './routes/edit-profile'
 import { Route as SourceLabRouteImport } from './routes/source-lab'
+import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as KidsWatchRouteImport } from './routes/kids_.watch'
+import { Route as AdminSurveyWalletRouteImport } from './routes/admin.survey-wallet'
+import { Route as AdminAdcashRouteImport } from './routes/admin/adcash'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -68,6 +72,16 @@ const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSurveyWalletRoute = AdminSurveyWalletRouteImport.update({
+  id: '/admin/survey-wallet',
+  path: '/survey-wallet',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdcashRoute = AdminAdcashRouteImport.update({
+  id: '/admin/adcash',
+  path: '/adcash',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceRoute = AdminCommerceRouteImport.update({
   id: '/admin/commerce',
@@ -289,6 +303,16 @@ const SourceLabRoute = SourceLabRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KidsWatchRoute = KidsWatchRouteImport.update({
+  id: '/kids_/watch',
+  path: '/kids/watch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
@@ -340,6 +364,10 @@ export interface FileRoutesByFullPath {
   '/source-lab': typeof SourceLabRoute
   '/data-rewards': typeof DataRewardsRoute
 
+  '/wallet': typeof WalletRoute
+  '/kids/watch': typeof KidsWatchRoute
+  '/admin/survey-wallet': typeof AdminSurveyWalletRoute
+  '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -391,6 +419,10 @@ export interface FileRoutesByTo {
   '/source-lab': typeof SourceLabRoute
   '/data-rewards': typeof DataRewardsRoute
 
+  '/wallet': typeof WalletRoute
+  '/kids/watch': typeof KidsWatchRoute
+  '/admin/survey-wallet': typeof AdminSurveyWalletRoute
+  '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -443,6 +475,10 @@ export interface FileRoutesById {
   '/source-lab': typeof SourceLabRoute
   '/data-rewards': typeof DataRewardsRoute
 
+  '/wallet': typeof WalletRoute
+  '/kids_/watch': typeof KidsWatchRoute
+  '/admin/survey-wallet': typeof AdminSurveyWalletRoute
+  '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -495,6 +531,10 @@ export interface FileRouteTypes {
     | '/download'
     | '/edit-profile'
     | '/source-lab'
+    | '/wallet'
+    | '/kids/watch'
+    | '/admin/survey-wallet'
+    | '/admin/adcash'
 
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -591,6 +631,14 @@ export interface FileRouteTypes {
     | '/download'
     | '/edit-profile'
     | '/source-lab'
+    | '/wallet'
+    | '/kids/watch'
+    | '/admin/survey-wallet'
+    | '/admin/adcash'
+    | '/wallet'
+    | '/kids_/watch'
+    | '/admin/survey-wallet'
+    | '/admin/adcash'
 
   fileRoutesById: FileRoutesById
 }
@@ -625,6 +673,8 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   EditProfileRoute: typeof EditProfileRoute
   SourceLabRoute: typeof SourceLabRoute
+  WalletRoute: typeof WalletRoute
+  KidsWatchRoute: typeof KidsWatchRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -945,7 +995,37 @@ declare module '@tanstack/react-router' {
   }
 }
 
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kids_/watch': {
+      id: '/kids_/watch'
+      path: '/kids/watch'
+      fullPath: '/kids/watch'
+      preLoaderRoute: typeof KidsWatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/survey-wallet': {
+      id: '/admin/survey-wallet'
+      path: '/survey-wallet'
+      fullPath: '/admin/survey-wallet'
+      preLoaderRoute: typeof AdminSurveyWalletRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/adcash': {
+      id: '/admin/adcash'
+      path: '/adcash'
+      fullPath: '/admin/adcash'
+      preLoaderRoute: typeof AdminAdcashRouteImport
+      parentRoute: typeof AdminRoute
+    }
 interface AdminRouteChildren {
+  AdminSurveyWalletRoute: typeof AdminSurveyWalletRoute
+  AdminAdcashRoute: typeof AdminAdcashRoute
   AdminCommerceRoute: typeof AdminCommerceRoute
   AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
   AdminCommercePricingRoute: typeof AdminCommercePricingRoute
@@ -966,6 +1046,8 @@ interface AdminRouteChildren {
   AdminXserisRoute: typeof AdminXserisRoute
 }
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminSurveyWalletRoute: AdminSurveyWalletRoute,
+  AdminAdcashRoute: AdminAdcashRoute,
   AdminCommerceRoute: AdminCommerceRoute,
   AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
   AdminCommercePricingRoute: AdminCommercePricingRoute,
@@ -1027,6 +1109,8 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   EditProfileRoute: EditProfileRoute,
   SourceLabRoute: SourceLabRoute,
+  WalletRoute: WalletRoute,
+  KidsWatchRoute: KidsWatchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
