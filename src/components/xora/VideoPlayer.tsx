@@ -153,7 +153,7 @@ export function NativeVideoPlayer({
       clearTimeout(timer3sRef.current);
       timer3sRef.current = null;
     }
-  }, [mediaPath, externalUrl, streamUrl, postId]);
+  }, [mediaPath, externalUrl, streamUrl, nativeStreamUrl, postId]);
 
   // Keep the native video surface aligned with the same player rectangle in the WebView.
   useEffect(() => {
