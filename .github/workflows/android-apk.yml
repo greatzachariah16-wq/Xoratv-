@@ -12,6 +12,8 @@ on:
       - "scripts/apply-xora-android.mjs"
       - "src/lib/native-startup.ts"
       - "src/routes/__root.tsx"
+      - "src/routes/download.tsx"
+      - "src/components/xora/AppShell.tsx"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
