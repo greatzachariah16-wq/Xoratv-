@@ -14,6 +14,8 @@ public class XoraVlcPlugin extends Plugin {
     public void open(PluginCall call) {
         String url = call.getString("url");
         String title = call.getString("title", "XoraTV");
+        String fallbackUrl1 = call.getString("fallbackUrl1");
+        String fallbackUrl2 = call.getString("fallbackUrl2");
         if (url == null || url.trim().isEmpty()) {
             call.reject("A stream URL is required.");
             return;
@@ -26,6 +28,8 @@ public class XoraVlcPlugin extends Plugin {
         Intent intent = new Intent(getContext(), XoraVlcActivity.class);
         intent.putExtra(XoraVlcActivity.EXTRA_URL, url);
         intent.putExtra(XoraVlcActivity.EXTRA_TITLE, title);
+        intent.putExtra(XoraVlcActivity.EXTRA_FALLBACK_URL_1, fallbackUrl1);
+        intent.putExtra(XoraVlcActivity.EXTRA_FALLBACK_URL_2, fallbackUrl2);
         getActivity().runOnUiThread(() -> {
             try {
                 getActivity().startActivity(intent);
