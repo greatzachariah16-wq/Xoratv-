@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { openNativeVlc, isNativeVlcPlatform } from "@/lib/native-vlc";
 import {
   Gauge,
   Loader2,
@@ -486,6 +487,12 @@ export function NativeVideoPlayer({
   const toggle = useCallback(() => {
     const video = videoRef.current;
     if (!video || !activeSrc) return;
+    if (liveTv && isNativeVlcPlatform()) {
+      void openNativeVlc({ url: activeSrc, title }).then((opened) => {
+        if (!opened && video.paused) void video.play().catch(() => setFailed(true));
+      });
+      return;
+    }
     if (video.paused || video.ended) {
       const attempt = video.play();
       if (attempt) {
@@ -499,7 +506,7 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc]);
+  }, [activeSrc, liveTv, title]);
 
   const seekTo = useCallback((seconds: number) => {
     const video = videoRef.current;
@@ -511,6 +518,10 @@ export function NativeVideoPlayer({
   // Autoplay-in-view (shorts): starts unmuted when in view, and paused when out of view.
   useEffect(() => {
     if (!autoPlay) return;
+    if (liveTv && isNativeVlcPlatform() && activeSrc) {
+      void openNativeVlc({ url: activeSrc, title });
+      return;
+    }
     const video = videoRef.current;
     if (!video || !src) return;
     const observer = new IntersectionObserver(
@@ -529,7 +540,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc]);
+  }, [autoPlay, activeSrc, liveTv, title]);
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
