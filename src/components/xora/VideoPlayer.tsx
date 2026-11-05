@@ -688,9 +688,9 @@ export function NativeVideoPlayer({
             if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
             shortsRecoveryTimerRef.current = null;
             const video = videoRef.current;
-            // If a Cloudinary delivery transformation is rejected by the
-            // device/WebView, retry the same asset's original MP4 once.
-            if (feed === "shorts" && originalShortsSrc && !shortsRetriedOriginal.current && originalShortsSrc !== activeSrc) {
+            // If the original MP4 cannot play, retry the same asset's
+            // low-resolution Cloudinary rendition once.
+            if (feed === "shorts" && shortsFallbackSrc && !shortsRetriedOriginal.current && shortsFallbackSrc !== activeSrc) {
               shortsRetriedOriginal.current = true;
               setFailed(false);
               setWaiting(true);
