@@ -77,15 +77,15 @@ function NavIconTile({
   return (
     <span
       className={cn(
-        "relative grid shrink-0 place-items-center overflow-hidden rounded-[14px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_2px_6px_rgba(82,54,39,0.08)] transition-all",
-        compact ? "size-9 rounded-xl" : "size-10",
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-[15px] border transition-all duration-200 before:pointer-events-none before:absolute before:inset-[3px] before:rounded-[11px] before:border before:border-white/55 after:pointer-events-none after:absolute after:inset-x-2 after:bottom-[3px] after:h-px after:bg-white/70",
+        compact ? "size-10 rounded-[14px]" : "size-11",
         active
-          ? "border-[#d9a98e] bg-gradient-to-br from-[#f7dfcf] via-[#f5e9dc] to-[#fffaf3] text-[#a84f30] shadow-[0_3px_9px_rgba(177,82,50,0.14)]"
-          : "border-[#eadccf] bg-gradient-to-br from-[#fffaf3] via-[#f5ece2] to-[#eadbcd] text-[#91644f] group-hover:border-[#d8ad96] group-hover:text-[#a84f30]",
+          ? "border-[#9b472d] bg-gradient-to-br from-[#d77c58] via-[#b15232] to-[#873b27] text-[#fffaf5] shadow-[inset_0_1px_1px_rgba(255,255,255,0.38),0_4px_10px_rgba(130,57,35,0.24)]"
+          : "border-[#e5d1c0] bg-gradient-to-br from-[#fffdf8] via-[#f7ecdf] to-[#e8d3c1] text-[#874b35] shadow-[inset_0_1px_1px_rgba(255,255,255,0.95),0_3px_8px_rgba(82,54,39,0.11)] group-hover:-translate-y-0.5 group-hover:border-[#c98b6d] group-hover:text-[#a4482b] group-hover:shadow-[0_5px_12px_rgba(130,57,35,0.16)]",
       )}
     >
       <span className="pointer-events-none absolute inset-x-2 top-0 h-px bg-white/90" />
-      <Icon className="relative size-[21px] stroke-[1.8] drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]" aria-hidden="true" />
+      <Icon className="relative z-10 size-[22px] stroke-[1.85] drop-shadow-[0_1px_1px_rgba(66,35,23,0.22)]" aria-hidden="true" />
     </span>
   );
 }
@@ -316,6 +316,15 @@ export function AppShell({
                   </Link>
                 );
               })}
+              <Link
+                to="/create"
+                onClick={() => setMobileMenuOpen(false)}
+                className="press col-span-2 flex items-center gap-3 rounded-2xl border border-[#d9a98e] bg-gradient-to-r from-[#fff7ef] via-[#f5e7d9] to-[#ead3c1] px-3 py-3 text-sm font-semibold text-[#8f432b] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_3px_10px_rgba(130,57,35,0.12)]"
+              >
+                <NavIconTile icon={Plus} compact />
+                <span className="flex-1">Create a post</span>
+                <span className="text-xs font-bold tracking-wide">CREATE</span>
+              </Link>
               {currentProfile ? (
                 <Link to="/profile/$username" params={{ username: currentProfile.username }} onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
                   <span className="grid size-9 place-items-center overflow-hidden rounded-xl bg-secondary"><UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={30} /></span>
