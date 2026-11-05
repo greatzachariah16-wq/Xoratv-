@@ -136,15 +136,16 @@ export function getAdaptiveStreamingUrl(rawUrl: string, publicId?: string, maxRe
 export function getOriginalVideoUrl(rawUrl: string): string {
   if (!rawUrl) return "";
 
-  const match = rawUrl.match(/^(https?:\/\/res\\.cloudinary\\.com\/[^/]+\/video\/upload\/)(.*)$/);
+  const match = rawUrl.match(/^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)$/);
   if (!match) return rawUrl;
 
   const base = match[1];
   const parts = match[2].split("/").filter(Boolean);
 
+  // Strip delivery transformations but keep the uploaded asset's version and public ID.
   while (parts.length > 0) {
     const first = parts[0];
-    const isVersion = /^v\\d+$/.test(first);
+    const isVersion = /^v\d+$/.test(first);
     const looksLikeTransformation =
       !isVersion &&
       (first.includes(",") ||
@@ -164,11 +165,9 @@ export function getOriginalVideoUrl(rawUrl: string): string {
 
   if (!parts.length) return rawUrl;
 
-  // Keep the uploaded asset's actual extension. Some creator uploads are WebM
-  // or another browser-supported video format; forcing every asset to .mp4
-  // makes the URL point at a file that does not exist.
+  // Cloudinary uploads without an extension are delivered as MP4.
   const last = parts.length - 1;
-  if (!/\\.[a-zA-Z0-9]+$/.test(parts[last])) {
+  if (!/\.[a-zA-Z0-9]+$/.test(parts[last])) {
     parts[last] = parts[last] + ".mp4";
   }
 
