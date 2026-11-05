@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { openNativeVlc, isNativeVlcPlatform } from "@/lib/native-vlc";
+import {
+  addNativeVlcListener,
+  closeNativeVlc,
+  getNativeVlcBounds,
+  openNativeVlc,
+  updateNativeVlcBounds,
+  isNativeVlcPlatform,
+} from "@/lib/native-vlc";
 import {
   Gauge,
   Loader2,
@@ -95,6 +102,8 @@ export function NativeVideoPlayer({
   const [muted, setMuted] = useState(feed === "shorts" ? true : false);
   const [waiting, setWaiting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [nativeVlcActive, setNativeVlcActive] = useState(false);
+  const nativeVlcActiveRef = useRef(false);
   const shortsRetriedOriginal = useRef(false);
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
@@ -118,6 +127,11 @@ export function NativeVideoPlayer({
 
   // Reset transient state whenever the source video changes.
   useEffect(() => {
+    if (nativeVlcActiveRef.current) {
+      nativeVlcActiveRef.current = false;
+      setNativeVlcActive(false);
+      void closeNativeVlc();
+    }
     setPlaying(false);
     setWaiting(false);
     setFailed(false);
@@ -140,6 +154,76 @@ export function NativeVideoPlayer({
       timer3sRef.current = null;
     }
   }, [mediaPath, externalUrl, streamUrl, postId]);
+
+  // Keep the native video surface aligned with the same player rectangle in the WebView.
+  useEffect(() => {
+    if (!nativeVlcOnly || !nativeVlcActive) return;
+
+    let frame = 0;
+    const updatePosition = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        void updateNativeVlcBounds(getNativeVlcBounds(containerRef.current)).catch((error) => {
+          console.warn("[Xora] Player position update failed:", error);
+        });
+      });
+    };
+
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(updatePosition) : null;
+    if (containerRef.current && resizeObserver) resizeObserver.observe(containerRef.current);
+    updatePosition();
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      resizeObserver?.disconnect();
+    };
+  }, [nativeVlcOnly, nativeVlcActive]);
+
+  // Reflect native play/pause/failure and close events in the XoraTV player state.
+  useEffect(() => {
+    if (!nativeVlcOnly) return;
+
+    let disposed = false;
+    let listener: { remove(): Promise<void> } | null = null;
+
+    void addNativeVlcListener((state) => {
+      if (disposed) return;
+      setPlaying(state.playing);
+      setWaiting(state.waiting);
+      setFailed(state.failed);
+      if (state.closed) {
+        nativeVlcActiveRef.current = false;
+        setNativeVlcActive(false);
+      }
+    })
+      .then((registered) => {
+        if (disposed) {
+          void registered.remove();
+        } else {
+          listener = registered;
+        }
+      })
+      .catch((error) => console.warn("[Xora] Player state listener unavailable:", error));
+
+    return () => {
+      disposed = true;
+      if (listener) void listener.remove();
+      if (nativeVlcActiveRef.current) {
+        nativeVlcActiveRef.current = false;
+        void closeNativeVlc();
+      }
+    };
+  }, [nativeVlcOnly]);
 
   // Production-Ready Xora Engagement Handshake & Heartbeat Loop
   useEffect(() => {
@@ -486,13 +570,28 @@ export function NativeVideoPlayer({
     }
   };
 
+  const startNativePlayback = useCallback(async () => {
+    if (!nativeVlcOnly || !activeSrc || nativeVlcActiveRef.current) return;
+    setWaiting(true);
+    setFailed(false);
+    try {
+      await openNativeVlc({
+        url: nativeStreamUrl || activeSrc,
+        title,
+        bounds: getNativeVlcBounds(containerRef.current),
+      });
+      nativeVlcActiveRef.current = true;
+      setNativeVlcActive(true);
+    } catch (error) {
+      console.error("[Xora] Native playback failed:", error);
+      setWaiting(false);
+      setFailed(true);
+    }
+  }, [activeSrc, nativeStreamUrl, nativeVlcOnly, title]);
+
   const toggle = useCallback(() => {
     if (liveTv && isNativeVlcPlatform()) {
-      if (!activeSrc) return;
-      void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
-        console.error("[Xora] LibVLC failed to open stream:", error);
-        setFailed(true);
-      });
+      void startNativePlayback();
       return;
     }
     const video = videoRef.current;
@@ -510,7 +609,7 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc, liveTv, nativeStreamUrl, title]);
+  }, [activeSrc, liveTv, startNativePlayback]);
 
   const seekTo = useCallback((seconds: number) => {
     const video = videoRef.current;
@@ -523,10 +622,7 @@ export function NativeVideoPlayer({
   useEffect(() => {
     if (!autoPlay) return;
     if (liveTv && isNativeVlcPlatform() && activeSrc) {
-      void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
-        console.error("[Xora] LibVLC failed to open stream:", error);
-        setFailed(true);
-      });
+      void startNativePlayback();
       return;
     }
     const video = videoRef.current;
@@ -547,7 +643,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc, liveTv, nativeStreamUrl, title]);
+  }, [autoPlay, activeSrc, liveTv, startNativePlayback]);
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
@@ -732,13 +828,7 @@ export function NativeVideoPlayer({
         </button>
       ) : null}
 
-      {nativeVlcOnly ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
-          <span className="rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-white/90">
-            NATIVE LIBVLC PLAYER
-          </span>
-        </div>
-      ) : (
+      {!nativeVlcOnly ? (
       <div
         className={cn(
           "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
@@ -858,7 +948,7 @@ export function NativeVideoPlayer({
           </button>
         </div>
       </div>
-      )}
+      ) : null}
     </div>
   );
 }
