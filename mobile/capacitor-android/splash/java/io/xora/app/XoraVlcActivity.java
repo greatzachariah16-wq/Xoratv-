@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -24,6 +26,8 @@ import java.util.ArrayList;
 public class XoraVlcActivity extends Activity {
     public static final String EXTRA_URL = "xora.vlc.url";
     public static final String EXTRA_TITLE = "xora.vlc.title";
+    public static final String EXTRA_FALLBACK_URL_1 = "xora.vlc.fallback1";
+    public static final String EXTRA_FALLBACK_URL_2 = "xora.vlc.fallback2";
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
@@ -31,6 +35,11 @@ public class XoraVlcActivity extends Activity {
     private TextView statusText;
     private boolean userPaused;
     private boolean playbackFailed;
+    private boolean retryInProgress;
+    private boolean softwareDecoderAttempted;
+    private int currentStreamIndex;
+    private final ArrayList<String> streamUrls = new ArrayList<>();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,10 +51,15 @@ public class XoraVlcActivity extends Activity {
 
         String url = getIntent().getStringExtra(EXTRA_URL);
         String title = getIntent().getStringExtra(EXTRA_TITLE);
+        String fallback1 = getIntent().getStringExtra(EXTRA_FALLBACK_URL_1);
+        String fallback2 = getIntent().getStringExtra(EXTRA_FALLBACK_URL_2);
         if (url == null || !url.startsWith("https://")) {
             finish();
             return;
         }
+        streamUrls.add(url);
+        if (fallback1 != null && fallback1.startsWith("https://")) streamUrls.add(fallback1);
+        if (fallback2 != null && fallback2.startsWith("https://")) streamUrls.add(fallback2);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -94,7 +108,14 @@ public class XoraVlcActivity extends Activity {
                 mediaPlayer.pause();
             } else {
                 userPaused = false;
-                mediaPlayer.play();
+                if (playbackFailed) {
+                    currentStreamIndex = 0;
+                    softwareDecoderAttempted = false;
+                    playbackFailed = false;
+                    startCurrentStream(true);
+                } else {
+                    mediaPlayer.play();
+                }
             }
         });
         bottomBar.addView(playPauseButton);
@@ -104,8 +125,8 @@ public class XoraVlcActivity extends Activity {
 
         try {
             ArrayList<String> options = new ArrayList<>();
-            options.add("--network-caching=1800");
-            options.add("--live-caching=1800");
+            options.add("--network-caching=4000");
+            options.add("--live-caching=4000");
             options.add("--drop-late-frames");
             options.add("--skip-frames");
             libVLC = new LibVLC(this, options);
@@ -116,12 +137,13 @@ public class XoraVlcActivity extends Activity {
                 switch (event.type) {
                     case MediaPlayer.Event.Opening:
                         playbackFailed = false;
-                        statusText.setText("Opening stream…");
+                        statusText.setText("Opening source " + (currentStreamIndex + 1) + " of " + streamUrls.size() + "…");
                         break;
                     case MediaPlayer.Event.Buffering:
-                        statusText.setText("Buffering " + Math.round(event.getBuffering()) + "%");
+                        statusText.setText("Buffering " + Math.round(event.getBuffering()) + "% · source " + (currentStreamIndex + 1));
                         break;
                     case MediaPlayer.Event.Playing:
+                        playbackFailed = false;
                         statusText.setText("LIVE");
                         playPauseButton.setText("Pause");
                         break;
@@ -130,27 +152,27 @@ public class XoraVlcActivity extends Activity {
                         playPauseButton.setText("Play");
                         break;
                     case MediaPlayer.Event.Stopped:
-                        if (!playbackFailed) statusText.setText("Stopped");
-                        playPauseButton.setText(playbackFailed ? "Retry" : "Play");
+                        if (retryInProgress || userPaused) break;
+                        if (!playbackFailed && tryNextStream("This source stopped before playback")) break;
+                        if (!playbackFailed) {
+                            playbackFailed = true;
+                            statusText.setText("Stream stopped before video started. All available sources were tried.");
+                        }
+                        playPauseButton.setText("Retry");
                         break;
                     case MediaPlayer.Event.EncounteredError:
-                        playbackFailed = true;
-                        Log.e("XoraLibVLC", "LibVLC could not open the selected stream.");
-                        statusText.setText("Stream failed before playback. Check the source or connection.");
-                        playPauseButton.setText("Retry");
+                        Log.e("XoraLibVLC", "Stream error on candidate " + (currentStreamIndex + 1) + " of " + streamUrls.size());
+                        if (!tryNextStream("Source failed; trying another")) {
+                            playbackFailed = true;
+                            statusText.setText("Unable to play this channel. All sources and the software-decoder retry failed.");
+                            playPauseButton.setText("Retry");
+                        }
                         break;
                     default:
                         break;
                 }
             }));
-            Media media = new Media(libVLC, Uri.parse(url));
-            media.setHWDecoderEnabled(true, false);
-            media.addOption(":network-caching=1800");
-            media.addOption(":live-caching=1800");
-            media.addOption(":http-reconnect");
-            mediaPlayer.setMedia(media);
-            media.release();
-            mediaPlayer.play();
+            startCurrentStream(true);
         } catch (Exception error) {
             playbackFailed = true;
             Log.e("XoraLibVLC", "Native player startup failed.", error);
@@ -159,13 +181,52 @@ public class XoraVlcActivity extends Activity {
         }
     }
 
+    private void startCurrentStream(boolean hardwareDecoder) {
+        if (mediaPlayer == null || currentStreamIndex >= streamUrls.size()) return;
+        String selectedUrl = streamUrls.get(currentStreamIndex);
+        Log.i("XoraLibVLC", "Opening candidate " + (currentStreamIndex + 1) + "/" + streamUrls.size() + " host=" + Uri.parse(selectedUrl).getHost() + " hw=" + hardwareDecoder);
+        Media media = new Media(libVLC, Uri.parse(selectedUrl));
+        media.setHWDecoderEnabled(hardwareDecoder, false);
+        media.addOption(":network-caching=4000");
+        media.addOption(":live-caching=4000");
+        media.addOption(":http-reconnect");
+        mediaPlayer.setMedia(media);
+        media.release();
+        mediaPlayer.play();
+    }
+
+    private boolean tryNextStream(String reason) {
+        if (mediaPlayer == null || userPaused) return false;
+        if (currentStreamIndex + 1 < streamUrls.size()) {
+            currentStreamIndex++;
+            softwareDecoderAttempted = false;
+            switchStream(reason, true);
+            return true;
+        }
+        if (!softwareDecoderAttempted) {
+            softwareDecoderAttempted = true;
+            switchStream("Retrying with software decoding…", false);
+            return true;
+        }
+        return false;
+    }
+
+    private void switchStream(String message, boolean hardwareDecoder) {
+        retryInProgress = true;
+        playbackFailed = false;
+        if (statusText != null) statusText.setText(message);
+        if (playPauseButton != null) playPauseButton.setText("Connecting…");
+        startCurrentStream(hardwareDecoder);
+        mainHandler.postDelayed(() -> retryInProgress = false, 2500);
+    }
+
     private Button makeButton(String label) {
         Button button = new Button(this);
         button.setText(label);
         button.setTextColor(Color.WHITE);
         button.setAllCaps(false);
         button.setTextSize(13);
-        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF62427D));
+        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFB15232));
         return button;
     }
 

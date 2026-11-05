@@ -104,8 +104,10 @@ async function loadChannels(): Promise<NexusChannel[]> {
       const text = await response.text();
       const lines = text.split(/\r?\n/);
       const channels: NexusChannel[] = [];
+      const channelsById = new Map<string, NexusChannel>();
       let pending: Record<string, string> | null = null;
-      let requiresHeaders = false;
+      let streamReferrer: string | null = null;
+      let streamUserAgent: string | null = null;
 
       const parseAttrs = (line: string) => {
         const attrs: Record<string, string> = {};
@@ -120,22 +122,38 @@ async function loadChannels(): Promise<NexusChannel[]> {
         if (!line) continue;
         if (line.startsWith("#EXTINF:")) {
           pending = parseAttrs(line);
-          requiresHeaders = false;
+          streamReferrer = null;
+          streamUserAgent = null;
           const comma = line.indexOf(",");
           const displayName = comma >= 0 ? line.slice(comma + 1).trim() : "";
           if (displayName && pending) pending.name = displayName;
           continue;
         }
-        if (line.startsWith("#EXTVLCOPT:http-referrer:") || line.startsWith("#EXTVLCOPT:http-user-agent:")) {
-          requiresHeaders = true;
+        if (line.startsWith("#EXTVLCOPT:http-referrer:")) {
+          streamReferrer = line.slice("#EXTVLCOPT:http-referrer:".length).trim() || null;
+          continue;
+        }
+        if (line.startsWith("#EXTVLCOPT:http-user-agent:")) {
+          streamUserAgent = line.slice("#EXTVLCOPT:http-user-agent:".length).trim() || null;
           continue;
         }
         if (!line.startsWith("#") && pending?.["tvg-id"] && /^https?:\/\//i.test(line)) {
-          if (!requiresHeaders) {
+          const channelId = pending["tvg-id"];
+          const stream = {
+            url: line,
+            rank: channelsById.get(channelId)?.streams?.length || 0,
+            referrer: streamReferrer,
+            user_agent: streamUserAgent,
+            health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 },
+          };
+          const existing = channelsById.get(channelId);
+          if (existing) {
+            existing.streams = [...(existing.streams || []), stream];
+          } else {
             const categories = (pending["group-title"] || "").split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean);
-            channels.push({
-              id: pending["tvg-id"],
-              name: pending.name || pending["tvg-name"] || pending["tvg-id"],
+            const channel: NexusChannel = {
+              id: channelId,
+              name: pending.name || pending["tvg-name"] || channelId,
               country: pending["tvg-country"] || undefined,
               categories,
               languages: pending["tvg-language"] ? pending["tvg-language"].split(/[;,]/).map((item) => item.trim()) : undefined,
@@ -143,8 +161,10 @@ async function loadChannels(): Promise<NexusChannel[]> {
               score: Number(pending["nexus-score"] || 0) || undefined,
               online: true,
               best_quality: pending["nexus-quality"] || undefined,
-              streams: [{ url: line, rank: 0, health: { status: "online", score: Number(pending["nexus-score"] || 0) || 0 } }],
-            });
+              streams: [stream],
+            };
+            channelsById.set(channelId, channel);
+            channels.push(channel);
           }
           pending = null;
         }
@@ -160,9 +180,7 @@ async function loadChannels(): Promise<NexusChannel[]> {
     (stream) =>
       stream?.url &&
       /^https?:\/\//i.test(stream.url) &&
-      (stream.health?.status === undefined || stream.health.status === "online") &&
-      !stream.referrer &&
-      !stream.user_agent,
+      (stream.health?.status === undefined || stream.health.status === "online"),
   );
   return streams.sort((a, b) => {
     const scoreA = a.health?.score || 0;
@@ -227,9 +245,7 @@ export async function getNexusPlaybackCandidates(channelId: string, limit = 3): 
     .filter((stream) =>
       stream?.url &&
       /^https?:\/\//i.test(stream.url) &&
-      (stream.health?.status === undefined || stream.health.status === "online") &&
-      !stream.referrer &&
-      !stream.user_agent,
+      (stream.health?.status === undefined || stream.health.status === "online"),
     )
     .sort((a, b) => (b.health?.score || 0) - (a.health?.score || 0) || (b.rank || 0) - (a.rank || 0))
     .slice(0, Math.max(1, limit))

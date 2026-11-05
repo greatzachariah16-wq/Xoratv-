@@ -104,6 +104,7 @@ export function NativeVideoPlayer({
   const [waiting, setWaiting] = useState(false);
   const [failed, setFailed] = useState(false);
   const shortsRetriedOriginal = useRef(false);
+  const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
@@ -136,6 +137,10 @@ export function NativeVideoPlayer({
     tracked3s.current = false;
     trackedComplete.current = false;
     shortsRetriedOriginal.current = false;
+    if (shortsRecoveryTimerRef.current) {
+      clearTimeout(shortsRecoveryTimerRef.current);
+      shortsRecoveryTimerRef.current = null;
+    }
     sessionRef.current = null;
     lastHeartbeatTimeRef.current = 0;
     if (timer3sRef.current) {
@@ -388,6 +393,7 @@ export function NativeVideoPlayer({
 
     return () => {
       if (timer3sRef.current) clearTimeout(timer3sRef.current);
+      if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
       video.pause();
       video.removeAttribute("src");
       video.load();
@@ -613,17 +619,71 @@ export function NativeVideoPlayer({
           onPlay={handlePlay}
           onPause={handlePause}
           onLoadStart={() => setWaiting(true)}
-          onWaiting={() => setWaiting(true)}
-          onStalled={() => setWaiting(true)}
-          onPlaying={() => setWaiting(false)}
-          onCanPlay={() => setWaiting(false)}
+          onWaiting={() => {
+            setWaiting(true);
+            // Some Cloudinary renditions stall without firing a terminal error.
+            // After a short wait, switch once to the original MP4 instead of
+            // leaving Shorts on an endless spinner.
+            if (feed === "shorts" && !shortsRecoveryTimerRef.current) {
+              shortsRecoveryTimerRef.current = setTimeout(() => {
+                shortsRecoveryTimerRef.current = null;
+                const video = videoRef.current;
+                if (!video) return;
+                if (!shortsRetriedOriginal.current && originalShortsSrc && originalShortsSrc !== activeSrc) {
+                  shortsRetriedOriginal.current = true;
+                  setFailed(false);
+                  setWaiting(true);
+                  video.src = originalShortsSrc;
+                  video.load();
+                  if (autoPlay) void video.play().catch(() => {});
+                } else if (shortsRetriedOriginal.current) {
+                  setWaiting(false);
+                  setFailed(true);
+                }
+              }, shortsRetriedOriginal.current ? 14000 : 7000);
+            }
+          }}
+          onStalled={() => {
+            setWaiting(true);
+            if (feed === "shorts" && !shortsRecoveryTimerRef.current) {
+              shortsRecoveryTimerRef.current = setTimeout(() => {
+                shortsRecoveryTimerRef.current = null;
+                const video = videoRef.current;
+                if (!video) return;
+                if (!shortsRetriedOriginal.current && originalShortsSrc && originalShortsSrc !== activeSrc) {
+                  shortsRetriedOriginal.current = true;
+                  setFailed(false);
+                  video.src = originalShortsSrc;
+                  video.load();
+                  if (autoPlay) void video.play().catch(() => {});
+                } else {
+                  setWaiting(false);
+                  setFailed(true);
+                }
+              }, 7000);
+            }
+          }}
+          onPlaying={() => {
+            if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
+            shortsRecoveryTimerRef.current = null;
+            setWaiting(false);
+            setFailed(false);
+          }}
+          onCanPlay={() => {
+            if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
+            shortsRecoveryTimerRef.current = null;
+            setWaiting(false);
+          }}
           onError={() => {
+            if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
+            shortsRecoveryTimerRef.current = null;
             const video = videoRef.current;
             // If a Cloudinary delivery transformation is rejected by the
             // device/WebView, retry the same asset's original MP4 once.
             if (feed === "shorts" && originalShortsSrc && !shortsRetriedOriginal.current && originalShortsSrc !== activeSrc) {
               shortsRetriedOriginal.current = true;
               setFailed(false);
+              setWaiting(true);
               if (video) {
                 video.src = originalShortsSrc;
                 video.load();
@@ -631,6 +691,7 @@ export function NativeVideoPlayer({
               }
               return;
             }
+            setWaiting(false);
             setFailed(true);
           }}
           onDurationChange={(e) => setTotal(e.currentTarget.duration || 0)}
