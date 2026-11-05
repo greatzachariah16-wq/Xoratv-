@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Derived from the live XoraTV cream-and-clay design tokens in src/styles.css. -->
-    <color name="xora_splash_cream">#FAF5ED</color>
+    <color name="xora_splash_cream">#FAF6EF</color>
+    <color name="xora_loader_background">#FAF5ED</color>
     <color name="xora_splash_surface">#FEFBF6</color>
     <color name="xora_splash_ink">#291E16</color>
     <color name="xora_splash_clay">#B15232</color>
