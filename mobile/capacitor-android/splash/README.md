@@ -7,7 +7,7 @@ This is a reusable native splash/loading layer for the Capacitor Android shell. 
 The splash is deliberately split into two layers:
 
 1. **OS launch splash:** warm Xora cream background with a crisp Xora play mark. Android 12+ renders this using the system splash API; Android 6–11 use AndroidX compatibility support.
-2. **Xora loading screen:** a full-screen midnight-plum / soft-violet view with a slowly rotating orbit, XORA wordmark, progress bar and connection message. It remains visible while the WebView loads the website. At 1.1 seconds the OS launch splash is released, so a sleeping Render service cannot hold the Android system splash indefinitely.
+2. **Xora loading screen:** a full-screen warm XoraTV cream view with the XORA wordmark, three sequential bouncing clay dots and a connection message. The simple dot animation follows the familiar Facebook-style loading rhythm, recolored to match the live XoraTV cream-and-clay design tokens. It remains visible while the WebView loads the website. At 1.1 seconds the OS launch splash is released, so a sleeping Render service cannot hold the Android system splash indefinitely.
 3. **Retry state:** after 50 seconds the loading view explains that the connection is taking longer than usual and shows a Retry button. When the React app hydrates, the website calls XoraStartup.ready() and the native overlay fades away.
 
 The look is lightweight: XML vector/shape drawables and Android property animation, with no Lottie, video, remote image, or extra animation library. It is suitable for the user's Android 8.1 device and newer Android versions.
