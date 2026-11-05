@@ -96,6 +96,7 @@ export function NativeVideoPlayer({
   // available as a native-player retry below.
   const src = effectiveStream || signedSrc;
   const activeSrc = src;
+  const nativeVlcOnly = liveTv && isNativeVlcPlatform();
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrl(rawPoster);
@@ -490,15 +491,16 @@ export function NativeVideoPlayer({
   };
 
   const toggle = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !activeSrc) return;
     if (liveTv && isNativeVlcPlatform()) {
+      if (!activeSrc) return;
       void openNativeVlc({ url: nativeStreamUrl || activeSrc, title }).catch((error) => {
         console.error("[Xora] LibVLC failed to open stream:", error);
         setFailed(true);
       });
       return;
     }
+    const video = videoRef.current;
+    if (!video || !activeSrc) return;
     if (video.paused || video.ended) {
       const attempt = video.play();
       if (attempt) {
@@ -594,7 +596,7 @@ export function NativeVideoPlayer({
         className,
       )}
     >
-      {src ? (
+      {src && !nativeVlcOnly ? (
         <video
           key={activeSrc}
           ref={videoRef}
@@ -668,6 +670,13 @@ export function NativeVideoPlayer({
         </button>
       ) : null}
 
+      {nativeVlcOnly ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
+          <span className="rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-white/90">
+            NATIVE LIBVLC PLAYER
+          </span>
+        </div>
+      ) : (
       {/* Controls overlay */}
       <div
         className={cn(
@@ -788,6 +797,7 @@ export function NativeVideoPlayer({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
