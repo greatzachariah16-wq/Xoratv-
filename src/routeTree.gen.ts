@@ -329,7 +329,8 @@ export interface FileRoutesByFullPath {
   '/admin/campaigns/manage': typeof AdminCampaignsManageRoute
   '/chat/$roomId': typeof ChatRoomIdRoute
   '/profile/$username': typeof ProfileUsernameRoute
-  '/video/$postId': typeof VideoPostIdRoute  '/tv': typeof TvRoute
+  '/video/$postId': typeof VideoPostIdRoute
+  '/tv': typeof TvRoute
   '/xsports': typeof XSportsRoute
   '/kids': typeof KidsRoute
   '/creator-studio': typeof CreatorStudioRoute
@@ -337,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/edit-profile': typeof EditProfileRoute
   '/source-lab': typeof SourceLabRoute
+  '/data-rewards': typeof DataRewardsRoute
 
 }
 export interface FileRoutesByTo {
@@ -387,6 +389,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/edit-profile': typeof EditProfileRoute
   '/source-lab': typeof SourceLabRoute
+  '/data-rewards': typeof DataRewardsRoute
 
 }
 export interface FileRoutesById {
@@ -438,6 +441,7 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/edit-profile': typeof EditProfileRoute
   '/source-lab': typeof SourceLabRoute
+  '/data-rewards': typeof DataRewardsRoute
 
 }
 export interface FileRouteTypes {
@@ -482,7 +486,8 @@ export interface FileRouteTypes {
     | '/admin/campaigns/manage'
     | '/chat/$roomId'
     | '/profile/$username'
-    | '/video/$postId'    | '/tv'
+    | '/video/$postId'
+    | '/tv'
     | '/xsports'
     | '/kids'
     | '/creator-studio'
