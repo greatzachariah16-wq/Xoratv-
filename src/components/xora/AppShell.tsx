@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
+  Baby,
   BadgePercent,
   BarChart3,
   BellRing,
@@ -45,7 +46,7 @@ const NAV = [
   { to: "/xtv-series", label: "X Series", icon: MonitorPlay },
   { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
   { to: "/xsports", label: "XSports", icon: XSportsIcon },
-  { to: "/kids", label: "Xora Kids", icon: Gem },
+  { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/creator-studio", label: "X Channel", icon: RadioTower },
   { to: "/chat", label: "Community Chat", icon: MessagesSquare },
@@ -178,6 +179,13 @@ export function AppShell({
               )}
             >
               <NavIconTile icon={UserRound} compact active={pathname.startsWith("/profile")} /> Profile
+            </Link>
+            <Link
+              to="/edit-profile"
+              className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <NavIconTile icon={UserRoundPen} compact active={pathname.startsWith("/edit-profile")} />
+              Edit profile
             </Link>
           ) : (
             <Link
