@@ -85,7 +85,7 @@ function NavIconTile({
       )}
     >
       <span className="pointer-events-none absolute inset-x-2 top-0 h-px bg-white/90" />
-      <Icon className="relative z-10 size-[22px] stroke-[1.85] drop-shadow-[0_1px_1px_rgba(66,35,23,0.22)]" aria-hidden="true" />
+      <Icon className="relative z-10 size-[23px] stroke-[2.25] drop-shadow-[0_2px_1px_rgba(66,35,23,0.28)]" aria-hidden="true" />
     </span>
   );
 }
@@ -293,7 +293,7 @@ export function AppShell({
 
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute inset-x-3 top-[4.25rem] max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="absolute inset-x-3 top-[4.25rem] max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-2 rounded-[1.1rem] bg-gradient-to-r from-primary/10 via-primary/5 to-secondary p-3">
               <p className="font-display text-sm font-semibold">Explore XoraTV</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Everything you need, one tap away.</p>
