@@ -51,6 +51,7 @@ public class MainActivity extends BridgeActivity {
         splashScreen.setKeepOnScreenCondition(() -> !releaseSystemSplash);
 
         registerPlugin(XoraStartupPlugin.class);
+        registerPlugin(XoraVlcPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
