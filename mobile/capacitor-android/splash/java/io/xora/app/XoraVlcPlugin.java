@@ -44,6 +44,25 @@ public class XoraVlcPlugin extends Plugin {
     private boolean playbackFailed;
     private boolean retryInProgress;
     private boolean softwareDecoderAttempted;
+    private boolean playingBeforeAppPause;
+
+    @Override
+    protected void handleOnPause() {
+        super.handleOnPause();
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            playingBeforeAppPause = true;
+            mediaPlayer.pause();
+        }
+    }
+
+    @Override
+    protected void handleOnResume() {
+        super.handleOnResume();
+        if (mediaPlayer != null && playingBeforeAppPause && !userPaused && !playbackFailed) {
+            mediaPlayer.play();
+        }
+        playingBeforeAppPause = false;
+    }
 
     private final Runnable streamStartupTimeout = () -> {
         if (mediaPlayer == null || userPaused || playbackFailed || mediaPlayer.isPlaying()) return;
