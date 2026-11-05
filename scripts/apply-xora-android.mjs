@@ -41,8 +41,8 @@ if (!manifest.includes("android.permission.INTERNET")) {
 }
 // The live player is an inline native view over the WebView, not a separate Activity.
 manifest = manifest.replace(
-  /\\s*<activity\\b(?=[^>]*android:name="io\\.xora\\.app\\.XoraVlcActivity")[^>]*\\/>\\s*/g,
-  "\\n",
+  /\s*<activity\b(?=[^>]*android:name="io\.xora\.app\.XoraVlcActivity")[^>]*\/>\s*/g,
+  "\n",
 );
 const legacyPlayerActivity = path.join(javaDestination, "XoraVlcActivity.java");
 if (fs.existsSync(legacyPlayerActivity)) fs.unlinkSync(legacyPlayerActivity);
