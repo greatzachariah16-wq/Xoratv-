@@ -218,7 +218,7 @@ public class XoraVlcPlugin extends Plugin {
         webView.getLocationOnScreen(webLocation);
         content.getLocationOnScreen(contentLocation);
 
-        float density = getResources().getDisplayMetrics().density;
+        float density = getContext().getResources().getDisplayMetrics().density;
         int left = webLocation[0] - contentLocation[0]
             + Math.round((float) bounds.optDouble("left", 0) * density);
         int top = webLocation[1] - contentLocation[1]
@@ -365,7 +365,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
+        return Math.round(value * getContext().getResources().getDisplayMetrics().density);
     }
 
     private void closePlayerInternal(boolean notifyClosed) {
