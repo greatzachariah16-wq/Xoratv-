@@ -27,7 +27,7 @@ copyDirectory(path.join(splashRoot, "res"), appRes);
 
 const javaDestination = path.join(appMain, "java/io/xora/app");
 fs.mkdirSync(javaDestination, { recursive: true });
-for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugin.java", "XoraVlcActivity.java"]) {
+for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugin.java"]) {
   fs.copyFileSync(path.join(splashRoot, "java/io/xora/app", name), path.join(javaDestination, name));
 }
 
@@ -39,12 +39,13 @@ manifest = manifest
 if (!manifest.includes("android.permission.INTERNET")) {
   manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>');
 }
-if (!manifest.includes("io.xora.app.XoraVlcActivity")) {
-  manifest = manifest.replace(
-    "</application>",
-    '        <activity android:name="io.xora.app.XoraVlcActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />\n    </application>',
-  );
-}
+// The live player is an inline native view over the WebView, not a separate Activity.
+manifest = manifest.replace(
+  /\s*<activity\b(?=[^>]*android:name="io\.xora\.app\.XoraVlcActivity")[^>]*\/>\s*/g,
+  "\n",
+);
+const legacyPlayerActivity = path.join(javaDestination, "XoraVlcActivity.java");
+if (fs.existsSync(legacyPlayerActivity)) fs.unlinkSync(legacyPlayerActivity);
 fs.writeFileSync(manifestPath, manifest);
 
 const stringsPath = path.join(appRes, "values/strings.xml");
@@ -87,4 +88,4 @@ if (fs.existsSync(variablesPath)) {
   fs.writeFileSync(variablesPath, variables);
 }
 
-console.log("Xora native splash and startup bridge applied to android/.");
+console.log("Xora native splash, startup and inline player applied to android/.");

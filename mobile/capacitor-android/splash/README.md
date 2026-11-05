@@ -18,6 +18,12 @@ SpinKit is an MIT-licensed collection of CSS loading indicators. Xora adapts its
 
 - SpinKit source and MIT licence: https://github.com/tobiasahlin/SpinKit
 
+## Inline live-channel player
+
+Live channels use a native video surface positioned over the existing XoraTV player rectangle inside the Capacitor WebView. The surface follows page scrolling and resizing, starts playback in place, and provides only XoraTV-style playback and close controls. It does not launch a separate full-screen Activity. The web player sends the visible player bounds to the native bridge and closes the native surface when the player is removed or its channel changes.
+
+The Android apply script copies the native player bridge only; it deliberately does not package a separate player Activity.
+
 ## Native files
 
 Copy the contents of this folder into the matching paths in the generated Capacitor Android project:
