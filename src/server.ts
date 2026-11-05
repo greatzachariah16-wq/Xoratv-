@@ -21,7 +21,7 @@ import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo } from "./integrations/providers/iptv-org";
-import { fetchNexusChannels, getNexusChannel, getNexusGuide } from "./integrations/providers/iptv-nexus";
+import { fetchNexusChannels, getNexusChannel, getNexusGuide, getNexusPlaybackCandidates } from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
@@ -1090,10 +1090,13 @@ export default {
         }
 
         const headers = new Headers({
-          Accept: "*/*",
+          Accept: request.headers.get("accept") || "*/*",
           "User-Agent": playback.userAgent || "Mozilla/5.0",
         });
         if (playback.referrer) headers.set("Referer", playback.referrer);
+        // Preserve byte-range requests for HLS segments and progressive streams.
+        const range = request.headers.get("range");
+        if (range) headers.set("Range", range);
 
         const upstream = await fetch(targetUrl.toString(), { headers, signal: request.signal });
         if (!upstream.ok) {
@@ -1111,7 +1114,8 @@ export default {
 
         if (isHls) {
           const body = await upstream.text();
-          const base = new URL(targetUrl);
+          // Resolve relative media/variant URLs against the final upstream URL after redirects.
+          const base = new URL(upstream.url || targetUrl.toString());
           const proxyUrl = (absolute: string) =>
             `/api/tv/stream?provider=${encodeURIComponent(provider)}&channel=${encodeURIComponent(channelId)}&attempt=${attempt}&url=${encodeURIComponent(absolute)}`;
 
@@ -1152,7 +1156,12 @@ export default {
         const responseHeaders = new Headers(CORS_HEADERS);
         responseHeaders.set("Content-Type", contentType || "application/octet-stream");
         responseHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate");
-        return new Response(upstream.body, { status: 200, headers: responseHeaders });
+        // Keep the upstream range response intact for players requesting partial media.
+        for (const name of ["Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified"]) {
+          const value = upstream.headers.get(name);
+          if (value) responseHeaders.set(name, value);
+        }
+        return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "IPTV playback proxy error";
         console.error("[IPTV Proxy] Playback error:", msg);

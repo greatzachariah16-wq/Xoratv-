@@ -3,6 +3,7 @@ package io.xora.app;
 import android.app.Activity;
 import android.graphics.Color;
 import android.net.Uri;
+import android.util.Log;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -29,6 +30,7 @@ public class XoraVlcActivity extends Activity {
     private Button playPauseButton;
     private TextView statusText;
     private boolean userPaused;
+    private boolean playbackFailed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +115,7 @@ public class XoraVlcActivity extends Activity {
                 if (statusText == null || playPauseButton == null) return;
                 switch (event.type) {
                     case MediaPlayer.Event.Opening:
+                        playbackFailed = false;
                         statusText.setText("Opening stream…");
                         break;
                     case MediaPlayer.Event.Buffering:
@@ -127,11 +130,14 @@ public class XoraVlcActivity extends Activity {
                         playPauseButton.setText("Play");
                         break;
                     case MediaPlayer.Event.Stopped:
-                        statusText.setText("Stopped");
-                        playPauseButton.setText("Play");
+                        if (!playbackFailed) statusText.setText("Stopped");
+                        playPauseButton.setText(playbackFailed ? "Retry" : "Play");
                         break;
                     case MediaPlayer.Event.EncounteredError:
-                        statusText.setText("This stream could not be played.");
+                        playbackFailed = true;
+                        Log.e("XoraLibVLC", "LibVLC could not open the selected stream.");
+                        statusText.setText("Stream failed before playback. Check the source or connection.");
+                        playPauseButton.setText("Retry");
                         break;
                     default:
                         break;
@@ -146,7 +152,10 @@ public class XoraVlcActivity extends Activity {
             media.release();
             mediaPlayer.play();
         } catch (Exception error) {
+            playbackFailed = true;
+            Log.e("XoraLibVLC", "Native player startup failed.", error);
             statusText.setText("VLC could not start this stream.");
+            playPauseButton.setText("Retry");
         }
     }
 
