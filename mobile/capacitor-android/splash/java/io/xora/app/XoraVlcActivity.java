@@ -108,7 +108,14 @@ public class XoraVlcActivity extends Activity {
                 mediaPlayer.pause();
             } else {
                 userPaused = false;
-                mediaPlayer.play();
+                if (playbackFailed) {
+                    currentStreamIndex = 0;
+                    softwareDecoderAttempted = false;
+                    playbackFailed = false;
+                    startCurrentStream(true);
+                } else {
+                    mediaPlayer.play();
+                }
             }
         });
         bottomBar.addView(playPauseButton);
