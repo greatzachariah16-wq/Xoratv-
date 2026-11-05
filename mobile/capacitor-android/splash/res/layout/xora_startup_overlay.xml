@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/xora_startup_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/xora_startup_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:padding="28dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="136dp"
+            android:layout_height="136dp">
+
+            <View
+                android:id="@+id/xora_startup_ring"
+                android:layout_width="132dp"
+                android:layout_height="132dp"
+                android:layout_gravity="center"
+                android:background="@drawable/xora_splash_ring" />
+
+            <ImageView
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:layout_gravity="center"
+                android:contentDescription="Xora"
+                android:src="@drawable/xora_launch_mark" />
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:fontFamily="sans"
+            android:letterSpacing="0.22"
+            android:text="XORA"
+            android:textColor="@color/xora_splash_text"
+            android:textSize="29sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            android:letterSpacing="0.12"
+            android:text="YOUR WORLD. YOUR ENTERTAINMENT."
+            android:textColor="@color/xora_splash_muted"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/xora_startup_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="168dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="38dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/xora_splash_lavender"
+            android:progressTint="@color/xora_splash_lavender" />
+
+        <TextView
+            android:id="@+id/xora_startup_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="17dp"
+            android:gravity="center"
+            android:minHeight="42dp"
+            android:text="Connecting to XoraTV…"
+            android:textColor="@color/xora_splash_muted"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/xora_startup_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/xora_retry_button"
+            android:minWidth="142dp"
+            android:text="Try again"
+            android:textAllCaps="false"
+            android:textColor="@color/xora_splash_ink"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:gravity="center"
+        android:text="A little patience. A lot to explore."
+        android:textColor="#9F92B0"
+        android:textSize="11sp" />
+</FrameLayout>

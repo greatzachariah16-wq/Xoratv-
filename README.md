@@ -704,13 +704,11 @@ Do not sacrifice backend functionality or core features simply to make the UI pr
 
 Once the core Xora V1 functionality is confirmed working, perform the high-grade UI/UX polish pass across the entire application.
 
-32. XORA IS A WEBSITE + PROGRESSIVE WEB APP (PWA)
+32. XORA WEBSITE + PWA + CAPACITOR ANDROID APP
 
 Xora is a web application first, but it must also be built as a fully functional Progressive Web App (PWA).
 
-Do NOT build Xora as a native Android or iOS application.
-
-Build it as a responsive website that can also be installed on supported devices as a PWA.
+Keep the web app as the single source of truth. Xora also has a native Android shell powered by Capacitor; it loads the live XoraTV website while the browser website and installable PWA remain supported.
 
 PWA Requirements
 
@@ -812,7 +810,7 @@ Do not repeatedly annoy users with installation prompts.
 
 Website Requirements
 
-The same Xora application must work normally as a website through a browser.
+The same Xora application must work normally as a website through a browser, as an installable PWA, and inside the Capacitor Android shell.
 
 Users should be able to access Xora without installing the PWA.
 
@@ -862,3 +860,8 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+
+## 33. CAPACITOR ANDROID SHELL
+
+XoraTV now includes a Capacitor 8 Android wrapper. See [mobile/CAPACITOR.md](mobile/CAPACITOR.md) for setup, native splash behavior, Android build steps and the remote-site security trade-off. Generate the native project with `npm run cap:add:android`; the custom native splash and startup bridge are applied by `scripts/apply-xora-android.mjs`.
