@@ -1064,11 +1064,18 @@ export default {
         }
 
         const playback = provider === "nexus"
-          ? (await getNexusPlaybackCandidates(channelId, 3))[attempt] || await getNexusChannel(channelId).then((channel) => channel ? {
-              streamUrl: channel.streamUrl,
-              referrer: channel.referrer,
-              userAgent: channel.userAgent,
-            } : null)
+          ? await (async () => {
+              const candidates = await getNexusPlaybackCandidates(channelId, 3);
+              // Do not silently repeat candidate zero for attempts 1 and 2.
+              // A missing ranked candidate is a real miss so LibVLC can move on.
+              if (candidates.length > 0) return candidates[attempt] || null;
+              if (attempt > 0) return null;
+              return await getNexusChannel(channelId).then((channel) => channel ? {
+                streamUrl: channel.streamUrl,
+                referrer: channel.referrer,
+                userAgent: channel.userAgent,
+              } : null);
+            })()
           : await getIptvPlaybackInfo(channelId);
         if (!playback) {
           return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
@@ -1117,7 +1124,7 @@ export default {
           // Resolve relative media/variant URLs against the final upstream URL after redirects.
           const base = new URL(upstream.url || targetUrl.toString());
           const proxyUrl = (absolute: string) =>
-            `/api/tv/stream?provider=${encodeURIComponent(provider)}&channel=${encodeURIComponent(channelId)}&attempt=${attempt}&url=${encodeURIComponent(absolute)}`;
+            new URL(`/api/tv/stream?provider=${encodeURIComponent(provider)}&channel=${encodeURIComponent(channelId)}&attempt=${attempt}&url=${encodeURIComponent(absolute)}`, url.origin).toString();
 
           const rewritten = body
             .split(/\r?\n/)
