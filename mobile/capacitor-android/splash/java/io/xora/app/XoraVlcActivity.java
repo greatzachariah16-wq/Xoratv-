@@ -252,6 +252,7 @@ public class XoraVlcActivity extends Activity {
 
     @Override
     protected void onStop() {
+        mainHandler.removeCallbacks(streamStartupTimeout);
         if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
         super.onStop();
     }
@@ -259,7 +260,10 @@ public class XoraVlcActivity extends Activity {
     @Override
     protected void onRestart() {
         super.onRestart();
-        if (mediaPlayer != null && !userPaused) mediaPlayer.play();
+        if (mediaPlayer != null && !userPaused) {
+            mediaPlayer.play();
+            mainHandler.postDelayed(streamStartupTimeout, 25000);
+        }
     }
 
     @Override
