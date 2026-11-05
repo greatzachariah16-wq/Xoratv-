@@ -7,7 +7,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.LinearInterpolator;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
@@ -27,7 +27,7 @@ public class MainActivity extends BridgeActivity {
     private View startupOverlay;
     private TextView statusText;
     private Button retryButton;
-    private ObjectAnimator ringAnimator;
+    private ObjectAnimator[] dotAnimators;
 
     private final Runnable releaseSplashTask = () -> {
         releaseSystemSplash = true;
@@ -87,12 +87,44 @@ public class MainActivity extends BridgeActivity {
         retryButton = startupOverlay.findViewById(R.id.xora_startup_retry);
         retryButton.setOnClickListener(view -> retryWebsite());
 
-        View ring = startupOverlay.findViewById(R.id.xora_startup_ring);
-        ringAnimator = ObjectAnimator.ofFloat(ring, View.ROTATION, 0f, 360f);
-        ringAnimator.setDuration(12000L);
-        ringAnimator.setInterpolator(new LinearInterpolator());
-        ringAnimator.setRepeatCount(ObjectAnimator.INFINITE);
-        ringAnimator.start();
+        startFacebookStyleDots();
+    }
+
+    private void startFacebookStyleDots() {
+        int[] dotIds = {
+            R.id.xora_loading_dot_1,
+            R.id.xora_loading_dot_2,
+            R.id.xora_loading_dot_3
+        };
+        dotAnimators = new ObjectAnimator[dotIds.length];
+        for (int i = 0; i < dotIds.length; i++) {
+            View dot = startupOverlay.findViewById(dotIds[i]);
+            ObjectAnimator bounce = ObjectAnimator.ofFloat(
+                dot,
+                View.TRANSLATION_Y,
+                0f,
+                -dp(8),
+                0f
+            );
+            bounce.setDuration(720L);
+            bounce.setStartDelay(i * 140L);
+            bounce.setRepeatCount(ObjectAnimator.INFINITE);
+            bounce.setInterpolator(new AccelerateDecelerateInterpolator());
+            dotAnimators[i] = bounce;
+            bounce.start();
+        }
+    }
+
+    private void cancelDotAnimations() {
+        if (dotAnimators == null) return;
+        for (ObjectAnimator animator : dotAnimators) {
+            if (animator != null) animator.cancel();
+        }
+        dotAnimators = null;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     void onXoraWebAppReady() {
@@ -109,7 +141,7 @@ public class MainActivity extends BridgeActivity {
                     .withEndAction(() -> {
                         startupOverlay.setVisibility(View.GONE);
                         startupOverlay.setAlpha(1f);
-                        if (ringAnimator != null) ringAnimator.cancel();
+                        cancelDotAnimations();
                     })
                     .start();
             }
@@ -141,7 +173,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onDestroy() {
         mainHandler.removeCallbacksAndMessages(null);
-        if (ringAnimator != null) ringAnimator.cancel();
+        cancelDotAnimations();
         super.onDestroy();
     }
 }
