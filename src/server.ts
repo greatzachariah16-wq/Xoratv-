@@ -1070,7 +1070,7 @@ export default {
         const limit = Number(url.searchParams.get("limit") || "30");
         const result = await fetchNexusChannels({ query, country, category, limit });
         const fallbackBrands = category?.toLowerCase() === "sports"
-          ? ["ESPN", "SuperSport"]
+          ? ["ESPN", "SuperSport", "WWE"]
           : query && /espn/i.test(query)
             ? ["ESPN"]
             : query && /supersport/i.test(query)
@@ -1090,7 +1090,7 @@ export default {
           if (!merged.has(channel.id)) {
             merged.set(channel.id, {
               id: channel.id,
-              name: channel.name,
+              name: /wwe|wrestling/i.test(channel.name) ? "WWE Live TV" : channel.name,
               country: channel.country,
               categories: channel.categories.length ? channel.categories : ["sports"],
               logo: channel.logo,
