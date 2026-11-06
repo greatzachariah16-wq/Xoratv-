@@ -13,7 +13,6 @@ import {
   Minimize2,
   Pause,
   Play,
-  Smartphone,
   Volume2,
   VolumeX,
   X,
