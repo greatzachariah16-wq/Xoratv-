@@ -23,9 +23,13 @@ async function request<T = unknown>(body?: Record<string, unknown>): Promise<Api
   return result;
 }
 export async function customSignUp(email: string, password: string, username: string, firstName: string, lastName: string) {
-  const result = await request({action:"register", email, password, username, firstName, lastName});
+  const referralToken = window.sessionStorage.getItem("xora_data_reward_referral") || "";
+  const result = await request({action:"register", email, password, username, firstName, lastName, referralToken});
   if (!result.user || !result.recoveryCode) throw new Error("Recovery code was not returned.");
-  if (window.sessionStorage.getItem("xora_data_reward_referral")) window.sessionStorage.setItem("xora_referral_signup_completed","1");
+  if (referralToken) {
+    window.sessionStorage.setItem("xora_referral_signup_completed","1");
+    window.sessionStorage.removeItem("xora_data_reward_referral");
+  }
   window.dispatchEvent(new Event("xora-auth-changed"));
   return { user: result.user, recoveryCode: result.recoveryCode, message: result.message || "Account created." };
 }
