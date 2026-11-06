@@ -684,6 +684,21 @@ export function NativeVideoPlayer({
 
   const progress = total > 0 ? (current / total) * 100 : 0;
 
+  const reopenPlayer = () => {
+    setPlayerClosed(false);
+    if (nativeVlcOnly && nativeStreamUrl) {
+      void openNativeVlc({ url: nativeStreamUrl, title, bounds: getNativeVlcBounds(containerRef.current) })
+        .then(() => {
+          nativeVlcActiveRef.current = true;
+          setNativeVlcActive(true);
+        })
+        .catch((error) => {
+          console.warn("[Xora] Could not reopen native player:", error);
+          setFailed(true);
+        });
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -711,7 +726,7 @@ export function NativeVideoPlayer({
       ) : null}
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-[#100e0c] p-4 text-center text-white">
-          <div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
+          <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
         </div>
       ) : null}
       {src && !nativeVlcOnly ? (
@@ -1001,6 +1016,7 @@ export function VideoPlayer(props: Props) {
       authorId={props.authorId}
       genre={props.genre}
       feed={props.feed}
+      onClose={props.onClose}
     />
   ) : (
     <NativeVideoPlayer {...props} />
