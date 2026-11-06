@@ -95,7 +95,7 @@ export function XSeriesChannelShelf() {
             className={cn(
               "shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-colors sm:text-sm",
               filter === item
-                ? "border-[#d8b77f] bg-[#d8b77f] text-[#d8b77f]-foreground shadow-sm"
+                ? "border-[#d8b77f] bg-[#d8b77f] text-[#24190f] shadow-sm"
                 : "border-white/10 bg-transparent text-[#e7ddce] hover:border-[#d8b77f]/50 hover:text-foreground",
             )}
           >
