@@ -34,6 +34,12 @@ for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugi
 const manifestPath = path.join(appMain, "AndroidManifest.xml");
 let manifest = fs.readFileSync(manifestPath, "utf8");
 manifest = manifest
+  .replace(/android:icon="[^"]+"/, 'android:icon="@mipmap/xora_launcher"')
+  .replace(/android:roundIcon="[^"]+"/, 'android:roundIcon="@mipmap/xora_launcher"');
+if (!manifest.includes('android:roundIcon="@mipmap/xora_launcher"')) {
+  manifest = manifest.replace(/<application\\b/, '<application android:roundIcon="@mipmap/xora_launcher"');
+}
+manifest = manifest
   .replace('android:theme="@style/AppTheme.NoActionBarLaunch"', 'android:theme="@style/Theme.Xora.Launch"')
   .replace('android:theme="@style/AppTheme"', 'android:theme="@style/Theme.Xora"');
 if (!manifest.includes("android.permission.INTERNET")) {
