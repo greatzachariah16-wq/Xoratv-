@@ -392,7 +392,7 @@ function XChannel(){
     if(section==="referrals")return <section className="space-y-4">
       <PanelTitle eyebrow="Audience growth" title="Creator referral links" text="Invite people to create a XoraTV account. Your link opens account registration—not a data purchase. A referral earns ₦50 after the new member's first successful data-reward delivery."/>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Metric label="Link clicks" value={Number(dashboard?.referralTracking?.clicks||0).toLocaleString()}/>
+        <Metric label="Clicks (not registered)" value={Number(dashboard?.referralTracking?.clicks||0).toLocaleString()}/>
         <Metric label="Pending referrals" value={Number(dashboard?.referralTracking?.pending||0).toLocaleString()}/>
         <Metric label="Eligible referrals" value={Number(dashboard?.referralTracking?.eligible||0).toLocaleString()}/>
         <Metric label="Referral earnings" value={"₦"+Number(dashboard?.referralEarnings?.balance||0).toLocaleString("en-NG")}/>
