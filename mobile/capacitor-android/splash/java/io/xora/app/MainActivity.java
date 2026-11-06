@@ -55,6 +55,16 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(XoraStartupPlugin.class);
         registerPlugin(XoraVlcPlugin.class);
         super.onCreate(savedInstanceState);
+        applyXoraSystemBars();
+    }
+
+    /** Keep Android's system chrome visually continuous with the cream app surface. */
+    private void applyXoraSystemBars() {
+        getWindow().setStatusBarColor(getColor(R.color.xora_splash_cream));
+        getWindow().setNavigationBarColor(getColor(R.color.xora_splash_cream));
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        );
     }
 
     @Override
