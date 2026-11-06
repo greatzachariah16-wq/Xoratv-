@@ -7,6 +7,7 @@ import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ChannelGuide } from "@/components/xora/ChannelGuide";
 
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
@@ -116,6 +117,7 @@ function XSportsPage() {
               <div className="overflow-hidden rounded-2xl border border-border bg-ink shadow-card">
                 <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} nativeStreamUrl={`/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
               </div>
+              <ChannelGuide channelId={selected.id} />
             </section>
           )}
 

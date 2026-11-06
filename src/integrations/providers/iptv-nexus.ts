@@ -284,17 +284,11 @@ async function loadGuide(country?: string): Promise<string> {
   throw lastError instanceof Error ? lastError : new Error("Unable to load IPTV Nexus EPG");
 }
 export async function getNexusGuide(channelId: string, hours = 12): Promise<NexusProgramme[]> {
+  // Nexus-backed channels provide a country code for the smaller EPG shard.
+  // IPTV-org fallback channels may not be present in the Nexus stream index,
+  // but their tvg-id can still match an XMLTV programme in the global guide.
   const channel = await getNexusChannel(channelId);
-  if (!channel) return [];
-
-  // Country shards keep memory and bandwidth much lower than the global guide.
-  // Prefer the smaller country shard. Some Nexus channels are matched into
-  // the merged guide but not their country shard, so fall back to the global
-  // guide when the country shard contains no programmes for this channel.
-  // Prefer the smaller country shard. Some Nexus channels are matched into
-  // the merged guide but not their country shard, so fall back to the global
-  // guide when the country shard contains no programmes for this channel.
-  const xml = await loadGuide(channel.country);
+  const xml = await loadGuide(channel?.country);
   const now = Date.now();
   const end = now + Math.min(Math.max(hours, 1), 24) * 60 * 60 * 1000;
   const programmes: NexusProgramme[] = [];
