@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, Radio, Play, X, Loader2, Tv, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
-import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
@@ -73,8 +72,7 @@ function XSportsPage() {
 
   return (
     <AppShell wide>
-      <CpxLiveTvGate>
-        <div className="space-y-6">
+      <div className="space-y-6">
           <header className="space-y-4">
             <div className="flex items-center gap-3">
               <span className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary"><Radio className="size-5" /></span>
@@ -84,7 +82,7 @@ function XSportsPage() {
                 <p className="mt-0.5 text-sm text-muted-foreground">Your sports channels, all in one place.</p>
               </div>
             </div>
-            <a href="/xsports/wwe" className="group flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-card to-secondary/60 p-4 shadow-sm transition hover:border-primary/50" aria-label="Open WWE Live TV"><div className="flex min-w-0 items-center gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background/80 text-primary"><Tv className="size-5" /></span><span className="min-w-0"><span className="block truncate font-display text-base font-semibold">WWE Live TV</span><span className="block text-xs text-muted-foreground">Watch WWE live on XoraTV</span></span></div><ChevronRight className="size-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" /></a>
+            <button type="button" onClick={() => window.location.assign("/xsports/wwe")} className="group flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-card to-secondary/60 p-4 text-left shadow-sm transition hover:border-primary/50" aria-label="Open WWE Live TV"><span className="flex min-w-0 items-center gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background/80 text-primary"><Tv className="size-5" /></span><span className="min-w-0"><span className="block truncate font-display text-base font-semibold">WWE Live TV</span><span className="block text-xs text-muted-foreground">Watch WWE live on XoraTV</span></span></span><ChevronRight className="size-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" /></button>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search sports channels..." aria-label="Search sports channels" className="h-11 rounded-xl border-border bg-card pl-9 pr-10" />
@@ -157,8 +155,7 @@ function XSportsPage() {
               <div className="rounded-2xl border border-dashed border-border bg-card/60 px-5 py-10 text-center"><Radio className="mx-auto size-8 text-muted-foreground/60" /><p className="mt-3 text-sm font-semibold">No matching sports channels</p><p className="mt-1 text-xs text-muted-foreground">Try another sport or clear your search.</p><button type="button" onClick={() => { setFilter("All Sports"); setSearch(""); }} className="press mt-4 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold hover:bg-secondary">Show all sports channels</button></div>
             )}
           </section>
-        </div>
-      </CpxLiveTvGate>
+      </div>
     </AppShell>
   );
 }
