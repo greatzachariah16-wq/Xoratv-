@@ -1139,9 +1139,12 @@ export default {
           });
         }
 
-        const playback = channelId === "wwe-superstar-central"
-          ? { streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8", referrer: null, userAgent: "Mozilla/5.0" }
-          : provider === "nexus"
+        const fixedPlayback: Record<string, { streamUrl: string; referrer: string | null; userAgent: string }> = {
+          "wwe-superstar-central": { streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8", referrer: null, userAgent: "Mozilla/5.0" },
+          "tna-wrestling-pluto": { streamUrl: "https://jmp2.uk/plu-59b722526996084038c01e1b.m3u8", referrer: null, userAgent: "Mozilla/5.0" },
+          "wrestling-legends-tv": { streamUrl: "https://jmp2.uk/plu-68c820525ec82769fdfcd104.m3u8", referrer: null, userAgent: "Mozilla/5.0" },
+        };
+        const playback = fixedPlayback[channelId] || (provider === "nexus"
           ? await (async () => {
               const candidates = await getNexusPlaybackCandidates(channelId, 3);
               // Do not silently repeat candidate zero for attempts 1 and 2.
@@ -1154,7 +1157,7 @@ export default {
                 userAgent: channel.userAgent,
               } : null);
             })()
-          : await getIptvPlaybackInfo(channelId);
+          : await getIptvPlaybackInfo(channelId));
         if (!playback) {
           return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
             status: 404,
