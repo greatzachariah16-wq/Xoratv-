@@ -145,6 +145,11 @@ public class XoraVlcPlugin extends Plugin {
         playerOverlay.setClipToOutline(true);
 
         videoLayout = new VLCVideoLayout(getContext());
+        GradientDrawable videoMask = new GradientDrawable();
+        videoMask.setColor(Color.BLACK);
+        videoMask.setCornerRadius(dp(12));
+        videoLayout.setBackground(videoMask);
+        videoLayout.setClipToOutline(true);
         playerOverlay.addView(videoLayout, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
