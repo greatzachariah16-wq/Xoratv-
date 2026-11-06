@@ -291,6 +291,7 @@ function XTvSeriesPage() {
       <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
 
+
         <section className="relative isolate overflow-hidden rounded-[2rem] border border-[#8a6749]/25 bg-[linear-gradient(145deg,#2a211b_0%,#1d1714_58%,#120f0d_100%)] px-4 py-5 text-[#f7ead8] shadow-[0_22px_55px_rgba(39,25,16,0.16)] sm:px-6 sm:py-7">
           <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#d4aa6d]/10 blur-3xl" />
           <div className="relative flex flex-col gap-5">
