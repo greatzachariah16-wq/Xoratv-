@@ -207,6 +207,7 @@ function XTvSeriesPage() {
   const { user } = useAuth();
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
+  const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
 
   const { data: userSignals } = useQuery({
     queryKey: ["user-signals", user?.id],
@@ -291,7 +292,17 @@ function XTvSeriesPage() {
       <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
 
+        <nav aria-label="X-Series sections" className="flex w-full gap-2 rounded-2xl border border-[#d8b77f]/20 bg-[#1b1612] p-1.5 sm:max-w-md">
+          <button type="button" onClick={() => setActiveSection("library")} aria-pressed={activeSection === "library"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "library" ? "bg-[#d8b77f] text-[#24190f] shadow-md" : "text-[#cbb99e] hover:bg-white/[0.05]")}>
+            Movies &amp; Series
+          </button>
+          <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "cinema" ? "bg-[#d8b77f] text-[#24190f] shadow-md" : "text-[#cbb99e] hover:bg-white/[0.05]")}>
+            Cinema Live TV
+          </button>
+        </nav>
 
+        {activeSection === "library" ? (
+          <>
         <section className="relative isolate overflow-hidden rounded-[2rem] border border-[#8a6749]/25 bg-[linear-gradient(145deg,#2a211b_0%,#1d1714_58%,#120f0d_100%)] px-4 py-5 text-[#f7ead8] shadow-[0_22px_55px_rgba(39,25,16,0.16)] sm:px-6 sm:py-7">
           <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#d4aa6d]/10 blur-3xl" />
           <div className="relative flex flex-col gap-5">
@@ -458,7 +469,10 @@ function XTvSeriesPage() {
             </button>
           </section>
         ) : null}
-        <XSeriesChannelShelf />
+          </>
+        ) : (
+          <XSeriesChannelShelf />
+        )}
       </div>
     </AppShell>
   );
