@@ -82,7 +82,6 @@ function XSportsPage() {
                 <p className="mt-0.5 text-sm text-muted-foreground">Your sports channels, all in one place.</p>
               </div>
             </div>
-            <button type="button" onClick={() => window.location.assign("/wwe-live-tv")} className="group flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-card to-secondary/60 p-4 text-left shadow-sm transition hover:border-primary/50" aria-label="Open WWE Live TV"><span className="flex min-w-0 items-center gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background/80 text-primary"><Tv className="size-5" /></span><span className="min-w-0"><span className="block truncate font-display text-base font-semibold">WWE Live TV</span><span className="block text-xs text-muted-foreground">Watch WWE live on XoraTV</span></span></span><ChevronRight className="size-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" /></button>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search sports channels..." aria-label="Search sports channels" className="h-11 rounded-xl border-border bg-card pl-9 pr-10" />
