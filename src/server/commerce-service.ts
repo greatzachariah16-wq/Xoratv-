@@ -947,10 +947,29 @@ async function putRtdbRecordOnce(path: string, value: Record<string, unknown>) {
   throw new Error("Referral ledger changed repeatedly. Retry settlement.");
 }
 
+export async function attachCreatorReferralToUser(userId: string, referralToken: string | null | undefined) {
+  const token = String(referralToken || "").trim();
+  if (!userId || !/^[A-Za-z0-9_-]{10,40}$/.test(token)) return { attached: false, reason: "missing-or-invalid-token" as const };
+  const existing = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
+  if (existing?.creatorId) return { attached: false, existing: true, attribution: existing };
+  const creatorId = await resolveCreatorAttribution(token, "data-reward");
+  if (!creatorId || creatorId === userId) return { attached: false, reason: "invalid-or-self-referral" as const };
+  const creator = await getCreator(String(creatorId));
+  if (!creator || creator.status !== "active" || creator.userId === userId) return { attached: false, reason: "creator-inactive" as const };
+  const now = new Date().toISOString();
+  const attribution = {
+    referredUserId: userId, creatorId: String(creatorId), referralToken: token,
+    status: "pending", clickedAt: null, registeredAt: now, createdAt: now, updatedAt: now,
+  };
+  const result = await putRtdbRecordOnce(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, attribution);
+  return { attached: Boolean(result.record?.creatorId), existing: !result.created, attribution: result.record };
+}
+
 async function recordSuccessfulDataRewardQualification(claim: any, completedAt: string) {
   const userId = String(claim?.userId || "");
-  const creatorId = String(claim?.referralCreatorId || "");
   if (!userId) throw new Error("Successful data-reward claim is missing its user identity.");
+  const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
+  const creatorId = String(claim?.referralCreatorId || attribution?.creatorId || "");
   const successEvent = {
     reference: String(claim.reference),
     userId,
@@ -977,6 +996,13 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
     minimumWithdrawal: 500,
   };
   const result = await putRtdbRecordOnce(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`, referralEvent);
+  if (attribution?.creatorId === creatorId) {
+    await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "eligible", firstSuccessfulClaimReference: String(claim.reference), qualifiedAt: completedAt, updatedAt: completedAt }),
+    }).catch(() => undefined);
+  }
   return { referralQualified: true, duplicate: !result.created, event: result.record };
 }
 
@@ -1164,8 +1190,11 @@ export async function claimMeleDataReward(params: {
   const selected = plans.find((plan) => Number(plan.plan_id) === Number(params.planId) && plan.network === params.network);
   if (!selected) throw new Error("That data plan is no longer available. Refresh the plans and choose again.");
 
-  const existingReferral = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(params.userId)}`) as any;
-  const resolvedCreatorId = existingReferral?.creatorId || await resolveCreatorAttribution(params.referralCode, "data-reward");
+  const [existingReferral, savedAttribution] = await Promise.all([
+    queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(params.userId)}`),
+    queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(params.userId)}`),
+  ]) as any[];
+  const resolvedCreatorId = existingReferral?.creatorId || savedAttribution?.creatorId || await resolveCreatorAttribution(params.referralCode, "data-reward");
   const referralCreator = resolvedCreatorId ? await getCreator(String(resolvedCreatorId)) : null;
   const referralCreatorId = referralCreator?.status === "active" && referralCreator.userId !== params.userId ? String(resolvedCreatorId) : null;
   const matchedTier = dataRewardTierForPlan(selected);
@@ -1195,7 +1224,7 @@ export async function claimMeleDataReward(params: {
       throw new Error(`You need ${tier.points} Xora Points for this bundle. Your available balance is ${Math.max(0, availablePoints)} points.`);
     }
     const hasPreviousSuccessfulClaim = Boolean(account.dataRewardLastClaimAt || account.dataRewardLastClaim?.status === "success");
-    if (hasPreviousSuccessfulClaim && !existingReferral?.creatorId) claimRecord.referralCreatorId = null;
+    if (hasPreviousSuccessfulClaim && !existingReferral?.creatorId && !savedAttribution?.creatorId) claimRecord.referralCreatorId = null;
     return {
       ...account,
       points: availablePoints - tier.points,
@@ -1985,7 +2014,7 @@ export async function getAdminCreatorPayoutRequests() {
 }
 
 export async function getCreatorDashboard(userId: string) {
-  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw, postsRaw, referralClaimsRaw, rewardEventsRaw] = await Promise.all([
+  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw, postsRaw, referralClaimsRaw, rewardEventsRaw, referralAttributionsRaw] = await Promise.all([
     getCreator(userId),
     queryRtdb("commerce/courses"),
     queryRtdb("commerce/dataOrders"),
@@ -1996,6 +2025,7 @@ export async function getCreatorDashboard(userId: string) {
     queryRtdb("posts"),
     queryRtdb("commerce/creatorReferralClaims"),
     queryRtdb("commerce/dataRewardSuccessEvents"),
+    queryRtdb("commerce/creatorReferralAttributions"),
   ]);
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
   const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
@@ -2015,6 +2045,26 @@ export async function getCreatorDashboard(userId: string) {
   const referredSuccessEvents = Object.values((rewardEventsRaw || {}) as Record<string, any>).filter((event) => event?.creatorId === userId && referredUserIds.has(String(event.userId || "")) && event?.status === "success");
   const successfulClaimsByUser = new Map<string, number>();
   for (const event of referredSuccessEvents) successfulClaimsByUser.set(String(event.userId), (successfulClaimsByUser.get(String(event.userId)) || 0) + 1);
+  const referralAttributions = Object.values((referralAttributionsRaw || {}) as Record<string, any>)
+    .filter((event) => event?.creatorId === userId && event?.referredUserId);
+  const eligibleUserIds = new Set(referralClaims.map((event) => String(event.referredUserId || "")));
+  const pendingAttributions = referralAttributions
+    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)))
+    .map((event) => ({ referredUserId: event.referredUserId, status: "pending", registeredAt: event.registeredAt || event.createdAt }));
+  const eligibleAttributions = referralClaims.map((event) => ({
+    referredUserId: event.referredUserId, status: "eligible", registeredAt: referralAttributions.find((item) => item.referredUserId === event.referredUserId)?.registeredAt || null,
+    qualifiedAt: event.earnedAt, amount: Number(event.amount || 50),
+    successfulClaims: successfulClaimsByUser.get(String(event.referredUserId)) || 0,
+    active: (successfulClaimsByUser.get(String(event.referredUserId)) || 0) >= 3,
+  }));
+  const dataRewardLinks = (await getCreatorPromotionLinks(userId)).filter((link) => link.service === "data-reward");
+  const referralTracking = {
+    clicks: dataRewardLinks.reduce((sum, link) => sum + Number(link.clicks || 0), 0),
+    pending: pendingAttributions.length,
+    eligible: eligibleAttributions.length,
+    pendingMembers: pendingAttributions.sort((a, b) => String(b.registeredAt || "").localeCompare(String(a.registeredAt || ""))).slice(0, 50),
+    eligibleMembers: eligibleAttributions.sort((a, b) => String(b.qualifiedAt || "").localeCompare(String(a.qualifiedAt || ""))).slice(0, 50),
+  };
   const referralEarnings = {
     balance: referralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0),
     successfulReferrals: referralClaims.length,
@@ -2037,6 +2087,7 @@ export async function getCreatorDashboard(userId: string) {
     specialPrizeEarnings: await getCreatorSpecialPrizeEarnings(userId),
     specialPrizeAnalytics: await getCreatorSpecialPrizeAnalytics(userId),
     referralEarnings,
+    referralTracking,
   };
 }
 
