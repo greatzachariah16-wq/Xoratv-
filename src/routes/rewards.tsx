@@ -1,9 +1,9 @@
-import { Navigate, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/rewards")({
-  component: RewardsRoute,
+  component: RetiredRewardsRoute,
 });
 
-function RewardsRoute() {
-  return <Navigate to="/offers" replace />;
+function RetiredRewardsRoute() {
+  return <Navigate to="/" replace />;
 }
