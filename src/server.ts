@@ -1051,7 +1051,8 @@ export default {
         const merged = new Map<string, (typeof result.channels)[number] & { provider?: "iptv-org" }>();
         for (const channel of result.channels) merged.set(channel.id, channel);
         for (const channel of directoryChannels) {
-          if (!fallbackBrands.some((brand) => channel.name.toLowerCase().includes(brand.toLowerCase()))) continue;
+          if (fallbackBrands.length > 0 && !fallbackBrands.some((brand) => channel.name.toLowerCase().includes(brand.toLowerCase()))) continue;
+          if (fallbackBrands.length === 0 && !isMovieCatalogue) continue;
           if (country && channel.country !== country) continue;
           if (category && !channel.categories.some((item) => item.toLowerCase() === category.toLowerCase())) continue;
           if (!merged.has(channel.id)) {
