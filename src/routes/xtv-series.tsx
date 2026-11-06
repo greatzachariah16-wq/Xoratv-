@@ -289,17 +289,20 @@ function XTvSeriesPage() {
 
   return (
     <AppShell wide extraWide>
-      <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
-        <FeedTabs active="xtv-series" />
-
-        <nav aria-label="X-Series sections" className="flex w-full gap-2 rounded-2xl border border-[oklch(0.78_0.11_80)]/20 bg-[#1b1612] p-1.5 sm:max-w-md">
+      <div className={cn("pb-10 max-w-full overflow-x-hidden", activeSection === "library" ? "space-y-7" : "space-y-0")}>
+        {activeSection === "library" ? (
+          <>
+            <FeedTabs active="xtv-series" />
+            <nav aria-label="X-Series sections" className="flex w-full gap-2 rounded-2xl border border-[oklch(0.78_0.11_80)]/20 bg-[#1b1612] p-1.5 sm:max-w-md">
           <button type="button" onClick={() => setActiveSection("library")} aria-pressed={activeSection === "library"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "library" ? "bg-[oklch(0.78_0.11_80)] text-[#24190f] shadow-md" : "text-[oklch(0.68_0.03_75)] hover:bg-white/[0.05]")}>
             Movies &amp; Series
           </button>
           <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "cinema" ? "bg-[oklch(0.78_0.11_80)] text-[#24190f] shadow-md" : "text-[oklch(0.68_0.03_75)] hover:bg-white/[0.05]")}>
             Cinema Live TV
           </button>
-        </nav>
+            </nav>
+          </>
+        ) : null}
 
         {activeSection === "library" ? (
           <>
@@ -471,7 +474,7 @@ function XTvSeriesPage() {
         ) : null}
           </>
         ) : (
-          <XSeriesChannelShelf />
+          <XSeriesChannelShelf onBackToLibrary={() => setActiveSection("library")} />
         )}
       </div>
     </AppShell>

@@ -39,7 +39,7 @@ function channelType(channel: XSeriesLiveChannel) {
   return (channel.categories || []).includes("series") ? "SERIES" : "MOVIES";
 }
 
-export function XSeriesChannelShelf() {
+export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () => void }) {
   const [filter, setFilter] = useState<ShelfFilter>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const query = useQuery({
@@ -80,9 +80,16 @@ export function XSeriesChannelShelf() {
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[oklch(0.68_0.03_75)]">
-          Live TV
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[oklch(0.68_0.03_75)]">
+            Live TV
+          </span>
+          {onBackToLibrary ? (
+            <button type="button" onClick={onBackToLibrary} className="rounded-full border border-[oklch(0.78_0.11_80)]/35 bg-[oklch(0.78_0.11_80)]/10 px-3 py-2 text-[10px] font-semibold text-[oklch(0.88_0.12_82)] transition hover:bg-[oklch(0.78_0.11_80)]/20">
+              Movies &amp; Series
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <nav className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0" aria-label="Filter channels">
