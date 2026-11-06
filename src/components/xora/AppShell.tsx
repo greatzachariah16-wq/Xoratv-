@@ -96,11 +96,13 @@ export function AppShell({
   rail,
   wide = false,
   extraWide = false,
+  immersive = false,
 }: {
   children: ReactNode;
   rail?: ReactNode;
   wide?: boolean;
   extraWide?: boolean;
+  immersive?: boolean;
 }) {
   usePresenceTracker();
   const { user, profile, isAdmin } = useAuth();
@@ -135,6 +137,7 @@ export function AppShell({
         Skip to content
       </a>
 
+      {!immersive ? (
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col overflow-y-auto border-r border-border bg-sidebar px-4 py-6 lg:flex">
         <Link to="/" className="press flex items-center px-2">
           <Logo />
@@ -254,7 +257,9 @@ export function AppShell({
           </div>
         </div>
       </aside>
+      ) : null}
 
+      {!immersive ? (
       <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur-md sm:px-4 lg:hidden">
         <Link to="/" className="press">
           <Logo />
@@ -274,8 +279,9 @@ export function AppShell({
 
         </div>
       </header>
+      ) : null}
 
-      {mobileMenuOpen ? (
+      {!immersive && mobileMenuOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute inset-x-3 top-[4.25rem] bottom-[calc(5rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-2 rounded-[1.1rem] bg-gradient-to-r from-primary/10 via-primary/5 to-secondary p-3">
@@ -347,11 +353,11 @@ export function AppShell({
         </div>
       ) : null}
 
-      <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
+      <main id="main" className={immersive ? "min-h-screen w-full" : "lg:pl-[248px] xl:pr-[320px]"}>
         <div
           className={cn(
-            "mx-auto px-4 pb-24 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
-            extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]",
+            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : "mx-auto px-4 pb-24 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
           <div className="mb-5 flex min-h-[50px] items-center justify-center">
@@ -366,6 +372,7 @@ export function AppShell({
         </div>
       </main>
 
+      {!immersive ? (
       <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-border/90 bg-background/95 px-1 pt-1 shadow-[0_-8px_24px_rgba(50,34,24,0.08)] backdrop-blur-xl lg:hidden">
         {[
           { to: "/", label: "Home", icon: House },
@@ -408,8 +415,9 @@ export function AppShell({
           <span>More</span>
         </button>
       </nav>
+      ) : null}
 
-      {rail ? (
+      {!immersive && rail ? (
         <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-8 xl:block">
           {rail}
         </aside>
