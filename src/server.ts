@@ -1254,14 +1254,14 @@ export default {
 
         if (isHls) {
           const body = await upstream.text();
-          const playlistLines = body.split(/\\r?\\n/);
+          const playlistLines = body.split(/\r?\n/);
           const codecProfiles = [...body.matchAll(/CODECS="([^"]+)"/g)]
             .map((match) => match[1])
             .slice(0, 4);
-          const resolutions = [...body.matchAll(/RESOLUTION=(\\d+x\\d+)/g)]
+          const resolutions = [...body.matchAll(/RESOLUTION=(\d+x\d+)/g)]
             .map((match) => match[1])
             .slice(0, 4);
-          const keyMethods = (body.match(/#EXT-X-KEY:[^\\r\\n]*/g) || [])
+          const keyMethods = (body.match(/#EXT-X-KEY:[^\r\n]*/g) || [])
             .map((line) => line.match(/METHOD=([^,]+)/)?.[1] || "unknown")
             .slice(0, 4);
           logPlutoWrestlingDiagnostic(channelId, {
