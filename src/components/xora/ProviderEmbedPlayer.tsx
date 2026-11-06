@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2, Pause, Play, RotateCw, Smartphone } from "lucide-react";
+import { Maximize2, Minimize2, Pause, Play, RotateCw, Smartphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
 import { getActiveDataSaverConfig } from "@/lib/data-saver";
@@ -18,6 +18,7 @@ export interface ProviderEmbedPlayerProps {
   authorId?: string | null;
   genre?: string | null;
   feed?: FeedType;
+  onClose?: () => void;
 }
 
 export function ProviderEmbedPlayer({
@@ -30,6 +31,7 @@ export function ProviderEmbedPlayer({
   authorId,
   genre,
   feed,
+  onClose,
 }: ProviderEmbedPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -37,6 +39,7 @@ export function ProviderEmbedPlayer({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isClient, setIsClient] = useState<boolean>(false);
   const [controlsVisible, setControlsVisible] = useState<boolean>(true);
+  const [playerClosed, setPlayerClosed] = useState(false);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
@@ -48,6 +51,10 @@ export function ProviderEmbedPlayer({
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    setPlayerClosed(false);
+  }, [embedUrl]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -345,7 +352,12 @@ export function ProviderEmbedPlayer({
         </div>
       </div>
 
-      {isClient ? (
+      {!playerClosed ? (
+        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black"><X className="size-4" aria-hidden="true" /></button>
+      ) : null}
+      {playerClosed ? (
+        <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
+      ) : isClient ? (
         <iframe
           ref={iframeRef}
           src={embedSrc}
