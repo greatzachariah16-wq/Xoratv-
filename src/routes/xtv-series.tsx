@@ -3,14 +3,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  CalendarDays,
   Film,
-  Layers3,
   Play,
-  PlusCircle,
   Search,
-  Shuffle,
-  Sparkles,
   X,
 } from "lucide-react";
 import { AppShell, FeedTabs } from "@/components/xora/AppShell";
@@ -22,8 +17,8 @@ import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
-import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
 import { XSeriesChannelShelf } from "@/components/xora/XSeriesChannelShelf";
+import { XSeriesMark } from "@/components/xora/XSeriesMark";
 
 export const Route = createFileRoute("/xtv-series")({
   head: () => ({
@@ -155,7 +150,7 @@ function XTvCard({
     <div className="flex flex-col">
       <article
         id={`card-${item.id}`}
-        className="group relative overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md sm:rounded-2xl"
+        className="group relative overflow-hidden rounded-[1.35rem] border border-[#9b7959]/20 bg-[#201a16] shadow-[0_12px_28px_rgba(39,25,16,0.12)] transition duration-200 hover:-translate-y-1 hover:border-[#c79d65]/50 hover:shadow-[0_18px_38px_rgba(39,25,16,0.2)]"
       >
         <Link
           id={`btn-play-card-${item.id}`}
@@ -167,7 +162,7 @@ function XTvCard({
         >
           <div
             className={cn(
-              "relative aspect-video overflow-hidden bg-gradient-to-br",
+              "relative aspect-[3/4] overflow-hidden bg-gradient-to-br",
               toneClass(item.tone),
             )}
           >
@@ -177,10 +172,11 @@ function XTvCard({
                 alt={item.title}
                 loading="lazy"
                 referrerPolicy="no-referrer"
-                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
               />
             ) : null}
-            <div className="absolute inset-0 grid place-items-center bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
+            <div className="absolute inset-0 grid place-items-center bg-black/20 opacity-0 transition duration-200 group-hover:opacity-100">
               <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition group-hover:scale-110 sm:size-10">
                 <Play className="ml-0.5 size-3.5 fill-current sm:size-4" />
               </span>
@@ -192,12 +188,12 @@ function XTvCard({
             ) : null}
           </div>
         </Link>
-        <div className="p-2 sm:p-3">
-          <h3 className="line-clamp-1 font-display text-xs font-semibold tracking-tight transition group-hover:text-primary sm:text-sm">
+        <div className="border-t border-white/[0.06] bg-[linear-gradient(145deg,#2b211a,#1b1613)] p-3 sm:p-3.5">
+          <h3 className="line-clamp-1 font-display text-sm font-semibold tracking-tight text-[#f8ecdc] transition group-hover:text-[#e3c18e]">
             {item.title}
           </h3>
           {item.description ? (
-            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground sm:text-xs">
+            <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-[#bcae9c] sm:text-[11px]">
               {item.description}
             </p>
           ) : null}
@@ -295,99 +291,92 @@ function XTvSeriesPage() {
     <AppShell wide>
       <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
-        <LiveTvShelf />
-        <XSeriesChannelShelf />
 
-        <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface px-5 py-7 shadow-sm md:px-8 md:py-9">
-          <div className="pointer-events-none absolute right-0 top-0 size-72 -translate-y-1/3 translate-x-1/3 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                <Sparkles className="size-3" /> X Series Cinema
+        <section className="relative isolate overflow-hidden rounded-[2rem] border border-[#8a6749]/25 bg-[linear-gradient(145deg,#2a211b_0%,#1d1714_58%,#120f0d_100%)] px-4 py-5 text-[#f7ead8] shadow-[0_22px_55px_rgba(39,25,16,0.16)] sm:px-6 sm:py-7">
+          <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full bg-[#d4aa6d]/10 blur-3xl" />
+          <div className="relative flex flex-col gap-5">
+            <div className="flex items-center gap-3">
+              <XSeriesMark size="lg" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#d6b47c]">XORA</p>
+                <h1 className="font-display text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">X Series</h1>
+                <p className="mt-0.5 text-xs text-[#cbb99e] sm:text-sm">Movies, series and live channels.</p>
               </div>
-              <h1 className="font-display text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Stories worth <span className="text-primary">staying for.</span>
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
-                Curated cinema and exclusive productions published directly by Xora. Full-page
-                sovereign streaming in high definition.
-              </p>
             </div>
-            <div className="flex w-full max-w-sm items-center gap-2 rounded-2xl border border-border/70 bg-background/70 px-3 py-2.5 shadow-inner">
-              <Search className="size-4 text-muted-foreground" />
+
+            <div className="flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-black/25 px-3.5 py-3 shadow-inner sm:max-w-md">
+              <Search className="size-4 shrink-0 text-[#d1b78d]" />
               <input
                 id="xseries-search-input"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search titles, genres, stories..."
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                placeholder="Search movies and series"
+                className="min-w-0 flex-1 bg-transparent text-sm text-[#fff7eb] outline-none placeholder:text-[#a9967f]"
                 aria-label="Search X Series"
               />
               {search ? (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+                  className="rounded-full p-1 text-[#cbb99e] hover:text-white"
                   aria-label="Clear search"
                 >
                   <X className="size-3.5" />
                 </button>
               ) : null}
             </div>
-          </div>
 
-          <div
-            className="mt-7 flex gap-2 overflow-x-auto pb-1 max-w-full touch-pan-x no-scrollbar"
-            style={{ touchAction: "pan-x" }}
-            role="tablist"
-            aria-label="Filter by category"
-          >
-            {availableCategories.map((cat) => {
-              const isActive = genre === cat;
-              const count =
-                cat === "All"
-                  ? allItems.length
-                  : allItems.filter((m) => {
-                      const g = cat.toLowerCase();
-                      return (
-                        m.genre?.toLowerCase() === g ||
-                        m.tag?.toLowerCase() === g ||
-                        (Array.isArray(m.categories) &&
-                          m.categories.some(
-                            (c) => c.toLowerCase() === g || c.toLowerCase().includes(g),
-                          ))
-                      );
-                    }).length;
+            <div
+              className="flex max-w-full gap-2 overflow-x-auto pb-1 no-scrollbar touch-pan-x"
+              style={{ touchAction: "pan-x" }}
+              role="tablist"
+              aria-label="Filter by category"
+            >
+              {availableCategories.map((cat) => {
+                const isActive = genre === cat;
+                const count =
+                  cat === "All"
+                    ? allItems.length
+                    : allItems.filter((item) => {
+                        const g = cat.toLowerCase();
+                        return (
+                          item.genre?.toLowerCase() === g ||
+                          item.tag?.toLowerCase() === g ||
+                          (Array.isArray(item.categories) &&
+                            item.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g)))
+                        );
+                      }).length;
 
-              return (
-                <button
-                  key={cat}
-                  id={`cat-btn-${cat.toLowerCase().replace(/\s+/g, "-")}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setGenre(cat)}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold transition",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-background/60 text-muted-foreground hover:border-primary/30 hover:text-foreground",
-                  )}
-                >
-                  <span>{cat}</span>
-                  {allItems.length > 0 && count > 0 ? (
-                    <span
-                      className={cn(
-                        "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
-                        isActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={cat}
+                    id={`cat-btn-${cat.toLowerCase().replace(/\s+/g, "-")}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setGenre(cat)}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-semibold transition",
+                      isActive
+                        ? "border-[#e4c58f] bg-[#d8b77f] text-[#24190f] shadow-[0_3px_12px_rgba(216,183,127,0.18)]"
+                        : "border-white/10 bg-white/[0.035] text-[#d8c8b3] hover:border-[#d8b77f]/45 hover:bg-white/[0.07]",
+                    )}
+                  >
+                    <span>{cat}</span>
+                    {allItems.length > 0 && count > 0 ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none",
+                          isActive ? "bg-black/10 text-[#24190f]" : "bg-white/10 text-[#cbb99e]",
+                        )}
+                      >
+                        {count}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
 
@@ -395,36 +384,23 @@ function XTvSeriesPage() {
 
         {featured ? (
           <section id="featured-movie-section">
-            <div className="mb-3 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                  Featured Title
-                </p>
-                <h2 className="font-display text-xl font-semibold tracking-tight">
-                  Now Playing on X Series
-                </h2>
-              </div>
-              <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
-                <CalendarDays className="size-3.5" />
-                {isFetching ? "Refreshing..." : "Curated sovereign stream"}
-              </span>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-display text-xl font-semibold tracking-tight">Featured</h2>
+              {isFetching ? <span className="text-[10px] text-muted-foreground">Updating</span> : null}
             </div>
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               <XTvCard item={featured} userId={user?.id} />
-              <div className="flex flex-col justify-between rounded-xl border border-border/60 bg-surface p-4 shadow-xs sm:rounded-2xl sm:p-5">
+              <div className="flex flex-col justify-between rounded-[1.35rem] border border-[#b99160]/25 bg-[linear-gradient(150deg,#2a211b,#181310)] p-4 text-[#f7ead8] shadow-[0_16px_38px_rgba(39,25,16,0.14)] sm:p-5">
                 <div>
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10">
-                    <Sparkles className="size-4 sm:size-5" />
+                  <div className="flex items-center gap-3">
+                    <XSeriesMark size="sm" />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d6b47c]">X Series</p>
                   </div>
-                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                    Full-Page Cinema
-                  </p>
                   <h3 className="mt-1 font-display text-lg font-semibold tracking-tight sm:text-xl">
                     {featured.title}
                   </h3>
                   <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                    {featured.description ||
-                      "Click to launch full-page cinema playback in high definition."}
+                    {featured.description || ""}
                   </p>
                 </div>
                 <div className="mt-4 flex items-center gap-3">
@@ -441,11 +417,11 @@ function XTvSeriesPage() {
                         userId: user?.id,
                       })
                     }
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#e1c18a]/30 bg-[#d8b77f] px-4 py-2 text-xs font-bold text-[#24190f] shadow-sm transition hover:bg-[#e6c993]"
                   >
-                    Watch full movie <ArrowRight className="size-3.5" />
+                    Watch now <ArrowRight className="size-3.5" />
                   </Link>
-                  <span className="text-xs text-muted-foreground">{featured.genre}</span>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-[#bca787]">{featured.genre}</span>
                 </div>
               </div>
             </div>
@@ -455,8 +431,7 @@ function XTvSeriesPage() {
         {shelves.length > 0 ? (
           <section aria-label="More movies and series">
             <div className="mb-3 flex items-center gap-2">
-              <Layers3 className="size-4 text-primary" />
-              <h2 className="font-display text-lg font-semibold">Explore more</h2>
+              <h2 className="font-display text-lg font-semibold">More to watch</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {shelves.map((item) => (
@@ -469,10 +444,7 @@ function XTvSeriesPage() {
         ) : !featured ? (
           <section className="rounded-2xl border border-dashed border-border p-8 text-center">
             <Film className="mx-auto size-8 text-muted-foreground" />
-            <h3 className="mt-3 font-display text-lg font-semibold">No titles in "{genre}"</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              There are no published titles matching this category.
-            </p>
+            <h3 className="mt-3 font-display text-lg font-semibold">Nothing here yet.</h3>
             <button
               id="btn-reset-category-filter"
               type="button"
@@ -482,10 +454,11 @@ function XTvSeriesPage() {
               }}
               className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:border-primary/40"
             >
-              Show all available movies ({allItems.length})
+              Show all titles
             </button>
           </section>
         ) : null}
+        <XSeriesChannelShelf />
       </div>
     </AppShell>
   );
