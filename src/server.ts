@@ -1038,8 +1038,10 @@ export default {
           ? await fetchIptvChannels({ query: "ESPN", limit: 100 })
           : { ok: true, total: 0, channels: [] as Awaited<ReturnType<typeof fetchIptvChannels>>["channels"] };
 
-        const merged = new Map(result.channels.map((channel) => [channel.id, channel]));
+        const merged = new Map<string, (typeof result.channels)[number] & { provider?: "iptv-org" }>();
+        for (const channel of result.channels) merged.set(channel.id, channel);
         for (const channel of espnFallback.channels) {
+          if (query && !channel.name.toLowerCase().includes(query.toLowerCase()) && !channel.id.toLowerCase().includes(query.toLowerCase())) continue;
           if (country && channel.country !== country) continue;
           if (category && !channel.categories.some((item) => item.toLowerCase() === category.toLowerCase())) continue;
           if (!merged.has(channel.id)) {
