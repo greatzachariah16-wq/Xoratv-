@@ -4,7 +4,7 @@ import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, createCreatorPost, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, refreshMeleDataRewardClaim, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
-  saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink,
+  saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink, createCreatorPayoutRequest, getCreatorPayoutRequests, getAdminCreatorPayoutRequests,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
@@ -441,9 +441,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
 
   if (path === "/api/commerce/creator/dashboard" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, dashboard: await getCreatorDashboard(userId) });
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view your creator dashboard." }, 401);
+    const requestedUserId = url.searchParams.get("userId");
+    if (requestedUserId && requestedUserId !== authenticatedUserId) return json({ ok: false, error: "You can only view your own creator dashboard." }, 403);
+    return json({ ok: true, dashboard: await getCreatorDashboard(authenticatedUserId) });
   }
 
   if (path === "/api/commerce/creator/customization" && request.method === "POST") {
@@ -588,19 +590,48 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
 
   if (path === "/api/commerce/creator/payout" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, payout: await getPayoutDetails(userId) });
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view payout details." }, 401);
+    return json({ ok: true, payout: await getPayoutDetails(authenticatedUserId) });
   }
 
   if (path === "/api/commerce/creator/payout" && request.method === "POST") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in before saving payout details." }, 401);
     try {
       const body = await request.json();
-      if (!body.userId || !body.accountName || !body.accountNumber || !body.bankName) return json({ ok: false, error: "Complete bank details are required." }, 400);
-      return json({ ok: true, payout: await savePayoutDetails(body.userId, body) });
+      const accountName = String(body.accountName || "").trim();
+      const accountNumber = String(body.accountNumber || "").replace(/\D/g, "");
+      const bankName = String(body.bankName || "").trim();
+      if (!accountName || accountNumber.length !== 10 || !bankName) return json({ ok: false, error: "Enter the recipient account name, a valid 10-digit account number and select a bank." }, 400);
+      return json({ ok: true, payout: await savePayoutDetails(authenticatedUserId, { accountName, accountNumber, bankName }) });
     } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Payout details could not be saved." }, 500);
+      return json({ ok: false, error: e instanceof Error ? e.message : "Payout details could not be saved." }, 400);
     }
+  }
+
+  if (path === "/api/commerce/creator/payout-request" && request.method === "GET") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view payout requests." }, 401);
+    return json({ ok: true, requests: await getCreatorPayoutRequests(authenticatedUserId) });
+  }
+
+  if (path === "/api/commerce/creator/payout-request" && request.method === "POST") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in before requesting a payout." }, 401);
+    try {
+      const body = await request.json();
+      if (body.payoutType !== "referral" && body.payoutType !== "special-prize") return json({ ok: false, error: "Choose Referral payout or Special Prize earnings." }, 400);
+      return json({ ok: true, request: await createCreatorPayoutRequest(authenticatedUserId, body.payoutType) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Payout request could not be submitted." }, 400);
+    }
+  }
+
+  if (path === "/api/admin/commerce/creator-payout-requests" && request.method === "GET") {
+    const session = verifyAdminSession(request);
+    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
+    return json({ ok: true, requests: await getAdminCreatorPayoutRequests() });
   }
 
   if (path === "/api/admin/commerce/cpa-overview" && request.method === "GET") {
@@ -757,7 +788,8 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   if (path === "/api/admin/commerce/overview" && request.method === "GET") {
     const session = verifyAdminSession(request);
     if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    return json({ ok: true, overview: await getAdminCommerceOverview() });
+    const [overview, payoutRequests] = await Promise.all([getAdminCommerceOverview(), getAdminCreatorPayoutRequests()]);
+    return json({ ok: true, overview: { ...overview, creatorPayoutRequests: payoutRequests } });
   }
 
   if (path === "/api/admin/commerce/mele-health" && request.method === "GET") {

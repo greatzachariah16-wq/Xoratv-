@@ -1908,12 +1908,13 @@ export async function getUserPurchasedCourseIds(userId: string): Promise<string[
 export async function savePayoutDetails(userId: string, details: {
   accountName: string; accountNumber: string; bankName: string;
 }) {
-  const safe = {
-    accountName: details.accountName.trim(),
-    accountNumber: details.accountNumber.replace(/\D/g, "").slice(0, 20),
-    bankName: details.bankName.trim(),
-    updatedAt: new Date().toISOString(),
-  };
+  const accountName = String(details.accountName || "").trim();
+  const accountNumber = String(details.accountNumber || "").replace(/\D/g, "");
+  const bankName = String(details.bankName || "").trim();
+  if (!accountName || accountNumber.length !== 10 || !bankName) {
+    throw new Error("Complete bank details are required: recipient name, 10-digit account number and bank.");
+  }
+  const safe = { userId, accountName, accountNumber, bankName, updatedAt: new Date().toISOString() };
   await queryRtdb(`commerce/payoutDetails/${userId}`, {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(safe),
   });
@@ -1922,6 +1923,65 @@ export async function savePayoutDetails(userId: string, details: {
 
 export async function getPayoutDetails(userId: string) {
   return await queryRtdb(`commerce/payoutDetails/${userId}`);
+}
+
+export async function getCreatorPayoutRequests(userId: string) {
+  const raw = await queryRtdb("commerce/creatorPayoutRequests") as Record<string, any> | null;
+  return Object.values(raw || {}).filter((item: any) => item?.creatorId === userId)
+    .sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+export async function createCreatorPayoutRequest(userId: string, payoutType: "referral" | "special-prize") {
+  const creator = await getCreator(userId);
+  if (!creator || creator.status !== "active") throw new Error("Only active X Channel creators can request a payout.");
+  const bank = await getPayoutDetails(userId) as any;
+  if (!bank?.bankName || !/^\d{10}$/.test(String(bank.accountNumber || "")) || !String(bank.accountName || "").trim()) {
+    throw new Error("Save complete bank details before requesting a payout.");
+  }
+
+  const [requestsRaw, referralRaw, rewardEventsRaw, conversionsRaw] = await Promise.all([
+    queryRtdb("commerce/creatorPayoutRequests"),
+    queryRtdb("commerce/creatorReferralClaims"),
+    queryRtdb("commerce/dataRewardSuccessEvents"),
+    queryRtdb("commerce/specialPrizeConversions"),
+  ]);
+  const requests = Object.values((requestsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.payoutType === payoutType);
+  if (requests.some((x: any) => ["pending", "approved", "processing"].includes(String(x.status)))) {
+    throw new Error("You already have an open request for this payout type.");
+  }
+  const paidTotal = requests.filter((x: any) => x.status === "paid").reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0);
+
+  let amount = 0;
+  let currency: "NGN" | "USD";
+  let minimum: number;
+  if (payoutType === "referral") {
+    currency = "NGN"; minimum = 500;
+    const claims = Object.values((referralRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "confirmed");
+    amount = claims.reduce((sum: number, x: any) => sum + Number(x.amount || 50), 0) - paidTotal;
+  } else {
+    currency = "USD"; minimum = 5;
+    const conversions = Object.values((conversionsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "approved" && String(x?.currency || "USD") === "USD");
+    amount = conversions.reduce((sum: number, x: any) => sum + Number(x.creatorCommission || 0), 0) - paidTotal;
+  }
+  amount = Math.round(Math.max(0, amount) * 10000) / 10000;
+  if (amount < minimum) throw new Error(`Minimum payout is ${currency === "NGN" ? "₦" : "$"}${minimum.toLocaleString()}.`);
+
+  const requestId = id("creator_payout");
+  const record = {
+    id: requestId, creatorId: userId, creatorName: creator.displayName || creator.username,
+    creatorUsername: creator.username, payoutType, amount, currency, minimum,
+    bankDetails: { bankName: bank.bankName, accountNumber: String(bank.accountNumber), accountName: String(bank.accountName) },
+    status: "pending", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  };
+  await queryRtdb(`commerce/creatorPayoutRequests/${requestId}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+  });
+  return record;
+}
+
+export async function getAdminCreatorPayoutRequests() {
+  const raw = await queryRtdb("commerce/creatorPayoutRequests") as Record<string, any> | null;
+  return Object.values(raw || {}).sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
 export async function getCreatorDashboard(userId: string) {
@@ -1971,6 +2031,7 @@ export async function getCreatorDashboard(userId: string) {
     dataOrders,
     courseOrders,
     payout,
+    payoutRequests: await getCreatorPayoutRequests(userId),
     cpa: cpaStatsRaw || { approvedConversions: 0, pendingCommission: 0, payableCommission: 0, paidCommission: 0, minConversions: 200, payoutEligible: false },
     links: (await getCreatorPromotionLinks(userId)).map((link) => ({ ...link, path: "/s/" + link.token })),
     specialPrizeEarnings: await getCreatorSpecialPrizeEarnings(userId),
