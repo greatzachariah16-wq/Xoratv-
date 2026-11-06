@@ -964,7 +964,7 @@ export async function attachCreatorReferralToUser(userId: string, referralToken:
   }
   const creator = await getCreator(String(creatorId));
   const creatorWasActiveAtClick = click?.creatorStatusAtClick === "active";
-  if ((!creator || creator.status !== "active") && !creatorWasActiveAtClick) return { attached: false, reason: "creator-inactive" as const };
+  if (click ? !creatorWasActiveAtClick : (!creator || creator.status !== "active")) return { attached: false, reason: "creator-inactive" as const };
   const creatorUserId = String(click?.creatorUserId || creator?.userId || creatorId);
   if (creatorUserId === userId) return { attached: false, reason: "invalid-or-self-referral" as const };
   const matchedClickId = click?.creatorId === String(creatorId) && click?.referralToken === token && click?.status === "click" ? String(click.id || clickId || "") || null : null;
