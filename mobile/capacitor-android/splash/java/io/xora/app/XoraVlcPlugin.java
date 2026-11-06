@@ -8,9 +8,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.WebView;
-import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.getcapacitor.JSObject;
@@ -33,9 +31,7 @@ public class XoraVlcPlugin extends Plugin {
 
     private FrameLayout playerOverlay;
     private VLCVideoLayout videoLayout;
-    private LinearLayout controlsBar;
     private TextView statusText;
-    private Button playPauseButton;
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
 
@@ -154,36 +150,22 @@ public class XoraVlcPlugin extends Plugin {
             FrameLayout.LayoutParams.MATCH_PARENT
         ));
 
-        controlsBar = new LinearLayout(getContext());
-        controlsBar.setGravity(Gravity.CENTER_VERTICAL);
-        controlsBar.setOrientation(LinearLayout.HORIZONTAL);
-        controlsBar.setPadding(dp(10), dp(4), dp(10), dp(4));
-        controlsBar.setBackgroundColor(0x99000000);
-
+        // Keep status feedback inside the video frame without persistent controls.
         statusText = new TextView(getContext());
         statusText.setText("Loading…");
         statusText.setTextColor(Color.WHITE);
         statusText.setTextSize(12);
-        controlsBar.addView(statusText, new LinearLayout.LayoutParams(0, dp(44), 1f));
-
-        playPauseButton = makeButton("Pause");
-        playPauseButton.setOnClickListener(view -> togglePlayback());
-        controlsBar.addView(playPauseButton);
-
-        Button closeButton = makeButton("Close");
-        closeButton.setOnClickListener(view -> closePlayerInternal(true));
-        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, dp(40)
-        );
-        closeParams.leftMargin = dp(8);
-        controlsBar.addView(closeButton, closeParams);
-
-        FrameLayout.LayoutParams controlsParams = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
+        statusText.setGravity(Gravity.CENTER);
+        statusText.setPadding(dp(12), dp(8), dp(12), dp(8));
+        statusText.setBackgroundColor(0x66000000);
+        statusText.setClickable(false);
+        statusText.setFocusable(false);
+        FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.BOTTOM
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER
         );
-        playerOverlay.addView(controlsBar, controlsParams);
+        playerOverlay.addView(statusText, statusParams);
 
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
             dp((int) Math.round(bounds.optDouble("width", 0))),
@@ -253,7 +235,6 @@ public class XoraVlcPlugin extends Plugin {
             statusText.setText("Loading…");
             statusText.setVisibility(View.VISIBLE);
         }
-        if (playPauseButton != null) playPauseButton.setText("Pause");
 
         mainHandler.removeCallbacks(streamStartupTimeout);
         mediaPlayer.play();
@@ -294,11 +275,9 @@ public class XoraVlcPlugin extends Plugin {
                 mainHandler.removeCallbacks(streamStartupTimeout);
                 playbackFailed = false;
                 if (statusText != null) statusText.setVisibility(View.GONE);
-                if (playPauseButton != null) playPauseButton.setText("Pause");
                 emitPlaybackState(true, false, false, false);
                 break;
             case MediaPlayer.Event.Paused:
-                if (playPauseButton != null) playPauseButton.setText("Play");
                 emitPlaybackState(false, false, false, false);
                 break;
             case MediaPlayer.Event.Stopped:
@@ -315,23 +294,6 @@ public class XoraVlcPlugin extends Plugin {
         }
     }
 
-    private void togglePlayback() {
-        if (mediaPlayer == null) return;
-        if (playbackFailed) {
-            currentStreamIndex = 0;
-            softwareDecoderAttempted = false;
-            userPaused = false;
-            playbackFailed = false;
-            startCurrentStream(true);
-        } else if (mediaPlayer.isPlaying()) {
-            userPaused = true;
-            mediaPlayer.pause();
-        } else {
-            userPaused = false;
-            mediaPlayer.play();
-        }
-    }
-
     private void failPlayback() {
         playbackFailed = true;
         mainHandler.removeCallbacks(streamStartupTimeout);
@@ -339,7 +301,6 @@ public class XoraVlcPlugin extends Plugin {
             statusText.setText("Unable to play this channel. Please try again.");
             statusText.setVisibility(View.VISIBLE);
         }
-        if (playPauseButton != null) playPauseButton.setText("Retry");
         emitPlaybackState(false, false, true, false);
     }
 
@@ -350,18 +311,6 @@ public class XoraVlcPlugin extends Plugin {
         state.put("failed", failed);
         state.put("closed", closed);
         notifyListeners("playbackState", state);
-    }
-
-    private Button makeButton(String label) {
-        Button button = new Button(getContext());
-        button.setText(label);
-        button.setTextColor(Color.WHITE);
-        button.setAllCaps(false);
-        button.setTextSize(12);
-        button.setMinHeight(dp(40));
-        button.setPadding(dp(12), 0, dp(12), 0);
-        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFB15232));
-        return button;
     }
 
     private int dp(int value) {
@@ -390,9 +339,7 @@ public class XoraVlcPlugin extends Plugin {
         }
         playerOverlay = null;
         videoLayout = null;
-        controlsBar = null;
         statusText = null;
-        playPauseButton = null;
         streamUrls.clear();
         currentStreamIndex = 0;
         userPaused = false;
