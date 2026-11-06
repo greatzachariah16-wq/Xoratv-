@@ -152,7 +152,8 @@ export interface IptvChannel {
   labels: string[];
 }
 
-function categoryFromGroup(group?: string, playlistCategory?: string): string {
+function categoryFromGroup(group?: string, playlistCategory?: string, channelName = ""): string {
+  if (/wwe|wrestling/i.test(channelName)) return "sports";
   if (playlistCategory) return playlistCategory;
   const value = (group || "").toLowerCase();
   if (value.includes("news")) return "news";
@@ -181,7 +182,7 @@ export async function fetchIptvChannels(options?: {
         return false;
       }
       if (country && channel.country !== country) return false;
-      if (category && categoryFromGroup(channel.group, channel.playlistCategory) !== category) return false;
+      if (category && categoryFromGroup(channel.group, channel.playlistCategory, channel.name) !== category) return false;
       return true;
     });
 
@@ -228,7 +229,7 @@ export async function fetchIptvChannels(options?: {
       id: channel.id,
       name: channel.name,
       country: channel.country,
-      categories: [categoryFromGroup(channel.group, channel.playlistCategory)],
+      categories: [categoryFromGroup(channel.group, channel.playlistCategory, channel.name)],
       network: null,
       logo: channel.logo,
       streamUrl: playback.streamUrl,
@@ -258,7 +259,7 @@ export async function getIptvChannel(channelId: string): Promise<IptvChannel | n
     id: channel.id,
     name: channel.name,
     country: channel.country,
-    categories: [categoryFromGroup(channel.group)],
+    categories: [categoryFromGroup(channel.group, undefined, channel.name)],
     network: null,
     logo: channel.logo,
     streamUrl: channel.streamUrl,
