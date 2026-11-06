@@ -392,6 +392,8 @@ function XTvSeriesPage() {
 
         <XoraInHouseAd placement="xseries_feed" variant="banner" className="my-2" />
 
+        {(genre === "All" || genre === "Movies") && <MovieChannelsShelf />}
+
         {featured ? (
           <section id="featured-movie-section">
             <div className="mb-3 flex items-end justify-between gap-4">
