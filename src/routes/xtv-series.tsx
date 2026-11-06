@@ -288,8 +288,8 @@ function XTvSeriesPage() {
   const shelves = filtered.slice(featured ? 1 : 0);
 
   return (
-    <AppShell wide extraWide>
-      <div className={cn("pb-10 max-w-full overflow-x-hidden", activeSection === "library" ? "space-y-7" : "space-y-0")}>
+    <AppShell wide extraWide immersive={activeSection === "cinema"}>
+      <div className={cn("max-w-full overflow-x-hidden", activeSection === "library" ? "space-y-7 pb-10" : "space-y-0 pb-0")}>
         {activeSection === "library" ? (
           <>
             <FeedTabs active="xtv-series" />
