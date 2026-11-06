@@ -8,7 +8,6 @@ import {
   isNativeVlcPlatform,
 } from "@/lib/native-vlc";
 import {
-  Gauge,
   Loader2,
   Maximize2,
   Minimize2,
@@ -21,7 +20,6 @@ import {
 } from "lucide-react";
 import { resolveMediaUrl, useSignedUrl } from "@/lib/media";
 import { getOriginalVideoUrl, get240pDeliveryUrl } from "@/lib/cloudinary";
-import { duration as fmtDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { trackEvent } from "@/lib/events";
@@ -82,6 +80,7 @@ export function NativeVideoPlayer({
   liveTv = false,
   onClose,
 }: Props) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { config: dataSaver } = useDataSaver();
@@ -112,7 +111,6 @@ export function NativeVideoPlayer({
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
-  const [scrubbing, setScrubbing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
@@ -142,7 +140,6 @@ export function NativeVideoPlayer({
     setFailed(false);
     setCurrent(0);
     setTotal(0);
-    setScrubbing(false);
     lastTimeRef.current = 0;
     trackedStart.current = false;
     tracked3s.current = false;
@@ -616,13 +613,6 @@ export function NativeVideoPlayer({
     }
   }, [activeSrc, liveTv, startNativePlayback]);
 
-  const seekTo = useCallback((seconds: number) => {
-    const video = videoRef.current;
-    if (!video || !Number.isFinite(video.duration)) return;
-    video.currentTime = Math.min(Math.max(seconds, 0), video.duration);
-    setCurrent(video.currentTime);
-  }, []);
-
   // Autoplay-in-view (shorts): starts unmuted when in view, and paused when out of view.
   useEffect(() => {
     if (!autoPlay) return;
@@ -651,7 +641,7 @@ export function NativeVideoPlayer({
   }, [autoPlay, activeSrc, liveTv, startNativePlayback]);
 
   const toggleFullscreen = useCallback(() => {
-    const container = containerRef.current;
+    const container = shellRef.current;
     const video = videoRef.current;
     if (document.fullscreenElement) {
       void document.exitFullscreen().catch(() => {});
@@ -682,8 +672,6 @@ export function NativeVideoPlayer({
     );
   }
 
-  const progress = total > 0 ? (current / total) * 100 : 0;
-
   const reopenPlayer = () => {
     setPlayerClosed(false);
     if (nativeVlcOnly && nativeStreamUrl) {
@@ -699,31 +687,48 @@ export function NativeVideoPlayer({
     }
   };
 
+  const closePlayer = () => {
+    videoRef.current?.pause();
+    if (nativeVlcActiveRef.current) {
+      nativeVlcActiveRef.current = false;
+      setNativeVlcActive(false);
+      void closeNativeVlc();
+    }
+    setPlaying(false);
+    setWaiting(false);
+    setPlayerClosed(true);
+    onClose?.();
+  };
+
   return (
     <div
-      ref={containerRef}
+      ref={shellRef}
       className={cn(
-        "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
-        isFullscreen ? "h-full rounded-none" : aspect,
+        "group/player flex w-full max-w-full flex-col overflow-hidden rounded-[24px] border border-[#b58a53]/35 bg-[linear-gradient(145deg,#2b1d14_0%,#17100c_55%,#100c09_100%)] shadow-[0_18px_48px_rgba(20,12,7,0.24)]",
+        isFullscreen ? "fixed inset-0 z-50 h-screen w-screen rounded-none border-0" : "",
         className,
       )}
     >
-      {!playerClosed ? (
-        <button type="button" onClick={() => {
-          videoRef.current?.pause();
-          if (nativeVlcActiveRef.current) {
-            nativeVlcActiveRef.current = false;
-            setNativeVlcActive(false);
-            void closeNativeVlc();
-          }
-          setPlaying(false);
-          setWaiting(false);
-          setPlayerClosed(true);
-          onClose?.();
-        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      ) : null}
+      <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-[#c6a16c]/15 bg-[#21170f]/95 px-3.5 py-2.5 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-[#c9a66e]/35 bg-[#c9a66e]/10 text-[11px] font-black tracking-tight text-[#e7c58d]">X</span>
+          <div className="min-w-0">
+            <p className="truncate text-[10px] font-bold tracking-[0.2em] text-[#d7b77f]">XORA CINEMA</p>
+            <p className="truncate text-xs font-medium text-[#f4eadc] sm:text-sm">{title}</p>
+          </div>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#d5b47a]/25 bg-[#d5b47a]/10 px-2.5 py-1 text-[9px] font-bold tracking-[0.16em] text-[#e6c58e]">
+          <span className={cn("size-1.5 rounded-full", liveTv ? "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.7)]" : "bg-[#d5b47a]")} />
+          {liveTv ? "LIVE" : "NOW PLAYING"}
+        </span>
+      </div>
+      <div
+        ref={containerRef}
+        className={cn(
+          "group relative w-full max-w-full overflow-hidden bg-black",
+          isFullscreen ? "min-h-0 flex-1 rounded-none" : aspect,
+        )}
+      >
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-[#100e0c] p-4 text-center text-white">
           <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
@@ -869,127 +874,31 @@ export function NativeVideoPlayer({
         </button>
       ) : null}
 
-      {!nativeVlcOnly ? (
-      <div
-        className={cn(
-          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
-          playing
-            ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-            : "opacity-100",
-        )}
-      >
-        {/* Timeline scrub bar */}
-        <div
-          role="slider"
-          aria-label="Timeline"
-          aria-valuemin={0}
-          aria-valuemax={Math.round(total)}
-          aria-valuenow={Math.round(current)}
-          tabIndex={0}
-          className="relative mb-2 flex h-3 w-full cursor-pointer items-center"
-          onKeyDown={(e) => {
-            if (e.key === "ArrowLeft") seekTo(current - 5);
-            else if (e.key === "ArrowRight") seekTo(current + 5);
-          }}
-          onMouseDown={(e) => {
-            const bar = e.currentTarget;
-            const rect = bar.getBoundingClientRect();
-            const update = (clientX: number) => {
-              const ratio = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
-              seekTo(ratio * total);
-            };
-            setScrubbing(true);
-            update(e.clientX);
-            const onMove = (moveEv: MouseEvent) => update(moveEv.clientX);
-            const onUp = () => {
-              setScrubbing(false);
-              window.removeEventListener("mousemove", onMove);
-              window.removeEventListener("mouseup", onUp);
-            };
-            window.addEventListener("mousemove", onMove);
-            window.addEventListener("mouseup", onUp);
-          }}
-        >
-          <div className="h-1 w-full rounded-full bg-background/30">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-75"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div
-            className={cn(
-              "absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary transition-transform duration-75",
-              scrubbing ? "size-3.5 scale-110" : "size-2.5 opacity-0 group-hover:opacity-100",
-            )}
-            style={{ left: `${progress}%` }}
-          />
+    </div>
+      <div className="flex min-h-[58px] items-center justify-between gap-2 border-t border-[#c6a16c]/15 bg-[#1b130e] px-3 py-2.5 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2">
+          {!nativeVlcOnly ? (
+            <>
+              <button type="button" onClick={toggle} aria-label={playing ? "Pause" : "Play"} className="grid size-10 shrink-0 place-items-center rounded-full border border-[#d7b77f]/35 bg-[#d7b77f]/12 text-[#f0d29c] transition hover:bg-[#d7b77f]/20">
+                {playing ? <Pause className="size-4 fill-current" aria-hidden="true" /> : <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />}
+              </button>
+              <button type="button" onClick={() => { const video=videoRef.current; if(!video) return; const next=!video.muted; video.muted=next; setMuted(next); }} aria-label={muted ? "Unmute" : "Mute"} className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-[#e9dfd2] transition hover:bg-white/10">
+                {muted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
+              </button>
+            </>
+          ) : (
+            <span className="text-[10px] font-medium tracking-wide text-[#bca98f]">Powered by Xora playback</span>
+          )}
         </div>
-
-        {/* Bottom buttons row */}
-        <div className="flex items-center gap-2 text-xs font-medium text-background">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={playing ? "Pause" : "Play"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
-          >
-            {playing ? (
-              <Pause className="size-4 fill-current" aria-hidden="true" />
-            ) : (
-              <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
-            )}
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={toggleFullscreen} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"} className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-[#e9dfd2] transition hover:border-[#d7b77f]/35 hover:bg-white/10">
+            {isFullscreen ? <Minimize2 className="size-4" aria-hidden="true" /> : <Maximize2 className="size-4" aria-hidden="true" />}
           </button>
-
-          <span className="tabular-nums">
-            {fmtDuration(Math.round(current))} / {fmtDuration(Math.round(total))}
-          </span>
-
-          <div className="flex-1" />
-
-          {/* Data Saver Mode Pill */}
-          <div
-            className="hidden sm:flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400 backdrop-blur-md"
-            title={`Optimized for mobile: Max ${dataSaver.maxBitrateKbps} kbps (≤ 300 MB/hr)`}
-          >
-            <Gauge className="size-3 text-emerald-400" />
-            <span>{dataSaver.maxBitrateKbps <= 667 ? "300MB/h Max" : "HD"}</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              const video = videoRef.current;
-              if (!video) return;
-              const next = !video.muted;
-              video.muted = next;
-              setMuted(next);
-            }}
-            aria-label={muted ? "Unmute" : "Mute"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
-          >
-            {muted ? (
-              <VolumeX className="size-4" aria-hidden="true" />
-            ) : (
-              <Volume2 className="size-4" aria-hidden="true" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
-          >
-            {isFullscreen ? (
-              <Minimize2 className="size-4 text-primary" aria-hidden="true" />
-            ) : (
-              <Maximize2 className="size-4" aria-hidden="true" />
-            )}
+          <button type="button" onClick={closePlayer} aria-label="Close player" title="Close player" className="grid size-10 place-items-center rounded-full border border-[#b76b4c]/30 bg-[#8f432b]/15 text-[#e6a58a] transition hover:bg-[#8f432b]/25">
+            <X className="size-4" aria-hidden="true" />
           </button>
         </div>
       </div>
-      ) : null}
     </div>
   );
 }
