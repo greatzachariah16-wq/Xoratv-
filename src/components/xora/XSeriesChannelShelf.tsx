@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Play, Tv } from "lucide-react";
+import { ArrowLeft, Play, Tv } from "lucide-react";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
 import { XSeriesMark } from "@/components/xora/XSeriesMark";
@@ -68,6 +68,18 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
 
   return (
     <section className="w-full min-w-0 space-y-7 px-4 py-5 text-[oklch(0.95_0.02_85)] sm:px-6 sm:py-7 lg:px-8" aria-label="X-Series live channels" style={{ background: "radial-gradient(120% 60% at 50% -10%, oklch(0.26 0.04 60) 0%, transparent 60%), linear-gradient(180deg, oklch(0.17 0.016 50), oklch(0.14 0.012 45))" }}>
+      {onBackToLibrary ? (
+        <div className="flex w-full justify-start">
+          <button
+            type="button"
+            onClick={onBackToLibrary}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[oklch(0.78_0.11_80)]/45 bg-[oklch(0.78_0.11_80)]/12 px-4 py-2.5 text-sm font-semibold text-[oklch(0.92_0.12_82)] shadow-sm transition hover:bg-[oklch(0.78_0.11_80)]/22 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.78_0.11_80)]"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to Movies &amp; Series
+          </button>
+        </div>
+      ) : null}
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <XSeriesMark size="md" />
@@ -84,11 +96,6 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
           <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[oklch(0.68_0.03_75)]">
             Live TV
           </span>
-          {onBackToLibrary ? (
-            <button type="button" onClick={onBackToLibrary} className="rounded-full border border-[oklch(0.78_0.11_80)]/35 bg-[oklch(0.78_0.11_80)]/10 px-3 py-2 text-[10px] font-semibold text-[oklch(0.88_0.12_82)] transition hover:bg-[oklch(0.78_0.11_80)]/20">
-              Movies &amp; Series
-            </button>
-          ) : null}
         </div>
       </header>
 
