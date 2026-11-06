@@ -18,6 +18,7 @@ type Channel = {
   quality?: string | null;
   labels: string[];
   score?: number;
+  provider?: "nexus" | "iptv-org";
 };
 
 type Programme = {
@@ -42,9 +43,10 @@ export const Route = createFileRoute("/tv")({
   component: LiveTvPage,
 });
 
-async function loadChannels(query: string): Promise<Channel[]> {
+async function loadChannels(query: string, category: string): Promise<Channel[]> {
   const params = new URLSearchParams({ limit: "10000" });
   if (query.trim()) params.set("q", query.trim());
+  if (category) params.set("category", category);
   const res = await fetch("/api/tv/channels?" + params.toString());
   if (!res.ok) throw new Error("Unable to load live channels");
   const data = (await res.json()) as { ok?: boolean; channels?: Channel[] };
@@ -55,10 +57,11 @@ function LiveTvPage() {
   const { channel: requestedChannel } = Route.useSearch();
   const navigate = useNavigate({ from: "/tv" });
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
 
   const query = useQuery({
-    queryKey: ["iptv-org-live-tv-page", search],
-    queryFn: () => loadChannels(search),
+    queryKey: ["iptv-org-live-tv-page", search, category],
+    queryFn: () => loadChannels(search, category),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
@@ -118,6 +121,35 @@ function LiveTvPage() {
             <RefreshCw className="mr-2 size-4" /> Refresh
           </Button>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={category === "sports" ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => { setSearch(""); setCategory("sports"); }}
+          >
+            Sports channels
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={search.toLowerCase().includes("espn") ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => { setCategory(""); setSearch("ESPN"); }}
+          >
+            ESPN
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={!category && !search ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => { setCategory(""); setSearch(""); }}
+          >
+            All channels
+          </Button>
+        </div>
       </header>
 
       <div className="mb-5 rounded-2xl border border-primary/15 bg-primary/[0.06] px-4 py-3 text-xs leading-5 text-muted-foreground">
@@ -129,7 +161,7 @@ function LiveTvPage() {
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
           <NativeVideoPlayer
             streamUrl={selected.streamUrl}
-            nativeStreamUrl={`/api/tv/stream?provider=nexus&channel=${encodeURIComponent(selected.id)}`}
+            nativeStreamUrl={`/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`}
             externalPoster={selected.logo}
             title={selected.name}
             liveTv
