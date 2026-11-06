@@ -1070,7 +1070,7 @@ export default {
         const limit = Number(url.searchParams.get("limit") || "30");
         const result = await fetchNexusChannels({ query, country, category, limit });
         const fallbackBrands = category?.toLowerCase() === "sports"
-          ? ["ESPN", "SuperSport", "WWE"]
+          ? ["ESPN", "SuperSport"]
           : query && /espn/i.test(query)
             ? ["ESPN"]
             : query && /supersport/i.test(query)
@@ -1139,7 +1139,9 @@ export default {
           });
         }
 
-        const playback = provider === "nexus"
+        const playback = channelId === "wwe-24hr-test"
+          ? { streamUrl: "http://103.114.11.37:8081/WWE-24/7/index.m3u8?token=sboxcast", referrer: null, userAgent: "Mozilla/5.0" }
+          : provider === "nexus"
           ? await (async () => {
               const candidates = await getNexusPlaybackCandidates(channelId, 3);
               // Do not silently repeat candidate zero for attempts 1 and 2.
