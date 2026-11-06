@@ -1034,19 +1034,22 @@ export default {
         const category = url.searchParams.get("category") || undefined;
         const limit = Number(url.searchParams.get("limit") || "30");
         const result = await fetchNexusChannels({ query, country, category, limit });
-        const fallbackBrand = query && /espn/i.test(query)
-          ? "ESPN"
-          : query && /supersport/i.test(query)
-            ? "SuperSport"
-            : null;
-        const directoryFallback = fallbackBrand
-          ? await fetchIptvChannels({ query: fallbackBrand, limit: 100 })
-          : { ok: true, total: 0, channels: [] as Awaited<ReturnType<typeof fetchIptvChannels>>["channels"] };
+        const fallbackBrands = category?.toLowerCase() === "sports"
+          ? ["ESPN", "SuperSport"]
+          : query && /espn/i.test(query)
+            ? ["ESPN"]
+            : query && /supersport/i.test(query)
+              ? ["SuperSport"]
+              : [];
+        const directoryFallbacks = await Promise.all(
+          fallbackBrands.map((brand) => fetchIptvChannels({ query: brand, limit: 100 })),
+        );
+        const directoryChannels = directoryFallbacks.flatMap((item) => item.channels);
 
         const merged = new Map<string, (typeof result.channels)[number] & { provider?: "iptv-org" }>();
         for (const channel of result.channels) merged.set(channel.id, channel);
-        for (const channel of directoryFallback.channels) {
-          if (fallbackBrand && !channel.name.toLowerCase().includes(fallbackBrand.toLowerCase())) continue;
+        for (const channel of directoryChannels) {
+          if (!fallbackBrands.some((brand) => channel.name.toLowerCase().includes(brand.toLowerCase()))) continue;
           if (country && channel.country !== country) continue;
           if (category && !channel.categories.some((item) => item.toLowerCase() === category.toLowerCase())) continue;
           if (!merged.has(channel.id)) {
