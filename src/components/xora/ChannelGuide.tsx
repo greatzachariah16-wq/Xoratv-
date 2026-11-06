@@ -42,27 +42,27 @@ export function ChannelGuide({ channelId, variant = "default" }: { channelId: st
       </div>
       {nowProgramme ? (
         <div className="p-4">
-          <div className={cn("rounded-2xl border p-4", cinema ? "border-[#d8b77f]/20 bg-[#d8b77f]/[0.06]" : "border-primary/15 bg-primary/[0.06]")}>
-            <div className={cn("flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em]", cinema ? "text-[#d8b77f]" : "text-primary")}>
-              <span className={cn("size-1.5 animate-pulse rounded-full", cinema ? "bg-[#d8b77f]" : "bg-primary")} />
+          <div className={cn("rounded-2xl border p-4", cinema ? "border-[oklch(0.78_0.11_80)]/20 bg-[oklch(0.78_0.11_80)]/[0.06]" : "border-primary/15 bg-primary/[0.06]")}>
+            <div className={cn("flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em]", cinema ? "text-[oklch(0.78_0.11_80)]" : "text-primary")}>
+              <span className={cn("size-1.5 animate-pulse rounded-full", cinema ? "bg-[oklch(0.78_0.11_80)]" : "bg-primary")} />
               Now playing
             </div>
             <h3 className="mt-2 font-display text-lg font-semibold">{nowProgramme.title}</h3>
-            <p className={cn("mt-1 text-xs", cinema ? "text-[#b9ad9b]" : "text-muted-foreground")}>{formatTime(nowProgramme.start)} – {formatTime(nowProgramme.stop)}</p>
+            <p className={cn("mt-1 text-xs", cinema ? "text-[oklch(0.68_0.03_75)]" : "text-muted-foreground")}>{formatTime(nowProgramme.start)} – {formatTime(nowProgramme.stop)}</p>
             {nowProgramme.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{nowProgramme.description}</p>}
           </div>
           {upcoming.length > 0 && (
             <div className="mt-4">
               <div className={cn("mb-2 flex items-center gap-2 text-xs font-semibold", cinema ? "text-[#e7ddce]" : "")}>
-                <Clock3 className={cn("size-3.5", cinema ? "text-[#b9ad9b]" : "text-muted-foreground")} />
+                <Clock3 className={cn("size-3.5", cinema ? "text-[oklch(0.68_0.03_75)]" : "text-muted-foreground")} />
                 Up next
               </div>
               <div className="space-y-2">
                 {upcoming.map((programme) => (
                   <div key={programme.id} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", cinema ? "border-white/10 bg-[#181410]" : "border-border/50 bg-background/60")}>
-                    <span className={cn("w-16 shrink-0 text-xs font-semibold", cinema ? "text-[#b9ad9b]" : "text-muted-foreground")}>{formatTime(programme.start)}</span>
+                    <span className={cn("w-16 shrink-0 text-xs font-semibold", cinema ? "text-[oklch(0.68_0.03_75)]" : "text-muted-foreground")}>{formatTime(programme.start)}</span>
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{programme.title}</span>
-                    <span className={cn("text-[10px]", cinema ? "text-[#b9ad9b]" : "text-muted-foreground")}>{formatTime(programme.stop)}</span>
+                    <span className={cn("text-[10px]", cinema ? "text-[oklch(0.68_0.03_75)]" : "text-muted-foreground")}>{formatTime(programme.stop)}</span>
                   </div>
                 ))}
               </div>
@@ -70,7 +70,7 @@ export function ChannelGuide({ channelId, variant = "default" }: { channelId: st
           )}
         </div>
       ) : (
-        <div className={cn("p-5 text-center text-xs", cinema ? "text-[#b9ad9b]" : "text-muted-foreground")}>
+        <div className={cn("p-5 text-center text-xs", cinema ? "text-[oklch(0.68_0.03_75)]" : "text-muted-foreground")}>
           {guide.isLoading ? "Loading programme schedule..." : "No EPG schedule is available for this channel right now."}
         </div>
       )}
