@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Radio, Tv } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
-import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
 
 const WWE_TEST_STREAM = "/api/tv/stream?provider=iptv-org&channel=wwe-24hr-test";
 
@@ -17,8 +16,7 @@ export const Route = createFileRoute("/xsports/wwe")({
 function WWELivePage() {
   return (
     <AppShell wide>
-      <CpxLiveTvGate>
-        <main className="mx-auto w-full max-w-6xl space-y-5">
+      <main className="mx-auto w-full max-w-6xl space-y-5">
           <Link to="/xsports" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground">
             <ArrowLeft className="size-4" /> Back to XSports
           </Link>
@@ -36,8 +34,7 @@ function WWELivePage() {
               <NativeVideoPlayer key="wwe-24hr-test" streamUrl={WWE_TEST_STREAM} nativeStreamUrl={WWE_TEST_STREAM} title="WWE Live TV" liveTv autoPlay className="aspect-video w-full rounded-none" />
             </div>
           </section>
-        </main>
-      </CpxLiveTvGate>
+      </main>
     </AppShell>
   );
 }
