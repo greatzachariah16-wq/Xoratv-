@@ -2104,8 +2104,9 @@ export async function getCreatorDashboard(userId: string) {
   }));
   const referralClickRecords = Object.values((referralClicksRaw || {}) as Record<string, any>)
     .filter((event) => event?.creatorId === userId);
+  const attributedClickIds = new Set(referralAttributions.map((event) => String(event.clickId || "")).filter(Boolean));
   const referralTracking = {
-    clicks: referralClickRecords.filter((event) => event.status === "click").length,
+    clicks: referralClickRecords.filter((event) => event.status === "click" && !attributedClickIds.has(String(event.id || ""))).length,
     pending: pendingAttributions.length,
     eligible: eligibleAttributions.length,
     pendingMembers: pendingAttributions.sort((a, b) => String(b.registeredAt || "").localeCompare(String(a.registeredAt || ""))).slice(0, 50),
