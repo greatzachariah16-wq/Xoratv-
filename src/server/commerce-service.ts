@@ -957,8 +957,14 @@ export async function attachCreatorReferralToUser(userId: string, referralToken:
   const creator = await getCreator(String(creatorId));
   if (!creator || creator.status !== "active" || creator.userId === userId) return { attached: false, reason: "creator-inactive" as const };
   const now = new Date().toISOString();
-  const click = clickId ? await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(clickId)}`) as any : null;
-  const matchedClickId = click?.creatorId === String(creatorId) && click?.referralToken === token && click?.status === "click" ? String(clickId) : null;
+  let click = clickId ? await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(clickId)}`) as any : null;
+  if (!click) {
+    const clickLedger = await queryRtdb("commerce/creatorReferralClicks") as Record<string, any> | null;
+    click = Object.values(clickLedger || {})
+      .filter((event) => event?.creatorId === String(creatorId) && event?.referralToken === token && event?.status === "click")
+      .sort((a, b) => String(a.clickedAt || "").localeCompare(String(b.clickedAt || "")))[0] || null;
+  }
+  const matchedClickId = click?.creatorId === String(creatorId) && click?.referralToken === token && click?.status === "click" ? String(click.id || clickId || "") || null : null;
   const attribution = {
     referredUserId: userId, creatorId: String(creatorId), creatorUserId: String(creator.userId || creatorId),
     creatorStatusAttribution: String(creator.status), creatorValidatedAt: now, referralToken: token, clickId: matchedClickId,
