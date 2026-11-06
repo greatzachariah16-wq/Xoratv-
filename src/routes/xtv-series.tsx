@@ -292,11 +292,11 @@ function XTvSeriesPage() {
       <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
 
-        <nav aria-label="X-Series sections" className="flex w-full gap-2 rounded-2xl border border-[#d8b77f]/20 bg-[#1b1612] p-1.5 sm:max-w-md">
-          <button type="button" onClick={() => setActiveSection("library")} aria-pressed={activeSection === "library"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "library" ? "bg-[#d8b77f] text-[#24190f] shadow-md" : "text-[#cbb99e] hover:bg-white/[0.05]")}>
+        <nav aria-label="X-Series sections" className="flex w-full gap-2 rounded-2xl border border-[oklch(0.78_0.11_80)]/20 bg-[#1b1612] p-1.5 sm:max-w-md">
+          <button type="button" onClick={() => setActiveSection("library")} aria-pressed={activeSection === "library"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "library" ? "bg-[oklch(0.78_0.11_80)] text-[#24190f] shadow-md" : "text-[oklch(0.68_0.03_75)] hover:bg-white/[0.05]")}>
             Movies &amp; Series
           </button>
-          <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "cinema" ? "bg-[#d8b77f] text-[#24190f] shadow-md" : "text-[#cbb99e] hover:bg-white/[0.05]")}>
+          <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("flex-1 rounded-xl px-4 py-3 text-xs font-bold transition sm:text-sm", activeSection === "cinema" ? "bg-[oklch(0.78_0.11_80)] text-[#24190f] shadow-md" : "text-[oklch(0.68_0.03_75)] hover:bg-white/[0.05]")}>
             Cinema Live TV
           </button>
         </nav>
@@ -311,7 +311,7 @@ function XTvSeriesPage() {
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#d6b47c]">XORA</p>
                 <h1 className="font-display text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">X Series</h1>
-                <p className="mt-0.5 text-xs text-[#cbb99e] sm:text-sm">Movies, series and live channels.</p>
+                <p className="mt-0.5 text-xs text-[oklch(0.68_0.03_75)] sm:text-sm">Movies, series and live channels.</p>
               </div>
             </div>
 
@@ -329,7 +329,7 @@ function XTvSeriesPage() {
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="rounded-full p-1 text-[#cbb99e] hover:text-white"
+                  className="rounded-full p-1 text-[oklch(0.68_0.03_75)] hover:text-white"
                   aria-label="Clear search"
                 >
                   <X className="size-3.5" />
@@ -369,8 +369,8 @@ function XTvSeriesPage() {
                     className={cn(
                       "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-semibold transition",
                       isActive
-                        ? "border-[#e4c58f] bg-[#d8b77f] text-[#24190f] shadow-[0_3px_12px_rgba(216,183,127,0.18)]"
-                        : "border-white/10 bg-white/[0.035] text-[#d8c8b3] hover:border-[#d8b77f]/45 hover:bg-white/[0.07]",
+                        ? "border-[#e4c58f] bg-[oklch(0.78_0.11_80)] text-[#24190f] shadow-[0_3px_12px_rgba(216,183,127,0.18)]"
+                        : "border-white/10 bg-white/[0.035] text-[#d8c8b3] hover:border-[oklch(0.78_0.11_80)]/45 hover:bg-white/[0.07]",
                     )}
                   >
                     <span>{cat}</span>
@@ -378,7 +378,7 @@ function XTvSeriesPage() {
                       <span
                         className={cn(
                           "rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none",
-                          isActive ? "bg-black/10 text-[#24190f]" : "bg-white/10 text-[#cbb99e]",
+                          isActive ? "bg-black/10 text-[#24190f]" : "bg-white/10 text-[oklch(0.68_0.03_75)]",
                         )}
                       >
                         {count}
@@ -428,7 +428,7 @@ function XTvSeriesPage() {
                         userId: user?.id,
                       })
                     }
-                    className="inline-flex items-center gap-2 rounded-full border border-[#e1c18a]/30 bg-[#d8b77f] px-4 py-2 text-xs font-bold text-[#24190f] shadow-sm transition hover:bg-[#e6c993]"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#e1c18a]/30 bg-[oklch(0.78_0.11_80)] px-4 py-2 text-xs font-bold text-[#24190f] shadow-sm transition hover:bg-[#e6c993]"
                   >
                     Watch now <ArrowRight className="size-3.5" />
                   </Link>
