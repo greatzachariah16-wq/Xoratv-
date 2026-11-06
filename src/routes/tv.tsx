@@ -112,7 +112,7 @@ function LiveTvPage() {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setCategory(""); }}
               placeholder="Search channels..."
               className="h-10 rounded-xl pl-9"
             />
