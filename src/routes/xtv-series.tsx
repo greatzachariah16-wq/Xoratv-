@@ -23,6 +23,7 @@ import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
 import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
+import { MovieChannelsShelf } from "@/components/xora/MovieChannelsShelf";
 
 export const Route = createFileRoute("/xtv-series")({
   head: () => ({
