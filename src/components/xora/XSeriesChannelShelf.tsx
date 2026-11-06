@@ -155,7 +155,7 @@ export function XSeriesChannelShelf() {
 
         <aside className="min-w-0 lg:border-l lg:border-white/10 lg:pl-5">
           {selected ? (
-            <ChannelGuide channelId={selected.id} />
+            <ChannelGuide channelId={selected.id} variant="cinema" />
           ) : (
             <div className="flex h-full min-h-36 flex-col justify-center border-t border-white/10 pt-5 lg:border-l-0 lg:border-t-0 lg:pt-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d8b77f]">Programme guide</p>
