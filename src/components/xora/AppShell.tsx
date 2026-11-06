@@ -95,10 +95,12 @@ export function AppShell({
   children,
   rail,
   wide = false,
+  extraWide = false,
 }: {
   children: ReactNode;
   rail?: ReactNode;
   wide?: boolean;
+  extraWide?: boolean;
 }) {
   usePresenceTracker();
   const { user, profile, isAdmin } = useAuth();
@@ -349,7 +351,7 @@ export function AppShell({
         <div
           className={cn(
             "mx-auto px-4 pb-24 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
-            wide ? "max-w-5xl" : "max-w-[620px]",
+            extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
           <div className="mb-5 flex min-h-[50px] items-center justify-center">
