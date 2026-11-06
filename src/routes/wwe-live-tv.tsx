@@ -5,7 +5,7 @@ import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 
 const WWE_TEST_STREAM = "/api/tv/stream?provider=iptv-org&channel=wwe-24hr-test";
 
-export const Route = createFileRoute("/xsports/wwe")({
+export const Route = createFileRoute("/wwe-live-tv")({
   head: () => ({ meta: [
     { title: "WWE Live TV | XoraTV XSports" },
     { name: "description", content: "Watch WWE Live TV on XoraTV." },
