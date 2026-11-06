@@ -28,6 +28,25 @@ import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
 import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
 import { recordGoldenGoosePostback } from "./server/special-prizes-service";
 
+const PLUTO_WRESTLING_DIAGNOSTIC_CHANNELS = new Set([
+  "tna-wrestling-pluto",
+  "wrestling-legends-tv",
+]);
+const plutoWrestlingDiagnosticCounts = new Map<string, number>();
+const MAX_PLUTO_WRESTLING_DIAGNOSTIC_SAMPLES = 32;
+
+function logPlutoWrestlingDiagnostic(channelId: string, details: Record<string, unknown>) {
+  if (!PLUTO_WRESTLING_DIAGNOSTIC_CHANNELS.has(channelId)) return;
+
+  const previousCount = plutoWrestlingDiagnosticCounts.get(channelId) || 0;
+  if (previousCount >= MAX_PLUTO_WRESTLING_DIAGNOSTIC_SAMPLES) return;
+
+  const sample = previousCount + 1;
+  plutoWrestlingDiagnosticCounts.set(channelId, sample);
+  // Deliberately log hostnames and response metadata only; never emit signed stream URLs.
+  console.info("[Pluto HLS Diagnostics]", { channelId, sample, ...details });
+}
+
 const SHORTS_VERIFICATION_INTERVAL_MS = 15 * 60 * 1000;
 let shortsVerificationRunning = false;
 
@@ -1186,16 +1205,35 @@ export default {
         const range = request.headers.get("range");
         if (range) headers.set("Range", range);
 
-        const upstream = await fetch(targetUrl.toString(), { headers, signal: request.signal });
+        let upstream: Response;
+        try {
+          upstream = await fetch(targetUrl.toString(), { headers, signal: request.signal });
+        } catch (error) {
+          logPlutoWrestlingDiagnostic(channelId, {
+            requestType: "upstream-fetch-error",
+            requestedHost: targetUrl.hostname,
+            errorType: error instanceof Error ? error.name : "UnknownError",
+          });
+          throw error;
+        }
+
+        const contentType = upstream.headers.get("content-type") || "";
+        const finalHost = new URL(upstream.url || targetUrl.toString()).hostname;
         if (!upstream.ok) {
+          logPlutoWrestlingDiagnostic(channelId, {
+            requestType: "upstream-rejected",
+            status: upstream.status,
+            requestedHost: targetUrl.hostname,
+            host: finalHost,
+            contentType: contentType || "unknown",
+            contentLength: upstream.headers.get("content-length"),
+          });
           console.error("[IPTV Proxy] Upstream failed", channelId, upstream.status, targetUrl.hostname);
           return new Response(
             JSON.stringify({ ok: false, error: `Upstream returned HTTP ${upstream.status}` }),
             { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
           );
         }
-
-        const contentType = upstream.headers.get("content-type") || "";
         const isHls =
           /mpegurl/i.test(contentType) ||
           /\.m3u8(?:[?#]|$)/i.test(targetUrl.pathname + targetUrl.search);
@@ -1209,12 +1247,39 @@ export default {
             attempt,
             status: upstream.status,
             contentType: contentType || "unknown",
-            host: targetUrl.hostname,
+            requestedHost: targetUrl.hostname,
+            host: finalHost,
           });
         }
 
         if (isHls) {
           const body = await upstream.text();
+          const playlistLines = body.split(/\r?\n/);
+          const codecProfiles = [...body.matchAll(/CODECS="([^"]+)"/g)]
+            .map((match) => match[1])
+            .slice(0, 4);
+          const resolutions = [...body.matchAll(/RESOLUTION=(\d+x\d+)/g)]
+            .map((match) => match[1])
+            .slice(0, 4);
+          const keyMethods = (body.match(/#EXT-X-KEY:[^\r\n]*/g) || [])
+            .map((line) => line.match(/METHOD=([^,]+)/)?.[1] || "unknown")
+            .slice(0, 4);
+          logPlutoWrestlingDiagnostic(channelId, {
+            requestType: "playlist-structure",
+            attempt,
+            requestedHost: targetUrl.hostname,
+            host: finalHost,
+            status: upstream.status,
+            contentType: contentType || "unknown",
+            playlistType: body.includes("#EXT-X-STREAM-INF") ? "master" : "media",
+            variantCount: (body.match(/#EXT-X-STREAM-INF:/g) || []).length,
+            segmentCount: (body.match(/#EXTINF:/g) || []).length,
+            codecProfiles,
+            resolutions,
+            keyMethods,
+            mediaRenditionCount: (body.match(/#EXT-X-MEDIA:/g) || []).length,
+            lineCount: playlistLines.length,
+          });
           // Resolve relative media/variant URLs against the final upstream URL after redirects.
           const base = new URL(upstream.url || targetUrl.toString());
           const proxyUrl = (absolute: string) =>
@@ -1253,6 +1318,18 @@ export default {
             },
           });
         }
+
+        logPlutoWrestlingDiagnostic(channelId, {
+          requestType: "media-object",
+          attempt,
+          requestedHost: targetUrl.hostname,
+          host: finalHost,
+          status: upstream.status,
+          contentType: contentType || "unknown",
+          contentLength: upstream.headers.get("content-length"),
+          contentRange: upstream.headers.get("content-range"),
+          acceptRanges: upstream.headers.get("accept-ranges"),
+        });
 
         const responseHeaders = new Headers(CORS_HEADERS);
         responseHeaders.set("Content-Type", contentType || "application/octet-stream");
