@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { attachCreatorReferralToUser } from "@/server/commerce-service";
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
@@ -109,11 +110,13 @@ export const Route = createFileRoute("/api/auth")({
           await db("xora_profiles", {method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
             id:account.id,username,first_name:first,last_name:last,display_name:`${first} ${last}`,avatar_url:AVATAR,bio:""
           })});
+          if (body.referralToken) await attachCreatorReferralToUser(String(account.id), String(body.referralToken));
           const raw = await createSession(account.id);
           const profile = await profileFor(account.id);
           if (!profile) throw new Error("Account profile creation failed.");
           return json({ok:true,user:publicUser({...account,email_verified_at:new Date().toISOString()},profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
         } catch (error) {
+          await db(`xora_profiles?id=eq.${encodeURIComponent(account.id)}`,{method:"DELETE"}).catch(() => undefined);
           await db(`xora_auth_accounts?id=eq.${encodeURIComponent(account.id)}`,{method:"DELETE"});
           throw error;
         }
