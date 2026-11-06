@@ -1527,3 +1527,31 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .xora-loading-dots span { animation: none; opacity: 0.85; }
 }
+
+
+/* X-Series Cinema Lounge: let the cinema canvas break out of the standard page gutter. */
+section[aria-label="X-Series live channels"] {
+  width: calc(100% + 2rem);
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  section[aria-label="X-Series live channels"] {
+    width: calc(100% + 3rem);
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  section[aria-label="X-Series live channels"] {
+    width: calc(100% + 4rem);
+    margin-left: -2rem;
+    margin-right: -2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
