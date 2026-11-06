@@ -1070,7 +1070,7 @@ export default {
         const limit = Number(url.searchParams.get("limit") || "30");
         const result = await fetchNexusChannels({ query, country, category, limit });
         const fallbackBrands = category?.toLowerCase() === "sports"
-          ? ["ESPN", "SuperSport", "WWE"]
+          ? ["ESPN", "SuperSport"]
           : query && /espn/i.test(query)
             ? ["ESPN"]
             : query && /supersport/i.test(query)
