@@ -954,8 +954,6 @@ export async function attachCreatorReferralToUser(userId: string, referralToken:
   if (existing?.creatorId) return { attached: false, existing: true, attribution: existing };
   const creatorId = await resolveCreatorAttribution(token, "data-reward");
   if (!creatorId || creatorId === userId) return { attached: false, reason: "invalid-or-self-referral" as const };
-  const creator = await getCreator(String(creatorId));
-  if (!creator || creator.status !== "active" || creator.userId === userId) return { attached: false, reason: "creator-inactive" as const };
   const now = new Date().toISOString();
   let click = clickId ? await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(clickId)}`) as any : null;
   if (!click) {
@@ -964,10 +962,15 @@ export async function attachCreatorReferralToUser(userId: string, referralToken:
       .filter((event) => event?.creatorId === String(creatorId) && event?.referralToken === token && event?.status === "click")
       .sort((a, b) => String(a.clickedAt || "").localeCompare(String(b.clickedAt || "")))[0] || null;
   }
+  const creator = await getCreator(String(creatorId));
+  const creatorWasActiveAtClick = click?.creatorStatusAtClick === "active";
+  if ((!creator || creator.status !== "active") && !creatorWasActiveAtClick) return { attached: false, reason: "creator-inactive" as const };
+  const creatorUserId = String(click?.creatorUserId || creator?.userId || creatorId);
+  if (creatorUserId === userId) return { attached: false, reason: "invalid-or-self-referral" as const };
   const matchedClickId = click?.creatorId === String(creatorId) && click?.referralToken === token && click?.status === "click" ? String(click.id || clickId || "") || null : null;
   const attribution = {
-    referredUserId: userId, creatorId: String(creatorId), creatorUserId: String(creator.userId || creatorId),
-    creatorStatusAttribution: String(creator.status), creatorValidatedAt: now, referralToken: token, clickId: matchedClickId,
+    referredUserId: userId, creatorId: String(creatorId), creatorUserId,
+    creatorStatusAttribution: String(click?.creatorStatusAtClick || creator?.status || "unknown"), creatorValidatedAt: String(click?.clickedAt || now), referralToken: token, clickId: matchedClickId,
     status: "pending", clickedAt: click?.clickedAt || null, registeredAt: now, createdAt: now, updatedAt: now,
   };
   const result = await putRtdbRecordOnce(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, attribution);
@@ -1535,7 +1538,12 @@ export async function recordCreatorReferralClick(token: string) {
   if (!promotion || promotion.service !== "data-reward" || promotion.status === "revoked") return null;
   const clickId = id("ref_click");
   const clickedAt = new Date().toISOString();
-  const record = { id: clickId, creatorId: promotion.creatorId, referralToken: promotion.token, status: "click", clickedAt, updatedAt: clickedAt };
+  const creator = await getCreator(promotion.creatorId);
+  const record = {
+    id: clickId, creatorId: promotion.creatorId, creatorUserId: String(creator?.userId || promotion.creatorId),
+    creatorStatusAtClick: String(creator?.status || "unknown"), referralToken: promotion.token,
+    status: "click", clickedAt, updatedAt: clickedAt,
+  };
   await putRtdbRecordOnce(`commerce/creatorReferralClicks/${encodeURIComponent(clickId)}`, record);
   return { clickId, creatorId: promotion.creatorId };
 }
