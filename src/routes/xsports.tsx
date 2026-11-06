@@ -27,6 +27,9 @@ function channelText(channel: SportsChannel) {
 function matchesSport(channel: SportsChannel, filter: SportFilter) {
   if (filter === "All Sports") return true;
   const value = channelText(channel);
+  // ESPN and SuperSport are sports broadcasters whose channel metadata may
+  // omit the sport name; classify these brand feeds as football for XSports.
+  if (filter === "Football" && /espn|supersport/i.test(channel.name)) return true;
   const known = Object.values(SPORT_TERMS).flat();
   if (filter === "Other") return !known.some((term) => value.includes(term));
   return SPORT_TERMS[filter].some((term) => value.includes(term));
