@@ -947,7 +947,7 @@ async function putRtdbRecordOnce(path: string, value: Record<string, unknown>) {
   throw new Error("Referral ledger changed repeatedly. Retry settlement.");
 }
 
-export async function attachCreatorReferralToUser(userId: string, referralToken: string | null | undefined) {
+export async function attachCreatorReferralToUser(userId: string, referralToken: string | null | undefined, clickId?: string | null) {
   const token = String(referralToken || "").trim();
   if (!userId || !/^[A-Za-z0-9_-]{10,40}$/.test(token)) return { attached: false, reason: "missing-or-invalid-token" as const };
   const existing = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
@@ -957,12 +957,20 @@ export async function attachCreatorReferralToUser(userId: string, referralToken:
   const creator = await getCreator(String(creatorId));
   if (!creator || creator.status !== "active" || creator.userId === userId) return { attached: false, reason: "creator-inactive" as const };
   const now = new Date().toISOString();
+  const click = clickId ? await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(clickId)}`) as any : null;
+  const matchedClickId = click?.creatorId === String(creatorId) && click?.referralToken === token && click?.status === "click" ? String(clickId) : null;
   const attribution = {
     referredUserId: userId, creatorId: String(creatorId), creatorUserId: String(creator.userId || creatorId),
-    creatorStatusAttribution: String(creator.status), creatorValidatedAt: now, referralToken: token,
-    status: "pending", clickedAt: null, registeredAt: now, createdAt: now, updatedAt: now,
+    creatorStatusAttribution: String(creator.status), creatorValidatedAt: now, referralToken: token, clickId: matchedClickId,
+    status: "pending", clickedAt: click?.clickedAt || null, registeredAt: now, createdAt: now, updatedAt: now,
   };
   const result = await putRtdbRecordOnce(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, attribution);
+  if (result.record?.creatorId && result.record?.clickId) {
+    await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(String(result.record.clickId))}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "pending", referredUserId: userId, registeredAt: now, updatedAt: now }),
+    }).catch(() => undefined);
+  }
   return { attached: Boolean(result.record?.creatorId), existing: !result.created, attribution: result.record };
 }
 
@@ -1008,6 +1016,12 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "eligible", firstSuccessfulClaimReference: String(claim.reference), qualifiedAt: completedAt, updatedAt: completedAt }),
     }).catch(() => undefined);
+    if (attribution.clickId) {
+      await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(String(attribution.clickId))}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "eligible", firstSuccessfulClaimReference: String(claim.reference), qualifiedAt: completedAt, updatedAt: completedAt }),
+      }).catch(() => undefined);
+    }
   }
   return { referralQualified: true, duplicate: !result.created, event: result.record };
 }
@@ -1508,6 +1522,16 @@ export async function getCreatorPromotionLinks(creatorId: string): Promise<Creat
 async function getPromotionLink(token: string): Promise<CreatorPromotionLink | null> {
   if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return null;
   return (await queryRtdb(promotionLinkPath(token))) as CreatorPromotionLink | null;
+}
+
+export async function recordCreatorReferralClick(token: string) {
+  const promotion = await getPromotionLink(String(token || "").trim());
+  if (!promotion || promotion.service !== "data-reward" || promotion.status === "revoked") return null;
+  const clickId = id("ref_click");
+  const clickedAt = new Date().toISOString();
+  const record = { id: clickId, creatorId: promotion.creatorId, referralToken: promotion.token, status: "click", clickedAt, updatedAt: clickedAt };
+  await putRtdbRecordOnce(`commerce/creatorReferralClicks/${encodeURIComponent(clickId)}`, record);
+  return { clickId, creatorId: promotion.creatorId };
 }
 
 export async function getPromotionTarget(token: string) {
@@ -2020,7 +2044,7 @@ export async function getAdminCreatorPayoutRequests() {
 }
 
 export async function getCreatorDashboard(userId: string) {
-  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw, postsRaw, referralClaimsRaw, rewardEventsRaw, referralAttributionsRaw] = await Promise.all([
+  const [creator, coursesRaw, dataOrdersRaw, courseOrdersRaw, commissionsRaw, payout, cpaStatsRaw, postsRaw, referralClaimsRaw, rewardEventsRaw, referralAttributionsRaw, referralClicksRaw] = await Promise.all([
     getCreator(userId),
     queryRtdb("commerce/courses"),
     queryRtdb("commerce/dataOrders"),
@@ -2032,6 +2056,7 @@ export async function getCreatorDashboard(userId: string) {
     queryRtdb("commerce/creatorReferralClaims"),
     queryRtdb("commerce/dataRewardSuccessEvents"),
     queryRtdb("commerce/creatorReferralAttributions"),
+    queryRtdb("commerce/creatorReferralClicks"),
   ]);
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
   const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
@@ -2063,9 +2088,10 @@ export async function getCreatorDashboard(userId: string) {
     successfulClaims: successfulClaimsByUser.get(String(event.referredUserId)) || 0,
     active: (successfulClaimsByUser.get(String(event.referredUserId)) || 0) >= 3,
   }));
-  const dataRewardLinks = (await getCreatorPromotionLinks(userId)).filter((link) => link.service === "data-reward");
+  const referralClickRecords = Object.values((referralClicksRaw || {}) as Record<string, any>)
+    .filter((event) => event?.creatorId === userId);
   const referralTracking = {
-    clicks: dataRewardLinks.reduce((sum, link) => sum + Number(link.clicks || 0), 0),
+    clicks: referralClickRecords.filter((event) => event.status === "click").length,
     pending: pendingAttributions.length,
     eligible: eligibleAttributions.length,
     pendingMembers: pendingAttributions.sort((a, b) => String(b.registeredAt || "").localeCompare(String(a.registeredAt || ""))).slice(0, 50),
