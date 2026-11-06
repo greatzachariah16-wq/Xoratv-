@@ -1041,7 +1041,8 @@ export default {
             : query && /supersport/i.test(query)
               ? ["SuperSport"]
               : [];
-        const directoryFallbacks = await Promise.all(
+        const isMovieCatalogue = category?.toLowerCase() === "movies";
+        const directoryFallbacks = await Promise.all([
           fallbackBrands.map((brand) => fetchIptvChannels({ query: brand, limit: 100 })),
         );
         const directoryChannels = directoryFallbacks.flatMap((item) => item.channels);
