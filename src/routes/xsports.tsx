@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
   categories: string[]; streamUrl: string; quality?: string | null;
-  labels: string[]; score?: number;
+  labels: string[]; score?: number; provider?: "nexus" | "iptv-org";
 };
 
 const FILTERS = ["All Sports", "Football", "Basketball", "Tennis", "Motorsport", "Rugby", "Cricket", "Boxing", "Other"] as const;
@@ -32,7 +32,7 @@ function matchesSport(channel: SportsChannel, filter: SportFilter) {
   return SPORT_TERMS[filter].some((term) => value.includes(term));
 }
 async function loadSportsChannels(): Promise<SportsChannel[]> {
-  const response = await fetch("/api/tv/channels?category=sports&limit=1000");
+  const response = await fetch("/api/tv/channels?category=sports&limit=10000");
   if (!response.ok) throw new Error("Unable to load sports channels right now.");
   const data = (await response.json()) as { channels?: SportsChannel[] };
   return Array.isArray(data.channels) ? data.channels : [];
@@ -111,7 +111,7 @@ function XSportsPage() {
                 <button type="button" onClick={() => setSelectedId(null)} className="press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"><X className="size-3.5" /> Close player</button>
               </div>
               <div className="overflow-hidden rounded-2xl border border-border bg-ink shadow-card">
-                <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} nativeStreamUrl={`/api/tv/stream?provider=nexus&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
+                <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} nativeStreamUrl={`/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
               </div>
             </section>
           )}
@@ -123,6 +123,10 @@ function XSportsPage() {
             </div>
             <div className="hide-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {FILTERS.map((item) => <button key={item} type="button" onClick={() => setFilter(item)} aria-pressed={filter === item} className={cn("press h-9 shrink-0 rounded-full border px-4 text-xs font-semibold transition-colors", filter === item ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground")}>{item}</button>)}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => { setFilter("All Sports"); setSearch("ESPN"); }} className={cn("press h-8 rounded-full border px-3 text-[11px] font-semibold", search.toLowerCase() === "espn" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground")}>ESPN</button>
+              <button type="button" onClick={() => { setFilter("All Sports"); setSearch("SuperSport"); }} className={cn("press h-8 rounded-full border px-3 text-[11px] font-semibold", search.toLowerCase() === "supersport" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground")}>SuperSport</button>
             </div>
 
             {channelsQuery.isLoading ? (
