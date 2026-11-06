@@ -958,7 +958,8 @@ export async function attachCreatorReferralToUser(userId: string, referralToken:
   if (!creator || creator.status !== "active" || creator.userId === userId) return { attached: false, reason: "creator-inactive" as const };
   const now = new Date().toISOString();
   const attribution = {
-    referredUserId: userId, creatorId: String(creatorId), referralToken: token,
+    referredUserId: userId, creatorId: String(creatorId), creatorUserId: String(creator.userId || creatorId),
+    creatorStatusAttribution: String(creator.status), creatorValidatedAt: now, referralToken: token,
     status: "pending", clickedAt: null, registeredAt: now, createdAt: now, updatedAt: now,
   };
   const result = await putRtdbRecordOnce(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, attribution);
@@ -982,12 +983,17 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
   await putRtdbRecordOnce(`commerce/dataRewardSuccessEvents/${encodeURIComponent(String(claim.reference))}`, successEvent);
   if (!creatorId || creatorId === userId) return { referralQualified: false, duplicate: false };
   const creator = await getCreator(creatorId);
-  if (!creator || creator.status !== "active" || creator.userId === userId) {
+  const wasActiveWhenReferred = attribution?.creatorId === creatorId && attribution?.creatorStatusAttribution === "active";
+  if ((!creator || creator.status !== "active") && !wasActiveWhenReferred) {
+    return { referralQualified: false, duplicate: false };
+  }
+  if (creator?.userId === userId || (attribution?.creatorUserId && attribution.creatorUserId !== creatorId)) {
     return { referralQualified: false, duplicate: false };
   }
   const referralEvent = {
     referredUserId: userId,
     creatorId,
+    creatorStatusAtSignup: attribution?.creatorStatusAttribution || creator?.status || "unknown",
     amount: 50,
     currency: "NGN",
     firstSuccessfulClaimReference: String(claim.reference),
