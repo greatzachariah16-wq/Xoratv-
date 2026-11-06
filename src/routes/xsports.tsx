@@ -38,7 +38,19 @@ async function loadSportsChannels(): Promise<SportsChannel[]> {
   const response = await fetch("/api/tv/channels?category=sports&limit=10000");
   if (!response.ok) throw new Error("Unable to load sports channels right now.");
   const data = (await response.json()) as { channels?: SportsChannel[] };
-  return Array.isArray(data.channels) ? data.channels : [];
+  const channels = Array.isArray(data.channels) ? data.channels : [];
+  // Free Samsung TV Plus WWE archive channel candidate, added for in-app playback testing.
+  const wweCandidate: SportsChannel = {
+    id: "wwe-superstar-central",
+    name: "WWE Superstar Central",
+    country: "United States",
+    categories: ["Wrestling"],
+    labels: ["WWE", "24/7", "Samsung TV Plus", "Archive"],
+    quality: "1080p · 24/7 archive",
+    provider: "iptv-org",
+    streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8",
+  };
+  return [wweCandidate, ...channels.filter((channel) => channel.id !== wweCandidate.id)];
 }
 
 export const Route = createFileRoute("/xsports")({
@@ -113,7 +125,7 @@ function XSportsPage() {
                 <button type="button" onClick={() => setSelectedId(null)} className="press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"><X className="size-3.5" /> Close player</button>
               </div>
               <div className="overflow-hidden rounded-2xl border border-border bg-ink shadow-card">
-                <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} nativeStreamUrl={`/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
+                <NativeVideoPlayer key={selected.id} streamUrl={selected.streamUrl} nativeStreamUrl={selected.id === "wwe-superstar-central" ? `/api/tv/stream?provider=iptv-org&channel=${encodeURIComponent(selected.id)}` : `/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} liveTv className="aspect-video w-full rounded-none" />
               </div>
               <ChannelGuide channelId={selected.id} />
             </section>
