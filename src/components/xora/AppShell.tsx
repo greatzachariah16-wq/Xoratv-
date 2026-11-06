@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Baby,
-  BadgePercent,
   BarChart3,
   BellRing,
   ClipboardCheck,
@@ -23,7 +22,6 @@ import {
   Settings,
   Shield,
   Signal,
-  Smartphone,
   TvMinimalPlay,
   UserRound,
   UserRoundPen,
@@ -52,10 +50,7 @@ const NAV = [
   { to: "/chat", label: "Community Chat", icon: MessagesSquare },
   { to: "/catalog", label: "Movie Catalog", icon: Film },
   { to: "/special-prizes", label: "Special Prizes", icon: Gem },
-  { to: "/offers", label: "Offers", icon: BadgePercent },
   { to: "/data-rewards", label: "Data Rewards", icon: Signal },
-  { to: "/data", label: "Buy Data", icon: Smartphone },
-  { to: "/rewards", label: "Rewards", icon: WalletCards },
   { to: "/surveys", label: "Surveys", icon: ClipboardCheck },
   { to: "/search", label: "Search", icon: Search },
   { to: "/wallet", label: "Xora Wallet", icon: WalletCards },
