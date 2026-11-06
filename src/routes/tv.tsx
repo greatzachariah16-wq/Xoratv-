@@ -143,6 +143,15 @@ function LiveTvPage() {
           <Button
             type="button"
             size="sm"
+            variant={search.toLowerCase().includes("supersport") ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => { setCategory(""); setSearch("SuperSport"); }}
+          >
+            SuperSport
+          </Button>
+          <Button
+            type="button"
+            size="sm"
             variant={!category && !search ? "default" : "outline"}
             className="rounded-full"
             onClick={() => { setCategory(""); setSearch(""); }}
