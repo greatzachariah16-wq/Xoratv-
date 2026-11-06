@@ -1025,18 +1025,49 @@ export default {
       }
     }
 
-    // IPTV Nexus Live TV catalogue endpoint for XoraTV's main TV experience.
-    // Xora Kids remains on its existing provider until a dedicated cartoon provider is approved.
+    // IPTV Nexus is the primary catalogue. For an explicit ESPN search, supplement
+    // it with IPTV-org's stream-checked public entries when Nexus has no match.
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
       try {
-        const result = await fetchNexusChannels({
-          query: url.searchParams.get("q") || undefined,
-          country: url.searchParams.get("country") || undefined,
-          category: url.searchParams.get("category") || undefined,
-          limit: Number(url.searchParams.get("limit") || "30"),
-        });
-        return new Response(JSON.stringify(result), {
-          status: result.ok ? 200 : 502,
+        const query = url.searchParams.get("q") || undefined;
+        const country = url.searchParams.get("country") || undefined;
+        const category = url.searchParams.get("category") || undefined;
+        const limit = Number(url.searchParams.get("limit") || "30");
+        const result = await fetchNexusChannels({ query, country, category, limit });
+        const espnFallback = query && /espn/i.test(query)
+          ? await fetchIptvChannels({ query: "ESPN", limit: 100 })
+          : { ok: true, total: 0, channels: [] as Awaited<ReturnType<typeof fetchIptvChannels>>["channels"] };
+
+        const merged = new Map(result.channels.map((channel) => [channel.id, channel]));
+        for (const channel of espnFallback.channels) {
+          if (country && channel.country !== country) continue;
+          if (category && !channel.categories.some((item) => item.toLowerCase() === category.toLowerCase())) continue;
+          if (!merged.has(channel.id)) {
+            merged.set(channel.id, {
+              id: channel.id,
+              name: channel.name,
+              country: channel.country,
+              categories: channel.categories.length ? channel.categories : ["sports"],
+              logo: channel.logo,
+              streamUrl: channel.streamUrl,
+              quality: channel.quality || null,
+              referrer: channel.referrer || null,
+              userAgent: channel.userAgent || null,
+              score: 0,
+              provider: "iptv-org",
+            });
+          }
+        }
+
+        const channels = [...merged.values()].slice(0, limit);
+        const ok = result.ok || channels.length > 0;
+        return new Response(JSON.stringify({
+          ok,
+          total: Math.max(result.total, channels.length),
+          channels,
+          ...(!ok && result.error ? { error: result.error } : {}),
+        }), {
+          status: ok ? 200 : 502,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
         });
       } catch (err) {
