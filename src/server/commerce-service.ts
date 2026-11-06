@@ -1908,12 +1908,13 @@ export async function getUserPurchasedCourseIds(userId: string): Promise<string[
 export async function savePayoutDetails(userId: string, details: {
   accountName: string; accountNumber: string; bankName: string;
 }) {
-  const safe = {
-    accountName: details.accountName.trim(),
-    accountNumber: details.accountNumber.replace(/\D/g, "").slice(0, 20),
-    bankName: details.bankName.trim(),
-    updatedAt: new Date().toISOString(),
-  };
+  const accountName = String(details.accountName || "").trim();
+  const accountNumber = String(details.accountNumber || "").replace(/\D/g, "");
+  const bankName = String(details.bankName || "").trim();
+  if (!accountName || accountNumber.length !== 10 || !bankName) {
+    throw new Error("Complete bank details are required: recipient name, 10-digit account number and bank.");
+  }
+  const safe = { userId, accountName, accountNumber, bankName, updatedAt: new Date().toISOString() };
   await queryRtdb(`commerce/payoutDetails/${userId}`, {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(safe),
   });
@@ -2030,6 +2031,7 @@ export async function getCreatorDashboard(userId: string) {
     dataOrders,
     courseOrders,
     payout,
+    payoutRequests: await getCreatorPayoutRequests(userId),
     cpa: cpaStatsRaw || { approvedConversions: 0, pendingCommission: 0, payableCommission: 0, paidCommission: 0, minConversions: 200, payoutEligible: false },
     links: (await getCreatorPromotionLinks(userId)).map((link) => ({ ...link, path: "/s/" + link.token })),
     specialPrizeEarnings: await getCreatorSpecialPrizeEarnings(userId),
