@@ -67,7 +67,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
   const selected = channels.find((channel) => channel.id === selectedId) || null;
 
   return (
-    <section className="w-full min-w-0 space-y-7 py-5 text-[oklch(0.95_0.02_85)] sm:py-7" aria-label="X-Series live channels" style={{ background: "radial-gradient(120% 60% at 50% -10%, oklch(0.26 0.04 60) 0%, transparent 60%), linear-gradient(180deg, oklch(0.17 0.016 50), oklch(0.14 0.012 45))" }}>
+    <section className="w-full min-w-0 space-y-7 px-4 py-5 text-[oklch(0.95_0.02_85)] sm:px-6 sm:py-7 lg:px-8" aria-label="X-Series live channels" style={{ background: "radial-gradient(120% 60% at 50% -10%, oklch(0.26 0.04 60) 0%, transparent 60%), linear-gradient(180deg, oklch(0.17 0.016 50), oklch(0.14 0.012 45))" }}>
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <XSeriesMark size="md" />
