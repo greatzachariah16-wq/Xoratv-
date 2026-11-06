@@ -441,9 +441,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
 
   if (path === "/api/commerce/creator/dashboard" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, dashboard: await getCreatorDashboard(userId) });
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view your creator dashboard." }, 401);
+    const requestedUserId = url.searchParams.get("userId");
+    if (requestedUserId && requestedUserId !== authenticatedUserId) return json({ ok: false, error: "You can only view your own creator dashboard." }, 403);
+    return json({ ok: true, dashboard: await getCreatorDashboard(authenticatedUserId) });
   }
 
   if (path === "/api/commerce/creator/customization" && request.method === "POST") {
