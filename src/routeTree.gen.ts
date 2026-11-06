@@ -52,6 +52,7 @@ import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as VideoPostIdRouteImport } from './routes/video.$postId'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as XSportsRouteImport } from './routes/xsports'
+import { Route as XSportsWweRouteImport } from './routes/xsports.wwe'
 import { Route as KidsRouteImport } from './routes/kids'
 import { Route as CreatorStudioRouteImport } from './routes/creator-studio'
 import { Route as DataRouteImport } from './routes/data'
@@ -272,6 +273,11 @@ const XSportsRoute = XSportsRouteImport.update({
   path: '/xsports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const XSportsWweRoute = XSportsWweRouteImport.update({
+  id: '/wwe',
+  path: '/wwe',
+  getParentRoute: () => XSportsRoute,
+} as any)
 const KidsRoute = KidsRouteImport.update({
   id: '/kids',
   path: '/kids',
@@ -314,6 +320,7 @@ const KidsWatchRoute = KidsWatchRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 export interface FileRoutesByFullPath {
+  '/xsports/wwe': typeof XSportsWweRoute
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByFullPath {
   '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRoutesByTo {
+  '/xsports/wwe': typeof XSportsWweRoute
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
@@ -425,6 +433,7 @@ export interface FileRoutesByTo {
   '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRoutesById {
+  '/xsports/wwe': typeof XSportsWweRoute
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
     | '/video/$postId'
     | '/tv'
     | '/xsports'
+    | '/xsports/wwe'
     | '/kids'
     | '/creator-studio'
     | '/data'
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
     | '/profile/$username'
     | '/video/$postId'    | '/tv'
     | '/xsports'
+    | '/xsports/wwe'
     | '/kids'
     | '/creator-studio'
     | '/data'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/profile/$username'
     | '/video/$postId'    | '/tv'
     | '/xsports'
+    | '/xsports/wwe'
     | '/kids'
     | '/creator-studio'
     | '/data'
@@ -808,6 +820,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TvRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/xsports/wwe': { id: '/xsports/wwe'; path: '/wwe'; fullPath: '/xsports/wwe'; preLoaderRoute: typeof XSportsWweRouteImport; parentRoute: typeof XSportsRoute }
     '/xsports': {
       id: '/xsports'
       path: '/xsports'
@@ -1023,6 +1036,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdcashRouteImport
       parentRoute: typeof AdminRoute
     }
+interface XSportsRouteChildren {
+  XSportsWweRoute: typeof XSportsWweRoute
+}
+const XSportsRouteChildren: XSportsRouteChildren = { XSportsWweRoute }
+const XSportsRouteWithChildren = XSportsRoute._addFileChildren(XSportsRouteChildren)
+
 interface AdminRouteChildren {
   AdminSurveyWalletRoute: typeof AdminSurveyWalletRoute
   AdminAdcashRoute: typeof AdminAdcashRoute
@@ -1102,7 +1121,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileUsernameRoute: ProfileUsernameRoute,
   VideoPostIdRoute: VideoPostIdRoute,
   TvRoute: TvRoute,
-  XSportsRoute: XSportsRoute,
+  XSportsRoute: XSportsRouteWithChildren,
   KidsRoute: KidsRoute,
   CreatorStudioRoute: CreatorStudioRoute,
   DataRoute: DataRoute,
