@@ -1141,8 +1141,6 @@ export default {
 
         const playback = channelId === "wwe-superstar-central"
           ? { streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8", referrer: null, userAgent: "Mozilla/5.0" }
-          : channelId === "wwe-24hr-test"
-          ? { streamUrl: "http://103.114.11.37:8081/WWE-24/7/index.m3u8?token=sboxcast", referrer: null, userAgent: "Mozilla/5.0" }
           : provider === "nexus"
           ? await (async () => {
               const candidates = await getNexusPlaybackCandidates(channelId, 3);
