@@ -352,26 +352,17 @@ export function AppShell({
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
+          <div className="mb-5 flex min-h-[50px] items-center justify-center">
+            <AdsterraBannerAd
+              adKey="075ef17698a6be8914c3d3aaaf74c814"
+              width={320}
+              height={50}
+              className="my-0 shadow-xs"
+            />
+          </div>
           {children}
         </div>
       </main>
-
-      {/* Mobile ads stay in document flow so they never cover app navigation or content. Desktop keeps its existing docked placement. */}
-      <div className="relative z-10 mt-6 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-card lg:fixed lg:bottom-0 lg:left-[248px] lg:right-0 lg:mt-0 lg:z-40 lg:border-b-0 xl:right-[320px]">
-        <div
-          className={cn(
-            "mx-auto flex min-h-[50px] items-center justify-center",
-            wide ? "max-w-5xl" : "max-w-[620px]",
-          )}
-        >
-          <AdsterraBannerAd
-            adKey="075ef17698a6be8914c3d3aaaf74c814"
-            width={320}
-            height={50}
-            className="my-0 shadow-xs"
-          />
-        </div>
-      </div>
 
       <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-border/90 bg-background/95 px-1 pt-1 shadow-[0_-8px_24px_rgba(50,34,24,0.08)] backdrop-blur-xl lg:hidden">
         {[
