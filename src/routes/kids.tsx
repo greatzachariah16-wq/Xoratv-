@@ -66,7 +66,7 @@ export const Route = createFileRoute("/kids")({
 });
 
 async function loadKidsChannels(query: string): Promise<Channel[]> {
-  const params = new URLSearchParams({ category: "kids", limit: "100" });
+  const params = new URLSearchParams({ category: "kids", limit: "10000" });
   if (query.trim()) params.set("q", query.trim());
   const res = await fetch("/api/tv/channels?" + params.toString());
   if (!res.ok) throw new Error("Unable to load kids channels");
