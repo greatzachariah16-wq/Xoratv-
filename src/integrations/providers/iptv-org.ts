@@ -14,7 +14,12 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 // Use IPTV-org's main generated playlist so XoraTV can discover the
 // complete public catalogue. It already selects the best public stream
 // available for each channel, avoiding duplicate regional downloads.
-const PLAYLISTS = ["index.m3u", "categories/kids.m3u"];
+const PLAYLISTS = [
+  { path: "index.m3u" },
+  { path: "categories/kids.m3u", category: "kids" },
+  { path: "categories/movies.m3u", category: "movies" },
+  { path: "categories/series.m3u", category: "series" },
+];
 
 type Parsed = {
   id: string;
@@ -24,6 +29,7 @@ type Parsed = {
   country?: string;
   streamUrl: string;
   quality?: string;
+  playlistCategory?: string;
 };
 
 let cache: { channels: Parsed[]; expiresAt: number } | null = null;
@@ -47,7 +53,7 @@ function qualityScore(channel: Parsed): number {
   return match ? Number(match[1]) : 0;
 }
 
-function parseM3U(text: string): Parsed[] {
+function parseM3U(text: string, playlistCategory?: string): Parsed[] {
   const lines = text.split(/\r?\n/);
   const result: Parsed[] = [];
 
@@ -75,26 +81,27 @@ function parseM3U(text: string): Parsed[] {
       country: inferCountry(group, id),
       streamUrl: url,
       quality,
+      playlistCategory,
     });
   }
 
   return result;
 }
 
-async function fetchPlaylist(path: string): Promise<Parsed[]> {
+async function fetchPlaylist(path: string, playlistCategory?: string): Promise<Parsed[]> {
   const res = await fetch(`${IPTV_BASE}/${path}`, {
     headers: { Accept: "audio/x-mpegurl,text/plain;q=0.9,*/*;q=0.8" },
     signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) throw new Error(`IPTV-org playlist request failed: ${res.status}`);
-  return parseM3U(await res.text());
+  return parseM3U(await res.text(), playlistCategory);
 }
 
 async function loadChannels(): Promise<Parsed[]> {
   if (cache && cache.expiresAt > Date.now()) return cache.channels;
   if (loading) return loading;
 
-  loading = Promise.allSettled(PLAYLISTS.map((path) => fetchPlaylist(path)))
+  loading = Promise.allSettled(PLAYLISTS.map(({ path, category }) => fetchPlaylist(path, category)))
     .then((results) => {
       const byId = new Map<string, Parsed>();
       let successfulPlaylists = 0;
@@ -105,7 +112,7 @@ async function loadChannels(): Promise<Parsed[]> {
 
         for (const channel of result.value) {
           const existing = byId.get(channel.id);
-          if (!existing || qualityScore(channel) > qualityScore(existing) || (categoryFromGroup(channel.group) === "kids" && categoryFromGroup(existing.group) !== "kids")) {
+          if (!existing || (channel.playlistCategory && !existing.playlistCategory) || (channel.playlistCategory === existing.playlistCategory && qualityScore(channel) > qualityScore(existing))) {
             byId.set(channel.id, channel);
           }
         }
@@ -145,7 +152,8 @@ export interface IptvChannel {
   labels: string[];
 }
 
-function categoryFromGroup(group?: string): string {
+function categoryFromGroup(group?: string, playlistCategory?: string): string {
+  if (playlistCategory) return playlistCategory;
   const value = (group || "").toLowerCase();
   if (value.includes("news")) return "news";
   if (value.includes("sport")) return "sports";
@@ -173,7 +181,7 @@ export async function fetchIptvChannels(options?: {
         return false;
       }
       if (country && channel.country !== country) return false;
-      if (category && categoryFromGroup(channel.group) !== category) return false;
+      if (category && categoryFromGroup(channel.group, channel.playlistCategory) !== category) return false;
       return true;
     });
 
@@ -220,7 +228,7 @@ export async function fetchIptvChannels(options?: {
       id: channel.id,
       name: channel.name,
       country: channel.country,
-      categories: [categoryFromGroup(channel.group)],
+      categories: [categoryFromGroup(channel.group, channel.playlistCategory)],
       network: null,
       logo: channel.logo,
       streamUrl: playback.streamUrl,
