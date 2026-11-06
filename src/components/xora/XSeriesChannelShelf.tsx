@@ -4,7 +4,6 @@ import { Play } from "lucide-react";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
 import { XSeriesMark } from "@/components/xora/XSeriesMark";
-import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
 
 type XSeriesLiveChannel = {
@@ -86,15 +85,6 @@ export function XSeriesChannelShelf() {
             {query.isLoading ? "—" : channels.length}
           </span>
         </div>
-      </div>
-
-      <div className="relative mt-4 flex min-h-[50px] items-center justify-center">
-        <AdsterraBannerAd
-          adKey="075ef17698a6be8914c3d3aaaf74c814"
-          width={320}
-          height={50}
-          className="my-0 shadow-xs"
-        />
       </div>
 
       <div className="relative mt-5 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
