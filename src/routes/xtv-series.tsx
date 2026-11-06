@@ -23,6 +23,7 @@ import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 import { ContentLockGate } from "@/components/commerce/ContentLockGate";
 import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
+import { XSeriesChannelShelf } from "@/components/xora/XSeriesChannelShelf";
 
 export const Route = createFileRoute("/xtv-series")({
   head: () => ({
@@ -295,6 +296,7 @@ function XTvSeriesPage() {
       <div className="space-y-7 pb-10 max-w-full overflow-x-hidden">
         <FeedTabs active="xtv-series" />
         <LiveTvShelf />
+        <XSeriesChannelShelf />
 
         <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-surface px-5 py-7 shadow-sm md:px-8 md:py-9">
           <div className="pointer-events-none absolute right-0 top-0 size-72 -translate-y-1/3 translate-x-1/3 rounded-full bg-primary/10 blur-3xl" />
