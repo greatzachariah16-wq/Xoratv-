@@ -1025,6 +1025,41 @@ export default {
       }
     }
 
+    // Dedicated IPTV-org movie and series channel playlists power the X-Series live-channel shelves.
+    // Keep these separate from the VOD catalogue and preserve the IPTV-org provider ID for playback.
+    if (url.pathname === "/api/tv/channels" && request.method === "GET") {
+      const category = (url.searchParams.get("category") || "").toLowerCase();
+      if (category === "movies" || category === "series") {
+        try {
+          const result = await fetchIptvChannels({
+            query: url.searchParams.get("q") || undefined,
+            country: url.searchParams.get("country") || undefined,
+            category,
+            limit: Number(url.searchParams.get("limit") || "100"),
+          });
+          const channels = result.channels.map((channel) => ({
+            ...channel,
+            provider: "iptv-org" as const,
+          }));
+          return new Response(JSON.stringify({
+            ok: result.ok,
+            total: result.total,
+            channels,
+            ...(result.error ? { error: result.error } : {}),
+          }), {
+            status: result.ok ? 200 : 502,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "IPTV channel catalogue error";
+          return new Response(JSON.stringify({ ok: false, total: 0, channels: [], error: msg }), {
+            status: 502,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     // IPTV Nexus is the primary catalogue. For an explicit ESPN search, supplement
     // it with IPTV-org's stream-checked public entries when Nexus has no match.
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
