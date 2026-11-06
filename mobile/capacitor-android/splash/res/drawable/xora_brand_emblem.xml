@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Sculpted chocolate X with softly rounded terminals. -->
+    <path android:pathData="M132,106 C145,93 166,96 180,110 L390,326 C405,342 402,364 387,378 C372,392 350,390 336,376 L126,160 C112,145 116,121 132,106 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="128" android:startY="100" android:endX="390" android:endY="382" android:type="linear">
+                <item android:color="#5B4030" android:offset="0"/>
+                <item android:color="#24170F" android:offset="0.52"/>
+                <item android:color="#493020" android:offset="1"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M382,106 C398,121 400,145 386,160 L176,376 C162,390 140,392 125,378 C110,364 107,342 122,326 L332,110 C346,96 367,93 382,106 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="385" android:startY="100" android:endX="122" android:endY="382" android:type="linear">
+                <item android:color="#382316" android:offset="0"/>
+                <item android:color="#6A4A35" android:offset="0.55"/>
+                <item android:color="#24170F" android:offset="1"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Warm metallic orbit, sweeping around the X. -->
+    <path
+        android:pathData="M77,286 C118,190 218,136 332,145 C404,151 451,190 449,239"
+        android:fillColor="#00000000"
+        android:strokeWidth="22"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:startX="78" android:startY="286" android:endX="450" android:endY="239" android:type="linear">
+                <item android:color="#C18A4B" android:offset="0"/>
+                <item android:color="#FFF0D4" android:offset="0.48"/>
+                <item android:color="#D5A66B" android:offset="1"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M82,286 C124,198 219,151 326,158"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFF3"
+        android:strokeAlpha="0.72"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"/>
+
+    <!-- Raised play mark, integrated into the centre of the emblem. -->
+    <path android:pathData="M245,207 C240,204 234,208 234,215 L234,289 C234,297 241,301 248,297 L310,260 C317,256 317,247 310,243 Z"
+        android:fillColor="#F9EBD5"/>
+    <path android:pathData="M247,218 L296,251 L247,284 Z" android:fillColor="#B88A58"/>
+
+    <!-- Compact TV plaque at the lower-right edge. -->
+    <path android:pathData="M341,345 C341,334 350,325 361,325 L425,325 C436,325 445,334 445,345 L445,407 C445,418 436,427 425,427 L361,427 C350,427 341,418 341,407 Z"
+        android:fillColor="#2B1C13"/>
+    <path android:pathData="M361,350 L382,350 L382,386 L374,386 L374,357 L361,357 Z M388,350 L409,350 L409,357 L402,357 L402,386 L394,386 L394,357 L388,357 Z"
+        android:fillColor="#FFF4E2"/>
+    <path android:pathData="M373,337 L390,324 M404,337 L421,324"
+        android:fillColor="#00000000"
+        android:strokeColor="#8C6542"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"/>
+</vector>
