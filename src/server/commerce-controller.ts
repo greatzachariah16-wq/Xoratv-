@@ -31,7 +31,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (specialPrizeClick) return Response.redirect(new URL(specialPrizeClick.targetPath, url.origin), 302);
     const promotion = await resolvePromotionLink(token);
     if (!promotion || promotion.service === "special-prize") return new Response("Promotion link not found or no longer active.", { status: 404, headers });
-    const redirect = Response.redirect(new URL(promotion.targetPath, url.origin), 302);
+    const redirect = new Response(null, { status: 302, headers: { Location: new URL(promotion.targetPath, url.origin).toString() } });
     const hasReferralCookie = request.headers.get("cookie")?.split(";").some((part) => part.trim().startsWith("xora_creator_referral="));
     if (promotion.service === "data-reward" && !hasReferralCookie) {
       const click = await recordCreatorReferralClick(token).catch(() => null);
