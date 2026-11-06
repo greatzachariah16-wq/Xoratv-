@@ -11,10 +11,9 @@ import type { XTvSeriesItem } from "../firebase/rtdb";
 const IPTV_BASE = "https://iptv-org.github.io/iptv";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-// Use IPTV-org's main generated playlist so XoraTV can discover the
-// complete public catalogue. It already selects the best public stream
-// available for each channel, avoiding duplicate regional downloads.
-const PLAYLISTS = ["index.m3u", "categories/kids.m3u"];
+// Keep the broad directory and Kids set, and explicitly import the dedicated
+// Movies directory so movie-only stations are not missed by the main index.
+const PLAYLISTS = ["index.m3u", "categories/kids.m3u", "categories/movies.m3u"];
 
 type Parsed = {
   id: string;
@@ -24,6 +23,7 @@ type Parsed = {
   country?: string;
   streamUrl: string;
   quality?: string;
+  playlistCategory?: string;
 };
 
 let cache: { channels: Parsed[]; expiresAt: number } | null = null;
@@ -87,7 +87,11 @@ async function fetchPlaylist(path: string): Promise<Parsed[]> {
     signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) throw new Error(`IPTV-org playlist request failed: ${res.status}`);
-  return parseM3U(await res.text());
+  const playlistCategory = path.match(/^categories\/([^/]+)\.m3u$/)?.[1]?.toLowerCase();
+  return parseM3U(await res.text()).map((channel) => ({
+    ...channel,
+    playlistCategory,
+  }));
 }
 
 async function loadChannels(): Promise<Parsed[]> {
@@ -105,7 +109,14 @@ async function loadChannels(): Promise<Parsed[]> {
 
         for (const channel of result.value) {
           const existing = byId.get(channel.id);
-          if (!existing || qualityScore(channel) > qualityScore(existing) || (categoryFromGroup(channel.group) === "kids" && categoryFromGroup(existing.group) !== "kids")) {
+          const categoryPriority = (item: Parsed) =>
+            channelCategory(item) === "movies" || channelCategory(item) === "kids" ? 1 : 0;
+          if (
+            !existing ||
+            categoryPriority(channel) > categoryPriority(existing) ||
+            (categoryPriority(channel) === categoryPriority(existing) &&
+              qualityScore(channel) > qualityScore(existing))
+          ) {
             byId.set(channel.id, channel);
           }
         }
@@ -155,6 +166,10 @@ function categoryFromGroup(group?: string): string {
   return "general";
 }
 
+function channelCategory(channel: Pick<Parsed, "group" | "playlistCategory">): string {
+  return channel.playlistCategory || categoryFromGroup(channel.group);
+}
+
 export async function fetchIptvChannels(options?: {
   query?: string;
   country?: string;
@@ -173,7 +188,7 @@ export async function fetchIptvChannels(options?: {
         return false;
       }
       if (country && channel.country !== country) return false;
-      if (category && categoryFromGroup(channel.group) !== category) return false;
+      if (category && channelCategory(channel) !== category) return false;
       return true;
     });
 
@@ -220,7 +235,7 @@ export async function fetchIptvChannels(options?: {
       id: channel.id,
       name: channel.name,
       country: channel.country,
-      categories: [categoryFromGroup(channel.group)],
+      categories: [channelCategory(channel)],
       network: null,
       logo: channel.logo,
       streamUrl: playback.streamUrl,
@@ -250,7 +265,7 @@ export async function getIptvChannel(channelId: string): Promise<IptvChannel | n
     id: channel.id,
     name: channel.name,
     country: channel.country,
-    categories: [categoryFromGroup(channel.group)],
+    categories: [channelCategory(channel)],
     network: null,
     logo: channel.logo,
     streamUrl: channel.streamUrl,
