@@ -159,7 +159,10 @@ export const Route = createFileRoute("/api/auth")({
       if (action === "logout") {
         const raw = request.headers.get("cookie")?.split(";").map(s=>s.trim()).find(s=>s.startsWith(COOKIE+"="))?.slice(COOKIE.length+1);
         if (raw) await db(`xora_auth_sessions?token_hash=eq.${hash(decodeURIComponent(raw))}`,{method:"DELETE"});
-        return json({ok:true},200,{"Set-Cookie":clearCookie()});
+        const response = json({ok:true},200,{"Set-Cookie":clearCookie()});
+        response.headers.append("Set-Cookie", clearReferralCookie());
+        response.headers.append("Set-Cookie", clearReferralClickCookie());
+        return response;
       }
       if (action === "recover_with_code") {
         const identifier = String(body.identifier||"").trim().toLowerCase().replace(/^@/,"");
