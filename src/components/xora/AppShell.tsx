@@ -274,26 +274,13 @@ export function AppShell({
             <BellRing className="size-[21px] stroke-[1.8]" aria-hidden="true" />
             {unread > 0 ? <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
           </Link>
-          <button
-            type="button"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            className={cn(
-              "press grid size-11 place-items-center rounded-2xl border shadow-sm transition-all",
-              mobileMenuOpen
-                ? "border-primary/30 bg-primary text-primary-foreground shadow-card"
-                : "border-primary/15 bg-primary/5 text-primary hover:bg-primary/10",
-            )}
-          >
-            {mobileMenuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
-          </button>
+
         </div>
       </header>
 
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute inset-x-3 top-[4.25rem] max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
+          <div className="absolute inset-x-3 top-[4.25rem] bottom-[calc(5rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-2 rounded-[1.1rem] bg-gradient-to-r from-primary/10 via-primary/5 to-secondary p-3">
               <p className="font-display text-sm font-semibold">Explore XoraTV</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Everything you need, one tap away.</p>
@@ -366,7 +353,7 @@ export function AppShell({
       <main id="main" className="lg:pl-[248px] xl:pr-[320px]">
         <div
           className={cn(
-            "mx-auto px-4 pb-20 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            "mx-auto px-4 pb-24 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
@@ -374,8 +361,8 @@ export function AppShell({
         </div>
       </main>
 
-      {/* Fixed Global Bottom Adsterra Banner — pinned above the mobile navigation and at the bottom on desktop */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all lg:bottom-0 lg:left-[248px] lg:border-b-0 xl:right-[320px]">
+      {/* Mobile ads stay in document flow so they never cover app navigation or content. Desktop keeps its existing docked placement. */}
+      <div className="relative z-10 mt-6 border-y border-border/80 bg-background/95 px-3 py-1.5 shadow-card lg:fixed lg:bottom-0 lg:left-[248px] lg:right-0 lg:mt-0 lg:z-40 lg:border-b-0 xl:right-[320px]">
         <div
           className={cn(
             "mx-auto flex min-h-[50px] items-center justify-center",
@@ -390,6 +377,49 @@ export function AppShell({
           />
         </div>
       </div>
+
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-border/90 bg-background/95 px-1 pt-1 shadow-[0_-8px_24px_rgba(50,34,24,0.08)] backdrop-blur-xl lg:hidden">
+        {[
+          { to: "/", label: "Home", icon: House },
+          { to: "/shorts", label: "Shorts", icon: Clapperboard },
+          { to: "/xtv-series", label: "Series", icon: MonitorPlay },
+          { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
+        ].map(({ to, label, icon: Icon }) => {
+          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              onClick={() => setMobileMenuOpen(false)}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-primary/12" : "bg-transparent")}>
+                <Icon className={cn("size-[20px] stroke-[2]", active && "stroke-[2.35]")} aria-hidden="true" />
+              </span>
+              <span className="max-w-full truncate">{label}</span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          aria-label="More navigation"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          className={cn(
+            "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
+            mobileMenuOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", mobileMenuOpen && "bg-primary/12")}>
+            {mobileMenuOpen ? <X className="size-[20px]" aria-hidden="true" /> : <Menu className="size-[20px]" aria-hidden="true" />}
+          </span>
+          <span>More</span>
+        </button>
+      </nav>
 
       {rail ? (
         <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-8 xl:block">
