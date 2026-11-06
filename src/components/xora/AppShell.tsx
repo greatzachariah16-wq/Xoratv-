@@ -35,6 +35,7 @@ import { walletQuery } from "@/lib/commerce";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
 import { XSportsIcon } from "./XSportsIcon";
+import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -351,6 +352,14 @@ export function AppShell({
             wide ? "max-w-5xl" : "max-w-[620px]",
           )}
         >
+          <div className="mb-5 flex min-h-[50px] items-center justify-center">
+            <AdsterraBannerAd
+              adKey="075ef17698a6be8914c3d3aaaf74c814"
+              width={320}
+              height={50}
+              className="my-0 shadow-xs"
+            />
+          </div>
           {children}
         </div>
       </main>
