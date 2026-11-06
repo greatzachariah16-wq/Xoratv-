@@ -17,6 +17,7 @@ import {
   Smartphone,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { resolveMediaUrl, useSignedUrl } from "@/lib/media";
 import { getOriginalVideoUrl, get240pDeliveryUrl } from "@/lib/cloudinary";
@@ -59,6 +60,7 @@ type Props = {
   feed?: FeedType;
   /** Use the more forgiving buffering/recovery profile for live TV HLS streams. */
   liveTv?: boolean;
+  onClose?: () => void;
 };
 
 export function NativeVideoPlayer({
@@ -78,6 +80,7 @@ export function NativeVideoPlayer({
   genre,
   feed,
   liveTv = false,
+  onClose,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -99,6 +102,7 @@ export function NativeVideoPlayer({
   const poster = getOptimizedImageUrl(rawPoster);
 
   const [playing, setPlaying] = useState(false);
+  const [playerClosed, setPlayerClosed] = useState(false);
   const [muted, setMuted] = useState(feed === "shorts" ? true : false);
   const [waiting, setWaiting] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -127,6 +131,7 @@ export function NativeVideoPlayer({
 
   // Reset transient state whenever the source video changes.
   useEffect(() => {
+    setPlayerClosed(false);
     if (nativeVlcActiveRef.current) {
       nativeVlcActiveRef.current = false;
       setNativeVlcActive(false);
@@ -679,6 +684,21 @@ export function NativeVideoPlayer({
 
   const progress = total > 0 ? (current / total) * 100 : 0;
 
+  const reopenPlayer = () => {
+    setPlayerClosed(false);
+    if (nativeVlcOnly && nativeStreamUrl) {
+      void openNativeVlc({ url: nativeStreamUrl, title, bounds: getNativeVlcBounds(containerRef.current) })
+        .then(() => {
+          nativeVlcActiveRef.current = true;
+          setNativeVlcActive(true);
+        })
+        .catch((error) => {
+          console.warn("[Xora] Could not reopen native player:", error);
+          setFailed(true);
+        });
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -688,6 +708,27 @@ export function NativeVideoPlayer({
         className,
       )}
     >
+      {!playerClosed ? (
+        <button type="button" onClick={() => {
+          videoRef.current?.pause();
+          if (nativeVlcActiveRef.current) {
+            nativeVlcActiveRef.current = false;
+            setNativeVlcActive(false);
+            void closeNativeVlc();
+          }
+          setPlaying(false);
+          setWaiting(false);
+          setPlayerClosed(true);
+          onClose?.();
+        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
+      {playerClosed ? (
+        <div className="absolute inset-0 z-30 grid place-items-center bg-[#100e0c] p-4 text-center text-white">
+          <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
+        </div>
+      ) : null}
       {src && !nativeVlcOnly ? (
         <video
           key={activeSrc}
@@ -975,6 +1016,7 @@ export function VideoPlayer(props: Props) {
       authorId={props.authorId}
       genre={props.genre}
       feed={props.feed}
+      onClose={props.onClose}
     />
   ) : (
     <NativeVideoPlayer {...props} />
