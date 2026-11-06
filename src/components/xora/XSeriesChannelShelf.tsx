@@ -67,20 +67,20 @@ export function XSeriesChannelShelf() {
   const selected = channels.find((channel) => channel.id === selectedId) || null;
 
   return (
-    <section className="w-full min-w-0 space-y-7 rounded-2xl border border-white/10 p-4 text-[#f2eadb] shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-6" aria-label="X-Series live channels" style={{ background: "radial-gradient(120% 60% at 50% -10%, oklch(0.26 0.04 60) 0%, transparent 60%), linear-gradient(180deg, oklch(0.17 0.016 50), oklch(0.14 0.012 45))" }}>
+    <section className="w-full min-w-0 space-y-7 rounded-2xl border border-white/10 p-4 text-[oklch(0.95_0.02_85)] shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-6" aria-label="X-Series live channels" style={{ background: "radial-gradient(120% 60% at 50% -10%, oklch(0.26 0.04 60) 0%, transparent 60%), linear-gradient(180deg, oklch(0.17 0.016 50), oklch(0.14 0.012 45))" }}>
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <XSeriesMark size="md" />
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#d8b77f]">XORA</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[oklch(0.78_0.11_80)]">XORA</p>
             <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">X-Series Channels</h2>
-            <p className="mt-1 flex items-center gap-2 text-xs text-[#b9ad9b]">
+            <p className="mt-1 flex items-center gap-2 text-xs text-[oklch(0.68_0.03_75)]">
               <span className="size-1.5 rounded-full bg-live shadow-[0_0_9px_rgba(220,70,55,0.65)]" />
               Live television · {query.isLoading ? "Loading channels" : `${channels.length} channels`}
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b9ad9b]">
+        <span className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[oklch(0.68_0.03_75)]">
           Live TV
         </span>
       </header>
@@ -95,15 +95,15 @@ export function XSeriesChannelShelf() {
             className={cn(
               "shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-colors sm:text-sm",
               filter === item
-                ? "border-[#d8b77f] bg-[#d8b77f] text-[#24190f] shadow-sm"
-                : "border-white/10 bg-transparent text-[#e7ddce] hover:border-[#d8b77f]/50 hover:text-foreground",
+                ? "border-[oklch(0.78_0.11_80)] bg-[oklch(0.78_0.11_80)] text-[#24190f] shadow-sm"
+                : "border-white/10 bg-transparent text-[oklch(0.92_0.02_85)] hover:border-[oklch(0.78_0.11_80)]/50 hover:text-foreground",
             )}
           >
             {item}
           </button>
         ))}
         {filter !== "All" ? (
-          <button type="button" onClick={() => setFilter("All")} className="shrink-0 px-3 py-2 text-xs text-[#b9ad9b] underline-offset-4 hover:text-[#d8b77f] hover:underline">
+          <button type="button" onClick={() => setFilter("All")} className="shrink-0 px-3 py-2 text-xs text-[oklch(0.68_0.03_75)] underline-offset-4 hover:text-[oklch(0.78_0.11_80)] hover:underline">
             Reset
           </button>
         ) : null}
@@ -127,7 +127,7 @@ export function XSeriesChannelShelf() {
           ) : (
             <div className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-xl bg-[radial-gradient(70%_80%_at_50%_40%,rgba(164,116,64,0.22),transparent_72%),linear-gradient(145deg,#29211b,#100e0c)] shadow-[0_24px_60px_rgba(0,0,0,0.22)]">
               <div className="px-5 text-center text-[oklch(0.95_0.02_85)]">
-                <span className="mx-auto grid size-14 place-items-center rounded-full border border-[#d8b77f]/40 text-[#d8b77f] sm:size-16">
+                <span className="mx-auto grid size-14 place-items-center rounded-full border border-[oklch(0.78_0.11_80)]/40 text-[oklch(0.78_0.11_80)] sm:size-16">
                   <Tv className="size-6 sm:size-7" />
                 </span>
                 <p className="mt-4 font-display text-xl font-semibold sm:text-3xl">Choose a channel to start watching</p>
@@ -142,7 +142,7 @@ export function XSeriesChannelShelf() {
               ) : null}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{selected.name}</p>
-                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#b9ad9b]">
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[oklch(0.68_0.03_75)]">
                   {channelType(selected)}{selected.country ? ` · ${selected.country}` : ""}
                 </p>
               </div>
@@ -158,8 +158,8 @@ export function XSeriesChannelShelf() {
             <ChannelGuide channelId={selected.id} variant="cinema" />
           ) : (
             <div className="flex h-full min-h-36 flex-col justify-center border-t border-white/10 pt-5 lg:border-l-0 lg:border-t-0 lg:pt-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d8b77f]">Programme guide</p>
-              <p className="mt-2 text-sm text-[#b9ad9b]">Now playing and upcoming programmes will appear here when you choose a channel.</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[oklch(0.78_0.11_80)]">Programme guide</p>
+              <p className="mt-2 text-sm text-[oklch(0.68_0.03_75)]">Now playing and upcoming programmes will appear here when you choose a channel.</p>
             </div>
           )}
         </aside>
@@ -170,10 +170,10 @@ export function XSeriesChannelShelf() {
       <section aria-label="Browse channels">
         <div className="flex items-baseline justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d8b77f]">Explore the lineup</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[oklch(0.78_0.11_80)]">Explore the lineup</p>
             <h3 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">Browse channels</h3>
           </div>
-          <span className="shrink-0 text-xs text-[#b9ad9b]">{query.isLoading ? "…" : `${visible.length} shown`}</span>
+          <span className="shrink-0 text-xs text-[oklch(0.68_0.03_75)]">{query.isLoading ? "…" : `${visible.length} shown`}</span>
         </div>
 
         {query.isLoading ? (
@@ -183,7 +183,7 @@ export function XSeriesChannelShelf() {
             ))}
           </div>
         ) : query.isError ? (
-          <div className="mt-5 rounded-xl border border-white/10 px-4 py-10 text-center text-sm text-[#b9ad9b]">
+          <div className="mt-5 rounded-xl border border-white/10 px-4 py-10 text-center text-sm text-[oklch(0.68_0.03_75)]">
             Channels are temporarily unavailable.
           </div>
         ) : visible.length ? (
@@ -203,12 +203,12 @@ export function XSeriesChannelShelf() {
                 >
                   <div className={cn(
                     "relative grid aspect-[16/10] place-items-center overflow-hidden rounded-xl border bg-[radial-gradient(ellipse_at_50%_40%,rgba(213,177,120,0.13),transparent_68%),linear-gradient(145deg,#30251e,#191512)] p-5 transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_28px_rgba(0,0,0,0.25)]",
-                    isSelected ? "border-[#d8b77f] ring-2 ring-primary/35" : "border-white/10 group-hover:border-[#d8b77f]/50",
+                    isSelected ? "border-[oklch(0.78_0.11_80)] ring-2 ring-primary/35" : "border-white/10 group-hover:border-[oklch(0.78_0.11_80)]/50",
                   )}>
                     {channel.logo ? (
                       <img src={channel.logo} alt="" loading="lazy" referrerPolicy="no-referrer" className="max-h-full max-w-full object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.35)] transition duration-300 group-hover:scale-105" />
                     ) : (
-                      <span className="grid size-14 place-items-center rounded-2xl border border-[#d8b77f]/30 bg-[#d8b77f]/10 font-display text-2xl font-semibold text-[#e5c58e]">
+                      <span className="grid size-14 place-items-center rounded-2xl border border-[oklch(0.78_0.11_80)]/30 bg-[oklch(0.78_0.11_80)]/10 font-display text-2xl font-semibold text-[#e5c58e]">
                         {channel.name.slice(0, 1).toUpperCase()}
                       </span>
                     )}
@@ -219,14 +219,14 @@ export function XSeriesChannelShelf() {
                       <Play className="ml-0.5 size-3.5 fill-current" />
                     </span>
                   </div>
-                  <p className={cn("mt-2 truncate text-sm font-semibold", isSelected ? "text-[#d8b77f]" : "text-foreground")}>{channel.name}</p>
-                  <p className="mt-0.5 truncate text-xs text-[#b9ad9b]">{channel.country || "Live channel"}</p>
+                  <p className={cn("mt-2 truncate text-sm font-semibold", isSelected ? "text-[oklch(0.78_0.11_80)]" : "text-foreground")}>{channel.name}</p>
+                  <p className="mt-0.5 truncate text-xs text-[oklch(0.68_0.03_75)]">{channel.country || "Live channel"}</p>
                 </button>
               );
             })}
           </div>
         ) : (
-          <div className="mt-5 rounded-xl border border-dashed border-white/10 px-4 py-10 text-center text-sm text-[#b9ad9b]">
+          <div className="mt-5 rounded-xl border border-dashed border-white/10 px-4 py-10 text-center text-sm text-[oklch(0.68_0.03_75)]">
             No channels match this filter.
           </div>
         )}
