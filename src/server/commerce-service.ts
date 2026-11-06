@@ -1960,7 +1960,7 @@ export async function createCreatorPayoutRequest(userId: string, payoutType: "re
     amount = claims.reduce((sum: number, x: any) => sum + Number(x.amount || 50), 0) - paidTotal;
   } else {
     currency = "USD"; minimum = 10;
-    const conversions = Object.values((conversionsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "approved");
+    const conversions = Object.values((conversionsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "approved" && String(x?.currency || "USD") === "USD");
     amount = conversions.reduce((sum: number, x: any) => sum + Number(x.creatorCommission || 0), 0) - paidTotal;
   }
   amount = Math.round(Math.max(0, amount) * 10000) / 10000;
