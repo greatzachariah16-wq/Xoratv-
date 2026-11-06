@@ -1043,7 +1043,7 @@ export default {
               : [];
         const isMovieCatalogue = category?.toLowerCase() === "movies";
         const directoryFallbacks = await Promise.all([
-          fallbackBrands.map((brand) => fetchIptvChannels({ query: brand, limit: 100 })),
+          ...fallbackBrands.map((brand) => fetchIptvChannels({ query: brand, limit: 100 })),
         );
         const directoryChannels = directoryFallbacks.flatMap((item) => item.channels);
 
