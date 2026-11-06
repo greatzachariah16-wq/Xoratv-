@@ -31,7 +31,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (specialPrizeClick) return Response.redirect(new URL(specialPrizeClick.targetPath, url.origin), 302);
     const promotion = await resolvePromotionLink(token);
     if (!promotion || promotion.service === "special-prize") return new Response("Promotion link not found or no longer active.", { status: 404, headers });
-    return Response.redirect(new URL(promotion.targetPath, url.origin), 302);
+    const redirect = Response.redirect(new URL(promotion.targetPath, url.origin), 302);
+    if (promotion.service === "data-reward" && !request.headers.get("cookie")?.split(";").some((part) => part.trim().startsWith("xora_creator_referral="))) {
+      redirect.headers.append("Set-Cookie", `xora_creator_referral=${encodeURIComponent(token)}; Path=/; Max-Age=315360000; HttpOnly; Secure; SameSite=Lax`);
+    }
+    return redirect;
   }
   if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
     return new Response(null, { status: 204, headers });
