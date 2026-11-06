@@ -144,7 +144,9 @@ export const Route = createFileRoute("/api/auth")({
         const profile = await profileFor(account.id);
         if (!profile) return json({ok:false,error:"Account profile is unavailable."},503);
         const raw = await createSession(account.id);
-        return json({ok:true,user:publicUser(account,profile)},200,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
+        const response = json({ok:true,user:publicUser(account,profile)},200,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
+        response.headers.append("Set-Cookie", clearReferralCookie());
+        return response;
       }
       if (action === "logout") {
         const raw = request.headers.get("cookie")?.split(";").map(s=>s.trim()).find(s=>s.startsWith(COOKIE+"="))?.slice(COOKIE.length+1);
