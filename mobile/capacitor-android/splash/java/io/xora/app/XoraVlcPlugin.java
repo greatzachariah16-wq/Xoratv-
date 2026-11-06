@@ -92,7 +92,9 @@ public class XoraVlcPlugin extends Plugin {
                 userPaused = false;
                 playbackFailed = false;
                 retryInProgress = false;
-                softwareDecoderAttempted = false;
+                // These two Pluto wrestling channels start in software decode mode,
+                // so do not retry the same decoder as though hardware were still active.
+                softwareDecoderAttempted = prefersSoftwareDecoder(url);
 
                 createInlinePlayer(bounds);
                 startCurrentStream(true);
@@ -129,6 +131,16 @@ public class XoraVlcPlugin extends Plugin {
         if (url == null || url.trim().isEmpty()) return false;
         Uri uri = Uri.parse(url);
         return "https".equalsIgnoreCase(uri.getScheme());
+    }
+
+    // Pluto wrestling feeds need the software decoder on affected Android devices.
+    // Match only these fixed XSports channel IDs; all other channels keep the
+    // existing hardware-first LibVLC behavior.
+    private boolean prefersSoftwareDecoder(String streamUrl) {
+        if (streamUrl == null) return false;
+        String channel = Uri.parse(streamUrl).getQueryParameter("channel");
+        return "tna-wrestling-pluto".equals(channel)
+            || "wrestling-legends-tv".equals(channel);
     }
 
     private void createInlinePlayer(JSObject bounds) {
@@ -228,7 +240,8 @@ public class XoraVlcPlugin extends Plugin {
 
         String selectedUrl = streamUrls.get(currentStreamIndex);
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
-        media.setHWDecoderEnabled(hardwareDecoder, false);
+        boolean forceSoftwareDecoder = prefersSoftwareDecoder(selectedUrl);
+        media.setHWDecoderEnabled(hardwareDecoder && !forceSoftwareDecoder, false);
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
         media.addOption(":http-reconnect");
