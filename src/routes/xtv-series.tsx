@@ -217,7 +217,6 @@ function XTvSeriesPage() {
   const {
     data: rawAllItems = [],
     isFetching,
-    refetch,
   } = useQuery({
     queryKey: ["xtv-series-all"],
     queryFn: () => fetchXTvSeries("All"),
