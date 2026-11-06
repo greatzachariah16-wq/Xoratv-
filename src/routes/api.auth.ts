@@ -22,7 +22,12 @@ function referralCookie(request: Request) {
   const value = request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith("xora_creator_referral="))?.slice("xora_creator_referral=".length);
   try { return value ? decodeURIComponent(value) : ""; } catch { return ""; }
 }
+function referralClickCookie(request: Request) {
+  const value = request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith("xora_creator_click="))?.slice("xora_creator_click=".length);
+  try { return value ? decodeURIComponent(value) : ""; } catch { return ""; }
+}
 function clearReferralCookie() { return "xora_creator_referral=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0"; }
+function clearReferralClickCookie() { return "xora_creator_click=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0"; }
 function json(body: unknown, status = 200, headers: Record<string,string> = {}) {
   return Response.json(body, { status, headers: { "Cache-Control":"no-store", "X-Content-Type-Options":"nosniff", ...headers } });
 }
@@ -116,12 +121,14 @@ export const Route = createFileRoute("/api/auth")({
             id:account.id,username,first_name:first,last_name:last,display_name:`${first} ${last}`,avatar_url:AVATAR,bio:""
           })});
           const referralToken = referralCookie(request) || String(body.referralToken || "");
-          if (referralToken) await attachCreatorReferralToUser(String(account.id), referralToken);
+          const referralClickId = referralClickCookie(request);
+          if (referralToken) await attachCreatorReferralToUser(String(account.id), referralToken, referralClickId);
           const raw = await createSession(account.id);
           const profile = await profileFor(account.id);
           if (!profile) throw new Error("Account profile creation failed.");
           const response = json({ok:true,user:publicUser({...account,email_verified_at:new Date().toISOString()},profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
           if (referralToken) response.headers.append("Set-Cookie", clearReferralCookie());
+          if (referralClickId) response.headers.append("Set-Cookie", clearReferralClickCookie());
           return response;
         } catch (error) {
           await db(`xora_profiles?id=eq.${encodeURIComponent(account.id)}`,{method:"DELETE"}).catch(() => undefined);
@@ -146,6 +153,7 @@ export const Route = createFileRoute("/api/auth")({
         const raw = await createSession(account.id);
         const response = json({ok:true,user:publicUser(account,profile)},200,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
         response.headers.append("Set-Cookie", clearReferralCookie());
+        response.headers.append("Set-Cookie", clearReferralClickCookie());
         return response;
       }
       if (action === "logout") {
