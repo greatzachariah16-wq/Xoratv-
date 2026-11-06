@@ -588,9 +588,9 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
 
   if (path === "/api/commerce/creator/payout" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, payout: await getPayoutDetails(userId) });
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in to view payout details." }, 401);
+    return json({ ok: true, payout: await getPayoutDetails(authenticatedUserId) });
   }
 
   if (path === "/api/commerce/creator/payout" && request.method === "POST") {
