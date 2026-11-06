@@ -1959,7 +1959,7 @@ export async function createCreatorPayoutRequest(userId: string, payoutType: "re
     const claims = Object.values((referralRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "confirmed");
     amount = claims.reduce((sum: number, x: any) => sum + Number(x.amount || 50), 0) - paidTotal;
   } else {
-    currency = "USD"; minimum = 10;
+    currency = "USD"; minimum = 5;
     const conversions = Object.values((conversionsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "approved" && String(x?.currency || "USD") === "USD");
     amount = conversions.reduce((sum: number, x: any) => sum + Number(x.creatorCommission || 0), 0) - paidTotal;
   }
