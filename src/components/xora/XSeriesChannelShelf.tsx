@@ -36,7 +36,7 @@ async function loadXSeriesChannels(): Promise<XSeriesLiveChannel[]> {
 const FILTERS: ShelfFilter[] = ["All", "Movies", "Series", "Action", "Romance"];
 
 function channelType(channel: XSeriesLiveChannel) {
-  return channel.categories.includes("series") ? "SERIES" : "MOVIES";
+  return (channel.categories || []).includes("series") ? "SERIES" : "MOVIES";
 }
 
 export function XSeriesChannelShelf() {
