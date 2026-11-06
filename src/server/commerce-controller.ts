@@ -4,7 +4,7 @@ import {
   createCreatorProfile, createDataOrder, getDataPriceQuote, createCourseOrder, getAdminCommerceOverview, getCreator, getCreatorCourses, createCreatorPost, getPromotionTarget,
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, refreshMeleDataRewardClaim, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
-  saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink, createCreatorPayoutRequest, getCreatorPayoutRequests, getAdminCreatorPayoutRequests,
+  saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink, recordCreatorReferralClick, createCreatorPayoutRequest, getCreatorPayoutRequests, getAdminCreatorPayoutRequests,
   getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
@@ -32,8 +32,11 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     const promotion = await resolvePromotionLink(token);
     if (!promotion || promotion.service === "special-prize") return new Response("Promotion link not found or no longer active.", { status: 404, headers });
     const redirect = Response.redirect(new URL(promotion.targetPath, url.origin), 302);
-    if (promotion.service === "data-reward" && !request.headers.get("cookie")?.split(";").some((part) => part.trim().startsWith("xora_creator_referral="))) {
+    const hasReferralCookie = request.headers.get("cookie")?.split(";").some((part) => part.trim().startsWith("xora_creator_referral="));
+    if (promotion.service === "data-reward" && !hasReferralCookie) {
+      const click = await recordCreatorReferralClick(token).catch(() => null);
       redirect.headers.append("Set-Cookie", `xora_creator_referral=${encodeURIComponent(token)}; Path=/; Max-Age=315360000; HttpOnly; Secure; SameSite=Lax`);
+      if (click?.clickId) redirect.headers.append("Set-Cookie", `xora_creator_click=${encodeURIComponent(click.clickId)}; Path=/; Max-Age=315360000; HttpOnly; Secure; SameSite=Lax`);
     }
     return redirect;
   }
