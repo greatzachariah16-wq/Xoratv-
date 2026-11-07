@@ -78,6 +78,7 @@ public class XoraVlcPlugin extends Plugin {
     private boolean decoderFallbackAttempted;
     private boolean pipRequested;
     private boolean pipMode;
+    private boolean userCloseRequested;
     private long playerGeneration;
     private long playbackAttemptGeneration;
     private Runnable streamStartupTimeout;
@@ -208,7 +209,7 @@ public class XoraVlcPlugin extends Plugin {
     @PluginMethod
     public void close(PluginCall call) {
         getActivity().runOnUiThread(() -> {
-            closePlayerInternal(true);
+            closePlayerInternal(false);
             call.resolve();
         });
     }
@@ -333,7 +334,7 @@ public class XoraVlcPlugin extends Plugin {
         muteButton = addControl("MUTE", controls, this::toggleMuteInternal);
         modeButton = addControl("PINNED", controls, this::cycleModeInternal);
         addControl("PIP", controls, this::enterPictureInPictureInternal);
-        addControl("CLOSE", controls, () -> closePlayerInternal(true));
+        addControl("CLOSE", controls, this::closeFromNativeControls);
 
         playerOverlay.addView(controls);
         rootContainer.addView(playerOverlay, new FrameLayout.LayoutParams(
@@ -901,7 +902,14 @@ public class XoraVlcPlugin extends Plugin {
         state.put("muted", isMuted);
         state.put("mode", mode.name().toLowerCase());
         state.put("pip", pipMode);
+        state.put("userClosed", closed && userCloseRequested);
         notifyListeners("playbackState", state);
+    }
+
+    private void closeFromNativeControls() {
+        userCloseRequested = true;
+        closePlayerInternal(true);
+        userCloseRequested = false;
     }
 
     private int dpValue(int value) {
