@@ -107,7 +107,9 @@ export function NativeVideoPlayer({
   const [nativeVlcActive, setNativeVlcActive] = useState(false);
   const nativeVlcActiveRef = useRef(false);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   const shortsRetriedOriginal = useRef(false);
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
@@ -173,6 +175,11 @@ export function NativeVideoPlayer({
       if (state.closed) {
         nativeVlcActiveRef.current = false;
         setNativeVlcActive(false);
+        setPlayerClosed(true);
+        setPlaying(false);
+        setWaiting(false);
+        setFailed(false);
+        onCloseRef.current?.();
       }
     })
       .then((registered) => {
