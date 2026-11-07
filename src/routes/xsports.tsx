@@ -303,7 +303,7 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
   return (
     <div>
       <div
-        className="relative isolate aspect-[4/5] w-[min(86vw,560px)] max-w-full shrink-0 overflow-hidden rounded-[28px] bg-[#191614] shadow-[0_22px_50px_rgba(56,37,25,0.23)] sm:aspect-[5/4]"
+        className="relative isolate aspect-[4/5] w-[min(82vw,560px)] max-w-full shrink-0 overflow-hidden rounded-[28px] bg-[#191614] shadow-[0_22px_50px_rgba(56,37,25,0.23)] sm:aspect-[5/4]"
         onTouchStart={() => onTouchPause(true)} onTouchEnd={() => onTouchPause(false)} onTouchCancel={() => onTouchPause(false)}
         onPointerDown={() => onTouchPause(true)} onPointerUp={() => onTouchPause(false)} onPointerCancel={() => onTouchPause(false)}
         onMouseEnter={() => onTouchPause(true)} onMouseLeave={() => onTouchPause(false)}
@@ -496,7 +496,7 @@ function XSportsPage() {
         <section className="space-y-3" aria-label="Featured sports channels">
           <SectionHeader title="Featured" subtitle="A front-row seat to the sports you follow" onSeeAll={scrollToChannels} />
           {channelsQuery.isLoading ? (
-            <div className="shimmer aspect-[4/5] w-[min(86vw,560px)] rounded-[28px] sm:aspect-[5/4]" />
+            <div className="shimmer aspect-[4/5] w-[min(82vw,560px)] rounded-[28px] sm:aspect-[5/4]" />
           ) : activeHero ? (
             <>
               <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
