@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
+import { Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
@@ -94,10 +94,6 @@ const HERO_IMAGES: Record<HeroSport, string> = {
   generic: GENERIC_HERO_IMAGE,
 };
 
-function isArchiveChannel(channel: SportsChannel) {
-  return channel.id === "wwe-superstar-central"
-    || /archive|24\/7/i.test([...(channel.labels || []), channel.quality || ""].join(" "));
-}
 function getChannelInitials(channel: SportsChannel) {
   if (channel.id === "wwe-superstar-central") return "WWE";
   const words = channel.name.trim().split(/\s+/).filter(Boolean);
@@ -332,10 +328,6 @@ function XSportsPage() {
     requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
   const scrollToChannels = () => channelsGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  const selectCategory = (item: (typeof CATEGORY_CHIPS)[number]) => {
-    if (item.query) { setFilter("All Sports"); setSearch(item.query); }
-    else { setFilter(item.filter || "All Sports"); setSearch(""); }
-  };
   const selectNetwork = (query: string) => { setFilter("All Sports"); setSearch(query); };
   const toggleFavorite = (channel: SportsChannel) => {
     setFavoriteIds((current) => current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id]);
@@ -464,7 +456,7 @@ function XSportsPage() {
             </div>
           ) : channels.length ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {channels.map((channel, index) => <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} />)}
+              {channels.map((channel, index) => <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} />)}
             </div>
           ) : (
             <div className="rounded-[24px] border border-dashed border-border bg-card/70 px-5 py-12 text-center shadow-sm">
