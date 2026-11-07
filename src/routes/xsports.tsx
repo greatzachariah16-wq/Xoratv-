@@ -325,7 +325,7 @@ function XSportsPage() {
   };
   const chooseChannel = (channel: SportsChannel) => {
     setSelectedId(channel.id);
-    requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   };
   const scrollToChannels = () => channelsGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const selectNetwork = (query: string) => { setFilter("All Sports"); setSearch(query); };
@@ -373,7 +373,7 @@ function XSportsPage() {
               <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-0">
                 {heroSlides.map((channel) => (
                   <div key={channel.id} className="shrink-0 snap-start">
-                    <SportsHero channel={channel} onWatch={chooseChannel} onTouchPause={setHeroPaused} />
+                    <SportsHero channel={channel} onWatch={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} onTouchPause={setHeroPaused} />
                   </div>
                 ))}
               </div>
@@ -416,7 +416,7 @@ function XSportsPage() {
                 <X className="size-3.5" /> Close player
               </button>
             </div>
-            <div className="overflow-hidden rounded-[22px] border border-border bg-ink shadow-card">
+            <div className="overflow-hidden rounded-[18px] bg-black shadow-[0_18px_44px_-24px_rgba(0,0,0,0.62)]">
               <NativeVideoPlayer
                 key={selected.id}
                 streamUrl={selected.streamUrl}
