@@ -146,6 +146,10 @@ function StatusBadge({ channel, statusMode }: { channel: BroadcastChannel; statu
   );
 }
 
+export function ChannelStatusBadge({ channel }: { channel: BroadcastChannel }) {
+  return <StatusBadge channel={channel} statusMode="sports" />;
+}
+
 export function LogoTile({ channel, statusMode = "sports" }: {
   channel: BroadcastChannel; statusMode?: "sports" | "live";
 }) {
