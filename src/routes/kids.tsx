@@ -166,10 +166,10 @@ function KidsPage() {
                   <div className="flex min-w-0 flex-wrap gap-2">
                     {[{ value: "TRENDING_DESC", label: "Trending" }, { value: "POPULARITY_DESC", label: "Popular" }, { value: "START_DATE_DESC", label: "Newest" }].map((option) => (
                       <Button key={option.value} type="button" size="sm" variant={catalogSort === option.value ? "default" : "outline"}
-                        className="min-h-10 rounded-full px-3 text-[11px] active:scale-[0.97]"
+                        className="min-h-11 rounded-full px-3 text-[11px] active:scale-[0.97]"
                         onClick={() => { setCatalogSort(option.value); setCatalogPage(1); }}>{option.label}</Button>
                     ))}
-                    {submittedCartoonSearch ? <Button type="button" size="sm" variant="ghost" className="min-h-10 rounded-full px-3 text-[11px]"
+                    {submittedCartoonSearch ? <Button type="button" size="sm" variant="ghost" className="min-h-11 rounded-full px-3 text-[11px]"
                       onClick={() => { setCartoonSearch(""); setSubmittedCartoonSearch(""); setCatalogPage(1); }}>Clear</Button> : null}
                   </div>
                   <span className="shrink-0 text-[10px] font-medium text-[#6B5F57] dark:text-[#bcb0a6]">{catalogQuery.isFetching ? "Updating…" : "Page " + catalogPage}</span>
@@ -245,7 +245,7 @@ function KidsPage() {
                   <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a kids channel..." aria-label="Search kids channels"
                     className="h-11 rounded-full border-border/80 bg-card pl-11 pr-12 text-sm shadow-[0_5px_18px_rgba(66,43,29,0.045)] placeholder:text-[#81736a] focus-visible:ring-primary/20" />
                   {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear channel search"
-                    className="press absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-[#6B5F57] hover:bg-secondary"><X className="size-4" /></button> : null}
+                    className="press absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full text-[#6B5F57] hover:bg-secondary"><X className="size-4" /></button> : null}
                 </div>
               </div>
 
