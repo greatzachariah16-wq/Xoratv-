@@ -48,6 +48,28 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     // Report the route error, but do not automatically invalidate/reset the
     // entire router for generic cross-origin script errors from ad providers.
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+
+    // The editor-only Lovable reporter is not present in production. Capture
+    // XSports route-boundary failures in Render logs so Android WebView errors
+    // can be diagnosed without changing the player or page presentation.
+    if (window.location.pathname === "/xsports") {
+      const diagnostic = {
+        route: window.location.pathname,
+        name: error instanceof Error ? error.name : "RouteError",
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        userAgent: navigator.userAgent,
+      };
+      void fetch("/api/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(diagnostic),
+        credentials: "same-origin",
+        keepalive: true,
+      }).catch(() => {
+        // Diagnostics must never interfere with rendering or recovery.
+      });
+    }
   }, [error]);
 
   return (
