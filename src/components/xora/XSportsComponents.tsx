@@ -29,7 +29,7 @@ export function getChannelCountryCode(country?: string) {
     usa: "US", gbr: "GB", uk: "GB", nga: "NG", can: "CA", zaf: "ZA", pol: "PL",
     ind: "IN", aus: "AU", fra: "FR", deu: "DE", ita: "IT", esp: "ES",
     bra: "BR", jpn: "JP", nld: "NL", mex: "MX", arg: "AR", nzl: "NZ",
-    tur: "TR", prt: "PT", isr: "IL", poland: "PL", israel: "IL",
+    tur: "TR", prt: "PT", isr: "IL", poland: "PL", israel: "IL", china: "CN", russia: "RU",
     "united states": "US", "united kingdom": "GB", nigeria: "NG",
     "south africa": "ZA", india: "IN", australia: "AU", france: "FR",
     germany: "DE", italy: "IT", spain: "ES", brazil: "BR", japan: "JP",
@@ -59,7 +59,10 @@ export function getCountryName(country?: string) {
   return raw.toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
 }
 
-export function formatMetadataLabel(value: string) {\n  return value.trim().toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());\n}\n\nexport function getChannelDisplayName(channel: Pick<BroadcastChannel, "name">) {
+export function formatMetadataLabel(value: string) {
+  return value.trim().toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
+}
+export function getChannelDisplayName(channel: Pick<BroadcastChannel, "name">) {
   return channel.name.replace(/\\s*\\(\\d{3,4}p\\)\\s*$/i, "").trim();
 }
 
