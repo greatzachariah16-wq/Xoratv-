@@ -1,16 +1,16 @@
-# XSports local hero photography
+# XSports hero photography
 
-Place these locally optimized WebP files in this directory. The XSports page references only local paths and never hotlinks stock-photo URLs.
+The XSports hero cards hotlink directly to the Pexels CDN over HTTPS. No local image files need to be added or maintained.
 
-| Filename | Use | Source |
+| Sport | Photographer's source page | Direct CDN image |
 | --- | --- | --- |
-| `wrestling.webp` | Wrestling / combat sports | https://www.pexels.com/photo/an-empty-boxing-ring-9968139/ |
-| `football.webp` | Football | https://www.pexels.com/photo/illuminated-soccer-stadium-at-night-28827841/ |
-| `basketball.webp` | Basketball | https://www.pexels.com/photo/athlete-jumping-for-dunk-in-indoor-basketball-court-32877408/ |
-| `tennis.webp` | Tennis | https://www.pexels.com/photo/quite-tennis-field-during-nighttime-793176/ |
-| `golf.webp` | Golf | https://www.pexels.com/photo/golfer-playing-at-golf-course-at-dawn-6256755/ |
-| `generic.webp` | General sports / fallback | https://www.pexels.com/photo/stadium-floodlights-against-evening-sky-32471032/ |
+| Wrestling / combat | https://www.pexels.com/photo/an-empty-boxing-ring-9968139/ | https://images.pexels.com/photos/9968139/pexels-photo-9968139.jpeg |
+| Football | https://www.pexels.com/photo/illuminated-soccer-stadium-at-night-28827841/ | https://images.pexels.com/photos/28827841/pexels-photo-28827841/free-photo-of-illuminated-soccer-stadium-at-night.jpeg |
+| Basketball | https://www.pexels.com/photo/athlete-jumping-for-dunk-in-indoor-basketball-court-32877408/ | https://images.pexels.com/photos/32877408/pexels-photo-32877408/free-photo-of-athlete-jumping-for-dunk-in-indoor-basketball-court.jpeg |
+| Tennis | https://www.pexels.com/photo/quite-tennis-field-during-nighttime-793176/ | https://images.pexels.com/photos/793176/pexels-photo-793176.jpeg |
+| Golf | https://www.pexels.com/photo/golfer-playing-at-golf-course-at-dawn-6256755/ | https://images.pexels.com/photos/6256755/pexels-photo-6256755.jpeg |
+| Generic sports | https://www.pexels.com/photo/stadium-floodlights-against-evening-sky-32471032/ | https://images.pexels.com/photos/32471032/pexels-photo-32471032/free-photo-of-stadium-floodlights-against-evening-sky.jpeg |
 
-**Export target:** crop for a 4:5 hero composition, resize to 1080px wide, encode as WebP, and aim for approximately 150–250 KB per file. Keep the main visual focal point away from the bottom quarter because the hero uses a dark bottom-weighted text overlay.
+The CDN requests use image resizing/compression parameters for the 4:5 hero crop. Photos are marked Free on Pexels; the Pexels License permits free commercial use without attribution, subject to its terms: https://www.pexels.com/license/.
 
-All selected photos are listed as free on Pexels. The Pexels License permits free commercial use without attribution: https://www.pexels.com/license/. Do not use the images to imply an endorsement by any depicted person, photographer, club, league, broadcaster, or brand.
+The browser requests the Pexels CDN directly. As with any third-party hotlink, image availability, CDN response time, or external rate limits are controlled by the image host rather than XoraTV.
