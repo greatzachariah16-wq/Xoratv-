@@ -59,7 +59,7 @@ export function getCountryName(country?: string) {
   return raw.toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
 }
 
-export function getChannelDisplayName(channel: Pick<BroadcastChannel, "name">) {
+export function formatMetadataLabel(value: string) {\n  return value.trim().toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());\n}\n\nexport function getChannelDisplayName(channel: Pick<BroadcastChannel, "name">) {
   return channel.name.replace(/\\s*\\(\\d{3,4}p\\)\\s*$/i, "").trim();
 }
 
@@ -247,7 +247,7 @@ export function ChannelCard<T extends BroadcastChannel>({
     <div
       role="button" tabIndex={0} aria-pressed={active}
       onClick={handleSelect}
-      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleSelect(); } }}
+      onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleSelect(); } }}
       className={cn(
         "press rise group flex h-full min-w-0 cursor-pointer flex-col rounded-[22px] border bg-card p-2.5 text-left shadow-[0_7px_22px_rgba(74,48,34,0.07)] transition-[transform,box-shadow,border-color] duration-200 active:scale-[0.97] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,48,34,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2",
         active ? "border-primary/60 ring-2 ring-primary/15" : "border-border/80",
@@ -263,7 +263,7 @@ export function ChannelCard<T extends BroadcastChannel>({
           <p className="min-w-0 flex-1 truncate text-[10px] leading-4 text-[#6B5F57] dark:text-muted-foreground sm:text-[11px]">
             {getCountryFlag(channel.country)} {getCountryName(channel.country)}
             {metaMode === "language" && getChannelLanguage(channel) ? " · " + getChannelLanguage(channel) : null}
-            {metaMode === "category" ? " · " + (channel.categories?.[0] || "Sports") : null}
+            {metaMode === "category" ? " · " + formatMetadataLabel(channel.categories?.[0] || "Sports") : null}
           </p>
           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_5px_12px_rgba(181,83,47,0.22)]">
             <Play className="ml-0.5 size-3 fill-current" />
