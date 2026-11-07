@@ -4,7 +4,7 @@ The XSports hero cards hotlink directly to the Pexels CDN over HTTPS. No local i
 
 | Sport | Photographer's source page | Direct CDN image |
 | --- | --- | --- |
-| Wrestling / combat | https://www.pexels.com/photo/an-empty-boxing-ring-9968139/ | https://images.pexels.com/photos/9968139/pexels-photo-9968139.jpeg |
+| Wrestling / combat | https://www.pexels.com/photo/boxers-inside-a-ring-3531081/ | https://images.pexels.com/photos/3531081/pexels-photo-3531081.jpeg |
 | Football | https://www.pexels.com/photo/illuminated-soccer-stadium-at-night-28827841/ | https://images.pexels.com/photos/28827841/pexels-photo-28827841/free-photo-of-illuminated-soccer-stadium-at-night.jpeg |
 | Basketball | https://www.pexels.com/photo/athlete-jumping-for-dunk-in-indoor-basketball-court-32877408/ | https://images.pexels.com/photos/32877408/pexels-photo-32877408/free-photo-of-athlete-jumping-for-dunk-in-indoor-basketball-court.jpeg |
 | Tennis | https://www.pexels.com/photo/quite-tennis-field-during-nighttime-793176/ | https://images.pexels.com/photos/793176/pexels-photo-793176.jpeg |

@@ -1576,3 +1576,27 @@ section[aria-label="X-Series live channels"] {
     will-change: auto;
   }
 }
+
+
+/* Xora Kids premium presentation: compact panels and gentle card reveals. */
+@keyframes kids-panel-reveal {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes kids-card-reveal {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.kids-panel-enter {
+  animation: kids-panel-reveal 220ms ease-out both;
+}
+.kids-card-enter {
+  animation: kids-card-reveal 300ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kids-panel-enter,
+  .kids-card-enter {
+    animation: none !important;
+    transform: none !important;
+  }
+}

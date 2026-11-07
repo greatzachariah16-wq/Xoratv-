@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
+import { Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
+import { CategoryChips, ChannelCard, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
 
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
@@ -65,9 +66,9 @@ export const Route = createFileRoute("/xsports")({
 
 type HeroSport = "wrestling" | "football" | "basketball" | "tennis" | "golf" | "generic";
 
-// Pexels: empty boxing ring, low-key gym lighting. https://www.pexels.com/photo/an-empty-boxing-ring-9968139/
+// Pexels: two athletes competing in a brightly lit boxing ring. https://www.pexels.com/photo/boxers-inside-a-ring-3531081/
 // Pexels License: free commercial use; attribution is not required.
-const WRESTLING_HERO_IMAGE = "https://images.pexels.com/photos/9968139/pexels-photo-9968139.jpeg?auto=compress&dpr=1&h=750&w=1260";
+const WRESTLING_HERO_IMAGE = "https://images.pexels.com/photos/3531081/pexels-photo-3531081.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: illuminated soccer stadium at night. https://www.pexels.com/photo/illuminated-soccer-stadium-at-night-28827841/
 // Pexels License: free commercial use; attribution is not required.
 const FOOTBALL_HERO_IMAGE = "https://images.pexels.com/photos/28827841/pexels-photo-28827841/free-photo-of-illuminated-soccer-stadium-at-night.jpeg?auto=compress&dpr=1&h=750&w=1260";
@@ -93,28 +94,9 @@ const HERO_IMAGES: Record<HeroSport, string> = {
   generic: GENERIC_HERO_IMAGE,
 };
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  "united states": "🇺🇸", "united kingdom": "🇬🇧", nigeria: "🇳🇬",
-  canada: "🇨🇦", "south africa": "🇿🇦", india: "🇮🇳", australia: "🇦🇺",
-  france: "🇫🇷", germany: "🇩🇪", italy: "🇮🇹", spain: "🇪🇸",
-  brazil: "🇧🇷", japan: "🇯🇵", netherlands: "🇳🇱", mexico: "🇲🇽",
-  argentina: "🇦🇷", "new zealand": "🇳🇿", turkey: "🇹🇷", portugal: "🇵🇹",
-};
-
-function getCountryFlag(country?: string) {
-  return country ? COUNTRY_FLAGS[country.trim().toLowerCase()] || "🌍" : "🌍";
-}
-function getQualityBadge(quality?: string | null) {
-  const match = quality?.match(/\b(2160p|1440p|1080p|720p|576p|480p|4k|uhd|fhd|hd)\b/i);
-  return match ? match[1].toLowerCase() : null;
-}
-function isArchiveChannel(channel: SportsChannel) {
-  return channel.id === "wwe-superstar-central"
-    || /archive|24\/7/i.test([...(channel.labels || []), channel.quality || ""].join(" "));
-}
 function getChannelInitials(channel: SportsChannel) {
   if (channel.id === "wwe-superstar-central") return "WWE";
-  const words = channel.name.trim().split(/\s+/).filter(Boolean);
+  const words = getChannelDisplayName(channel).split(/\s+/).filter(Boolean);
   return (words.length > 1 ? words.slice(0, 2).map((word) => word[0]) : [words[0]?.slice(0, 2) || "TV"])
     .join("").toUpperCase();
 }
@@ -131,72 +113,29 @@ function getChannelCategory(channel: SportsChannel) {
   return channel.categories?.[0] || "Sports";
 }
 function getHeroDescription(channel: SportsChannel) {
-  if (isArchiveChannel(channel)) return "A dedicated home for wrestling fans, available around the clock.";
-  return getChannelCategory(channel) + " coverage from " + (channel.country || "around the world") + ".";
+  const categories = [...new Set((channel.categories || []).map((value) => value.trim().toLowerCase().replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase())))]
+    .filter((category) => category.toLowerCase() !== "sports")
+    .slice(0, 2);
+  const categoryLabel = (categories.length ? categories : [formatMetadataLabel(getChannelCategory(channel))]).join(" & ");
+  return categoryLabel + " · " + getCountryName(channel.country);
 }
 
-const CATEGORY_CHIPS: Array<{ label: string; filter?: SportFilter; query?: string }> = [
-  { label: "All", filter: "All Sports" },
-  { label: "Football", filter: "Football" },
-  { label: "Basketball", filter: "Basketball" },
-  { label: "Tennis", filter: "Tennis" },
-  { label: "Wrestling", query: "wrestling" },
-  { label: "Golf", query: "golf" },
-  { label: "Motorsport", filter: "Motorsport" },
-  { label: "Rugby", filter: "Rugby" },
-  { label: "Cricket", filter: "Cricket" },
-  { label: "Boxing", filter: "Boxing" },
+const CATEGORY_CHIPS: Array<{ label: string; value: string }> = [
+  { label: "All", value: "filter:All Sports" },
+  { label: "Football", value: "filter:Football" },
+  { label: "Basketball", value: "filter:Basketball" },
+  { label: "Tennis", value: "filter:Tennis" },
+  { label: "Wrestling", value: "query:wrestling" },
+  { label: "Golf", value: "query:golf" },
+  { label: "Motorsport", value: "filter:Motorsport" },
+  { label: "Rugby", value: "filter:Rugby" },
+  { label: "Cricket", value: "filter:Cricket" },
+  { label: "Boxing", value: "filter:Boxing" },
 ];
 const NETWORKS = [
   { label: "ESPN", query: "espn", monogram: "E" },
   { label: "SuperSport", query: "supersport", monogram: "S" },
 ];
-
-function SectionHeader({ title, subtitle, onSeeAll }: { title: string; subtitle?: string; onSeeAll: () => void }) {
-  return (
-    <div className="flex items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
-      </div>
-      <button type="button" onClick={onSeeAll} className="press inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-bold text-primary hover:bg-primary/10">
-        See all <ArrowRight className="size-3.5" />
-      </button>
-    </div>
-  );
-}
-
-function CategoryChips({
-  filter, search, onSelect, loading = false,
-}: {
-  filter: SportFilter; search: string;
-  onSelect: (item: (typeof CATEGORY_CHIPS)[number]) => void;
-  loading?: boolean;
-}) {
-  const isActive = (item: (typeof CATEGORY_CHIPS)[number]) => {
-    if (item.query) return search.trim().toLowerCase() === item.query;
-    return filter === item.filter && !search.trim();
-  };
-  return (
-    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 border-y border-border/70 bg-background/90 py-2 pl-4 pr-0 shadow-[0_8px_18px_-18px_rgba(50,34,24,0.3)] backdrop-blur-xl">
-      <div className="relative">
-        <div className="hide-scrollbar touch-pan-x flex gap-2 overflow-x-auto overscroll-x-contain pb-1 pr-8">
-          {loading ? Array.from({ length: 6 }).map((_, index) => <span key={index} className="shimmer h-10 w-20 shrink-0 rounded-full" />) : CATEGORY_CHIPS.map((item) => (
-            <button
-              key={item.label} type="button" onClick={() => onSelect(item)}
-              aria-pressed={isActive(item)}
-              className={cn(
-                "press min-h-11 shrink-0 rounded-full border px-4 text-xs font-bold transition-all duration-200",
-                isActive(item) ? "border-primary bg-primary text-primary-foreground shadow-[0_5px_14px_rgba(181,83,47,0.22)]" : "border-border bg-card/85 text-muted-foreground hover:border-primary/45 hover:text-foreground",
-              )}
-            >{item.label}</button>
-          ))}
-        </div>
-        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/80 to-transparent" />
-      </div>
-    </div>
-  );
-}
 
 function NetworkChips({ search, onSelect, loading = false }: { search: string; onSelect: (query: string) => void; loading?: boolean }) {
   return (
@@ -224,69 +163,6 @@ function NetworkChips({ search, onSelect, loading = false }: { search: string; o
   );
 }
 
-function ChannelStatusBadge({ channel, compact = false }: { channel: SportsChannel; compact?: boolean }) {
-  const archive = isArchiveChannel(channel);
-  return archive ? (
-    <span className={cn("inline-flex shrink-0 items-center rounded-full border border-white/20 bg-black/45 font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md", compact ? "px-2 py-1 text-[9px]" : "px-2.5 py-1.5 text-[9px]")}>
-      Archive 24/7
-    </span>
-  ) : (
-    <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border border-red-200/25 bg-[#a9342c] font-bold uppercase tracking-[0.14em] text-white shadow-sm", compact ? "px-2 py-1 text-[8px]" : "px-2.5 py-1.5 text-[9px]")}>
-      <span className="size-1.5 rounded-full bg-white motion-safe:animate-pulse" /> Live
-    </span>
-  );
-}
-
-function ChannelCard({ channel, active, index, onSelect }: {
-  channel: SportsChannel; active: boolean; index: number; onSelect: (channel: SportsChannel) => void;
-}) {
-  const [logoFailed, setLogoFailed] = useState(false);
-  const [logoLoaded, setLogoLoaded] = useState(false);
-  const quality = getQualityBadge(channel.quality);
-  return (
-    <button
-      type="button" onClick={() => onSelect(channel)} aria-pressed={active}
-      className={cn(
-        "press rise group flex h-full min-w-0 flex-col rounded-[22px] border bg-card p-2.5 text-left shadow-[0_7px_22px_rgba(74,48,34,0.07)] transition-[transform,box-shadow,border-color] duration-200 active:scale-[0.97] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,48,34,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2",
-        active ? "border-primary/60 ring-2 ring-primary/15" : "border-border/80",
-      )}
-      style={{ animationDelay: Math.min(index % 8, 7) * 36 + "ms" }}
-    >
-      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-[16px] border border-[#e3d4c7] bg-[#eee4da] dark:border-[#51433b] dark:bg-[#302a26]">
-        <div className="absolute left-2 top-2 z-20"><ChannelStatusBadge channel={channel} compact /></div>
-        {quality ? <span className="absolute right-2 top-2 z-20 rounded-full border border-[#ded0c3] bg-[#fffaf4]/95 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-[#4d3a30] shadow-sm dark:border-white/15 dark:bg-[#282320]/90 dark:text-[#f5e9df]">{quality}</span> : null}
-        <div className="absolute inset-x-0 bottom-0 top-9 grid place-items-center px-4 pb-3 pt-1">
-          {channel.logo && !logoFailed ? (
-            <img
-              src={channel.logo} alt="" aria-hidden="true" loading="lazy" decoding="async"
-              onLoad={() => setLogoLoaded(true)} onError={() => setLogoFailed(true)}
-              className={cn("max-h-full max-w-full object-contain p-1 transition-opacity duration-300", logoLoaded ? "opacity-100" : "opacity-0")}
-            />
-          ) : (
-            <span className="grid size-[60%] min-h-10 min-w-10 max-w-[112px] place-items-center rounded-[15px] border border-[#d9bda9] bg-gradient-to-br from-[#fff9f1] via-[#f0dfd1] to-[#d9bca8] px-2 text-center font-display text-[clamp(17px,4vw,26px)] font-bold text-[#7d402a] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-[#655247] dark:from-[#514139] dark:via-[#40332c] dark:to-[#332a25] dark:text-[#f4d8c6]">
-              {getChannelInitials(channel)}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex min-h-[86px] flex-1 flex-col justify-between gap-2 px-0.5 pb-0.5 pt-3">
-        <div className="min-w-0">
-          <p className="line-clamp-2 min-h-[2.5rem] text-[13px] font-bold leading-5 tracking-[-0.01em] text-card-foreground sm:text-sm">{channel.name}</p>
-          <p className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
-            <span className="shrink-0" aria-hidden="true">{getCountryFlag(channel.country)}</span>
-            <span className="min-w-0 truncate">{channel.country || "International"} · {getChannelCategory(channel)}</span>
-          </p>
-        </div>
-        <div className="flex items-center justify-end pt-0.5">
-          <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_5px_12px_rgba(181,83,47,0.22)] transition-transform duration-200 group-hover:scale-105">
-            <Play className="ml-0.5 size-3.5 fill-current" />
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}
-
 function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
   channel: SportsChannel; onWatch: (channel: SportsChannel) => void; favorite: boolean;
   onFavorite: (channel: SportsChannel) => void; onTouchPause: (paused: boolean) => void;
@@ -294,7 +170,7 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const image = HERO_IMAGES[getSportKey(channel)];
-  const quality = getQualityBadge(channel.quality);
+  const quality = getChannelQuality(channel);
   useEffect(() => {
     setPhotoFailed(false);
     setPhotoLoaded(false);
@@ -322,12 +198,11 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
             <img
               src={image} alt="" aria-hidden="true" loading="eager" decoding="async"
               onLoad={() => setPhotoLoaded(true)} onError={() => setPhotoFailed(true)}
-              className={cn("xsports-hero-photo absolute inset-0 h-full w-full object-cover transition-opacity duration-700", photoLoaded ? "opacity-100" : "opacity-0")}
+              className={cn("xsports-hero-photo absolute inset-0 h-full w-full object-cover brightness-125 contrast-110 saturate-110 transition-opacity duration-700", photoLoaded ? "opacity-100" : "opacity-0")}
             />
           )}
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,11,10,0.04)_0%,rgba(12,11,10,0.12)_30%,rgba(12,11,10,0.58)_62%,rgba(12,11,10,0.94)_100%)]" />
-          <div className="absolute -bottom-16 -left-16 size-64 rounded-full bg-[#b5532f]/30 blur-[70px]" />
-          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/35 to-transparent" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,11,10,0)_0%,rgba(12,11,10,0)_50%,rgba(12,11,10,0.42)_76%,rgba(12,11,10,0.70)_100%)]" />
+          <div className="absolute -bottom-16 -left-16 size-64 rounded-full bg-[#b5532f]/20 blur-[70px]" />
         </div>
 
         <div className="absolute left-4 right-4 top-4 z-10 flex items-start justify-between gap-3">
@@ -337,7 +212,7 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
           </div>
           <div className="grid h-[76px] w-[38%] max-w-[164px] shrink-0 place-items-center">
             {channel.logo ? (
-              <img src={channel.logo} alt={channel.name + " logo"} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.55)]" />
+              <img src={channel.logo} alt={getChannelDisplayName(channel) + " logo"} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.55)]" />
             ) : channel.id === "wwe-superstar-central" ? (
               <span className="-rotate-6 select-none font-sans text-[clamp(32px,9vw,58px)] font-black italic leading-none tracking-[-0.13em] text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.75)]">WWE</span>
             ) : null}
@@ -345,7 +220,7 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
         </div>
 
         <div className="absolute inset-x-5 bottom-5 z-10 flex flex-col items-start">
-          <h2 className="line-clamp-2 max-w-full font-display text-[30px] font-bold leading-[1.02] tracking-[-0.045em] text-white sm:text-[32px]">{channel.name}</h2>
+          <h2 className="line-clamp-2 max-w-full font-display text-[30px] font-bold leading-[1.02] tracking-[-0.045em] text-white sm:text-[32px]">{getChannelDisplayName(channel)}</h2>
           <p className="mt-2 line-clamp-1 max-w-full text-sm leading-5 text-white/75">{getHeroDescription(channel)}</p>
           <div className="mt-5 flex w-full items-center gap-2.5">
             <button type="button" onClick={() => onWatch(channel)} className="press inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[0_8px_22px_rgba(181,83,47,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.97]">
@@ -453,10 +328,6 @@ function XSportsPage() {
     requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
   const scrollToChannels = () => channelsGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  const selectCategory = (item: (typeof CATEGORY_CHIPS)[number]) => {
-    if (item.query) { setFilter("All Sports"); setSearch(item.query); }
-    else { setFilter(item.filter || "All Sports"); setSearch(""); }
-  };
   const selectNetwork = (query: string) => { setFilter("All Sports"); setSearch(query); };
   const toggleFavorite = (channel: SportsChannel) => {
     setFavoriteIds((current) => current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id]);
@@ -499,17 +370,17 @@ function XSportsPage() {
             <div className="shimmer aspect-[4/5] w-[min(82vw,560px)] rounded-[28px] sm:aspect-[5/4]" />
           ) : activeHero ? (
             <>
-              <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
+              <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-0">
                 {heroSlides.map((channel) => (
                   <div key={channel.id} className="shrink-0 snap-start">
-                    <SportsHero channel={channel} onWatch={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} onTouchPause={setHeroPaused} />
+                    <SportsHero channel={channel} onWatch={chooseChannel} onTouchPause={setHeroPaused} />
                   </div>
                 ))}
               </div>
-              <div className="mt-1 flex items-center justify-center gap-1.5" aria-label="Featured channel slides">
+              <div className="mt-3 flex items-center justify-center gap-1.5" aria-label="Featured channel slides">
                 {heroSlides.map((channel, index) => (
                   <button key={channel.id} type="button" onClick={() => setHeroIndex(index)} aria-label={"Show featured channel " + (index + 1)} aria-current={heroIndex === index ? "true" : undefined} className="press grid size-8 place-items-center rounded-full">
-                    <span className={cn("h-1.5 rounded-full transition-all duration-200", heroIndex === index ? "w-6 bg-primary" : "w-1.5 bg-border dark:bg-white/35")} />
+                    <span className={cn("h-1.5 rounded-full transition-all duration-200", heroIndex === index ? "w-6 bg-primary" : "w-1.5 bg-border opacity-40 dark:bg-white/55")} />
                   </button>
                 ))}
               </div>
@@ -521,7 +392,17 @@ function XSportsPage() {
           )}
         </section>
 
-        <CategoryChips filter={filter} search={search} onSelect={selectCategory} loading={channelsQuery.isLoading} />
+        <CategoryChips
+          options={CATEGORY_CHIPS}
+          value={search.trim() ? "query:" + search.trim().toLowerCase() : "filter:" + filter}
+          onChange={(value) => {
+            if (value.startsWith("query:")) { setFilter("All Sports"); setSearch(value.slice(6)); }
+            else { setFilter((value.slice(7) || "All Sports") as SportFilter); setSearch(""); }
+          }}
+          loading={channelsQuery.isLoading}
+          ariaLabel="Sports categories"
+          sticky
+        />
         <NetworkChips search={search} onSelect={selectNetwork} loading={channelsQuery.isLoading} />
 
         {selected ? (
@@ -529,7 +410,7 @@ function XSportsPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-primary">Now selected</p>
-                <h2 className="truncate font-display text-lg font-bold">{selected.name}</h2>
+                <h2 className="truncate font-display text-lg font-bold">{getChannelDisplayName(selected)}</h2>
               </div>
               <button type="button" onClick={() => setSelectedId(null)} className="press inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">
                 <X className="size-3.5" /> Close player
@@ -542,7 +423,7 @@ function XSportsPage() {
                 nativeStreamUrl={selected.id === "wwe-superstar-central"
                   ? "/api/tv/stream?provider=iptv-org&channel=" + encodeURIComponent(selected.id)
                   : "/api/tv/stream?provider=" + (selected.provider || "nexus") + "&channel=" + encodeURIComponent(selected.id)}
-                externalPoster={selected.logo} title={selected.name} liveTv
+                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv
                 className="aspect-video w-full rounded-none"
               />
             </div>
