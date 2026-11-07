@@ -50,27 +50,7 @@ async function loadSportsChannels(): Promise<SportsChannel[]> {
     provider: "iptv-org",
     streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8",
   };
-  const tnaCandidate: SportsChannel = {
-    id: "tna-wrestling-pluto",
-    name: "TNA Wrestling",
-    country: "United States",
-    categories: ["Wrestling"],
-    labels: ["Wrestling", "TNA", "Pluto TV", "24/7"],
-    quality: "Pluto TV · Wrestling",
-    provider: "iptv-org",
-    streamUrl: "https://jmp2.uk/plu-59b722526996084038c01e1b.m3u8",
-  };
-  const legendsCandidate: SportsChannel = {
-    id: "wrestling-legends-tv",
-    name: "Wrestling Legends TV",
-    country: "United Kingdom",
-    categories: ["Wrestling"],
-    labels: ["Wrestling", "Legends", "Pluto TV", "24/7"],
-    quality: "720p · Classic wrestling",
-    provider: "iptv-org",
-    streamUrl: "https://jmp2.uk/plu-68c820525ec82769fdfcd104.m3u8",
-  };
-  const fixedCandidates = [wweCandidate, tnaCandidate, legendsCandidate];
+  const fixedCandidates = [wweCandidate];
   const fixedIds = new Set(fixedCandidates.map((channel) => channel.id));
   return [...fixedCandidates, ...channels.filter((channel) => !fixedIds.has(channel.id))];
 }
