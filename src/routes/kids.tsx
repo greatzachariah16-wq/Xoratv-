@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
 import { AgeChips, type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
-type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; language?: string; languages?: string[]; ageLabel?: string };
+type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; provider?: "nexus" | "iptv-org"; language?: string; languages?: string[]; ageLabel?: string };
 type CartoonSeries = { id: string; title: string; year: number; description: string; ageLabel: string; artClass: string; provider: "tmdb" | "anilist"; posterUrl?: string; format?: string; episodes?: number | null; genres?: string[] };
 type AniListMedia = { id: number; title: { english?: string | null; romaji: string }; description?: string | null; coverImage?: { large?: string | null; medium?: string | null } | null; seasonYear?: number | null; format?: string | null; episodes?: number | null; genres?: string[] };
 type AniListResponse = { data?: { Page?: { pageInfo?: { currentPage: number; hasNextPage: boolean }; media?: AniListMedia[] } }; errors?: Array<{ message?: string }> };
@@ -77,7 +77,7 @@ async function loadKidsChannels(query: string): Promise<Channel[]> {
 }
 
 function KidsPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: "/kids" });
   const { channel: requestedChannel } = Route.useSearch();
   const [activeSection, setActiveSection] = useState<"cartoons" | "live">("cartoons");
   const [ageFilter, setAgeFilter] = useState<AgeFilter>("All");
@@ -119,10 +119,13 @@ function KidsPage() {
     const current = (query.data || []).filter((channel) => ageFilter === "All" || getChannelAgeLabel(channel) === ageFilter);
     return sortKidsChannels(current, getChannelCountryCode, getChannelLanguage);
   }, [query.data, ageFilter]);
-  const visibleSelected = channelsByAge.find((channel) => channel.id === requestedChannel) || channelsByAge[0] || null;
+  const visibleSelected = channelsByAge.find((channel) => channel.id === requestedChannel) || null;
   const toggleChannelFavorite = (channel: Channel) => setFavoriteChannels((current) =>
     current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id],
   );
+  const selectKidsChannel = (channel: Channel) => {
+    void navigate({ search: { channel: channel.id }, replace: true, resetScroll: false });
+  };
   const cartoonPlayerUrl = selectedCartoon
     ? selectedCartoon.provider === "anilist"
       ? `https://embed.vidrift.net/embed/anilist/${selectedCartoon.id}/${episode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
@@ -247,17 +250,17 @@ function KidsPage() {
               ) : query.isError ? (
                 <KidsEmptyState message="Kids channels could not load. Please try again." />
               ) : visibleSelected ? (
-                <section className="space-y-3" aria-label="Now playing">
-                  <SectionHeader title="Now playing" subtitle={getChannelDisplayName(visibleSelected)} />
-                  <div className="overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_14px_32px_-24px_rgba(54,38,28,0.55)]">
-                    <div className="relative overflow-hidden rounded-[20px] bg-[#1d1916]">
-                      <NativeVideoPlayer streamUrl={"/api/tv/stream?provider=nexus&channel=" + encodeURIComponent(visibleSelected.id)}
-                        externalPoster={visibleSelected.logo} title={visibleSelected.name} autoPlay liveTv
-                        className="aspect-video w-full rounded-[20px]" />
-                    </div>
+                <section className="space-y-3" aria-label="Selected kids channel">
+                  <SectionHeader title="Selected channel" subtitle={getChannelDisplayName(visibleSelected)} />
+                  <div className="overflow-hidden rounded-[22px] bg-black shadow-[0_18px_44px_-24px_rgba(0,0,0,0.62)]">
+                    <NativeVideoPlayer key={visibleSelected.id}
+                      streamUrl={visibleSelected.streamUrl}
+                      nativeStreamUrl={"/api/tv/stream?provider=" + (visibleSelected.provider || "nexus") + "&channel=" + encodeURIComponent(visibleSelected.id)}
+                      externalPoster={visibleSelected.logo} title={visibleSelected.name} liveTv
+                      className="aspect-video w-full rounded-none" />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
-                        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-primary">NOW PLAYING</p>
+                        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-primary">READY TO PLAY</p>
                         <p className="mt-1 truncate font-display text-sm font-semibold text-foreground">{getChannelDisplayName(visibleSelected)}</p>
                         <p className="mt-1 text-[11px] text-[#6B5F57] dark:text-muted-foreground">{getCountryFlag(visibleSelected.country)} {getCountryName(visibleSelected.country)}{getChannelLanguage(visibleSelected) ? " · " + getChannelLanguage(visibleSelected) : ""}</p>
                       </div>
@@ -273,7 +276,7 @@ function KidsPage() {
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                     {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).map((channel, index) => (
                       <ChannelCard key={channel.id} channel={channel} active={false} index={index}
-                        onSelect={(item) => { window.history.replaceState({}, "", "/kids?channel=" + encodeURIComponent(item.id)); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        onSelect={selectKidsChannel}
                         favorite={favoriteChannels.includes(channel.id)} onFavorite={toggleChannelFavorite}
                         statusMode="live" metaMode="language" />
                     ))}
