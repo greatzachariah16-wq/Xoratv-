@@ -35,11 +35,51 @@ function matchesSport(channel: SportsChannel, filter: SportFilter) {
   if (filter === "Other") return !known.some((term) => value.includes(term));
   return SPORT_TERMS[filter].some((term) => value.includes(term));
 }
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeSportsChannel(value: unknown): SportsChannel | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const raw = value as Record<string, unknown>;
+  const id = typeof raw.id === "string" ? raw.id.trim() : "";
+  const name = typeof raw.name === "string" ? raw.name.trim() : "";
+  const streamUrl = typeof raw.streamUrl === "string" ? raw.streamUrl.trim() : "";
+
+  // Cards and the native player require stable identity, a display name, and a stream URL.
+  if (!id || !name || !streamUrl) return null;
+
+  return {
+    id,
+    name,
+    streamUrl,
+    logo: typeof raw.logo === "string" && raw.logo.trim() ? raw.logo.trim() : undefined,
+    country: typeof raw.country === "string" && raw.country.trim() ? raw.country.trim() : undefined,
+    categories: normalizeStringList(raw.categories),
+    labels: normalizeStringList(raw.labels),
+    quality: typeof raw.quality === "string" ? raw.quality : null,
+    score: typeof raw.score === "number" && Number.isFinite(raw.score) ? raw.score : undefined,
+    provider: raw.provider === "nexus" || raw.provider === "iptv-org" ? raw.provider : undefined,
+  };
+}
+
 async function loadSportsChannels(): Promise<SportsChannel[]> {
   const response = await fetch("/api/tv/channels?category=sports&limit=10000");
   if (!response.ok) throw new Error("Unable to load sports channels right now.");
-  const data = (await response.json()) as { channels?: SportsChannel[] };
-  const channels = Array.isArray(data.channels) ? data.channels : [];
+
+  const data: unknown = await response.json();
+  const rawChannels = data && typeof data === "object" && !Array.isArray(data)
+    ? (data as { channels?: unknown }).channels
+    : [];
+  const normalizedChannels = Array.isArray(rawChannels)
+    ? rawChannels.map(normalizeSportsChannel).filter((channel): channel is SportsChannel => channel !== null)
+    : [];
+
   // Free Samsung TV Plus WWE archive channel candidate, added for in-app playback testing.
   const wweCandidate: SportsChannel = {
     id: "wwe-superstar-central",
@@ -51,9 +91,17 @@ async function loadSportsChannels(): Promise<SportsChannel[]> {
     provider: "iptv-org",
     streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8",
   };
-  const fixedCandidates = [wweCandidate];
-  const fixedIds = new Set(fixedCandidates.map((channel) => channel.id));
-  return [...fixedCandidates, ...channels.filter((channel) => !fixedIds.has(channel.id))];
+
+  // Ignore malformed entries and duplicate IDs so a single bad catalogue record
+  // cannot break React rendering or create unstable card keys.
+  const result: SportsChannel[] = [wweCandidate];
+  const seenIds = new Set<string>([wweCandidate.id]);
+  for (const channel of normalizedChannels) {
+    if (seenIds.has(channel.id)) continue;
+    seenIds.add(channel.id);
+    result.push(channel);
+  }
+  return result;
 }
 
 export const Route = createFileRoute("/xsports")({
