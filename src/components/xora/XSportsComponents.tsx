@@ -26,7 +26,7 @@ export function getChannelCountryCode(country?: string) {
   if (!raw) return null;
   if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
   const aliases: Record<string, string> = {
-    usa: "US", gbr: "GB", uk: "GB", nga: "NG", can: "CA", zaf: "ZA",
+    usa: "US", gbr: "GB", uk: "GB", nga: "NG", can: "CA", zaf: "ZA", pol: "PL",
     ind: "IN", aus: "AU", fra: "FR", deu: "DE", ita: "IT", esp: "ES",
     bra: "BR", jpn: "JP", nld: "NL", mex: "MX", arg: "AR", nzl: "NZ",
     tur: "TR", prt: "PT", isr: "IL", poland: "PL", israel: "IL",
