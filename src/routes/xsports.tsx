@@ -96,7 +96,7 @@ const HERO_IMAGES: Record<HeroSport, string> = {
 
 function getChannelInitials(channel: SportsChannel) {
   if (channel.id === "wwe-superstar-central") return "WWE";
-  const words = channel.name.trim().split(/\s+/).filter(Boolean);
+  const words = getChannelDisplayName(channel).split(/\s+/).filter(Boolean);
   return (words.length > 1 ? words.slice(0, 2).map((word) => word[0]) : [words[0]?.slice(0, 2) || "TV"])
     .join("").toUpperCase();
 }
@@ -212,7 +212,7 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
           </div>
           <div className="grid h-[76px] w-[38%] max-w-[164px] shrink-0 place-items-center">
             {channel.logo ? (
-              <img src={channel.logo} alt={channel.name + " logo"} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.55)]" />
+              <img src={channel.logo} alt={getChannelDisplayName(channel) + " logo"} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.55)]" />
             ) : channel.id === "wwe-superstar-central" ? (
               <span className="-rotate-6 select-none font-sans text-[clamp(32px,9vw,58px)] font-black italic leading-none tracking-[-0.13em] text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.75)]">WWE</span>
             ) : null}
@@ -410,7 +410,7 @@ function XSportsPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-primary">Now selected</p>
-                <h2 className="truncate font-display text-lg font-bold">{selected.name}</h2>
+                <h2 className="truncate font-display text-lg font-bold">{getChannelDisplayName(selected)}</h2>
               </div>
               <button type="button" onClick={() => setSelectedId(null)} className="press inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">
                 <X className="size-3.5" /> Close player
@@ -423,7 +423,7 @@ function XSportsPage() {
                 nativeStreamUrl={selected.id === "wwe-superstar-central"
                   ? "/api/tv/stream?provider=iptv-org&channel=" + encodeURIComponent(selected.id)
                   : "/api/tv/stream?provider=" + (selected.provider || "nexus") + "&channel=" + encodeURIComponent(selected.id)}
-                externalPoster={selected.logo} title={selected.name} liveTv
+                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv
                 className="aspect-video w-full rounded-none"
               />
             </div>
