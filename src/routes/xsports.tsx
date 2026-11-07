@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Heart, Loader2, Play, Radio, Search, Tv, X } from "lucide-react";
+import { ArrowRight, Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
@@ -287,10 +287,9 @@ function ChannelCard({ channel, active, index, onSelect }: {
   );
 }
 
-function SportsHero({ channel, onWatch, favorite, onFavorite, activeIndex, slideCount, onDot, onTouchPause }: {
+function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
   channel: SportsChannel; onWatch: (channel: SportsChannel) => void; favorite: boolean;
-  onFavorite: (channel: SportsChannel) => void; activeIndex: number; slideCount: number;
-  onDot: (index: number) => void; onTouchPause: (paused: boolean) => void;
+  onFavorite: (channel: SportsChannel) => void; onTouchPause: (paused: boolean) => void;
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [photoLoaded, setPhotoLoaded] = useState(false);
@@ -358,13 +357,6 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, activeIndex, slide
           </div>
         </div>
       </div>
-      <div className="mt-2.5 flex items-center justify-center gap-1.5" aria-label="Featured channel slides">
-        {Array.from({ length: slideCount }).map((_, index) => (
-          <button key={index} type="button" onClick={() => onDot(index)} aria-label={"Show featured channel " + (index + 1)} aria-current={activeIndex === index ? "true" : undefined} className="press grid size-8 place-items-center rounded-full">
-            <span className={cn("h-1.5 rounded-full transition-all duration-200", activeIndex === index ? "w-6 bg-primary" : "w-1.5 bg-border dark:bg-white/35")} />
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -395,6 +387,7 @@ function XSportsPage() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const playerRef = useRef<HTMLElement | null>(null);
   const channelsGridRef = useRef<HTMLDivElement | null>(null);
+  const heroCarouselRef = useRef<HTMLDivElement | null>(null);
   const channelsQuery = useQuery({
     queryKey: ["xora-xsports-channels"], queryFn: loadSportsChannels,
     staleTime: 60_000, refetchInterval: 5 * 60_000, refetchOnWindowFocus: true, retry: 2,
@@ -430,7 +423,31 @@ function XSportsPage() {
     return () => window.clearInterval(interval);
   }, [heroPaused, heroSlides.length]);
 
+  useEffect(() => {
+    const container = heroCarouselRef.current;
+    const slide = container?.children.item(heroIndex) as HTMLElement | null;
+    if (!container || !slide) return;
+    container.scrollTo({ left: slide.offsetLeft - container.offsetLeft, behavior: "smooth" });
+  }, [heroIndex]);
+
   const activeHero = heroSlides[heroIndex] || featured;
+  const handleHeroScroll = () => {
+    const container = heroCarouselRef.current;
+    if (!container) return;
+    const midpoint = container.scrollLeft + container.clientWidth / 2;
+    const children = Array.from(container.children) as HTMLElement[];
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    children.forEach((slide, index) => {
+      const center = slide.offsetLeft + slide.offsetWidth / 2;
+      const distance = Math.abs(center - midpoint);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    setHeroIndex(nearestIndex);
+  };
   const chooseChannel = (channel: SportsChannel) => {
     setSelectedId(channel.id);
     requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -481,18 +498,22 @@ function XSportsPage() {
           {channelsQuery.isLoading ? (
             <div className="shimmer aspect-[4/5] w-[min(86vw,560px)] rounded-[28px] sm:aspect-[5/4]" />
           ) : activeHero ? (
-            <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
-              {heroSlides.map((channel) => (
-                <div key={channel.id} className="snap-start">
-                  <SportsHero
-                    channel={channel} onWatch={chooseChannel}
-                    favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite}
-                    activeIndex={heroIndex} slideCount={heroSlides.length} onDot={setHeroIndex}
-                    onTouchPause={setHeroPaused}
-                  />
-                </div>
-              ))}
-            </div>
+            <>
+              <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
+                {heroSlides.map((channel) => (
+                  <div key={channel.id} className="snap-start">
+                    <SportsHero channel={channel} onWatch={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} onTouchPause={setHeroPaused} />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 flex items-center justify-center gap-1.5" aria-label="Featured channel slides">
+                {heroSlides.map((channel, index) => (
+                  <button key={channel.id} type="button" onClick={() => setHeroIndex(index)} aria-label={"Show featured channel " + (index + 1)} aria-current={heroIndex === index ? "true" : undefined} className="press grid size-8 place-items-center rounded-full">
+                    <span className={cn("h-1.5 rounded-full transition-all duration-200", heroIndex === index ? "w-6 bg-primary" : "w-1.5 bg-border dark:bg-white/35")} />
+                  </button>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="flex aspect-[4/5] max-h-[420px] items-end rounded-[28px] bg-[#29221d] p-6 text-white shadow-card">
               <div><p className="text-sm font-semibold">No featured channel yet</p><p className="mt-1 text-xs text-white/70">Try another sport or search.</p></div>
