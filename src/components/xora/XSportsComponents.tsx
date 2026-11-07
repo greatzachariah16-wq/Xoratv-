@@ -231,9 +231,6 @@ export function LogoTile({ channel, statusMode = "sports", favorite = false, onF
           {getChannelQuality(channel)}
         </span>
       ) : null}
-      <span className="absolute bottom-2 right-2 z-20 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_5px_12px_rgba(181,83,47,0.22)] transition-transform duration-200 group-hover:scale-105">
-        <Play className="ml-0.5 size-3 fill-current" />
-      </span>
     </div>
   );
 }
@@ -247,9 +244,12 @@ export function ChannelCard<T extends BroadcastChannel>({
 }) {
   const handleSelect = () => onSelect(channel);
   return (
-    <button type="button" onClick={handleSelect} aria-pressed={active}
+    <div
+      role="button" tabIndex={0} aria-pressed={active}
+      onClick={handleSelect}
+      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleSelect(); } }}
       className={cn(
-        "press rise group flex h-full min-w-0 flex-col rounded-[22px] border bg-card p-2.5 text-left shadow-[0_7px_22px_rgba(74,48,34,0.07)] transition-[transform,box-shadow,border-color] duration-200 active:scale-[0.97] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,48,34,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2",
+        "press rise group flex h-full min-w-0 cursor-pointer flex-col rounded-[22px] border bg-card p-2.5 text-left shadow-[0_7px_22px_rgba(74,48,34,0.07)] transition-[transform,box-shadow,border-color] duration-200 active:scale-[0.97] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,48,34,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2",
         active ? "border-primary/60 ring-2 ring-primary/15" : "border-border/80",
       )}
       style={{ animationDelay: Math.min(index % 8, 7) * 36 + "ms" }}>
@@ -270,6 +270,6 @@ export function ChannelCard<T extends BroadcastChannel>({
           </span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
