@@ -7,7 +7,7 @@ import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
-import { CategoryChips, ChannelCard, SectionHeader, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
+import { CategoryChips, ChannelCard, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
 
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
@@ -116,7 +116,7 @@ function getHeroDescription(channel: SportsChannel) {
   const categories = [...new Set((channel.categories || []).map((value) => value.trim().toLowerCase().replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase())))]
     .filter((category) => category.toLowerCase() !== "sports")
     .slice(0, 2);
-  const categoryLabel = (categories.length ? categories : [getChannelCategory(channel)]).join(" & ");
+  const categoryLabel = (categories.length ? categories : [formatMetadataLabel(getChannelCategory(channel))]).join(" & ");
   return categoryLabel + " · " + getCountryName(channel.country);
 }
 
@@ -370,7 +370,7 @@ function XSportsPage() {
             <div className="shimmer aspect-[4/5] w-[min(82vw,560px)] rounded-[28px] sm:aspect-[5/4]" />
           ) : activeHero ? (
             <>
-              <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
+              <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-0">
                 {heroSlides.map((channel) => (
                   <div key={channel.id} className="shrink-0 snap-start">
                     <SportsHero channel={channel} onWatch={chooseChannel} onTouchPause={setHeroPaused} />
