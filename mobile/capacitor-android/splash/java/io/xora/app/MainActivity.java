@@ -1,6 +1,7 @@
 package io.xora.app;
 
 import android.animation.Keyframe;
+import android.content.res.Configuration;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.os.Bundle;
@@ -214,6 +215,12 @@ public class MainActivity extends BridgeActivity {
 
     private void setStatus(String message) {
         if (statusText != null) statusText.setText(message);
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        XoraVlcPlugin.dispatchPictureInPictureModeChanged(isInPictureInPictureMode);
     }
 
     @Override

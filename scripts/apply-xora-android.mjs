@@ -37,11 +37,25 @@ manifest = manifest
   .replace(/android:icon="[^"]+"/, 'android:icon="@mipmap/xora_launcher"')
   .replace(/android:roundIcon="[^"]+"/, 'android:roundIcon="@mipmap/xora_launcher"');
 if (!manifest.includes('android:roundIcon="@mipmap/xora_launcher"')) {
-  manifest = manifest.replace(/<application\\b/, '<application android:roundIcon="@mipmap/xora_launcher"');
+  manifest = manifest.replace(/<application\b/, '<application android:roundIcon="@mipmap/xora_launcher"');
 }
 manifest = manifest
   .replace('android:theme="@style/AppTheme.NoActionBarLaunch"', 'android:theme="@style/Theme.Xora.Launch"')
   .replace('android:theme="@style/AppTheme"', 'android:theme="@style/Theme.Xora"');
+// Enable Android's native picture-in-picture action for the inline LibVLC surface.
+const mainActivityTag = /<activity\b(?=[^>]*android:name="[^"]*MainActivity")[^>]*>/;
+if (mainActivityTag.test(manifest)) {
+  manifest = manifest.replace(mainActivityTag, (tag) =>
+    tag.includes("android:supportsPictureInPicture=")
+      ? tag
+      : tag.replace(/>$/, ' android:supportsPictureInPicture="true">')
+  );
+}
+manifest = manifest.replace(
+  /<application\b(?![^>]*android:resizeableActivity=)/,
+  '<application android:resizeableActivity="true"'
+);
+
 if (!manifest.includes("android.permission.INTERNET")) {
   manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>');
 }
