@@ -2,9 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addNativeVlcListener,
   closeNativeVlc,
-  getNativeVlcBounds,
   openNativeVlc,
-  updateNativeVlcBounds,
   isNativeVlcPlatform,
 } from "@/lib/native-vlc";
 import {
@@ -108,6 +106,8 @@ export function NativeVideoPlayer({
   const [failed, setFailed] = useState(false);
   const [nativeVlcActive, setNativeVlcActive] = useState(false);
   const nativeVlcActiveRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const shortsRetriedOriginal = useRef(false);
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
@@ -157,40 +157,6 @@ export function NativeVideoPlayer({
       timer3sRef.current = null;
     }
   }, [mediaPath, externalUrl, streamUrl, nativeStreamUrl, postId]);
-
-  // Keep the native video surface aligned with the same player rectangle in the WebView.
-  useEffect(() => {
-    if (!nativeVlcOnly || !nativeVlcActive) return;
-
-    let frame = 0;
-    const updatePosition = () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        void updateNativeVlcBounds(getNativeVlcBounds(containerRef.current)).catch((error) => {
-          console.warn("[Xora] Player position update failed:", error);
-        });
-      });
-    };
-
-    window.addEventListener("scroll", updatePosition, true);
-    window.addEventListener("resize", updatePosition);
-    window.visualViewport?.addEventListener("scroll", updatePosition);
-    window.visualViewport?.addEventListener("resize", updatePosition);
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(updatePosition) : null;
-    if (containerRef.current && resizeObserver) resizeObserver.observe(containerRef.current);
-    updatePosition();
-
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", updatePosition, true);
-      window.removeEventListener("resize", updatePosition);
-      window.visualViewport?.removeEventListener("scroll", updatePosition);
-      window.visualViewport?.removeEventListener("resize", updatePosition);
-      resizeObserver?.disconnect();
-    };
-  }, [nativeVlcOnly, nativeVlcActive]);
 
   // Reflect native play/pause/failure and close events in the XoraTV player state.
   useEffect(() => {
@@ -581,7 +547,6 @@ export function NativeVideoPlayer({
       await openNativeVlc({
         url: nativeStreamUrl || activeSrc,
         title,
-        bounds: getNativeVlcBounds(containerRef.current),
       });
       nativeVlcActiveRef.current = true;
       setNativeVlcActive(true);
@@ -677,7 +642,7 @@ export function NativeVideoPlayer({
   const reopenPlayer = () => {
     setPlayerClosed(false);
     if (nativeVlcOnly && nativeStreamUrl) {
-      void openNativeVlc({ url: nativeStreamUrl, title, bounds: getNativeVlcBounds(containerRef.current) })
+      void openNativeVlc({ url: nativeStreamUrl, title })
         .then(() => {
           nativeVlcActiveRef.current = true;
           setNativeVlcActive(true);
@@ -694,7 +659,11 @@ export function NativeVideoPlayer({
       ref={containerRef}
       className={cn(
         "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
-        isFullscreen ? "h-full rounded-none" : aspect,
+        nativeVlcOnly && nativeVlcActive
+          ? "hidden"
+          : isFullscreen
+            ? "h-full rounded-none"
+            : aspect,
         className,
       )}
     >
