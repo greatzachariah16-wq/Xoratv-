@@ -97,7 +97,6 @@ function KidsPage() {
     queryFn: () => loadKidsChannels(search),
     staleTime: 60_000, refetchInterval: 5 * 60_000, refetchOnWindowFocus: true, retry: 3,
   });
-  const selected = useMemo(() => query.data?.find((item) => item.id === requestedChannel) || query.data?.[0] || null, [query.data, requestedChannel]);
   const catalogQuery = useQuery({
     queryKey: ["kids-animation-catalog", submittedCartoonSearch, catalogSort, catalogPage],
     queryFn: () => loadAnimatedCatalog(submittedCartoonSearch, catalogSort, catalogPage),
