@@ -373,7 +373,7 @@ function XSportsPage() {
               <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
                 {heroSlides.map((channel) => (
                   <div key={channel.id} className="shrink-0 snap-start">
-                    <SportsHero channel={channel} onWatch={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} onTouchPause={setHeroPaused} />
+                    <SportsHero channel={channel} onWatch={chooseChannel} onTouchPause={setHeroPaused} />
                   </div>
                 ))}
               </div>
@@ -435,7 +435,7 @@ function XSportsPage() {
           <section className="space-y-4" aria-label="Popular sports channels">
             <SectionHeader title="Popular now" subtitle="A quick pick from the sports lineup" onSeeAll={scrollToChannels} />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {popularChannels.map((channel, index) => <ChannelCard key={"popular-" + channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} />)}
+              {popularChannels.map((channel, index) => <ChannelCard key={"popular-" + channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} />)}
             </div>
           </section>
         ) : null}
@@ -456,7 +456,7 @@ function XSportsPage() {
             </div>
           ) : channels.length ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {channels.map((channel, index) => <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} />)}
+              {channels.map((channel, index) => <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} />)}
             </div>
           ) : (
             <div className="rounded-[24px] border border-dashed border-border bg-card/70 px-5 py-12 text-center shadow-sm">
