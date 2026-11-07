@@ -6,8 +6,8 @@ import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CategoryChips, ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
-import { type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
+import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
+import { AgeChips, type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
 type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; language?: string; languages?: string[]; ageLabel?: string };
 type CartoonSeries = { id: string; title: string; year: number; description: string; ageLabel: string; artClass: string; provider: "tmdb" | "anilist"; posterUrl?: string; format?: string; episodes?: number | null; genres?: string[] };
@@ -136,17 +136,7 @@ function KidsPage() {
 
         <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-40 -mx-4 space-y-2 border-b border-border/70 bg-background/90 px-4 pb-2 pt-1 backdrop-blur-xl">
           <SegmentedControl value={activeSection} onChange={setActiveSection} />
-          <CategoryChips
-            options={[
-              { label: "All", value: "All" },
-              { label: "Preschool", value: "Preschool" },
-              { label: "Family", value: "Family" },
-              { label: "Older kids", value: "Older kids" },
-            ]}
-            value={ageFilter}
-            onChange={(value) => setAgeFilter(value as AgeFilter)}
-            ariaLabel="Filter by age group"
-          />
+          <AgeChips value={ageFilter} onChange={setAgeFilter} />
         </div>
 
         <main key={activeSection + "-" + ageFilter} className="kids-panel-enter space-y-5">
