@@ -87,7 +87,8 @@ export function getChannelLanguage(channel: Pick<BroadcastChannel, "language" | 
     nl: "Dutch", swe: "Swedish", sv: "Swedish", ukr: "Ukrainian", uk: "Ukrainian",
   };
   const normalized = candidate.trim().toLowerCase();
-  return aliases[normalized] || normalized.replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
+  const baseLanguage = normalized.split(/[-_]/)[0];
+  return aliases[normalized] || aliases[baseLanguage] || normalized.replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
 }
 
 export function SectionHeader({ title, subtitle, onSeeAll }: {
