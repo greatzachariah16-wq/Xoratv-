@@ -52,7 +52,7 @@ export function KidsHeader() {
         <p className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#9b5035] dark:text-[#e6ad91]">
           <Sparkles className="size-3.5" /> XORA Kids
         </p>
-        <h1 className="whitespace-nowrap font-display text-[clamp(17px,5.2vw,23px)] font-semibold leading-tight tracking-[-0.035em] text-[#382d27] dark:text-[#fff4e9]">
+        <h1 className="whitespace-nowrap font-display text-[clamp(15px,4.3vw,19px)] font-semibold leading-tight tracking-[-0.035em] text-[#382d27] dark:text-[#fff4e9]">
           A little corner for big imaginations.
         </h1>
       </div>
