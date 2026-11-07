@@ -64,10 +64,10 @@ export function SegmentedControl({ value, onChange }: {
   value: "cartoons" | "live"; onChange: (value: "cartoons" | "live") => void;
 }) {
   return (
-    <div className="relative grid h-11 grid-cols-2 rounded-full border border-[#e2d6cb] bg-[#eee7df] p-1 shadow-inner dark:border-white/10 dark:bg-[#28231f]" role="group" aria-label="Kids content">
-      <span aria-hidden="true" className={"absolute bottom-1 top-1 w-[calc(50%-4px)] rounded-full bg-primary shadow-[0_5px_14px_rgba(181,83,47,0.24)] transition-transform duration-200 motion-reduce:transition-none " + (value === "live" ? "translate-x-full" : "translate-x-0")} />
-      <button type="button" onClick={() => onChange("cartoons")} aria-pressed={value === "cartoons"} className={"relative z-10 min-h-[36px] rounded-full text-xs font-bold transition-colors active:scale-[0.97] " + (value === "cartoons" ? "text-primary-foreground" : "text-[#6B5F57] dark:text-[#c5b9af]")}>Shows</button>
-      <button type="button" onClick={() => onChange("live")} aria-pressed={value === "live"} className={"relative z-10 min-h-[36px] rounded-full text-xs font-bold transition-colors active:scale-[0.97] " + (value === "live" ? "text-primary-foreground" : "text-[#6B5F57] dark:text-[#c5b9af]")}>Live channels</button>
+    <div className="relative grid h-11 grid-cols-2 rounded-full border border-[#e2d6cb] bg-[#eee7df] shadow-inner dark:border-white/10 dark:bg-[#28231f]" role="group" aria-label="Kids content">
+      <span aria-hidden="true" className={"absolute inset-y-0 w-1/2 rounded-full bg-primary shadow-[0_5px_14px_rgba(181,83,47,0.24)] transition-transform duration-200 motion-reduce:transition-none " + (value === "live" ? "translate-x-full" : "translate-x-0")} />
+      <button type="button" onClick={() => onChange("cartoons")} aria-pressed={value === "cartoons"} className={"relative z-10 h-11 min-h-11 rounded-full text-xs font-bold transition-colors active:scale-[0.97] " + (value === "cartoons" ? "text-primary-foreground" : "text-[#6B5F57] dark:text-[#c5b9af]")}>Shows</button>
+      <button type="button" onClick={() => onChange("live")} aria-pressed={value === "live"} className={"relative z-10 h-11 min-h-11 rounded-full text-xs font-bold transition-colors active:scale-[0.97] " + (value === "live" ? "text-primary-foreground" : "text-[#6B5F57] dark:text-[#c5b9af]")}>Live channels</button>
     </div>
   );
 }
