@@ -56,19 +56,19 @@ export function getCountryName(country?: string) {
       return code;
     }
   }
-  return raw.toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
+  return raw.toLowerCase().replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
 }
 
 export function formatMetadataLabel(value: string) {
-  return value.trim().toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
+  return value.trim().toLowerCase().replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
 }
 export function getChannelDisplayName(channel: Pick<BroadcastChannel, "name">) {
-  return channel.name.replace(/\\s*\\(\\d{3,4}p\\)\\s*$/i, "").trim();
+  return channel.name.replace(/\s*\(\d{3,4}p\)\s*$/i, "").trim();
 }
 
 export function getChannelQuality(channel: Pick<BroadcastChannel, "name" | "quality">) {
-  const suffix = channel.name.match(/\\s*\\((\\d{3,4}p)\\)\\s*$/i)?.[1];
-  const value = channel.quality?.match(/\\b(2160p|1440p|1080p|720p|576p|480p|4k|uhd|fhd|hd)\\b/i)?.[1];
+  const suffix = channel.name.match(/\s*\((\d{3,4}p)\)\s*$/i)?.[1];
+  const value = channel.quality?.match(/\b(2160p|1440p|1080p|720p|576p|480p|4k|uhd|fhd|hd)\b/i)?.[1];
   return (value || suffix || "").toLowerCase() || null;
 }
 
@@ -87,7 +87,7 @@ export function getChannelLanguage(channel: Pick<BroadcastChannel, "language" | 
     nl: "Dutch", swe: "Swedish", sv: "Swedish", ukr: "Ukrainian", uk: "Ukrainian",
   };
   const normalized = candidate.trim().toLowerCase();
-  return aliases[normalized] || normalized.replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
+  return aliases[normalized] || normalized.replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase());
 }
 
 export function SectionHeader({ title, subtitle, onSeeAll }: {
@@ -136,7 +136,7 @@ export function CategoryChips({ options, value, onChange, ariaLabel = "Categorie
 
 function StatusBadge({ channel, statusMode }: { channel: BroadcastChannel; statusMode: "sports" | "live" }) {
   const archive = statusMode === "sports" && (channel.id === "wwe-superstar-central"
-    || /archive|24\\/7/i.test([...(channel.labels || []), channel.quality || ""].join(" ")));
+    || /archive|24\/7/i.test([...(channel.labels || []), channel.quality || ""].join(" ")));
   return archive ? (
     <span className="inline-flex shrink-0 items-center rounded-full border border-white/20 bg-black/65 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md">Archive 24/7</span>
   ) : (
