@@ -20,7 +20,7 @@ SpinKit is an MIT-licensed collection of CSS loading indicators. Xora adapts its
 
 ## Inline live-channel player
 
-Live channels use a native video surface positioned over the existing XoraTV player rectangle inside the Capacitor WebView. The surface follows page scrolling and resizing, starts playback in place, and provides only XoraTV-style playback and close controls. It does not launch a separate full-screen Activity. The web player sends the visible player bounds to the native bridge and closes the native surface when the player is removed or its channel changes.
+Live channels use a fixed native LibVLC surface above the Capacitor WebView. The WebView is resized below the native surface and scrolls independently; the video is never positioned from DOM bounds or scroll events. Native controls provide play/pause, mute, layout cycling (pinned, theater, fullscreen, and tablet split view), picture-in-picture, retry, and close. The player restores the WebView's original layout when closed or destroyed.
 
 The Android apply script copies the native player bridge only; it deliberately does not package a separate player Activity.
 
