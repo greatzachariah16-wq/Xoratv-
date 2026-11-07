@@ -175,11 +175,13 @@ export function NativeVideoPlayer({
       if (state.closed) {
         nativeVlcActiveRef.current = false;
         setNativeVlcActive(false);
-        setPlayerClosed(true);
-        setPlaying(false);
-        setWaiting(false);
-        setFailed(false);
-        onCloseRef.current?.();
+        if (state.userClosed) {
+          setPlayerClosed(true);
+          setPlaying(false);
+          setWaiting(false);
+          setFailed(false);
+          onCloseRef.current?.();
+        }
       }
     })
       .then((registered) => {
