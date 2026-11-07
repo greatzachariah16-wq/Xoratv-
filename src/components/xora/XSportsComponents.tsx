@@ -146,8 +146,8 @@ function StatusBadge({ channel, statusMode }: { channel: BroadcastChannel; statu
   );
 }
 
-export function LogoTile({ channel, statusMode = "sports", favorite = false, onFavorite }: {
-  channel: BroadcastChannel; statusMode?: "sports" | "live"; favorite?: boolean; onFavorite?: () => void;
+export function LogoTile({ channel, statusMode = "sports" }: {
+  channel: BroadcastChannel; statusMode?: "sports" | "live";
 }) {
   const [tileMode, setTileMode] = useState<"light" | "dark" | "fallback">(
     channel.logo ? logoLuminanceCache.get(channel.logo) || "fallback" : "light",
@@ -208,13 +208,6 @@ export function LogoTile({ channel, statusMode = "sports", favorite = false, onF
       tileMode === "fallback" && "shadow-[inset_0_0_0_1px_rgba(97,76,61,0.10)]",
     )}>
       <div className="absolute left-2 top-2 z-30"><StatusBadge channel={channel} statusMode={statusMode} /></div>
-      {onFavorite ? (
-        <button type="button" aria-label={favorite ? "Remove from favorites" : "Add to favorites"} aria-pressed={favorite}
-          onClick={(event) => { event.stopPropagation(); onFavorite(); }}
-          className="press absolute right-2 top-2 z-30 grid size-8 place-items-center rounded-full border border-white/50 bg-white/90 text-[#6d4937] shadow-sm transition active:scale-[0.97]">
-          <Heart className={cn("size-4", favorite && "fill-current text-[#b5532f]")} />
-        </button>
-      ) : null}
       {channel.logo && !logoFailed ? (
         <img
           src={channel.logo} alt="" aria-hidden="true" loading="lazy" decoding="async"
@@ -245,34 +238,38 @@ export function ChannelCard<T extends BroadcastChannel>({
   favorite?: boolean; onFavorite?: (channel: T) => void; playing?: boolean;
   statusMode?: "sports" | "live"; metaMode?: "category" | "language";
 }) {
-  const handleSelect = () => onSelect(channel);
   return (
-    <div
-      role="button" tabIndex={0} aria-pressed={active}
-      onClick={handleSelect}
-      onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleSelect(); } }}
-      className={cn(
-        "press rise group flex h-full min-w-0 cursor-pointer flex-col rounded-[22px] border bg-card p-2.5 text-left shadow-[0_7px_22px_rgba(74,48,34,0.07)] transition-[transform,box-shadow,border-color] duration-200 active:scale-[0.97] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,48,34,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2",
-        active ? "border-primary/60 ring-2 ring-primary/15" : "border-border/80",
-      )}
-      style={{ animationDelay: Math.min(index % 8, 7) * 36 + "ms" }}>
-      <div className="relative">
-        <LogoTile channel={channel} statusMode={statusMode} favorite={favorite} onFavorite={onFavorite ? () => onFavorite(channel) : undefined} />
-        {playing ? <span className="absolute left-2 top-10 z-30 rounded-full bg-primary px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.1em] text-white shadow-sm">Playing</span> : null}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col px-0.5 pb-0.5 pt-2">
-        <p className="line-clamp-2 min-h-[2.5rem] text-[13px] font-bold leading-5 tracking-[-0.01em] text-card-foreground sm:text-sm">{getChannelDisplayName(channel)}</p>
-        <div className="mt-1 flex min-w-0 items-center justify-between gap-1.5">
-          <p className="min-w-0 flex-1 truncate text-[10px] leading-4 text-[#6B5F57] dark:text-muted-foreground sm:text-[11px]">
-            {getCountryFlag(channel.country)} {getCountryName(channel.country)}
-            {metaMode === "language" && getChannelLanguage(channel) ? " · " + getChannelLanguage(channel) : null}
-            {metaMode === "category" ? " · " + formatMetadataLabel(channel.categories?.[0] || "Sports") : null}
-          </p>
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_5px_12px_rgba(181,83,47,0.22)]">
-            <Play className="ml-0.5 size-3 fill-current" />
-          </span>
+    <div className={cn(
+      "relative flex h-full min-w-0 flex-col rounded-[22px] border bg-card p-2.5 shadow-[0_7px_22px_rgba(74,48,34,0.07)] transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,48,34,0.12)]",
+      active ? "border-primary/60 ring-2 ring-primary/15" : "border-border/80",
+    )} style={{ animationDelay: Math.min(index % 8, 7) * 36 + "ms" }}>
+      <button type="button" onClick={() => onSelect(channel)} aria-pressed={active}
+        className="press rise group flex min-w-0 flex-1 flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 active:scale-[0.97]">
+        <div className="relative w-full">
+          <LogoTile channel={channel} statusMode={statusMode} />
+          {playing ? <span className="absolute left-2 top-10 z-30 rounded-full bg-primary px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.1em] text-white shadow-sm">Playing</span> : null}
         </div>
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col px-0.5 pb-0.5 pt-2">
+          <p className="line-clamp-2 min-h-[2.5rem] text-[13px] font-bold leading-5 tracking-[-0.01em] text-card-foreground sm:text-sm">{getChannelDisplayName(channel)}</p>
+          <div className="mt-1 flex min-w-0 items-center justify-between gap-1.5">
+            <p className="min-w-0 flex-1 truncate text-[10px] leading-4 text-[#6B5F57] dark:text-muted-foreground sm:text-[11px]">
+              {getCountryFlag(channel.country)} {getCountryName(channel.country)}
+              {metaMode === "language" && getChannelLanguage(channel) ? " · " + getChannelLanguage(channel) : null}
+              {metaMode === "category" ? " · " + formatMetadataLabel(channel.categories?.[0] || "Sports") : null}
+            </p>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_5px_12px_rgba(181,83,47,0.22)]">
+              <Play className="ml-0.5 size-3 fill-current" />
+            </span>
+          </div>
+        </div>
+      </button>
+      {onFavorite ? (
+        <button type="button" aria-label={favorite ? "Remove from favorites" : "Add to favorites"} aria-pressed={favorite}
+          onClick={() => onFavorite(channel)}
+          className="press absolute right-[18px] top-[18px] z-40 grid size-8 place-items-center rounded-full border border-white/60 bg-white/95 text-[#6d4937] shadow-sm transition active:scale-[0.97]">
+          <Heart className={cn("size-4", favorite && "fill-current text-[#b5532f]")} />
+        </button>
+      ) : null}
     </div>
   );
 }
