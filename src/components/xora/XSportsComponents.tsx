@@ -266,7 +266,7 @@ export function ChannelCard<T extends BroadcastChannel>({
       {onFavorite ? (
         <button type="button" aria-label={favorite ? "Remove from favorites" : "Add to favorites"} aria-pressed={favorite}
           onClick={() => onFavorite(channel)}
-          className="press absolute right-[18px] top-[18px] z-40 grid size-8 place-items-center rounded-full border border-white/60 bg-white/95 text-[#6d4937] shadow-sm transition active:scale-[0.97]">
+          className="press absolute right-[14px] top-[14px] z-40 grid size-11 place-items-center rounded-full border border-white/60 bg-white/95 text-[#6d4937] shadow-sm transition active:scale-[0.97]">
           <Heart className={cn("size-4", favorite && "fill-current text-[#b5532f]")} />
         </button>
       ) : null}
