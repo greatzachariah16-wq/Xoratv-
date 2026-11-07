@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Play, RefreshCw, Search, Tv, Film, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, RefreshCw, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CategoryChips, ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
-import { AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
+import { type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
 type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; language?: string; languages?: string[]; ageLabel?: string };
 type CartoonSeries = { id: string; title: string; year: number; description: string; ageLabel: string; artClass: string; provider: "tmdb" | "anilist"; posterUrl?: string; format?: string; episodes?: number | null; genres?: string[] };
@@ -120,7 +120,7 @@ function KidsPage() {
     const current = (query.data || []).filter((channel) => ageFilter === "All" || getChannelAgeLabel(channel) === ageFilter);
     return sortKidsChannels(current, getChannelCountryCode, getChannelLanguage);
   }, [query.data, ageFilter]);
-  const visibleSelected = channelsByAge.find((channel) => channel.id === selected?.id) || channelsByAge[0] || null;
+  const visibleSelected = channelsByAge.find((channel) => channel.id === requestedChannel) || channelsByAge[0] || null;
   const toggleChannelFavorite = (channel: Channel) => setFavoriteChannels((current) =>
     current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id],
   );
