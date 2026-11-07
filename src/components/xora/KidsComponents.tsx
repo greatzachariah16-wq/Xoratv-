@@ -4,6 +4,38 @@ import { CategoryChips } from "@/components/xora/XSportsComponents";
 
 export type AgeFilter = "All" | "Preschool" | "Family" | "Older kids";
 
+export function getChannelAgeLabel(channel: { ageLabel?: string; categories?: string[]; labels?: string[] }) {
+  const values = [channel.ageLabel, ...(channel.categories || []), ...(channel.labels || [])].filter(Boolean) as string[];
+  return (["Preschool", "Family", "Older kids"] as const).find((age) =>
+    values.some((value) => value.toLowerCase().replace(/[_-]/g, " ").includes(age.toLowerCase())),
+  ) || null;
+}
+
+export function sortKidsChannels<T extends { name: string; country?: string; language?: string; languages?: string[]; labels?: string[] }>(channels: T[], countryCode: (country?: string) => string | null, channelLanguage: (channel: T) => string | null) {
+  const locale = typeof navigator !== "undefined" ? navigator.language : "en";
+  const [deviceLanguage = "en", deviceRegion = ""] = locale.split("-");
+  let preferredLanguage = deviceLanguage.toLowerCase();
+  try {
+    preferredLanguage = new Intl.DisplayNames(["en"], { type: "language" }).of(deviceLanguage) || preferredLanguage;
+  } catch { /* keep the browser language code */ }
+  const region = deviceRegion.toUpperCase();
+  const collator = new Intl.Collator(locale, { sensitivity: "base", numeric: true });
+  const rank = (channel: T) => {
+    const language = channelLanguage(channel)?.toLowerCase();
+    if ((region && countryCode(channel.country) === region) || (language && language === preferredLanguage.toLowerCase())) return 0;
+    if (language === "english" || language === "en") return 1;
+    return 2;
+  };
+  return [...channels].sort((left, right) => {
+    const difference = rank(left) - rank(right);
+    if (difference) return difference;
+    const leftDigit = /^\\d/.test(left.name) ? 1 : 0;
+    const rightDigit = /^\\d/.test(right.name) ? 1 : 0;
+    if (leftDigit !== rightDigit) return leftDigit - rightDigit;
+    return collator.compare(left.name, right.name);
+  });
+}
+
 export const AGE_OPTIONS = [
   { label: "All", value: "All" },
   { label: "Preschool", value: "Preschool" },
