@@ -66,9 +66,9 @@ export const Route = createFileRoute("/xsports")({
 
 type HeroSport = "wrestling" | "football" | "basketball" | "tennis" | "golf" | "generic";
 
-// Pexels: empty boxing ring, low-key gym lighting. https://www.pexels.com/photo/an-empty-boxing-ring-9968139/
+// Pexels: two athletes competing in a brightly lit boxing ring. https://www.pexels.com/photo/boxers-inside-a-ring-3531081/
 // Pexels License: free commercial use; attribution is not required.
-const WRESTLING_HERO_IMAGE = "https://images.pexels.com/photos/9968139/pexels-photo-9968139.jpeg?auto=compress&dpr=1&h=750&w=1260";
+const WRESTLING_HERO_IMAGE = "https://images.pexels.com/photos/3531081/pexels-photo-3531081.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: illuminated soccer stadium at night. https://www.pexels.com/photo/illuminated-soccer-stadium-at-night-28827841/
 // Pexels License: free commercial use; attribution is not required.
 const FOOTBALL_HERO_IMAGE = "https://images.pexels.com/photos/28827841/pexels-photo-28827841/free-photo-of-illuminated-soccer-stadium-at-night.jpeg?auto=compress&dpr=1&h=750&w=1260";
