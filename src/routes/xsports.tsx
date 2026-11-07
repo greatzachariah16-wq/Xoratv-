@@ -67,22 +67,22 @@ type HeroSport = "wrestling" | "football" | "basketball" | "tennis" | "golf" | "
 
 // Pexels: empty boxing ring, low-key gym lighting. https://www.pexels.com/photo/an-empty-boxing-ring-9968139/
 // Pexels License: free commercial use; attribution is not required.
-const WRESTLING_HERO_IMAGE = "https://images.pexels.com/photos/9968139/pexels-photo-9968139.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1260&h=1575";
+const WRESTLING_HERO_IMAGE = "https://images.pexels.com/photos/9968139/pexels-photo-9968139.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: illuminated soccer stadium at night. https://www.pexels.com/photo/illuminated-soccer-stadium-at-night-28827841/
 // Pexels License: free commercial use; attribution is not required.
-const FOOTBALL_HERO_IMAGE = "https://images.pexels.com/photos/28827841/pexels-photo-28827841/free-photo-of-illuminated-soccer-stadium-at-night.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1260&h=1575";
+const FOOTBALL_HERO_IMAGE = "https://images.pexels.com/photos/28827841/pexels-photo-28827841/free-photo-of-illuminated-soccer-stadium-at-night.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: basketball athlete going up for a dunk. https://www.pexels.com/photo/athlete-jumping-for-dunk-in-indoor-basketball-court-32877408/
 // Pexels License: free commercial use; attribution is not required.
-const BASKETBALL_HERO_IMAGE = "https://images.pexels.com/photos/32877408/pexels-photo-32877408/free-photo-of-athlete-jumping-for-dunk-in-indoor-basketball-court.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1260&h=1575";
+const BASKETBALL_HERO_IMAGE = "https://images.pexels.com/photos/32877408/pexels-photo-32877408/free-photo-of-athlete-jumping-for-dunk-in-indoor-basketball-court.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: quiet tennis court with atmospheric night lighting. https://www.pexels.com/photo/quite-tennis-field-during-nighttime-793176/
 // Pexels License: free commercial use; attribution is not required.
-const TENNIS_HERO_IMAGE = "https://images.pexels.com/photos/793176/pexels-photo-793176.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1260&h=1575";
+const TENNIS_HERO_IMAGE = "https://images.pexels.com/photos/793176/pexels-photo-793176.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: golf course at sunrise. https://www.pexels.com/photo/golfer-playing-at-golf-course-at-dawn-6256755/
 // Pexels License: free commercial use; attribution is not required.
-const GOLF_HERO_IMAGE = "https://images.pexels.com/photos/6256755/pexels-photo-6256755.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1260&h=1575";
+const GOLF_HERO_IMAGE = "https://images.pexels.com/photos/6256755/pexels-photo-6256755.jpeg?auto=compress&dpr=1&h=750&w=1260";
 // Pexels: stadium floodlights at dusk. https://www.pexels.com/photo/stadium-floodlights-against-evening-sky-32471032/
 // Pexels License: free commercial use; attribution is not required.
-const GENERIC_HERO_IMAGE = "https://images.pexels.com/photos/32471032/pexels-photo-32471032/free-photo-of-stadium-floodlights-against-evening-sky.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1260&h=1575";
+const GENERIC_HERO_IMAGE = "https://images.pexels.com/photos/32471032/pexels-photo-32471032/free-photo-of-stadium-floodlights-against-evening-sky.jpeg?auto=compress&dpr=1&h=750&w=1260";
 
 const HERO_IMAGES: Record<HeroSport, string> = {
   wrestling: WRESTLING_HERO_IMAGE,
