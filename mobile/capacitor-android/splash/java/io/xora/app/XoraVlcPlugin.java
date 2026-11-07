@@ -913,7 +913,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private int dpValue(int value) {
-        return Math.round(value * getContext().getContext().getResources().getDisplayMetrics().density);
+        return Math.round(value * getContext().getResources().getDisplayMetrics().density);
     }
 
     private int dp(int value) {
