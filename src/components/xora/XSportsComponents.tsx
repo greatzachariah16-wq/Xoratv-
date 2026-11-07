@@ -24,6 +24,7 @@ const logoLuminanceCache = new Map<string, "light" | "dark" | "fallback">();
 export function getChannelCountryCode(country?: string) {
   const raw = country?.trim();
   if (!raw) return null;
+  if (raw.toLowerCase() === "uk") return "GB";
   if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
   const aliases: Record<string, string> = {
     usa: "US", gbr: "GB", uk: "GB", nga: "NG", can: "CA", zaf: "ZA", pol: "PL",
