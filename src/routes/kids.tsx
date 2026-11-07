@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Baby, Heart, Play, RefreshCw, Search, Sparkles, Tv, Film, X, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
+import { Play, RefreshCw, Search, Tv, Film, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CategoryChips, ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
+import { AGE_OPTIONS, AgeFilter, ChannelGridSkeleton, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton } from "@/components/xora/KidsComponents";
 
-type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[] };
+type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; language?: string; languages?: string[]; ageLabel?: string };
 type CartoonSeries = { id: string; title: string; year: number; description: string; ageLabel: string; artClass: string; provider: "tmdb" | "anilist"; posterUrl?: string; format?: string; episodes?: number | null; genres?: string[] };
 type AniListMedia = { id: number; title: { english?: string | null; romaji: string }; description?: string | null; coverImage?: { large?: string | null; medium?: string | null } | null; seasonYear?: number | null; format?: string | null; episodes?: number | null; genres?: string[] };
 type AniListResponse = { data?: { Page?: { pageInfo?: { currentPage: number; hasNextPage: boolean }; media?: AniListMedia[] } }; errors?: Array<{ message?: string }> };
@@ -78,6 +80,8 @@ function KidsPage() {
   const navigate = useNavigate();
   const { channel: requestedChannel } = Route.useSearch();
   const [activeSection, setActiveSection] = useState<"cartoons" | "live">("cartoons");
+  const [ageFilter, setAgeFilter] = useState<AgeFilter>("All");
+  const [favoriteChannels, setFavoriteChannels] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [cartoonSearch, setCartoonSearch] = useState("");
   const [submittedCartoonSearch, setSubmittedCartoonSearch] = useState("");
@@ -108,6 +112,18 @@ function KidsPage() {
     [...staticItems, ...(catalogQuery.data?.items || [])].forEach((item) => byTitle.set(item.title.toLowerCase(), item));
     return [...byTitle.values()];
   }, [catalogQuery.data, submittedCartoonSearch]);
+  const filteredShows = useMemo(
+    () => filteredCartoons.filter((cartoon) => ageFilter === "All" || cartoon.ageLabel.toLowerCase() === ageFilter.toLowerCase()),
+    [filteredCartoons, ageFilter],
+  );
+  const channelsByAge = useMemo(() => {
+    const current = (query.data || []).filter((channel) => ageFilter === "All" || getChannelAgeLabel(channel) === ageFilter);
+    return sortKidsChannels(current);
+  }, [query.data, ageFilter]);
+  const visibleSelected = channelsByAge.find((channel) => channel.id === selected?.id) || null;
+  const toggleChannelFavorite = (channel: Channel) => setFavoriteChannels((current) =>
+    current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id],
+  );
   const cartoonPlayerUrl = selectedCartoon
     ? selectedCartoon.provider === "anilist"
       ? `https://embed.vidrift.net/embed/anilist/${selectedCartoon.id}/${episode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0`
