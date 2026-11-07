@@ -113,7 +113,7 @@ function getChannelCategory(channel: SportsChannel) {
   return channel.categories?.[0] || "Sports";
 }
 function getHeroDescription(channel: SportsChannel) {
-  const categories = [...new Set((channel.categories || []).map((value) => value.trim().toLowerCase().replace(/(^|[\\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase())))]
+  const categories = [...new Set((channel.categories || []).map((value) => value.trim().toLowerCase().replace(/(^|[\s-])([a-z])/g, (_, separator: string, letter: string) => separator + letter.toUpperCase())))]
     .filter((category) => category.toLowerCase() !== "sports")
     .slice(0, 2);
   const categoryLabel = (categories.length ? categories : [getChannelCategory(channel)]).join(" & ");
