@@ -7,7 +7,7 @@ import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CategoryChips, ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
-import { AGE_OPTIONS, AgeFilter, ChannelGridSkeleton, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton } from "@/components/xora/KidsComponents";
+import { AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
 type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; language?: string; languages?: string[]; ageLabel?: string };
 type CartoonSeries = { id: string; title: string; year: number; description: string; ageLabel: string; artClass: string; provider: "tmdb" | "anilist"; posterUrl?: string; format?: string; episodes?: number | null; genres?: string[] };
@@ -118,9 +118,9 @@ function KidsPage() {
   );
   const channelsByAge = useMemo(() => {
     const current = (query.data || []).filter((channel) => ageFilter === "All" || getChannelAgeLabel(channel) === ageFilter);
-    return sortKidsChannels(current);
+    return sortKidsChannels(current, getChannelCountryCode, getChannelLanguage);
   }, [query.data, ageFilter]);
-  const visibleSelected = channelsByAge.find((channel) => channel.id === selected?.id) || null;
+  const visibleSelected = channelsByAge.find((channel) => channel.id === selected?.id) || channelsByAge[0] || null;
   const toggleChannelFavorite = (channel: Channel) => setFavoriteChannels((current) =>
     current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id],
   );
@@ -132,172 +132,168 @@ function KidsPage() {
 
   return (
     <AppShell wide>
-      <div className="space-y-6 pb-10">
-        <section className="relative overflow-hidden rounded-[2rem] border border-primary/15 bg-gradient-to-br from-[#fff8ed] via-[#f6efff] to-[#eaf8f1] px-5 py-7 shadow-sm sm:px-7 sm:py-9">
-          <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-primary/15 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-[-5rem] left-[38%] size-56 rounded-full bg-pink-200/25 blur-3xl" />
-          <div className="relative">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary backdrop-blur"><Sparkles className="size-3" /> Xora Kids</span>
-              <span className="rounded-full bg-white/65 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground backdrop-blur">Cartoons & live entertainment</span>
-            </div>
-            <div className="mt-5 max-w-2xl">
-              <h1 className="font-display text-3xl font-semibold tracking-[-0.035em] sm:text-5xl">A little corner for <span className="text-primary">big imaginations.</span></h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Explore animated adventures, family favourites and kids TV in a calmer XoraTV experience designed especially for younger viewers.</p>
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#fff0d7] px-3 py-1.5 text-[11px] font-semibold">Cartoons</span>
-              <span className="rounded-full bg-[#eee5ff] px-3 py-1.5 text-[11px] font-semibold">Animation</span>
-              <span className="rounded-full bg-[#e4f6ed] px-3 py-1.5 text-[11px] font-semibold">Kids TV</span>
-            </div>
-          </div>
-        </section>
+      <div className="min-h-full space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-1">
+        <KidsHeader />
 
-        <section className="grid gap-3 sm:grid-cols-2">
-          <button type="button" onClick={() => setActiveSection("cartoons")} aria-pressed={activeSection === "cartoons"} className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition ${activeSection === "cartoons" ? "border-primary bg-primary/5 shadow-sm" : "border-border/70 bg-surface hover:border-primary/40"}`}>
-            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#eee5ff] text-primary"><Film className="size-6" /></span>
-            <span className="min-w-0 flex-1"><span className="block font-display text-base font-semibold">Cartoons & Animation</span><span className="mt-1 block text-xs text-muted-foreground">Discover animated favourites</span></span>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-          </button>
-          <button type="button" onClick={() => setActiveSection("live")} aria-pressed={activeSection === "live"} className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition ${activeSection === "live" ? "border-primary bg-primary/5 shadow-sm" : "border-border/70 bg-surface hover:border-primary/40"}`}>
-            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#e4f6ed] text-emerald-700"><Tv className="size-6" /></span>
-            <span className="min-w-0 flex-1"><span className="block font-display text-base font-semibold">Explore Live Kids Channels</span><span className="mt-1 block text-xs text-muted-foreground">Watch kids channels live</span></span>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-          </button>
-        </section>
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-40 -mx-4 space-y-2 border-b border-border/70 bg-background/90 px-4 pb-2 pt-1 backdrop-blur-xl">
+          <SegmentedControl value={activeSection} onChange={setActiveSection} />
+          <CategoryChips
+            options={[
+              { label: "All", value: "All" },
+              { label: "Preschool", value: "Preschool" },
+              { label: "Family", value: "Family" },
+              { label: "Older kids", value: "Older kids" },
+            ]}
+            value={ageFilter}
+            onChange={(value) => setAgeFilter(value as AgeFilter)}
+            ariaLabel="Filter by age group"
+          />
+        </div>
 
-        {activeSection === "cartoons" && (
-        <section className="space-y-4 rounded-[1.75rem] border border-primary/15 bg-surface p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2"><Film className="size-4 text-primary" /><h2 className="font-display text-xl font-semibold">Animated library</h2></div>
-              <p className="mt-1 text-xs text-muted-foreground">A live, searchable animation catalogue. VidRift handles playback; unavailable titles may not play.</p>
-            </div>
-            <form className="flex w-full gap-2 sm:max-w-md" onSubmit={(event) => { event.preventDefault(); setCatalogPage(1); setSubmittedCartoonSearch(cartoonSearch.trim()); }}>
-              <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={cartoonSearch} onChange={(event) => setCartoonSearch(event.target.value)} placeholder="Search animated titles..." className="h-10 rounded-xl border-border/70 bg-background/70 pl-9" /></div>
-              <Button type="submit" className="h-10 rounded-xl"><Search className="mr-2 size-4" /> Search</Button>
-            </form>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {[{ value: "TRENDING_DESC", label: "Trending" }, { value: "POPULARITY_DESC", label: "Popular" }, { value: "START_DATE_DESC", label: "Newest" }].map((option) => (
-                <Button key={option.value} type="button" size="sm" variant={catalogSort === option.value ? "default" : "outline"} className="rounded-full" onClick={() => { setCatalogSort(option.value); setCatalogPage(1); }}>{option.label}</Button>
-              ))}
-              {submittedCartoonSearch && <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={() => { setCartoonSearch(""); setSubmittedCartoonSearch(""); setCatalogPage(1); }}>Clear search</Button>}
-            </div>
-            <span className="text-xs text-muted-foreground">{catalogQuery.isFetching ? "Updating library…" : `Page ${catalogPage} · 24 titles per page`}</span>
-          </div>
-
-          {selectedCartoon && (
-            <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-black shadow-lg">
-              <div className="flex items-center justify-between gap-3 bg-card px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-display text-sm font-semibold">{selectedCartoon.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{selectedCartoon.year || "Animated title"} · {selectedCartoon.format || "Series"}{selectedCartoon.episodes ? ` · ${selectedCartoon.episodes} episodes listed` : ""}</p>
-                </div>
-                <Button variant="ghost" size="icon" className="size-9 shrink-0 rounded-full" onClick={() => setSelectedCartoon(null)} aria-label="Close cartoon player"><X className="size-4" /></Button>
-              </div>
-              <div className="relative aspect-video w-full bg-black">
-                <iframe
-                  key={cartoonPlayerUrl}
-                  src={cartoonPlayerUrl}
-                  title={`XoraTV Kids — ${selectedCartoon.title}`}
-                  className="absolute inset-0 h-full w-full border-0"
-                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-3 bg-card px-4 py-3">
-                {selectedCartoon.provider === "tmdb" && <label className="flex items-center gap-2 text-xs text-muted-foreground">Season
-                  <input type="number" min={1} max={30} value={draftSeason} onChange={(event) => setDraftSeason(Math.min(30, Math.max(1, Number(event.target.value) || 1)))} className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
-                </label>}
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">Episode
-                  <input type="number" min={1} max={500} value={draftEpisode} onChange={(event) => setDraftEpisode(Math.min(500, Math.max(1, Number(event.target.value) || 1)))} className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
-                </label>
-                <Button variant="outline" className="h-9 rounded-lg" onClick={() => { setSeason(draftSeason); setEpisode(draftEpisode); }}><Play className="mr-2 size-3.5 fill-current" /> Load episode</Button>
-              </div>
-              <p className="bg-card px-4 pb-4 text-[11px] leading-5 text-muted-foreground">Playback depends on the external source being available. If an episode does not load, try another episode or cartoon.</p>
-            </div>
-          )}
-
-          {catalogQuery.isLoading ? (
-            <div className="flex items-center justify-center gap-3 rounded-2xl border border-dashed border-border p-10 text-sm text-muted-foreground"><LoaderCircle className="size-5 animate-spin" /> Loading animated library…</div>
-          ) : catalogQuery.isError ? (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-              <p className="text-sm font-semibold">The animated library could not load.</p>
-              <p className="mt-2 text-xs text-muted-foreground">Check your connection and try again. The Live TV player is separate and remains unchanged.</p>
-              <Button type="button" variant="outline" className="mt-4 rounded-xl" onClick={() => void catalogQuery.refetch()}><RefreshCw className="mr-2 size-4" /> Retry</Button>
-            </div>
-          ) : filteredCartoons.length ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {filteredCartoons.map((cartoon) => (
-                <button key={`${cartoon.provider}-${cartoon.id}`} type="button" onClick={() => { void navigate({ to: "/kids/watch", search: { id: cartoon.id, provider: cartoon.provider, title: cartoon.title, year: String(cartoon.year || 0), description: cartoon.description || "", ageLabel: cartoon.ageLabel, format: cartoon.format || "", episodes: String(cartoon.episodes || 0), posterUrl: cartoon.posterUrl || "" } as never }); }} className={`group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 hover:shadow-md ${selectedCartoon?.id === cartoon.id ? "border-primary ring-2 ring-primary/15" : "border-border/70"}`}>
-                  <div className={`relative aspect-[3/4] overflow-hidden bg-gradient-to-br ${cartoon.artClass}`}>
-                    {cartoon.posterUrl ? <img src={cartoon.posterUrl} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="grid h-full place-items-center p-4"><span className="grid size-14 place-items-center rounded-2xl border border-white/70 bg-white/65 text-primary shadow-sm backdrop-blur"><Baby className="size-7" /></span></div>}
-                    <span className="absolute bottom-2 right-2 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition group-hover:opacity-100 group-focus-visible:opacity-100"><Play className="size-3.5 fill-current" /></span>
+        <main key={activeSection + "-" + ageFilter} className="kids-panel-enter space-y-5">
+          {activeSection === "cartoons" ? (
+            <section className="space-y-4" aria-label="Kids shows">
+              <div className="flex flex-col gap-3">
+                <SectionHeader title="Shows" subtitle="Stories and animated worlds to explore" />
+                <form className="flex w-full gap-2" onSubmit={(event) => { event.preventDefault(); setCatalogPage(1); setSubmittedCartoonSearch(cartoonSearch.trim()); }}>
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#6B5F57]" />
+                    <Input value={cartoonSearch} onChange={(event) => setCartoonSearch(event.target.value)} placeholder="Search animated titles..." aria-label="Search shows"
+                      className="h-11 rounded-full border-border/80 bg-card pl-11 pr-4 text-sm shadow-[0_5px_18px_rgba(66,43,29,0.045)] placeholder:text-[#81736a] focus-visible:ring-primary/20" />
                   </div>
-                  <div className="p-3">
-                    <p className="truncate font-display text-sm font-semibold">{cartoon.title}</p>
-                    <p className="mt-1 text-[10px] font-medium text-primary">{cartoon.year || "Year unknown"} · {cartoon.format || cartoon.ageLabel}</p>
-                    <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{cartoon.description || "Animated adventure."}</p>
+                  <Button type="submit" className="h-11 min-w-11 rounded-full px-4 active:scale-[0.97]"><Search className="size-4" /><span className="sr-only">Search</span></Button>
+                </form>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap gap-2">
+                    {[{ value: "TRENDING_DESC", label: "Trending" }, { value: "POPULARITY_DESC", label: "Popular" }, { value: "START_DATE_DESC", label: "Newest" }].map((option) => (
+                      <Button key={option.value} type="button" size="sm" variant={catalogSort === option.value ? "default" : "outline"}
+                        className="min-h-10 rounded-full px-3 text-[11px] active:scale-[0.97]"
+                        onClick={() => { setCatalogSort(option.value); setCatalogPage(1); }}>{option.label}</Button>
+                    ))}
+                    {submittedCartoonSearch ? <Button type="button" size="sm" variant="ghost" className="min-h-10 rounded-full px-3 text-[11px]"
+                      onClick={() => { setCartoonSearch(""); setSubmittedCartoonSearch(""); setCatalogPage(1); }}>Clear</Button> : null}
                   </div>
-                </button>
-              ))}
-            </div>
-          ) : <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No animated titles found. Try another search or sort.</div>}
-          {!catalogQuery.isError && (
-            <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-4">
-              <Button type="button" variant="outline" className="rounded-xl" disabled={catalogPage <= 1 || catalogQuery.isFetching} onClick={() => setCatalogPage((page) => Math.max(1, page - 1))}><ChevronLeft className="mr-1 size-4" /> Previous</Button>
-              <span className="text-xs text-muted-foreground">Page {catalogPage}</span>
-              <Button type="button" variant="outline" className="rounded-xl" disabled={!catalogQuery.data?.hasNextPage || catalogQuery.isFetching} onClick={() => setCatalogPage((page) => page + 1)}>Next <ChevronRight className="ml-1 size-4" /></Button>
-            </div>
-          )}
-          <p className="text-[11px] leading-5 text-muted-foreground">The catalogue uses public animation metadata; VidRift handles playback. Availability depends on the external player. AniList titles use episode numbers; the original TV-series entries use season and episode numbers.</p>
-        </section>
-
-        )}
-
-        {activeSection === "live" && (
-        <>
-        <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-lg">
-          <div className="bg-surface p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><div className="flex items-center gap-2"><Tv className="size-4 text-primary" /><h2 className="font-display text-xl font-semibold">Kids channels</h2></div><p className="mt-1 text-xs text-muted-foreground">Explore playable channels selected for kids.</p></div>
-            <div className="flex w-full gap-2 sm:max-w-md">
-              <div className="relative flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a kids channel..." className="h-10 rounded-xl border-border/70 bg-background/70 pl-9" /></div>
-              <Button variant="outline" className="h-10 rounded-xl" onClick={() => void query.refetch()} aria-label="Refresh kids channels"><RefreshCw className={`size-4 ${query.isFetching ? "animate-spin" : ""}`} /></Button>
-            </div>
-          </div>
-
-          </div>
-          {selected ? (
-            <div className="w-full overflow-hidden bg-black">
-              <NativeVideoPlayer streamUrl={`/api/tv/stream?provider=nexus&channel=${encodeURIComponent(selected.id)}`} externalPoster={selected.logo} title={selected.name} autoPlay liveTv className="aspect-video w-full" />
-              <div className="flex items-center justify-between gap-3 bg-card px-4 py-4">
-                <div className="min-w-0"><h3 className="truncate font-display text-sm font-semibold">{selected.name}</h3><p className="mt-1 text-xs text-muted-foreground">{selected.country || "International"} · {selected.quality || "Live"}</p></div>
-                <span className="hidden shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary sm:inline-flex"><Heart className="size-3" /> Kids</span>
-              </div>
-            </div>
-          ) : <div className="bg-surface p-10 text-center text-sm text-muted-foreground">{query.isLoading ? "Finding playable kids channels..." : "No playable kids channels found."}</div>}
-        </section>
-
-        <section>
-          <div className="mb-3 flex items-end justify-between"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Choose a channel</p><h2 className="font-display text-xl font-semibold tracking-tight">More to explore</h2></div><span className="hidden text-xs text-muted-foreground sm:block">{query.data?.length || 0} playable channels</span></div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {(query.data || []).map((channel) => (
-              <button key={channel.id} type="button" onClick={() => { window.history.replaceState({}, "", `/kids?channel=${encodeURIComponent(channel.id)}`); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`group overflow-hidden rounded-2xl border bg-surface text-left shadow-xs transition hover:-translate-y-0.5 hover:shadow-md ${selected?.id === channel.id ? "border-primary ring-2 ring-primary/10" : "border-border/60"}`}>
-                <div className="relative aspect-video bg-muted/40 p-4">
-                  {channel.logo ? <img src={channel.logo} alt="" loading="lazy" className="h-full w-full object-contain transition group-hover:scale-105" /> : <div className="grid h-full place-items-center px-2 text-center text-xs font-semibold">{channel.name}</div>}
-                  <span className="absolute bottom-2 right-2 grid size-8 place-items-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition group-hover:opacity-100"><Play className="size-3.5 fill-current" /></span>
+                  <span className="shrink-0 text-[10px] font-medium text-[#6B5F57] dark:text-[#bcb0a6]">{catalogQuery.isFetching ? "Updating…" : "Page " + catalogPage}</span>
                 </div>
-                <div className="p-3"><p className="truncate font-display text-xs font-semibold">{channel.name}</p><p className="mt-1 text-[10px] text-muted-foreground">{channel.country || "International"} · {channel.quality || "Live"}</p></div>
-              </button>
-            ))}
-          </div>
-        </section>
-        </>
-        )}
+              </div>
+
+              {selectedCartoon ? (
+                <section className="overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_14px_32px_-24px_rgba(54,38,28,0.5)]" aria-label="Selected show details">
+                  <div className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-display text-sm font-semibold text-foreground">{selectedCartoon.title}</p>
+                      <p className="mt-1 text-xs text-[#6B5F57] dark:text-muted-foreground">{selectedCartoon.year || "Animated title"} · {selectedCartoon.ageLabel}</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="size-11 shrink-0 rounded-full" onClick={() => setSelectedCartoon(null)} aria-label="Close cartoon player"><X className="size-4" /></Button>
+                  </div>
+                  <div className="relative aspect-video w-full overflow-hidden rounded-b-[20px] bg-black">
+                    <iframe key={cartoonPlayerUrl} src={cartoonPlayerUrl} title={"XoraTV Kids — " + selectedCartoon.title}
+                      className="absolute inset-0 h-full w-full border-0" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+                    {selectedCartoon.provider === "tmdb" ? <label className="flex min-h-11 items-center gap-2 text-xs text-[#6B5F57] dark:text-muted-foreground">Season
+                      <input type="number" min={1} max={30} value={draftSeason} onChange={(event) => setDraftSeason(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+                        className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
+                    </label> : null}
+                    <label className="flex min-h-11 items-center gap-2 text-xs text-[#6B5F57] dark:text-muted-foreground">Episode
+                      <input type="number" min={1} max={500} value={draftEpisode} onChange={(event) => setDraftEpisode(Math.min(500, Math.max(1, Number(event.target.value) || 1)))}
+                        className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
+                    </label>
+                    <Button variant="outline" className="h-11 rounded-full" onClick={() => { setSeason(draftSeason); setEpisode(draftEpisode); }}><Play className="mr-2 size-3.5 fill-current" /> Load episode</Button>
+                  </div>
+                  <p className="px-4 pb-4 text-[11px] leading-5 text-[#6B5F57] dark:text-muted-foreground">{selectedCartoon.description || "An animated adventure."}</p>
+                </section>
+              ) : null}
+
+              {catalogQuery.isLoading ? <ShowGridSkeleton /> : catalogQuery.isError ? (
+                <div className="rounded-[22px] border border-dashed border-border p-8 text-center">
+                  <p className="text-sm font-semibold text-foreground">The animated library could not load.</p>
+                  <p className="mt-2 text-xs text-[#6B5F57] dark:text-muted-foreground">Check your connection and try again.</p>
+                  <Button type="button" variant="outline" className="mt-4 min-h-11 rounded-full" onClick={() => void catalogQuery.refetch()}><RefreshCw className="mr-2 size-4" /> Retry</Button>
+                </div>
+              ) : filteredShows.length ? (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {filteredShows.map((cartoon, index) => (
+                    <ShowCard key={cartoon.provider + "-" + cartoon.id} cartoon={cartoon} index={index}
+                      onSelect={(item) => { void navigate({ to: "/kids/watch", search: { id: item.id, provider: item.provider, title: item.title, year: String(item.year || 0), description: item.description || "", ageLabel: item.ageLabel, format: item.format || "", episodes: String(item.episodes || 0), posterUrl: item.posterUrl || "" } as never }); }} />
+                  ))}
+                </div>
+              ) : <KidsEmptyState message="No shows found for this age group." />}
+
+              {!catalogQuery.isError ? (
+                <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+                  <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={catalogPage <= 1 || catalogQuery.isFetching}
+                    onClick={() => setCatalogPage((page) => Math.max(1, page - 1))}><ChevronLeft className="mr-1 size-4" /> Previous</Button>
+                  <span className="text-xs text-[#6B5F57] dark:text-muted-foreground">Page {catalogPage}</span>
+                  <Button type="button" variant="outline" className="min-h-11 rounded-full" disabled={!catalogQuery.data?.hasNextPage || catalogQuery.isFetching}
+                    onClick={() => setCatalogPage((page) => page + 1)}>Next <ChevronRight className="ml-1 size-4" /></Button>
+                </div>
+              ) : null}
+            </section>
+          ) : (
+            <section className="space-y-4" aria-label="Live kids channels">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-end justify-between gap-3">
+                  <SectionHeader title="Live Kids Channels" subtitle="Kids TV from around the world" />
+                  <button type="button" onClick={() => void query.refetch()} aria-label="Refresh kids channels" disabled={query.isFetching}
+                    className="press grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card text-[#6B5F57] shadow-sm transition active:scale-[0.97] disabled:opacity-60">
+                    <RefreshCw className={"size-4 " + (query.isFetching ? "animate-spin motion-reduce:animate-none" : "")} />
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-[#6B5F57]" />
+                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a kids channel..." aria-label="Search kids channels"
+                    className="h-11 rounded-full border-border/80 bg-card pl-11 pr-12 text-sm shadow-[0_5px_18px_rgba(66,43,29,0.045)] placeholder:text-[#81736a] focus-visible:ring-primary/20" />
+                  {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear channel search"
+                    className="press absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-[#6B5F57] hover:bg-secondary"><X className="size-4" /></button> : null}
+                </div>
+              </div>
+
+              {query.isLoading ? (
+                <>
+                  <div className="shimmer aspect-video w-full rounded-[20px]" />
+                  <ChannelGridSkeleton />
+                </>
+              ) : query.isError ? (
+                <KidsEmptyState message="Kids channels could not load. Please try again." />
+              ) : visibleSelected ? (
+                <section className="space-y-3" aria-label="Now playing">
+                  <SectionHeader title="Now playing" subtitle={getChannelDisplayName(visibleSelected)} />
+                  <div className="overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_14px_32px_-24px_rgba(54,38,28,0.55)]">
+                    <div className="relative overflow-hidden rounded-[20px] bg-[#1d1916]">
+                      <NativeVideoPlayer streamUrl={"/api/tv/stream?provider=nexus&channel=" + encodeURIComponent(visibleSelected.id)}
+                        externalPoster={visibleSelected.logo} title={visibleSelected.name} autoPlay liveTv
+                        className="aspect-video w-full rounded-[20px]" />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-primary">NOW PLAYING</p>
+                        <p className="mt-1 truncate font-display text-sm font-semibold text-foreground">{getChannelDisplayName(visibleSelected)}</p>
+                        <p className="mt-1 text-[11px] text-[#6B5F57] dark:text-muted-foreground">{getCountryFlag(visibleSelected.country)} {getCountryName(visibleSelected.country)}{getChannelLanguage(visibleSelected) ? " · " + getChannelLanguage(visibleSelected) : ""}</p>
+                      </div>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#a9342c] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white"><span className="size-1.5 rounded-full bg-white motion-safe:animate-pulse" /> Live</span>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+
+              {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length ? (
+                <section className="space-y-3" aria-label="More kids channels">
+                  <SectionHeader title="More to explore" subtitle={channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length + " more channels"} />
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).map((channel, index) => (
+                      <ChannelCard key={channel.id} channel={channel} active={false} index={index}
+                        onSelect={(item) => { window.history.replaceState({}, "", "/kids?channel=" + encodeURIComponent(item.id)); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        favorite={favoriteChannels.includes(channel.id)} onFavorite={toggleChannelFavorite}
+                        statusMode="live" metaMode="language" />
+                    ))}
+                  </div>
+                </section>
+              ) : !query.isLoading && !query.isError && !visibleSelected ? <KidsEmptyState message="No kids channels match this age group." /> : null}
+            </section>
+          )}
+        </main>
       </div>
     </AppShell>
   );
