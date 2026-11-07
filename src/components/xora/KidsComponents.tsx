@@ -29,8 +29,8 @@ export function sortKidsChannels<T extends { name: string; country?: string; lan
   return [...channels].sort((left, right) => {
     const difference = rank(left) - rank(right);
     if (difference) return difference;
-    const leftDigit = /^\\d/.test(left.name) ? 1 : 0;
-    const rightDigit = /^\\d/.test(right.name) ? 1 : 0;
+    const leftDigit = /^\d/.test(left.name) ? 1 : 0;
+    const rightDigit = /^\d/.test(right.name) ? 1 : 0;
     if (leftDigit !== rightDigit) return leftDigit - rightDigit;
     return collator.compare(left.name, right.name);
   });
