@@ -387,7 +387,7 @@ public class XoraVlcPlugin extends Plugin {
         button.setSingleLine(true);
         button.setFocusable(true);
         button.setClickable(true);
-        button.setBackground(roundedBackground(0x332FFFFFF, dp(8)));
+        button.setBackground(roundedBackground(0x33FFFFFF, dp(8)));
         button.setOnClickListener(view -> action.run());
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
