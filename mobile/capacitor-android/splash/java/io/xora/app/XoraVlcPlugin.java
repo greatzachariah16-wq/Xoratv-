@@ -284,10 +284,10 @@ public class XoraVlcPlugin extends Plugin {
         originalWebViewVisibility = webView.getVisibility();
 
         if (mode == PlayerMode.TABLET
-            && getResources().getConfiguration().smallestScreenWidthDp < 600) {
+            && getContext().getResources().getConfiguration().smallestScreenWidthDp < 600) {
             mode = PlayerMode.PINNED;
         }
-        if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
+        if (getContext().getResources().getConfiguration().smallestScreenWidthDp >= 600) {
             mode = PlayerMode.TABLET;
         } else {
             mode = PlayerMode.PINNED;
@@ -414,8 +414,8 @@ public class XoraVlcPlugin extends Plugin {
         int width = rootContainer.getWidth();
         int height = rootContainer.getHeight();
         if (width <= 0 || height <= 0) {
-            width = getResources().getDisplayMetrics().widthPixels;
-            height = getResources().getDisplayMetrics().heightPixels;
+            width = getContext().getResources().getDisplayMetrics().widthPixels;
+            height = getContext().getResources().getDisplayMetrics().heightPixels;
         }
 
         int controlsHeight = dp(54);
@@ -585,7 +585,7 @@ public class XoraVlcPlugin extends Plugin {
     private void cycleModeInternal() {
         if (playerOverlay == null || pipMode) return;
 
-        boolean tablet = getResources().getConfiguration().smallestScreenWidthDp >= 600;
+        boolean tablet = getContext().getResources().getConfiguration().smallestScreenWidthDp >= 600;
         switch (mode) {
             case PINNED:
                 mode = PlayerMode.THEATER;
@@ -905,7 +905,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private int dpValue(int value) {
-        return Math.round(value * getContext().getResources().getDisplayMetrics().density);
+        return Math.round(value * getContext().getContext().getResources().getDisplayMetrics().density);
     }
 
     private int dp(int value) {
