@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Heart, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,8 +18,6 @@ export type BroadcastChannel = {
 };
 
 type ChipOption = { label: string; value: string };
-
-const logoLuminanceCache = new Map<string, "light" | "dark" | "fallback">();
 
 export function getChannelCountryCode(country?: string) {
   const raw = country?.trim();
@@ -151,63 +149,12 @@ function StatusBadge({ channel, statusMode }: { channel: BroadcastChannel; statu
 export function LogoTile({ channel, statusMode = "sports" }: {
   channel: BroadcastChannel; statusMode?: "sports" | "live";
 }) {
-  const [tileMode, setTileMode] = useState<"light" | "dark" | "fallback">(
-    channel.logo ? logoLuminanceCache.get(channel.logo) || "fallback" : "light",
-  );
   const [logoFailed, setLogoFailed] = useState(false);
   const [logoLoaded, setLogoLoaded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const url = channel.logo;
-    if (!url) return;
-    const cached = logoLuminanceCache.get(url);
-    if (cached) {
-      setTileMode(cached);
-      return;
-    }
-    const probe = new Image();
-    probe.crossOrigin = "anonymous";
-    probe.onload = () => {
-      if (cancelled) return;
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 32;
-        canvas.height = 32;
-        const context = canvas.getContext("2d", { willReadFrequently: true });
-        if (!context) throw new Error("Canvas unavailable");
-        context.clearRect(0, 0, 32, 32);
-        context.drawImage(probe, 0, 0, 32, 32);
-        const pixels = context.getImageData(0, 0, 32, 32).data;
-        let total = 0;
-        let count = 0;
-        for (let index = 0; index < pixels.length; index += 4) {
-          if (pixels[index + 3] < 16) continue;
-          const luminance = (0.2126 * pixels[index] + 0.7152 * pixels[index + 1] + 0.0722 * pixels[index + 2]) / 255;
-          total += luminance;
-          count += 1;
-        }
-        const result = count && total / count > 0.7 ? "dark" : "light";
-        logoLuminanceCache.set(url, result);
-        setTileMode(result);
-      } catch {
-        logoLuminanceCache.set(url, "fallback");
-        setTileMode("fallback");
-      }
-    };
-    probe.onerror = () => {
-      logoLuminanceCache.set(url, "fallback");
-      if (!cancelled) setTileMode("fallback");
-    };
-    probe.src = url;
-    return () => { cancelled = true; };
-  }, [channel.logo]);
-
   return (
     <div className={cn(
-      "relative flex aspect-[16/10] w-full shrink-0 items-center justify-center rounded-[16px] border p-4 transition-colors duration-200",
-      tileMode === "dark" ? "border-[#39312c] bg-[#2A2420]" : "border-[#e3d4c7] bg-[#F4EFE9]",
-      tileMode === "fallback" && "shadow-[inset_0_0_0_1px_rgba(97,76,61,0.10)]",
+      "relative flex aspect-[16/10] w-full shrink-0 items-center justify-center rounded-[16px] border border-[#e3d4c7] bg-[#F4EFE9] p-4 shadow-[inset_0_0_0_1px_rgba(97,76,61,0.10)] transition-colors duration-200 dark:border-white/10 dark:bg-[#29231f]",
     )}>
       <div className="absolute left-2 top-2 z-30"><StatusBadge channel={channel} statusMode={statusMode} /></div>
       {channel.logo && !logoFailed ? (
@@ -215,7 +162,7 @@ export function LogoTile({ channel, statusMode = "sports" }: {
           src={channel.logo} alt="" aria-hidden="true" loading="lazy" decoding="async"
           onLoad={() => setLogoLoaded(true)} onError={() => setLogoFailed(true)}
           className={cn("relative z-0 h-auto w-auto max-h-[56%] max-w-full object-contain transition-opacity duration-300",
-            tileMode === "fallback" && "drop-shadow-[0_2px_4px_rgba(42,36,32,0.18)]",
+            "drop-shadow-[0_2px_4px_rgba(42,36,32,0.18)]",
             logoLoaded ? "opacity-100" : "opacity-0")}
         />
       ) : (
@@ -225,7 +172,7 @@ export function LogoTile({ channel, statusMode = "sports" }: {
       )}
       {getChannelQuality(channel) ? (
         <span className={cn("absolute bottom-2 left-2 z-20 rounded-full border px-2 py-1 text-[9px] font-extrabold tracking-[0.1em] shadow-sm",
-          tileMode === "dark" ? "border-white/15 bg-white/95 text-[#4d3a30]" : "border-[#ded0c3] bg-white/95 text-[#4d3a30]")}>
+          "border-[#ded0c3] bg-white/95 text-[#4d3a30]") }>
           {getChannelQuality(channel)}
         </span>
       ) : null}
