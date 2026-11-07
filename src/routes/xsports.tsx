@@ -31,7 +31,10 @@ function matchesSport(channel: SportsChannel, filter: SportFilter) {
   // ESPN and SuperSport are sports broadcasters whose channel metadata may
   // omit the sport name; classify these brand feeds as football for XSports.
   if (filter === "Football" && /espn|supersport/i.test(channel.name)) return true;
-  const known = Object.values(SPORT_TERMS).flat();
+  // Avoid Array.prototype.flat(), which is missing in older Android WebViews.
+  const known = Object.keys(SPORT_TERMS).reduce<string[]>((all, key) => {
+    return all.concat(SPORT_TERMS[key as keyof typeof SPORT_TERMS]);
+  }, []);
   if (filter === "Other") return !known.some((term) => value.includes(term));
   return SPORT_TERMS[filter].some((term) => value.includes(term));
 }
@@ -341,7 +344,8 @@ function XSportsPage() {
   useEffect(() => { setHeroIndex(0); }, [filter, search, featured?.id]);
   useEffect(() => {
     if (heroPaused || heroSlides.length < 2) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // matchMedia is not guaranteed in older embedded Android WebViews.
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const interval = window.setInterval(() => setHeroIndex((index) => (index + 1) % heroSlides.length), 6000);
     return () => window.clearInterval(interval);
   }, [heroPaused, heroSlides.length]);
@@ -350,7 +354,13 @@ function XSportsPage() {
     const container = heroCarouselRef.current;
     const slide = container?.children.item(heroIndex) as HTMLElement | null;
     if (heroPaused || !container || !slide) return;
-    container.scrollTo({ left: slide.offsetLeft - container.offsetLeft, behavior: "smooth" });
+    const left = slide.offsetLeft - container.offsetLeft;
+    // Element.scrollTo is absent in some WebView versions; preserve carousel positioning with scrollLeft.
+    if (typeof container.scrollTo === "function") {
+      container.scrollTo({ left, behavior: "smooth" });
+    } else {
+      container.scrollLeft = left;
+    }
   }, [heroIndex, heroPaused]);
 
   const activeHero = heroSlides[heroIndex] || featured;
