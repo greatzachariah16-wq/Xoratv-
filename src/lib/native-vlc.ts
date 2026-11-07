@@ -5,6 +5,7 @@ export type NativeVlcPlaybackState = {
   waiting: boolean;
   failed: boolean;
   closed: boolean;
+  userClosed?: boolean;
   muted?: boolean;
   mode?: "pinned" | "theater" | "fullscreen" | "tablet";
   pip?: boolean;
