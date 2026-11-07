@@ -227,7 +227,7 @@ function NetworkChips({ search, onSelect, loading = false }: { search: string; o
 function ChannelStatusBadge({ channel, compact = false }: { channel: SportsChannel; compact?: boolean }) {
   const archive = isArchiveChannel(channel);
   return archive ? (
-    <span className={cn("inline-flex shrink-0 items-center rounded-full border border-white/20 bg-black/45 font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md", compact ? "px-2 py-1 text-[8px]" : "px-2.5 py-1.5 text-[9px]")}>
+    <span className={cn("inline-flex shrink-0 items-center rounded-full border border-white/20 bg-black/45 font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md", compact ? "px-2 py-1 text-[9px]" : "px-2.5 py-1.5 text-[9px]")}>
       Archive 24/7
     </span>
   ) : (
@@ -254,7 +254,7 @@ function ChannelCard({ channel, active, index, onSelect }: {
     >
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-[16px] border border-[#e3d4c7] bg-[#eee4da] dark:border-[#51433b] dark:bg-[#302a26]">
         <div className="absolute left-2 top-2 z-20"><ChannelStatusBadge channel={channel} compact /></div>
-        {quality ? <span className="absolute right-2 top-2 z-20 rounded-full border border-[#ded0c3] bg-[#fffaf4]/95 px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.1em] text-[#4d3a30] shadow-sm dark:border-white/15 dark:bg-[#282320]/90 dark:text-[#f5e9df]">{quality}</span> : null}
+        {quality ? <span className="absolute right-2 top-2 z-20 rounded-full border border-[#ded0c3] bg-[#fffaf4]/95 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-[#4d3a30] shadow-sm dark:border-white/15 dark:bg-[#282320]/90 dark:text-[#f5e9df]">{quality}</span> : null}
         <div className="absolute inset-x-0 bottom-0 top-9 grid place-items-center px-4 pb-3 pt-1">
           {channel.logo && !logoFailed ? (
             <img
@@ -426,9 +426,9 @@ function XSportsPage() {
   useEffect(() => {
     const container = heroCarouselRef.current;
     const slide = container?.children.item(heroIndex) as HTMLElement | null;
-    if (!container || !slide) return;
+    if (heroPaused || !container || !slide) return;
     container.scrollTo({ left: slide.offsetLeft - container.offsetLeft, behavior: "smooth" });
-  }, [heroIndex]);
+  }, [heroIndex, heroPaused]);
 
   const activeHero = heroSlides[heroIndex] || featured;
   const handleHeroScroll = () => {
@@ -461,7 +461,7 @@ function XSportsPage() {
   const toggleFavorite = (channel: SportsChannel) => {
     setFavoriteIds((current) => current.includes(channel.id) ? current.filter((id) => id !== channel.id) : [...current, channel.id]);
   };
-  const popularChannels = channels.slice(0, 4);
+  const popularChannels = [...channels].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 4);
 
   return (
     <AppShell wide>
@@ -501,7 +501,7 @@ function XSportsPage() {
             <>
               <div ref={heroCarouselRef} onScroll={handleHeroScroll} className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
                 {heroSlides.map((channel) => (
-                  <div key={channel.id} className="snap-start">
+                  <div key={channel.id} className="shrink-0 snap-start">
                     <SportsHero channel={channel} onWatch={chooseChannel} favorite={favoriteIds.includes(channel.id)} onFavorite={toggleFavorite} onTouchPause={setHeroPaused} />
                   </div>
                 ))}
