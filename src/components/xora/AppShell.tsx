@@ -359,7 +359,7 @@ export function AppShell({
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
-          <div className="ad-slot mb-5 flex min-h-[50px] items-center justify-center">
+          <div className="ad-slot mb-5 flex items-center justify-center">
             <AdsterraBannerAd
               adKey="075ef17698a6be8914c3d3aaaf74c814"
               width={320}
