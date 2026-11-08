@@ -1229,7 +1229,7 @@ export default {
           console.error("[IPTV Proxy] Upstream failed", channelId, upstream.status, targetUrl.hostname);
           return new Response(
             JSON.stringify({ ok: false, error: `Upstream returned HTTP ${upstream.status}` }),
-            { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+            { status: [403, 451, 404, 410].includes(upstream.status) ? upstream.status : 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
           );
         }
         const isHls =
