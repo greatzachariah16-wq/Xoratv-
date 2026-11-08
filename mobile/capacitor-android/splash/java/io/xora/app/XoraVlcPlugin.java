@@ -670,7 +670,10 @@ public class XoraVlcPlugin extends Plugin {
                 break;
             case PINNED:
             default:
-                videoHeight = Math.min(Math.round(width * 9f / 16f), height);
+                // Match the Live TV featured player target: min(420dp, 55vh).
+                videoHeight = Math.min(dp(420), Math.round(height * 0.55f));
+                videoHeight = Math.max(dp(180), videoHeight);
+                videoHeight = Math.min(videoHeight, height);
                 overlayWidth = width;
                 overlayHeight = videoHeight;
                 setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
