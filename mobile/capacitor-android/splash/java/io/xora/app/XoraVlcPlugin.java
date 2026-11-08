@@ -558,10 +558,10 @@ public class XoraVlcPlugin extends Plugin {
         channelTitleText.setTypeface(null, android.graphics.Typeface.BOLD);
         channelTitleText.setSingleLine(true);
         channelTitleText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        channelTitleText.setMaxWidth(dp(230));
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-            0,
             LinearLayout.LayoutParams.WRAP_CONTENT,
-            1f
+            LinearLayout.LayoutParams.WRAP_CONTENT
         );
         topBar.addView(channelTitleText, titleParams);
 
@@ -1376,8 +1376,7 @@ public class XoraVlcPlugin extends Plugin {
 
         if (statusCard != null) {
             boolean error = isErrorState(next);
-            boolean showCard = next == PlaybackState.OFFLINE
-                || next == PlaybackState.CONNECTING
+            boolean showCard = next == PlaybackState.CONNECTING
                 || next == PlaybackState.BUFFERING
                 || error;
             statusCard.setVisibility(showCard ? View.VISIBLE : View.GONE);
