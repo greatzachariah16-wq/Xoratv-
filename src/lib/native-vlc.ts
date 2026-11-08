@@ -111,3 +111,10 @@ export function addNativeVlcPlaybackListener(
 ): Promise<ListenerHandle> {
   return NativeVlc.addListener("playbackState", listener);
 }
+
+export function addNativeVlcListener(
+  listener: (state: NativeVlcPlaybackState) => void,
+): Promise<ListenerHandle> {
+  return addNativeVlcPlaybackListener(listener);
+}
+
