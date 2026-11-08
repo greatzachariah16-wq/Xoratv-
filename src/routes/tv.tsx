@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, RadioTower, Search, RefreshCw, Clock3, Radio, WifiOff, AlertCircle, Loader2 } from "lucide-react";
+import { CalendarClock, RadioTower, Search, RefreshCw, Clock3, WifiOff, AlertCircle, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -185,6 +185,7 @@ function LiveTvPage() {
     message: STATE_COPY.IDLE,
   });
   const [playerDismissed, setPlayerDismissed] = useState(false);
+  const [nativeListenerReady, setNativeListenerReady] = useState(false);
   const nativePlayer = isNativeVlcPlatform();
 
   const query = useQuery({
@@ -216,7 +217,10 @@ function LiveTvPage() {
       if (event.userClosed) setPlayerDismissed(true);
     }).then((registered) => {
       if (disposed) void registered.remove();
-      else listener = registered;
+      else {
+        listener = registered;
+        setNativeListenerReady(true);
+      }
     }).catch((error) => {
       console.warn("[XoraTV] Native player state listener unavailable:", error);
     });
@@ -247,7 +251,7 @@ function LiveTvPage() {
   );
 
   useEffect(() => {
-    if (!nativePlayer || !selected || playerDismissed) return;
+    if (!nativePlayer || !nativeListenerReady || !selected || playerDismissed) return;
     const streamUrl = `/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`;
     void openNativeVlc({
       url: streamUrl,
@@ -263,7 +267,7 @@ function LiveTvPage() {
     return () => {
       void closeNativeVlc();
     };
-  }, [nativePlayer, selected?.id, selected?.name, selected?.provider, playerDismissed]);
+  }, [nativePlayer, nativeListenerReady, selected?.id, selected?.name, selected?.provider, playerDismissed]);
 
   const guide = useQuery({
     queryKey: ["iptv-nexus-guide", selected?.id],
