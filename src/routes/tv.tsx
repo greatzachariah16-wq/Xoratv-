@@ -198,7 +198,7 @@ function LiveTvPage() {
   );
   selectedIdRef.current = selected?.id || "";
 
-  const isOffline = !isOnline || (query.isError && Boolean(query.data?.length));
+  const isOffline = !isOnline || nativeState.state === "OFFLINE" || (query.isError && Boolean(query.data?.length));
 
   useEffect(() => {
     let mounted = true;
@@ -412,6 +412,27 @@ function LiveTvPage() {
                       key={channel.id}
                       type="button"
                       onClick={() => {
+                        if (active) {
+                          if (nativeState.channelId === channel.id && nativeState.state === "IDLE" && isNativeVlcPlatform()) {
+                            const streamUrl = `/api/tv/stream?provider=${channel.provider || "nexus"}&channel=${encodeURIComponent(channel.id)}`;
+                            setNativeState({
+                              state: "CONNECTING",
+                              channelId: channel.id,
+                              message: STATE_LABELS.CONNECTING,
+                            });
+                            void openNativeVlc({
+                              url: streamUrl,
+                              title: getChannelDisplayName(channel),
+                              channelId: channel.id,
+                            }).catch(() => setNativeState({
+                              state: "ERR_UNKNOWN",
+                              channelId: channel.id,
+                              message: STATE_LABELS.ERR_UNKNOWN,
+                            }));
+                            return;
+                          }
+                          return;
+                        }
                         void navigate({ search: { channel: channel.id }, replace: true });
                       }}
                       aria-pressed={active}
