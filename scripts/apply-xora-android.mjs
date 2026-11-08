@@ -56,8 +56,18 @@ manifest = manifest.replace(
   '<application android:resizeableActivity="true"'
 );
 
-if (!manifest.includes("android.permission.INTERNET")) {
-  manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>');
+// The native Live TV plugin reads ConnectivityManager state and registers a
+// default-network callback, which requires ACCESS_NETWORK_STATE at runtime.
+for (const permission of [
+  "android.permission.INTERNET",
+  "android.permission.ACCESS_NETWORK_STATE",
+]) {
+  if (!manifest.includes(permission)) {
+    manifest = manifest.replace(
+      "</manifest>",
+      `    <uses-permission android:name="${permission}" />\n</manifest>`
+    );
+  }
 }
 // The live player is an inline native view over the WebView, not a separate Activity.
 manifest = manifest.replace(
