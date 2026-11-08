@@ -45,18 +45,15 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import okhttp3.Authenticator;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.Route;
 
 @CapacitorPlugin(name = "XoraVlc")
 public class XoraVlcPlugin extends Plugin {
@@ -1292,7 +1289,7 @@ public class XoraVlcPlugin extends Plugin {
         }
 
         probeExecutor.execute(() -> {
-            PlaybackState mapped = probeUrl(url);
+            PlaybackState probeResult = probeUrl(url);
             mainHandler.post(() -> {
                 if (expectedPlayerGeneration != playerGeneration
                     || expectedAttemptGeneration != playbackAttemptGeneration) return;
@@ -1300,9 +1297,9 @@ public class XoraVlcPlugin extends Plugin {
                     setState(PlaybackState.OFFLINE);
                     return;
                 }
-                if (fromStartupTimeout && mapped == PlaybackState.ERR_UNKNOWN) {
-                    mapped = PlaybackState.ERR_TIMEOUT;
-                }
+                final PlaybackState mapped = fromStartupTimeout && probeResult == PlaybackState.ERR_UNKNOWN
+                    ? PlaybackState.ERR_TIMEOUT
+                    : probeResult;
                 setState(mapped);
                 if (mapped == PlaybackState.ERR_TIMEOUT || mapped == PlaybackState.ERR_UNKNOWN) {
                     scheduleAutoRetry();
@@ -1324,7 +1321,7 @@ public class XoraVlcPlugin extends Plugin {
             if (code == 403 || code == 451) return PlaybackState.ERR_REGION;
             if (code == 404 || code == 410) return PlaybackState.ERR_CHANNEL_DOWN;
             return PlaybackState.ERR_UNKNOWN;
-        } catch (SocketTimeoutException | InterruptedIOException timeout) {
+        } catch (InterruptedIOException timeout) {
             return PlaybackState.ERR_TIMEOUT;
         } catch (IOException error) {
             return PlaybackState.ERR_UNKNOWN;
@@ -1364,7 +1361,11 @@ public class XoraVlcPlugin extends Plugin {
             statusCard.setVisibility(showCard ? View.VISIBLE : View.GONE);
             statusIcon.setText(stateIcon(next));
             statusText.setText(stateMessage(next));
-            retryButton.setVisibility(error ? View.VISIBLE : View.GONE);
+            boolean showManualRetry = next == PlaybackState.ERR_REGION
+                || next == PlaybackState.ERR_CHANNEL_DOWN
+                || ((next == PlaybackState.ERR_TIMEOUT || next == PlaybackState.ERR_UNKNOWN)
+                    && autoRetryCount >= 3);
+            retryButton.setVisibility(showManualRetry ? View.VISIBLE : View.GONE);
             offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
         }
         if (previous != next) {
@@ -1445,6 +1446,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void closePlayerInternal(boolean notifyClosed) {
+        final String closedChannelId = currentChannelId;
         playerGeneration++;
         playbackAttemptGeneration++;
         clearStartupTimeout();
@@ -1514,7 +1516,7 @@ public class XoraVlcPlugin extends Plugin {
         if (notifyClosed) {
             JSObject state = new JSObject();
             state.put("state", PlaybackState.IDLE.name());
-            state.put("channelId", currentChannelId);
+            state.put("channelId", closedChannelId);
             state.put("message", "");
             notifyListeners("stateChanged", state);
             emitPlaybackState(false, false, false, true);
