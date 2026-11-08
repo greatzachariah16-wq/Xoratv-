@@ -1600,3 +1600,91 @@ section[aria-label="X-Series live channels"] {
     transform: none !important;
   }
 }
+
+
+/* Live TV: native-player-aware layout, compact channel tiles and cache/offline states. */
+:root {
+  --nav-h: 64px;
+}
+.skeleton:empty,
+.ad-slot:empty {
+  display: none;
+}
+.xora-tv-page {
+  min-width: 0;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+}
+.xora-tv-page-header {
+  transition: transform 200ms ease;
+}
+.xora-tv-featured-card {
+  height: min(420px, 55vh);
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.xora-tv-channel-card {
+  min-width: 0;
+  border-color: color-mix(in oklch, var(--border) 88%, transparent);
+}
+.xora-tv-channel-card.xora-tv-channel-selected {
+  border: 2px solid #b15232;
+}
+.xora-tv-channel-art {
+  min-width: 0;
+  isolation: isolate;
+}
+.xora-tv-live-pill {
+  pointer-events: none;
+}
+.xora-tv-channel-logo {
+  min-width: 0;
+  padding: 0.15rem 0.1rem 0;
+}
+.xora-tv-channel-logo img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.xora-tv-country {
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+.xora-tv-country > span:last-child {
+  min-width: 0;
+}
+.xora-tv-category {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.eq {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 12px;
+}
+.eq i {
+  width: 3px;
+  background: var(--terracotta, #b15232);
+  animation: eq .9s ease-in-out infinite;
+}
+.eq i:nth-child(1) { height: 3px; }
+.eq i:nth-child(2) { height: 3px; animation-delay: -.3s; }
+.eq i:nth-child(3) { height: 3px; animation-delay: -.6s; }
+@keyframes eq {
+  0%, 100% { height: 3px; }
+  50% { height: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq i {
+    animation: none;
+    height: 8px;
+  }
+}
