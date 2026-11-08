@@ -8,11 +8,16 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Rational;
 import android.view.Gravity;
+import android.graphics.drawable.GradientDrawable.Orientation;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
@@ -34,28 +39,67 @@ import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.util.VLCVideoLayout;
 
 import java.util.ArrayList;
+import java.net.Authenticator;
+import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.URI;
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import okhttp3.Credentials;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 @CapacitorPlugin(name = "XoraVlc")
 public class XoraVlcPlugin extends Plugin {
-    private enum PlayerMode {
-        PINNED, THEATER, FULLSCREEN, TABLET
-    }
+    private enum PlayerMode { PINNED, THEATER, FULLSCREEN, TABLET }
+    private enum PlaybackState { IDLE, OFFLINE, CONNECTING, BUFFERING, PLAYING, ERR_REGION, ERR_CHANNEL_DOWN, ERR_TIMEOUT, ERR_UNKNOWN }
 
     private static volatile XoraVlcPlugin activeInstance;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ArrayList<String> streamUrls = new ArrayList<>();
+    private final ExecutorService probeExecutor = Executors.newSingleThreadExecutor();
 
     private FrameLayout rootContainer;
     private FrameLayout playerOverlay;
     private FrameLayout videoFrame;
     private VLCVideoLayout videoLayout;
-    private TextView statusText;
-    private LinearLayout controls;
+    private LinearLayout topBar;
+    private LinearLayout bottomBar;
+    private LinearLayout statusCard;
+    private TextView channelTitleView;
+    private TextView statusIconView;
+    private TextView statusMessageView;
+    private TextView retryButton;
+    private TextView offlineBanner;
     private TextView playButton;
     private TextView muteButton;
-    private TextView modeButton;
+    private TextView fullscreenButton;
     private View.OnLayoutChangeListener rootLayoutListener;
+
+    private ConnectivityManager connectivityManager;
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private volatile boolean networkUsable;
+    private OkHttpClient probeClient;
+    private PlaybackState playbackState = PlaybackState.IDLE;
+    private String channelId = "";
+    private String channelTitle = "Live TV";
+    private String lastStreamUrl = "";
+    private String lastStateMessage = "";
+    private int retryCount;
+    private boolean stallRestarted;
+    private long bufferingStartedAt;
+    private Runnable retryTask;
+    private Runnable bufferingStallTask;
+    private Runnable controlsHideTask;
+    private static final long[] RETRY_DELAYS_MS = {1000L, 2000L, 4000L};
 
     private WebView webView;
     private ViewGroup webViewParent;
@@ -92,6 +136,89 @@ public class XoraVlcPlugin extends Plugin {
     public void load() {
         super.load();
         activeInstance = this;
+        if (getActivity() != null) {
+            getActivity().setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        }
+        registerConnectivityCallback();
+    }
+
+    private void registerConnectivityCallback() {
+        connectivityManager = (ConnectivityManager) getContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) return;
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override public void onAvailable(Network network) {
+                updateNetworkFor(network);
+            }
+            @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+                updateNetworkUsable(capabilities);
+            }
+            @Override public void onLost(Network network) {
+                mainHandler.post(() -> refreshNetworkState());
+            }
+        };
+        try {
+            connectivityManager.registerDefaultNetworkCallback(networkCallback);
+        } catch (Exception error) {
+            android.util.Log.w("XoraVlc", "Could not register network callback", error);
+        }
+        refreshNetworkState();
+    }
+
+    private void updateNetworkFor(Network network) {
+        if (connectivityManager == null) return;
+        NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+        updateNetworkUsable(capabilities);
+    }
+
+    private void updateNetworkUsable(NetworkCapabilities capabilities) {
+        boolean usable = capabilities != null
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        mainHandler.post(() -> applyNetworkUsable(usable));
+    }
+
+    private void refreshNetworkState() {
+        if (connectivityManager == null) {
+            applyNetworkUsable(false);
+            return;
+        }
+        Network active = connectivityManager.getActiveNetwork();
+        NetworkCapabilities capabilities = active == null ? null : connectivityManager.getNetworkCapabilities(active);
+        boolean usable = capabilities != null
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        applyNetworkUsable(usable);
+    }
+
+    private void applyNetworkUsable(boolean usable) {
+        boolean changed = networkUsable != usable;
+        networkUsable = usable;
+        if (!usable && !streamUrls.isEmpty() && playbackState != PlaybackState.IDLE) {
+            clearRetryTask();
+            clearStartupTimeout();
+            clearBufferingStallTask();
+            if (mediaPlayer != null) {
+                try { mediaPlayer.pause(); } catch (Exception ignored) { }
+            }
+            setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+        } else if (usable && changed && playbackState == PlaybackState.OFFLINE && !streamUrls.isEmpty()) {
+            retryCount = 0;
+            stallRestarted = false;
+            if (userPaused) {
+                setPlaybackState(PlaybackState.IDLE, "Playback paused", false);
+            } else {
+                startCurrentStream(true);
+            }
+        }
+    }
+
+    private void unregisterConnectivityCallback() {
+        if (connectivityManager != null && networkCallback != null) {
+            try { connectivityManager.unregisterNetworkCallback(networkCallback); }
+            catch (Exception ignored) { }
+        }
+        networkCallback = null;
+        connectivityManager = null;
     }
 
     @Override
@@ -107,17 +234,22 @@ public class XoraVlcPlugin extends Plugin {
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
+        refreshNetworkState();
         if (pipRequested && !isActivityInPipMode()) {
             pipRequested = false;
             pipMode = false;
             restoreWebViewForNormalMode();
             applyModeLayout();
-            emitPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
+            emitLegacyPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
         }
         if (mediaPlayer != null && playingBeforeAppPause && !userPaused && !playbackFailed
             && !isActivityInPipMode()) {
-            requestAudioFocus();
-            mediaPlayer.play();
+            if (networkUsable) {
+                requestAudioFocus();
+                mediaPlayer.play();
+            } else {
+                setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+            }
         }
         playingBeforeAppPause = false;
     }
@@ -135,9 +267,11 @@ public class XoraVlcPlugin extends Plugin {
 
     @Override
     protected void handleOnDestroy() {
+        unregisterConnectivityCallback();
         closePlayerInternal(false);
         if (activeInstance == this) activeInstance = null;
         mainHandler.removeCallbacksAndMessages(null);
+        probeExecutor.shutdownNow();
         super.handleOnDestroy();
     }
 
@@ -156,7 +290,7 @@ public class XoraVlcPlugin extends Plugin {
             restoreWebViewForNormalMode();
         }
         applyModeLayout();
-        emitPlaybackState(
+        emitLegacyPlaybackState(
             mediaPlayer != null && mediaPlayer.isPlaying(),
             false,
             playbackFailed,
@@ -169,6 +303,8 @@ public class XoraVlcPlugin extends Plugin {
         String url = call.getString("url");
         String fallbackUrl1 = call.getString("fallbackUrl1");
         String fallbackUrl2 = call.getString("fallbackUrl2");
+        String requestedChannelId = call.getString("channelId");
+        String requestedTitle = call.getString("title");
 
         if (!isSecureUrl(url)) {
             call.reject("A secure stream URL is required.");
@@ -188,6 +324,11 @@ public class XoraVlcPlugin extends Plugin {
                 }
 
                 currentStreamIndex = 0;
+                channelId = requestedChannelId == null || requestedChannelId.trim().isEmpty()
+                    ? Uri.parse(url).getQueryParameter("channel") : requestedChannelId;
+                if (channelId == null) channelId = "";
+                channelTitle = requestedTitle == null || requestedTitle.trim().isEmpty() ? "Live TV" : requestedTitle;
+                lastStreamUrl = url;
                 userPaused = false;
                 isMuted = false;
                 playbackFailed = false;
@@ -195,6 +336,8 @@ public class XoraVlcPlugin extends Plugin {
                 playingBeforeAppPause = false;
                 pipRequested = false;
                 pipMode = false;
+                retryCount = 0;
+                stallRestarted = false;
 
                 createNativePlayerViews();
                 startCurrentStream(true);
@@ -305,55 +448,104 @@ public class XoraVlcPlugin extends Plugin {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ));
-        playerOverlay.addView(videoFrame);
+        topBar = new LinearLayout(getContext());
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setPadding(dp(12), dp(7), dp(12), dp(16));
+        topBar.setBackground(new GradientDrawable(Orientation.TOP_BOTTOM,
+            new int[] {0xD9000000, 0x00000000}));
+        channelTitleView = new TextView(getContext());
+        channelTitleView.setText(channelTitle);
+        channelTitleView.setTextColor(Color.WHITE);
+        channelTitleView.setTextSize(13);
+        channelTitleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        channelTitleView.setSingleLine(true);
+        channelTitleView.setEllipsize(TextUtils.TruncateAt.END);
+        topBar.addView(channelTitleView, new LinearLayout.LayoutParams(0, dp(32), 1f));
+        TextView liveBadge = new TextView(getContext());
+        liveBadge.setText("LIVE");
+        liveBadge.setTextColor(Color.WHITE);
+        liveBadge.setTextSize(9);
+        liveBadge.setTypeface(null, android.graphics.Typeface.BOLD);
+        liveBadge.setGravity(Gravity.CENTER);
+        liveBadge.setPadding(dp(8), dp(5), dp(8), dp(5));
+        liveBadge.setBackground(roundedBackground(0xD9B84832, dp(20)));
+        topBar.addView(liveBadge, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, dp(26)));
 
-        statusText = new TextView(getContext());
-        statusText.setText("Connecting to channel…");
-        statusText.setTextColor(Color.WHITE);
-        statusText.setTextSize(12);
-        statusText.setGravity(Gravity.CENTER);
-        statusText.setPadding(dp(14), dp(9), dp(14), dp(9));
-        statusText.setBackground(roundedBackground(0xB8000000, dp(10)));
-        statusText.setClickable(true);
-        statusText.setFocusable(true);
-        statusText.setOnClickListener(view -> retryCurrentStream());
+        bottomBar = new LinearLayout(getContext());
+        bottomBar.setOrientation(LinearLayout.HORIZONTAL);
+        bottomBar.setGravity(Gravity.CENTER);
+        bottomBar.setPadding(dp(9), dp(18), dp(9), dp(6));
+        bottomBar.setBackground(new GradientDrawable(Orientation.BOTTOM_TOP,
+            new int[] {0xD9000000, 0x00000000}));
+        playButton = addIconControl("Ⅱ", "Pause", bottomBar, this::togglePlaybackInternal);
+        muteButton = addIconControl("♫", "Mute", bottomBar, this::toggleMuteInternal);
+        fullscreenButton = addIconControl("⛶", "Fullscreen", bottomBar, this::toggleFullscreenInternal);
+        addIconControl("▣", "Picture in picture", bottomBar, this::enterPictureInPictureInternal);
+        addIconControl("×", "Close player", bottomBar, this::closeFromNativeControls);
+
+        statusCard = new LinearLayout(getContext());
+        statusCard.setOrientation(LinearLayout.HORIZONTAL);
+        statusCard.setGravity(Gravity.CENTER);
+        statusCard.setPadding(dp(13), dp(10), dp(13), dp(10));
+        statusCard.setBackground(roundedBackground(0xE51B1715, dp(12)));
+        statusIconView = new TextView(getContext());
+        statusIconView.setText("↻");
+        statusIconView.setTextColor(Color.WHITE);
+        statusIconView.setTextSize(16);
+        statusCard.addView(statusIconView, new LinearLayout.LayoutParams(dp(24), dp(24)));
+        statusMessageView = new TextView(getContext());
+        statusMessageView.setTextColor(Color.WHITE);
+        statusMessageView.setTextSize(12);
+        statusMessageView.setSingleLine(true);
+        statusMessageView.setEllipsize(TextUtils.TruncateAt.END);
+        statusCard.addView(statusMessageView, new LinearLayout.LayoutParams(0, dp(28), 1f));
+        retryButton = new TextView(getContext());
+        retryButton.setText("Retry");
+        retryButton.setTextColor(0xFFFFDCCB);
+        retryButton.setTextSize(12);
+        retryButton.setGravity(Gravity.CENTER);
+        retryButton.setPadding(dp(8), 0, dp(4), 0);
+        retryButton.setOnClickListener(view -> retryCurrentStream());
+        statusCard.addView(retryButton, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)));
         FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER
-        );
-        videoFrame.addView(statusText, statusParams);
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER);
+        statusParams.setMargins(dp(18), 0, dp(18), 0);
+        videoFrame.addView(statusCard, statusParams);
 
-        controls = new LinearLayout(getContext());
-        controls.setOrientation(LinearLayout.HORIZONTAL);
-        controls.setGravity(Gravity.CENTER);
-        controls.setPadding(dp(6), dp(5), dp(6), dp(5));
-        controls.setBackgroundColor(0xF014101B);
+        offlineBanner = new TextView(getContext());
+        offlineBanner.setText("You're offline. Playback resumes automatically.");
+        offlineBanner.setTextColor(Color.WHITE);
+        offlineBanner.setTextSize(10);
+        offlineBanner.setGravity(Gravity.CENTER);
+        offlineBanner.setSingleLine(true);
+        offlineBanner.setPadding(dp(10), dp(5), dp(10), dp(5));
+        offlineBanner.setBackground(roundedBackground(0xD91B1715, dp(8)));
+        FrameLayout.LayoutParams offlineParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        offlineParams.topMargin = dp(56);
+        videoFrame.addView(offlineBanner, offlineParams);
+        offlineBanner.setVisibility(View.GONE);
 
-        playButton = addControl("PAUSE", controls, this::togglePlaybackInternal);
-        muteButton = addControl("MUTE", controls, this::toggleMuteInternal);
-        modeButton = addControl("PINNED", controls, this::cycleModeInternal);
-        addControl("PIP", controls, this::enterPictureInPictureInternal);
-        addControl("CLOSE", controls, this::closeFromNativeControls);
+        videoFrame.addView(topBar, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, dp(58), Gravity.TOP));
+        videoFrame.addView(bottomBar, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, dp(66), Gravity.BOTTOM));
+        videoFrame.setOnClickListener(view -> toggleControlsVisibility());
 
-        playerOverlay.addView(controls);
+        playerOverlay.addView(videoFrame);
         rootContainer.addView(playerOverlay, new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP | Gravity.START
-        ));
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP | Gravity.START));
 
         rootLayoutListener = (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
             if (playerOverlay != null) applyModeLayout();
         };
         rootContainer.addOnLayoutChangeListener(rootLayoutListener);
-
-        ArrayList<String> options = new ArrayList<>();
-        options.add("--network-caching=4000");
-        options.add("--live-caching=4000");
-        options.add("--drop-late-frames");
-        options.add("--skip-frames");
-        libVLC = new LibVLC(getContext(), options);
 
         playerGeneration++;
         applyModeLayout();
@@ -378,27 +570,49 @@ public class XoraVlcPlugin extends Plugin {
         return new ViewGroup.LayoutParams(params);
     }
 
-    private TextView addControl(String label, LinearLayout parent, Runnable action) {
+    private TextView addIconControl(String glyph, String description, LinearLayout parent, Runnable action) {
         TextView button = new TextView(getContext());
-        button.setText(label);
+        button.setText(glyph);
+        button.setContentDescription(description);
         button.setTextColor(Color.WHITE);
-        button.setTextSize(10);
+        button.setTextSize(23);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(3), dp(8), dp(3), dp(8));
-        button.setSingleLine(true);
         button.setFocusable(true);
         button.setClickable(true);
-        button.setBackground(roundedBackground(0x33FFFFFF, dp(8)));
-        button.setOnClickListener(view -> action.run());
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-            0,
-            dp(42),
-            1f
-        );
-        params.setMargins(dp(2), 0, dp(2), 0);
+        button.setBackground(roundedBackground(0x44FFFFFF, dp(12)));
+        button.setOnClickListener(view -> {
+            action.run();
+            showControlsAndScheduleHide();
+        });
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        params.setMargins(dp(4), 0, dp(4), 0);
         parent.addView(button, params);
         return button;
+    }
+
+    private void toggleControlsVisibility() {
+        if (topBar == null || bottomBar == null) return;
+        boolean visible = topBar.getVisibility() != View.VISIBLE;
+        setControlsVisible(visible);
+        if (visible) showControlsAndScheduleHide();
+    }
+
+    private void setControlsVisible(boolean visible) {
+        int visibility = visible ? View.VISIBLE : View.GONE;
+        if (topBar != null) topBar.setVisibility(visibility);
+        if (bottomBar != null) bottomBar.setVisibility(visibility);
+    }
+
+    private void showControlsAndScheduleHide() {
+        setControlsVisible(true);
+        if (controlsHideTask != null) mainHandler.removeCallbacks(controlsHideTask);
+        controlsHideTask = () -> setControlsVisible(false);
+        mainHandler.postDelayed(controlsHideTask, 3000L);
+    }
+
+    private void clearControlsTask() {
+        if (controlsHideTask != null) mainHandler.removeCallbacks(controlsHideTask);
+        controlsHideTask = null;
     }
 
     private GradientDrawable roundedBackground(int color, int radius) {
@@ -411,7 +625,6 @@ public class XoraVlcPlugin extends Plugin {
 
     private void applyModeLayout() {
         if (playerOverlay == null || rootContainer == null) return;
-
         int width = rootContainer.getWidth();
         int height = rootContainer.getHeight();
         if (width <= 0 || height <= 0) {
@@ -419,114 +632,66 @@ public class XoraVlcPlugin extends Plugin {
             height = getContext().getResources().getDisplayMetrics().heightPixels;
         }
 
-        int controlsHeight = dp(54);
         int panelWidth = width;
         int videoHeight;
         int overlayHeight;
         int overlayWidth;
-        int overlayLeft = 0;
-        int overlayTop = 0;
-
         if (pipMode || isActivityInPipMode()) {
             setWebViewVisibility(View.GONE);
-            controls.setVisibility(View.GONE);
-            statusText.setVisibility(View.GONE);
-
-            FrameLayout.LayoutParams pipOverlay = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                Gravity.TOP | Gravity.START
-            );
-            playerOverlay.setLayoutParams(pipOverlay);
+            setControlsVisible(false);
+            if (statusCard != null) statusCard.setVisibility(View.GONE);
+            if (offlineBanner != null) offlineBanner.setVisibility(View.GONE);
+            playerOverlay.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.TOP | Gravity.START));
             videoFrame.setLayoutParams(new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ));
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             return;
         }
 
-        controls.setVisibility(View.VISIBLE);
-
+        setControlsVisible(true);
         switch (mode) {
             case THEATER:
-                videoHeight = Math.min(
-                    Math.round(height * 0.56f),
-                    Math.round(width * 0.76f)
-                );
-                videoHeight = Math.max(videoHeight, Math.min(dp(220), height - controlsHeight));
+                videoHeight = Math.min(Math.round(height * 0.56f), Math.round(width * 0.76f));
+                videoHeight = Math.max(videoHeight, Math.min(dp(220), height));
                 overlayWidth = width;
-                overlayHeight = Math.min(height, videoHeight + controlsHeight);
+                overlayHeight = Math.min(height, videoHeight);
                 setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
                 break;
-
             case FULLSCREEN:
-                videoHeight = Math.max(1, height - controlsHeight);
+                videoHeight = height;
                 overlayWidth = width;
                 overlayHeight = height;
                 setWebViewVisibility(View.GONE);
                 break;
-
             case TABLET:
                 panelWidth = Math.max(dp(300), Math.round(width * 0.42f));
                 panelWidth = Math.min(panelWidth, Math.round(width * 0.55f));
-                videoHeight = Math.min(
-                    Math.round(panelWidth * 9f / 16f),
-                    Math.max(1, height - controlsHeight)
-                );
+                videoHeight = Math.min(Math.round(panelWidth * 9f / 16f), height);
                 overlayWidth = panelWidth;
                 overlayHeight = height;
                 setWebViewRegion(panelWidth, 0, Math.max(1, width - panelWidth), height);
                 break;
-
             case PINNED:
             default:
-                videoHeight = Math.round(width * 9f / 16f);
-                videoHeight = Math.min(videoHeight, Math.max(1, height - controlsHeight));
+                // Match the Live TV featured player target: min(420dp, 55vh).
+                videoHeight = Math.min(dp(420), Math.round(height * 0.55f));
+                videoHeight = Math.max(1, Math.min(videoHeight, height));
                 overlayWidth = width;
-                overlayHeight = Math.min(height, videoHeight + controlsHeight);
+                overlayHeight = videoHeight;
                 setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
                 break;
         }
 
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
-            overlayWidth,
-            overlayHeight,
-            Gravity.TOP | Gravity.START
-        );
-        overlayParams.leftMargin = overlayLeft;
-        overlayParams.topMargin = overlayTop;
+            overlayWidth, overlayHeight, Gravity.TOP | Gravity.START);
         playerOverlay.setLayoutParams(overlayParams);
-
-        FrameLayout.LayoutParams videoParams;
-        if (mode == PlayerMode.TABLET) {
-            videoParams = new FrameLayout.LayoutParams(
-                overlayWidth,
-                videoHeight,
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL
-            );
-        } else {
-            videoParams = new FrameLayout.LayoutParams(
-                overlayWidth,
-                videoHeight,
-                Gravity.TOP | Gravity.START
-            );
-        }
+        FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
+            overlayWidth, videoHeight,
+            mode == PlayerMode.TABLET ? Gravity.TOP | Gravity.CENTER_HORIZONTAL : Gravity.TOP | Gravity.START);
         videoFrame.setLayoutParams(videoParams);
-
-        FrameLayout.LayoutParams controlParams = new FrameLayout.LayoutParams(
-            overlayWidth,
-            controlsHeight,
-            Gravity.BOTTOM | Gravity.START
-        );
-        controls.setLayoutParams(controlParams);
-
-        modeButton.setText(mode.name());
-        updateControlLabels();
-        if (mode == PlayerMode.FULLSCREEN) {
-            enterImmersiveSystemUi();
-        } else {
-            restoreSystemUi();
-        }
+        if (mode == PlayerMode.FULLSCREEN) enterImmersiveSystemUi();
+        else restoreSystemUi();
     }
 
     private void setWebViewRegion(int left, int top, int width, int height) {
@@ -603,39 +768,55 @@ public class XoraVlcPlugin extends Plugin {
                 break;
         }
         applyModeLayout();
-        emitPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
+        emitLegacyPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
     }
 
     private void togglePlaybackInternal() {
-        if (mediaPlayer == null || playbackFailed) {
-            retryCurrentStream();
+        if (streamUrls.isEmpty()) return;
+        if (!networkUsable) {
+            setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
             return;
         }
-        if (mediaPlayer.isPlaying()) {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             userPaused = true;
             mediaPlayer.pause();
-            emitPlaybackState(false, false, false, false);
+            updateControlLabels();
+            setPlaybackState(PlaybackState.IDLE, "Playback paused", false);
         } else {
             userPaused = false;
-            requestAudioFocus();
-            mediaPlayer.play();
+            retryCount = 0;
+            startCurrentStream(true);
         }
-        updateControlLabels();
     }
 
     private void toggleMuteInternal() {
         isMuted = !isMuted;
         if (mediaPlayer != null) mediaPlayer.setVolume(isMuted ? 0 : 100);
         updateControlLabels();
-        emitPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
+        emitLegacyPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
+    }
+
+    private void toggleFullscreenInternal() {
+        if (mode == PlayerMode.FULLSCREEN) mode = PlayerMode.PINNED;
+        else mode = PlayerMode.FULLSCREEN;
+        applyModeLayout();
+        emitLegacyPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
     }
 
     private void updateControlLabels() {
         if (playButton != null) {
-            playButton.setText(mediaPlayer != null && mediaPlayer.isPlaying() ? "PAUSE" : "PLAY");
+            boolean playing = mediaPlayer != null && mediaPlayer.isPlaying();
+            playButton.setText(playing ? "Ⅱ" : "▶");
+            playButton.setContentDescription(playing ? "Pause" : "Play");
         }
-        if (muteButton != null) muteButton.setText(isMuted ? "UNMUTE" : "MUTE");
-        if (modeButton != null) modeButton.setText(mode.name());
+        if (muteButton != null) {
+            muteButton.setText(isMuted ? "🔇" : "♫");
+            muteButton.setContentDescription(isMuted ? "Muted" : "Sound on");
+        }
+        if (fullscreenButton != null) {
+            fullscreenButton.setText(mode == PlayerMode.FULLSCREEN ? "⛶" : "⛶");
+            fullscreenButton.setContentDescription(mode == PlayerMode.FULLSCREEN ? "Exit fullscreen" : "Fullscreen");
+        }
     }
 
     private boolean enterPictureInPictureInternal() {
@@ -730,12 +911,26 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void startCurrentStream(boolean usePreferredDecoder) {
-        if (libVLC == null || videoLayout == null || currentStreamIndex >= streamUrls.size()) return;
-
+        if (videoLayout == null || currentStreamIndex >= streamUrls.size()) return;
+        if (!networkUsable) {
+            setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+            return;
+        }
+        if (libVLC == null) {
+            ArrayList<String> options = new ArrayList<>();
+            options.add("--network-caching=4000");
+            options.add("--live-caching=4000");
+            options.add("--drop-late-frames");
+            options.add("--skip-frames");
+            libVLC = new LibVLC(getContext(), options);
+        }
         clearStartupTimeout();
+        clearRetryTask();
+        clearBufferingStallTask();
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         final String selectedUrl = streamUrls.get(currentStreamIndex);
+        lastStreamUrl = selectedUrl;
 
         MediaPlayer previousPlayer = mediaPlayer;
         mediaPlayer = null;
@@ -747,12 +942,10 @@ public class XoraVlcPlugin extends Plugin {
 
         boolean preferSoftware = prefersSoftwareDecoder(selectedUrl);
         boolean useHardwareDecoder = preferSoftware ? !usePreferredDecoder : usePreferredDecoder;
-
         activePlayer.setEventListener(event -> {
             if (getActivity() == null) return;
             getActivity().runOnUiThread(() ->
-                handlePlayerEvent(activePlayer, activePlayerGeneration, activeAttemptGeneration, event)
-            );
+                handlePlayerEvent(activePlayer, activePlayerGeneration, activeAttemptGeneration, event));
         });
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
@@ -762,39 +955,42 @@ public class XoraVlcPlugin extends Plugin {
         media.addOption(":http-reconnect");
         activePlayer.setMedia(media);
         media.release();
-
         activePlayer.setVolume(isMuted ? 0 : 100);
         playbackFailed = false;
-        setPlayerStatus("Connecting to channel…", true);
+        setPlaybackState(PlaybackState.CONNECTING, "Connecting to channel…", false);
         requestAudioFocus();
         activePlayer.play();
 
         Runnable timeout = () -> {
             if (!isCurrentPlayer(activePlayer, activePlayerGeneration, activeAttemptGeneration)) return;
-            if (userPaused || playbackFailed || activePlayer.isPlaying()) return;
-            if (!tryNextStream()) failPlayback();
+            if (userPaused || activePlayer.isPlaying() || playbackState == PlaybackState.OFFLINE) return;
+            diagnoseAndRecover(PlaybackState.ERR_TIMEOUT, "Network too slow");
         };
         streamStartupTimeout = timeout;
-        mainHandler.postDelayed(timeout, 25000);
+        mainHandler.postDelayed(timeout, 25000L);
         updateControlLabels();
+        showControlsAndScheduleHide();
     }
 
-    private boolean isCurrentPlayer(
-        MediaPlayer candidate,
-        long candidatePlayerGeneration,
-        long candidateAttemptGeneration
-    ) {
-        return candidate != null
-            && candidate == mediaPlayer
-            && candidatePlayerGeneration == playerGeneration
-            && candidateAttemptGeneration == playbackAttemptGeneration;
+    private boolean isCurrentPlayer(MediaPlayer candidate, long generation, long attempt) {
+        return candidate != null && candidate == mediaPlayer
+            && generation == playerGeneration && attempt == playbackAttemptGeneration;
     }
 
     private void clearStartupTimeout() {
-        if (streamStartupTimeout != null) {
-            mainHandler.removeCallbacks(streamStartupTimeout);
-            streamStartupTimeout = null;
-        }
+        if (streamStartupTimeout != null) mainHandler.removeCallbacks(streamStartupTimeout);
+        streamStartupTimeout = null;
+    }
+
+    private void clearBufferingStallTask() {
+        if (bufferingStallTask != null) mainHandler.removeCallbacks(bufferingStallTask);
+        bufferingStallTask = null;
+        bufferingStartedAt = 0L;
+    }
+
+    private void clearRetryTask() {
+        if (retryTask != null) mainHandler.removeCallbacks(retryTask);
+        retryTask = null;
     }
 
     private void releaseMediaPlayer(MediaPlayer player) {
@@ -805,34 +1001,21 @@ public class XoraVlcPlugin extends Plugin {
             player.detachViews();
             player.release();
         } catch (Exception ignored) {
-            // The previous stream may already have stopped while it was replaced.
+            // A replaced stream may already have stopped.
         }
-    }
-
-    private boolean tryNextStream() {
-        if (mediaPlayer == null || userPaused || playbackFailed) return false;
-
-        if (currentStreamIndex + 1 < streamUrls.size()) {
-            currentStreamIndex++;
-            decoderFallbackAttempted = false;
-            startCurrentStream(true);
-            return true;
-        }
-
-        if (!decoderFallbackAttempted) {
-            decoderFallbackAttempted = true;
-            startCurrentStream(false);
-            return true;
-        }
-        return false;
     }
 
     private void retryCurrentStream() {
-        if (streamUrls.isEmpty() || libVLC == null || videoLayout == null) return;
+        if (streamUrls.isEmpty() || videoLayout == null) return;
+        if (!networkUsable) {
+            setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+            return;
+        }
+        retryCount = 0;
         userPaused = false;
         playbackFailed = false;
         currentStreamIndex = 0;
-        decoderFallbackAttempted = false;
+        stallRestarted = false;
         startCurrentStream(true);
     }
 
@@ -843,57 +1026,244 @@ public class XoraVlcPlugin extends Plugin {
         MediaPlayer.Event event
     ) {
         if (!isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)) return;
-
         switch (event.type) {
             case MediaPlayer.Event.Opening:
-                setPlayerStatus("Connecting to channel…", true);
-                emitPlaybackState(false, true, false, false);
+                setPlaybackState(PlaybackState.CONNECTING, "Connecting to channel…", false);
                 break;
             case MediaPlayer.Event.Buffering:
-                setPlayerStatus("Buffering…", true);
-                emitPlaybackState(false, true, false, false);
+                if (event.getBuffering() < 100f) {
+                    setPlaybackState(PlaybackState.BUFFERING, "Buffering…", false);
+                    if (bufferingStallTask == null) {
+                        bufferingStartedAt = android.os.SystemClock.elapsedRealtime();
+                        bufferingStallTask = () -> {
+                            bufferingStallTask = null;
+                            if (!isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                                || playbackState == PlaybackState.OFFLINE) return;
+                            if (!networkUsable) {
+                                setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+                            } else if (!stallRestarted) {
+                                stallRestarted = true;
+                                startCurrentStream(true);
+                            } else {
+                                diagnoseAndRecover(PlaybackState.ERR_TIMEOUT, "Network too slow");
+                            }
+                        };
+                        mainHandler.postDelayed(bufferingStallTask, 15000L);
+                    }
+                } else {
+                    clearBufferingStallTask();
+                }
                 break;
             case MediaPlayer.Event.Playing:
                 clearStartupTimeout();
+                clearBufferingStallTask();
+                clearRetryTask();
+                retryCount = 0;
+                stallRestarted = false;
                 playbackFailed = false;
-                setPlayerStatus("", false);
+                setPlaybackState(PlaybackState.PLAYING, "Playing", false);
                 updateControlLabels();
-                emitPlaybackState(true, false, false, false);
                 break;
             case MediaPlayer.Event.Paused:
                 updateControlLabels();
-                emitPlaybackState(false, false, false, false);
+                emitLegacyPlaybackState(false, false, false, false);
                 break;
-            case MediaPlayer.Event.Stopped:
             case MediaPlayer.Event.EncounteredError:
                 clearStartupTimeout();
-                if (userPaused) break;
-                if (!tryNextStream()) failPlayback();
+                clearBufferingStallTask();
+                if (!userPaused) diagnoseAndRecover(PlaybackState.ERR_UNKNOWN, "Unable to play this channel");
+                break;
+            case MediaPlayer.Event.Stopped:
+                clearStartupTimeout();
                 break;
             default:
                 break;
         }
     }
 
-    private void setPlayerStatus(String message, boolean visible) {
-        if (statusText == null) return;
-        if (visible) {
-            statusText.setText(message);
-            statusText.setVisibility(View.VISIBLE);
+    private void diagnoseAndRecover(PlaybackState fallbackState, String fallbackMessage) {
+        if (!networkUsable) {
+            setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+            return;
+        }
+        final String probeUrl = lastStreamUrl;
+        final long probePlayerGeneration = playerGeneration;
+        final long probeAttemptGeneration = playbackAttemptGeneration;
+        if (probeUrl == null || probeUrl.trim().isEmpty()) {
+            completeOrScheduleRetry(fallbackState, fallbackMessage);
+            return;
+        }
+        probeExecutor.execute(() -> {
+            PlaybackState detected = fallbackState;
+            String message = fallbackMessage;
+            try {
+                Request request = new Request.Builder()
+                    .url(probeUrl)
+                    .header("Range", "bytes=0-0")
+                    .get()
+                    .build();
+                try (Response response = getProbeClient().newCall(request).execute()) {
+                    int code = response.code();
+                    if (code == 403 || code == 451) {
+                        detected = PlaybackState.ERR_REGION;
+                        message = "Not available in your region";
+                    } else if (code == 404 || code == 410) {
+                        detected = PlaybackState.ERR_CHANNEL_DOWN;
+                        message = "Channel is offline";
+                    } else if (code == 408 || code == 504) {
+                        detected = PlaybackState.ERR_TIMEOUT;
+                        message = "Network too slow";
+                    } else if (!response.isSuccessful() && code != 206) {
+                        detected = PlaybackState.ERR_UNKNOWN;
+                        message = "Unable to play this channel";
+                    } else {
+                        detected = fallbackState;
+                        message = fallbackMessage;
+                    }
+                }
+            } catch (InterruptedIOException timeout) {
+                detected = PlaybackState.ERR_TIMEOUT;
+                message = "Network too slow";
+            } catch (Exception error) {
+                detected = PlaybackState.ERR_UNKNOWN;
+                message = "Unable to play this channel";
+            }
+            final PlaybackState finalState = detected;
+            final String finalMessage = message;
+            mainHandler.post(() -> {
+                if (probePlayerGeneration != playerGeneration
+                    || probeAttemptGeneration != playbackAttemptGeneration) return;
+                completeOrScheduleRetry(finalState, finalMessage);
+            });
+        });
+    }
+
+    private OkHttpClient getProbeClient() {
+        if (probeClient != null) return probeClient;
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .writeTimeout(4, TimeUnit.SECONDS)
+            .callTimeout(4, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true);
+        try {
+            ProxySelector selector = ProxySelector.getDefault();
+            if (selector != null && lastStreamUrl != null) {
+                List<Proxy> proxies = selector.select(URI.create(lastStreamUrl));
+                for (Proxy proxy : proxies) {
+                    if (proxy != null && proxy.type() == Proxy.Type.HTTP) {
+                        builder.proxy(proxy);
+                        break;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // OkHttp falls back to the platform's default route when no HTTP proxy is configured.
+        }
+        builder.proxyAuthenticator((route, response) -> {
+            if (response.request().header("Proxy-Authorization") != null) return null;
+            PasswordAuthentication credentials = Authenticator.requestPasswordAuthentication(
+                route.address().url().host(),
+                route.socketAddress().getAddress(),
+                route.socketAddress().getPort(),
+                "http",
+                response.message(),
+                "http",
+                route.address().url().url(),
+                Authenticator.RequestorType.PROXY
+            );
+            if (credentials == null) return null;
+            return response.request().newBuilder()
+                .header("Proxy-Authorization", Credentials.basic(
+                    credentials.getUserName(), new String(credentials.getPassword())))
+                .build();
+        });
+        probeClient = builder.build();
+        return probeClient;
+    }
+
+    private void completeOrScheduleRetry(PlaybackState finalState, String message) {
+        if (!networkUsable) {
+            setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+            return;
+        }
+        if (finalState == PlaybackState.ERR_REGION || finalState == PlaybackState.ERR_CHANNEL_DOWN) {
+            playbackFailed = true;
+            setPlaybackState(finalState, message, false);
+            updateControlLabels();
+            return;
+        }
+        if (retryCount < RETRY_DELAYS_MS.length) {
+            long delay = RETRY_DELAYS_MS[retryCount++];
+            setPlaybackState(PlaybackState.CONNECTING, "Reconnecting…", false);
+            clearRetryTask();
+            retryTask = () -> {
+                retryTask = null;
+                if (!networkUsable) {
+                    setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+                    return;
+                }
+                if (currentStreamIndex + 1 < streamUrls.size()) {
+                    currentStreamIndex++;
+                    startCurrentStream(true);
+                } else if (!decoderFallbackAttempted) {
+                    decoderFallbackAttempted = true;
+                    startCurrentStream(false);
+                } else {
+                    currentStreamIndex = 0;
+                    decoderFallbackAttempted = false;
+                    startCurrentStream(true);
+                }
+            };
+            mainHandler.postDelayed(retryTask, delay);
         } else {
-            statusText.setVisibility(View.GONE);
+            playbackFailed = true;
+            setPlaybackState(finalState, message, false);
+            updateControlLabels();
         }
     }
 
-    private void failPlayback() {
-        playbackFailed = true;
-        clearStartupTimeout();
-        setPlayerStatus("Unable to play this channel. Tap to retry.", true);
-        updateControlLabels();
-        emitPlaybackState(false, false, true, false);
+    private void setPlaybackState(PlaybackState next, String message, boolean userClosed) {
+        if (next == null) next = PlaybackState.ERR_UNKNOWN;
+        String safeMessage = message == null ? "" : message;
+        if (playbackState == next && lastStateMessage.equals(safeMessage) && !userClosed) return;
+        playbackState = next;
+        lastStateMessage = safeMessage;
+        if (statusCard != null) {
+            boolean visible = next != PlaybackState.PLAYING && next != PlaybackState.IDLE && next != PlaybackState.OFFLINE;
+            statusCard.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+        if (statusIconView != null) {
+            String glyph = next == PlaybackState.CONNECTING ? "↻"
+                : next == PlaybackState.BUFFERING ? "◌"
+                : next == PlaybackState.ERR_REGION || next == PlaybackState.ERR_CHANNEL_DOWN
+                    || next == PlaybackState.ERR_TIMEOUT || next == PlaybackState.ERR_UNKNOWN ? "!" : "•";
+            statusIconView.setText(glyph);
+        }
+        if (statusMessageView != null) statusMessageView.setText(safeMessage);
+        if (retryButton != null) {
+            boolean canRetry = next == PlaybackState.ERR_REGION || next == PlaybackState.ERR_CHANNEL_DOWN
+                || next == PlaybackState.ERR_TIMEOUT || next == PlaybackState.ERR_UNKNOWN;
+            retryButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
+        }
+        if (offlineBanner != null) offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
+
+        JSObject event = new JSObject();
+        event.put("state", next.name());
+        event.put("channelId", channelId);
+        event.put("message", safeMessage);
+        if (userClosed) event.put("userClosed", true);
+        notifyListeners("stateChanged", event);
+
+        boolean playing = next == PlaybackState.PLAYING;
+        boolean waiting = next == PlaybackState.CONNECTING || next == PlaybackState.BUFFERING;
+        boolean failed = next == PlaybackState.ERR_REGION || next == PlaybackState.ERR_CHANNEL_DOWN
+            || next == PlaybackState.ERR_TIMEOUT || next == PlaybackState.ERR_UNKNOWN;
+        emitLegacyPlaybackState(playing, waiting, failed, next == PlaybackState.IDLE && userClosed);
     }
 
-    private void emitPlaybackState(boolean playing, boolean waiting, boolean failed, boolean closed) {
+    private void emitLegacyPlaybackState(boolean playing, boolean waiting, boolean failed, boolean closed) {
         JSObject state = new JSObject();
         state.put("playing", playing);
         state.put("waiting", waiting);
@@ -924,36 +1294,41 @@ public class XoraVlcPlugin extends Plugin {
         playerGeneration++;
         playbackAttemptGeneration++;
         clearStartupTimeout();
+        clearRetryTask();
+        clearBufferingStallTask();
+        clearControlsTask();
         abandonAudioFocus();
-
         if (rootContainer != null && rootLayoutListener != null) {
             rootContainer.removeOnLayoutChangeListener(rootLayoutListener);
         }
-
         MediaPlayer previousPlayer = mediaPlayer;
         mediaPlayer = null;
         releaseMediaPlayer(previousPlayer);
-
         LibVLC previousLibVLC = libVLC;
         libVLC = null;
         if (previousLibVLC != null) previousLibVLC.release();
-
         restoreWebViewForNormalMode();
         restoreSystemUi();
-
         if (playerOverlay != null && playerOverlay.getParent() instanceof ViewGroup) {
             ((ViewGroup) playerOverlay.getParent()).removeView(playerOverlay);
         }
+        if (notifyClosed) setPlaybackState(PlaybackState.IDLE, "Player closed", userCloseRequested);
 
         rootContainer = null;
         playerOverlay = null;
         videoFrame = null;
         videoLayout = null;
-        statusText = null;
-        controls = null;
+        topBar = null;
+        bottomBar = null;
+        statusCard = null;
+        channelTitleView = null;
+        statusIconView = null;
+        statusMessageView = null;
+        retryButton = null;
+        offlineBanner = null;
         playButton = null;
         muteButton = null;
-        modeButton = null;
+        fullscreenButton = null;
         webView = null;
         webViewParent = null;
         originalWebViewParams = null;
@@ -966,7 +1341,12 @@ public class XoraVlcPlugin extends Plugin {
         pipRequested = false;
         pipMode = false;
         isMuted = false;
-
-        if (notifyClosed) emitPlaybackState(false, false, false, true);
+        retryCount = 0;
+        stallRestarted = false;
+        lastStreamUrl = "";
+        channelTitle = "Live TV";
+        channelId = "";
+        playbackState = PlaybackState.IDLE;
+        lastStateMessage = "";
     }
 }

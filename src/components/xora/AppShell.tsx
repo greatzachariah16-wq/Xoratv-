@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Baby,
   BarChart3,
@@ -22,7 +22,6 @@ import {
   Settings,
   Shield,
   Signal,
-  TvMinimalPlay,
   UserRound,
   UserRoundPen,
   WalletCards,
@@ -42,7 +41,7 @@ const NAV = [
   { to: "/", label: "Home", icon: House },
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: MonitorPlay },
-  { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
+  { to: "/tv", label: "Live TV", icon: RadioTower },
   { to: "/xsports", label: "XSports", icon: XSportsIcon },
   { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
@@ -109,6 +108,24 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const unread = useUnreadCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tvHeaderHidden, setTvHeaderHidden] = useState(false);
+
+  useEffect(() => {
+    if (pathname !== "/tv") {
+      setTvHeaderHidden(false);
+      return;
+    }
+    let previousY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - previousY;
+      if (delta > 5 && currentY > 36) setTvHeaderHidden(true);
+      else if (delta < -5) setTvHeaderHidden(false);
+      previousY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [pathname]);
   const { data: walletData } = useQuery(walletQuery(user?.id));
 
   const currentProfile =
@@ -260,7 +277,10 @@ export function AppShell({
       ) : null}
 
       {!immersive ? (
-      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur-md sm:px-4 lg:hidden">
+      <header className={cn(
+        "fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur-md transition-transform duration-200 sm:px-4 lg:hidden",
+        pathname === "/tv" && tvHeaderHidden ? "-translate-y-full pointer-events-none" : "translate-y-0",
+      )}>
         <Link to="/" className="press">
           <Logo />
         </Link>
@@ -356,16 +376,21 @@ export function AppShell({
       <main id="main" className={immersive ? "min-h-screen w-full" : "lg:pl-[248px] xl:pr-[320px]"}>
         <div
           className={cn(
-            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : "mx-auto px-4 pb-24 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn(
+              "mx-auto px-4 pt-18 lg:px-8 lg:pt-8",
+              pathname === "/tv"
+                ? "pb-[calc(var(--nav-h)+env(safe-area-inset-bottom))]"
+                : "pb-24 lg:pb-14",
+            ),
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
-          <div className="mb-5 flex min-h-[50px] items-center justify-center">
+          <div className="flex items-center justify-center">
             <AdsterraBannerAd
               adKey="075ef17698a6be8914c3d3aaaf74c814"
               width={320}
               height={50}
-              className="my-0 shadow-xs"
+              className="ad-slot my-0 mb-5 shadow-xs"
             />
           </div>
           {children}
@@ -378,7 +403,7 @@ export function AppShell({
           { to: "/", label: "Home", icon: House },
           { to: "/shorts", label: "Shorts", icon: Clapperboard },
           { to: "/xtv-series", label: "Series", icon: MonitorPlay },
-          { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
+          { to: "/tv", label: "Live TV", icon: RadioTower },
         ].map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
@@ -388,12 +413,17 @@ export function AppShell({
               onClick={() => setMobileMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] pt-1 text-[10px] font-semibold leading-none transition-colors",
+                active
+                  ? "text-[#b15232] before:absolute before:left-1/2 before:top-0 before:h-[2px] before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-[#b15232]"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-primary/12" : "bg-transparent")}>
-                <Icon className={cn("size-[20px] stroke-[2]", active && "stroke-[2.35]")} aria-hidden="true" />
+              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-[#b15232]/10" : "bg-transparent")}>
+                <Icon
+                  className={cn("size-[20px] stroke-[2]", active && "fill-[#b15232] stroke-[#b15232]")}
+                  aria-hidden="true"
+                />
               </span>
               <span className="max-w-full truncate">{label}</span>
             </Link>

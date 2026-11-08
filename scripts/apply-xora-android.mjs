@@ -45,11 +45,21 @@ manifest = manifest
 // Enable Android's native picture-in-picture action for the inline LibVLC surface.
 const mainActivityTag = /<activity\b(?=[^>]*android:name="[^"]*MainActivity")[^>]*>/;
 if (mainActivityTag.test(manifest)) {
-  manifest = manifest.replace(mainActivityTag, (tag) =>
-    tag.includes("android:supportsPictureInPicture=")
+  manifest = manifest.replace(mainActivityTag, (tag) => {
+    let updated = tag.includes("android:supportsPictureInPicture=")
       ? tag
-      : tag.replace(/>$/, ' android:supportsPictureInPicture="true">')
-  );
+      : tag.replace(/>$/, ' android:supportsPictureInPicture="true">');
+    const retained = updated.match(/android:configChanges="([^"]*)"/);
+    const required = ["orientation", "screenSize", "smallestScreenSize", "keyboardHidden"];
+    if (retained) {
+      const values = new Set(retained[1].split("|").filter(Boolean));
+      for (const value of required) values.add(value);
+      updated = updated.replace(/android:configChanges="[^"]*"/, `android:configChanges="${[...values].join("|")}"`);
+    } else {
+      updated = updated.replace(/>$/, ' android:configChanges="orientation|screenSize|smallestScreenSize|keyboardHidden">');
+    }
+    return updated;
+  });
 }
 manifest = manifest.replace(
   /<application\b(?![^>]*android:resizeableActivity=)/,
@@ -58,6 +68,9 @@ manifest = manifest.replace(
 
 if (!manifest.includes("android.permission.INTERNET")) {
   manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>');
+}
+if (!manifest.includes("android.permission.ACCESS_NETWORK_STATE")) {
+  manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n</manifest>');
 }
 // The live player is an inline native view over the WebView, not a separate Activity.
 manifest = manifest.replace(
@@ -99,7 +112,33 @@ if (!appGradle.includes("core-splashscreen")) {
     'dependencies {\n    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"',
   );
 }
+if (!appGradle.includes("com.squareup.okhttp3:okhttp")) {
+  appGradle = appGradle.replace(
+    "dependencies {",
+    'dependencies {\n    implementation "com.squareup.okhttp3:okhttp:4.12.0"',
+  );
+}
 fs.writeFileSync(appGradlePath, appGradle);
+
+// Use the smaller Gradle binary distribution and tolerate transient GitHub
+// release-download latency on clean Android runners.
+const wrapperPropertiesPath = path.join(androidRoot, "gradle/wrapper/gradle-wrapper.properties");
+if (fs.existsSync(wrapperPropertiesPath)) {
+  let wrapperProperties = fs.readFileSync(wrapperPropertiesPath, "utf8");
+  wrapperProperties = wrapperProperties.replace(
+    /distributionUrl=.*gradle-([0-9.]+)-all\.zip/,
+    "distributionUrl=https\\://services.gradle.org/distributions/gradle-$1-bin.zip",
+  );
+  if (/networkTimeout=/.test(wrapperProperties)) {
+    wrapperProperties = wrapperProperties.replace(/networkTimeout=\d+/, "networkTimeout=120000");
+  } else {
+    wrapperProperties = wrapperProperties.replace(
+      /\s*$/,
+      "\nnetworkTimeout=120000\n",
+    );
+  }
+  fs.writeFileSync(wrapperPropertiesPath, wrapperProperties);
+}
 
 const variablesPath = path.join(androidRoot, "variables.gradle");
 if (fs.existsSync(variablesPath)) {
