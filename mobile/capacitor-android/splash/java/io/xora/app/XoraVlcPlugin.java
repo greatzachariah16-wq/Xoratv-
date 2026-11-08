@@ -45,7 +45,6 @@ import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
-import java.net.SocketTimeoutException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.List;
@@ -1081,6 +1080,8 @@ public class XoraVlcPlugin extends Plugin {
             return;
         }
         final String probeUrl = lastStreamUrl;
+        final long probePlayerGeneration = playerGeneration;
+        final long probeAttemptGeneration = playbackAttemptGeneration;
         if (probeUrl == null || probeUrl.trim().isEmpty()) {
             completeOrScheduleRetry(fallbackState, fallbackMessage);
             return;
@@ -1113,7 +1114,7 @@ public class XoraVlcPlugin extends Plugin {
                         message = fallbackMessage;
                     }
                 }
-            } catch (SocketTimeoutException | InterruptedIOException timeout) {
+            } catch (InterruptedIOException timeout) {
                 detected = PlaybackState.ERR_TIMEOUT;
                 message = "Network too slow";
             } catch (Exception error) {
@@ -1122,7 +1123,11 @@ public class XoraVlcPlugin extends Plugin {
             }
             final PlaybackState finalState = detected;
             final String finalMessage = message;
-            mainHandler.post(() -> completeOrScheduleRetry(finalState, finalMessage));
+            mainHandler.post(() -> {
+                if (probePlayerGeneration != playerGeneration
+                    || probeAttemptGeneration != playbackAttemptGeneration) return;
+                completeOrScheduleRetry(finalState, finalMessage);
+            });
         });
     }
 
