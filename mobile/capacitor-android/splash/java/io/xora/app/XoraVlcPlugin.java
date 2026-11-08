@@ -204,7 +204,11 @@ public class XoraVlcPlugin extends Plugin {
         } else if (usable && changed && playbackState == PlaybackState.OFFLINE && !streamUrls.isEmpty()) {
             retryCount = 0;
             stallRestarted = false;
-            startCurrentStream(true);
+            if (userPaused) {
+                setPlaybackState(PlaybackState.IDLE, "Playback paused", false);
+            } else {
+                startCurrentStream(true);
+            }
         }
     }
 
