@@ -781,7 +781,7 @@ public class XoraVlcPlugin extends Plugin {
             userPaused = true;
             mediaPlayer.pause();
             updateControlLabels();
-            emitLegacyPlaybackState(false, false, false, false);
+            setPlaybackState(PlaybackState.IDLE, "Playback paused", false);
         } else {
             userPaused = false;
             retryCount = 0;
