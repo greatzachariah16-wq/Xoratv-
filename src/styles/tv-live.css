@@ -1,0 +1,145 @@
+:root { --nav-h: 64px; }
+
+.skeleton:empty,
+.ad-slot:empty { display: none; }
+
+.xora-tv-page {
+  min-width: 0;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  color: var(--foreground);
+}
+.xora-tv-heading { display: grid; gap: 14px; margin: 0 0 18px; }
+.xora-tv-heading-title { display: flex; align-items: center; gap: 12px; }
+.xora-tv-heading-title h1 { font-family: var(--font-display); font-size: 25px; font-weight: 700; letter-spacing: -.035em; }
+.xora-tv-heading-title p { margin-top: 3px; color: var(--muted-foreground); font-size: 11px; }
+.xora-tv-heading-icon {
+  display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center;
+  border: 1px solid #e7cbbb; border-radius: 14px; color: #a84e31;
+  background: linear-gradient(145deg,#fffaf4,#f1dfd1); box-shadow: inset 0 1px 0 #fff;
+}
+.xora-tv-heading-icon svg { width: 21px; height: 21px; }
+.xora-tv-tools { display: flex; align-items: center; gap: 8px; }
+.xora-tv-search { display: flex; min-width: 0; height: 42px; flex: 1; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); padding: 0 11px; }
+.xora-tv-search > svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--muted-foreground); }
+.xora-tv-search input { min-width: 0; height: 100%; border: 0; background: transparent; box-shadow: none; font-size: 12px; outline: none; }
+.xora-tv-search input:focus-visible { outline: none; box-shadow: none; }
+.xora-tv-refresh { height: 42px; gap: 7px; border-radius: 13px; padding-inline: 12px; font-size: 11px; }
+.xora-tv-filter-row { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
+.xora-tv-offline-chip {
+  display: inline-flex; min-height: 26px; align-items: center; gap: 5px; border: 1px solid #d8bda9;
+  border-radius: 999px; background: #f6eee5; color: #8e4b32; padding: 4px 9px; font-size: 9px; font-weight: 700;
+}
+.xora-tv-offline-chip svg { width: 12px; height: 12px; }
+
+.xora-tv-now-card {
+  position: relative; display: flex; min-width: 0; flex-direction: column; justify-content: center;
+  overflow: hidden; border: 1px solid #e7d5c7; border-radius: 21px;
+  background:
+    radial-gradient(ellipse at 100% 0%,rgba(181,83,47,.14),transparent 54%),
+    linear-gradient(145deg,#fffaf4,#f4e9df 58%,#eee0d2);
+  padding: 17px; box-shadow: 0 9px 25px rgba(75,49,35,.08), inset 0 1px 0 rgba(255,255,255,.85);
+}
+.xora-tv-featured-card { height: min(420px,55vh); }
+.xora-tv-now-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.xora-tv-now-label { color: #80523f; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.xora-tv-live-pill {
+  display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.22);
+  border-radius: 999px; background: #a9342c; color: white; padding: 5px 9px;
+  font-size: 9px; font-weight: 800; letter-spacing: .12em; line-height: 1;
+}
+.xora-tv-live-pill i { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: xora-tv-live-pulse 1.4s ease-in-out infinite; }
+.xora-tv-now-content { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 0; }
+.xora-tv-now-copy { min-width: 0; }
+.xora-tv-now-copy h2 { overflow-wrap: anywhere; color: #3c2e26; font-family: var(--font-display); font-size: clamp(19px,5vw,27px); font-weight: 750; letter-spacing: -.035em; line-height: 1.15; }
+.xora-tv-now-copy > p { margin-top: 8px; color: #705c4f; font-size: 11px; }
+.xora-tv-now-copy > p span { padding: 0 3px; }
+.xora-tv-now-logo { width: clamp(74px,24vw,128px); max-height: 104px; flex: 0 0 auto; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(52,39,29,.12)); }
+.xora-tv-state-row { display: flex; min-width: 0; align-items: center; gap: 7px; margin-top: 13px; color: #77523f; font-size: 10px; font-weight: 650; }
+.xora-tv-state-row span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xora-tv-state-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #9a7d68; }
+.xora-tv-state-dot.state-playing { background: #32855e; box-shadow: 0 0 0 3px rgba(50,133,94,.13); }
+.xora-tv-state-dot.state-offline { background: #b16a34; }
+.xora-tv-state-dot.state-err_region,
+.xora-tv-state-dot.state-err_channel_down,
+.xora-tv-state-dot.state-err_timeout,
+.xora-tv-state-dot.state-err_unknown { background: #b33c33; }
+.xora-tv-web-offline-note { border-top: 1px solid rgba(145,101,74,.18); padding-top: 9px; color: #80523f; font-size: 9px; }
+.xora-tv-empty { display: grid; min-height: 150px; place-items: center; gap: 8px; border: 1px dashed var(--border); border-radius: 18px; color: var(--muted-foreground); padding: 24px; text-align: center; }
+.xora-tv-empty svg { width: 25px; height: 25px; color: #a84e31; }
+.xora-tv-empty strong { color: var(--foreground); font-size: 13px; }
+.xora-tv-empty span { font-size: 11px; }
+
+.xora-tv-channel-section { margin-top: 20px; }
+.xora-tv-section-heading { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+.xora-tv-section-heading h2 { font-family: var(--font-display); font-size: 17px; font-weight: 750; letter-spacing: -.025em; }
+.xora-tv-section-heading p { margin-top: 2px; color: var(--muted-foreground); font-size: 10px; }
+.xora-tv-channel-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+.xora-tv-channel-card {
+  position: relative; display: flex; min-width: 0; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 17px; background: var(--card);
+  padding: 9px; color: var(--foreground); text-align: left;
+  box-shadow: 0 5px 16px rgba(62,43,31,.055); transition: border-color .18s, box-shadow .18s, transform .18s;
+}
+.xora-tv-channel-card:active { transform: scale(.985); }
+.xora-tv-channel-card.is-selected { border: 2px solid #b5532f; padding: 8px; box-shadow: 0 0 0 2px rgba(181,83,47,.11),0 9px 20px rgba(109,62,41,.11); }
+.xora-tv-playing-label { display: flex; align-items: center; gap: 7px; margin: 0 0 7px; color: #a64c2e; font-size: 9px; font-weight: 800; }
+.eq { display:inline-flex;gap:2px;align-items:flex-end;height:12px; }
+.eq i { width:3px;background:var(--terracotta, #b5532f);animation:eq .9s ease-in-out infinite;border-radius:2px; }
+.eq i:nth-child(2) { animation-delay:-.3s; }
+.eq i:nth-child(3) { animation-delay:-.6s; }
+@keyframes eq { 0%,100% { height:3px; } 50% { height:12px; } }
+@media (prefers-reduced-motion:reduce) { .eq i { animation:none;height:8px; } }
+
+.xora-tv-card-badges { display: flex; min-height: 22px; align-items: center; justify-content: space-between; gap: 7px; margin-bottom: 7px; }
+.xora-tv-card-badges .xora-tv-live-pill { padding: 4px 7px; font-size: 8px; }
+.xora-tv-quality-pill { display: inline-flex; flex: 0 0 auto; align-items: center; border: 1px solid #e6d7c9; border-radius: 999px; background: #f7f1ea; color: #5e4638; padding: 4px 7px; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.xora-tv-card-logo {
+  display: grid; width: 100%; height: 88px; place-items: center; overflow: hidden;
+  border: 1px solid #eaded3; border-radius: 12px; background: linear-gradient(145deg,#f8f3ed,#eee4da); padding: 15px;
+}
+.xora-tv-card-logo img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.xora-tv-card-logo > span { display: grid; width: 48px; height: 48px; place-items: center; border: 1px solid #d8bda9; border-radius: 14px; background: #f5e8dc; color: #87452d; font-family: var(--font-display); font-size: 15px; font-weight: 800; }
+.xora-tv-card-meta { display: grid; min-width: 0; gap: 4px; padding: 9px 1px 2px; }
+.xora-tv-card-meta > strong { display: -webkit-box; min-height: 32px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--foreground); font-size: 11px; font-weight: 750; line-height: 1.45; }
+.xora-tv-country-line { display: flex; min-width: 0; align-items: center; gap: 5px; color: var(--muted-foreground); font-size: 9px; white-space: nowrap; }
+.xora-tv-country-line > span:first-child { flex: 0 0 auto; }
+.xora-tv-country-line > span:last-child { flex: 0 0 auto; }
+.xora-tv-category-line { display: block; min-width: 0; overflow: hidden; color: var(--muted-foreground); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.xora-tv-card-play { position: absolute; right: 10px; bottom: 12px; display: grid; width: 25px; height: 25px; place-items: center; border-radius: 50%; background: #b5532f; color: white; opacity: 0; transition: opacity .18s; }
+.xora-tv-card-play svg { width: 11px; height: 11px; fill: currentColor; }
+.xora-tv-channel-card:not(.is-selected):hover .xora-tv-card-play { opacity: 1; }
+.xora-tv-skeleton { min-height: 200px; border-radius: 17px; background: linear-gradient(110deg,#f2e9df 8%,#faf6f0 18%,#f2e9df 33%); background-size: 200% 100%; animation: xora-tv-skeleton 1.3s ease-in-out infinite; }
+@keyframes xora-tv-skeleton { to { background-position-x: -200%; } }
+.xora-tv-no-channels { border: 1px dashed var(--border); border-radius: 15px; padding: 20px; color: var(--muted-foreground); font-size: 11px; text-align: center; }
+
+.xora-tv-guide { overflow: hidden; margin-top: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); }
+.xora-tv-guide-heading { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); padding: 13px 15px; }
+.xora-tv-guide-heading > svg { width: 18px; height: 18px; color: #a64c2e; }
+.xora-tv-guide-heading h2 { font-family: var(--font-display); font-size: 13px; font-weight: 750; }
+.xora-tv-guide-heading p { margin-top: 2px; color: var(--muted-foreground); font-size: 9px; }
+.xora-tv-guide-body { display: grid; gap: 14px; padding: 14px; }
+.xora-tv-now-programme { border: 1px solid rgba(181,83,47,.18); border-radius: 14px; background: rgba(181,83,47,.06); padding: 13px; }
+.xora-tv-programme-kicker { color: #a64c2e; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.xora-tv-now-programme h3 { margin-top: 6px; font-family: var(--font-display); font-size: 16px; font-weight: 750; }
+.xora-tv-now-programme p { margin-top: 5px; color: var(--muted-foreground); font-size: 10px; line-height: 1.6; }
+.xora-tv-up-next > strong { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 10px; }
+.xora-tv-up-next > strong svg { width: 13px; height: 13px; }
+.xora-tv-up-next > div { display: flex; min-width: 0; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding: 9px 1px; font-size: 9px; }
+.xora-tv-up-next > div span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xora-tv-up-next time { flex: 0 0 auto; color: var(--muted-foreground); }
+.xora-tv-guide-empty { padding: 18px; color: var(--muted-foreground); font-size: 10px; text-align: center; }
+
+html.xora-tv-page-open header.fixed.inset-x-0.top-0 { transition: transform 200ms ease; will-change: transform; }
+html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { transform: translateY(-110%); }
+
+@keyframes xora-tv-live-pulse { 0%,100% { opacity: .65; } 50% { opacity: 1; } }
+@media (min-width: 640px) {
+  .xora-tv-channel-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; }
+  .xora-tv-card-logo { height: 110px; }
+}
+@media (min-width: 1024px) {
+  .xora-tv-channel-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-tv-live-pill i,.xora-tv-skeleton { animation: none; }
+}
