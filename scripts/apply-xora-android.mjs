@@ -120,6 +120,26 @@ if (!appGradle.includes("com.squareup.okhttp3:okhttp")) {
 }
 fs.writeFileSync(appGradlePath, appGradle);
 
+// Use the smaller Gradle binary distribution and tolerate transient GitHub
+// release-download latency on clean Android runners.
+const wrapperPropertiesPath = path.join(androidRoot, "gradle/wrapper/gradle-wrapper.properties");
+if (fs.existsSync(wrapperPropertiesPath)) {
+  let wrapperProperties = fs.readFileSync(wrapperPropertiesPath, "utf8");
+  wrapperProperties = wrapperProperties.replace(
+    /distributionUrl=.*gradle-([0-9.]+)-all\\.zip/,
+    "distributionUrl=https\\://services.gradle.org/distributions/gradle-$1-bin.zip",
+  );
+  if (/networkTimeout=/.test(wrapperProperties)) {
+    wrapperProperties = wrapperProperties.replace(/networkTimeout=\\d+/, "networkTimeout=120000");
+  } else {
+    wrapperProperties = wrapperProperties.replace(
+      /\\s*$/,
+      "\\nnetworkTimeout=120000\\n",
+    );
+  }
+  fs.writeFileSync(wrapperPropertiesPath, wrapperProperties);
+}
+
 const variablesPath = path.join(androidRoot, "variables.gradle");
 if (fs.existsSync(variablesPath)) {
   let variables = fs.readFileSync(variablesPath, "utf8");
