@@ -32,6 +32,18 @@
 }
 .xora-tv-offline-chip svg { width: 12px; height: 12px; }
 
+.xora-tv-notice {
+  margin: 0 0 14px;
+  border: 1px solid color-mix(in oklch, var(--primary) 16%, var(--border));
+  border-radius: 13px;
+  background: color-mix(in oklch, var(--primary) 5%, var(--card));
+  color: var(--muted-foreground);
+  padding: 10px 13px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.xora-tv-notice strong { color: var(--foreground); }
+
 .xora-tv-now-card {
   position: relative; display: flex; min-width: 0; flex-direction: column; justify-content: center;
   overflow: hidden; border: 1px solid #e7d5c7; border-radius: 21px;
