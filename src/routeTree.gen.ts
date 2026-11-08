@@ -62,7 +62,6 @@ import { Route as SourceLabRouteImport } from './routes/source-lab'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as KidsWatchRouteImport } from './routes/kids_.watch'
 import { Route as AdminSurveyWalletRouteImport } from './routes/admin.survey-wallet'
-import { Route as AdminAdcashRouteImport } from './routes/admin/adcash'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -79,9 +78,6 @@ const AdminSurveyWalletRoute = AdminSurveyWalletRouteImport.update({
   path: '/survey-wallet',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAdcashRoute = AdminAdcashRouteImport.update({
-  id: '/admin/adcash',
-  path: '/adcash',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommerceRoute = AdminCommerceRouteImport.update({
@@ -374,7 +370,6 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof WalletRoute
   '/kids/watch': typeof KidsWatchRoute
   '/admin/survey-wallet': typeof AdminSurveyWalletRoute
-  '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRoutesByTo {
   '/xsports/wwe': typeof XSportsWweRoute
@@ -430,7 +425,6 @@ export interface FileRoutesByTo {
   '/wallet': typeof WalletRoute
   '/kids/watch': typeof KidsWatchRoute
   '/admin/survey-wallet': typeof AdminSurveyWalletRoute
-  '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRoutesById {
   '/xsports/wwe': typeof XSportsWweRoute
@@ -487,7 +481,6 @@ export interface FileRoutesById {
   '/wallet': typeof WalletRoute
   '/kids_/watch': typeof KidsWatchRoute
   '/admin/survey-wallet': typeof AdminSurveyWalletRoute
-  '/admin/adcash': typeof AdminAdcashRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -544,7 +537,6 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/kids/watch'
     | '/admin/survey-wallet'
-    | '/admin/adcash'
 
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -646,11 +638,9 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/kids/watch'
     | '/admin/survey-wallet'
-    | '/admin/adcash'
     | '/wallet'
     | '/kids_/watch'
     | '/admin/survey-wallet'
-    | '/admin/adcash'
 
   fileRoutesById: FileRoutesById
 }
@@ -1029,11 +1019,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSurveyWalletRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/adcash': {
-      id: '/admin/adcash'
-      path: '/adcash'
-      fullPath: '/admin/adcash'
-      preLoaderRoute: typeof AdminAdcashRouteImport
       parentRoute: typeof AdminRoute
     }
 interface XSportsRouteChildren {
@@ -1044,7 +1029,6 @@ const XSportsRouteWithChildren = XSportsRoute._addFileChildren(XSportsRouteChild
 
 interface AdminRouteChildren {
   AdminSurveyWalletRoute: typeof AdminSurveyWalletRoute
-  AdminAdcashRoute: typeof AdminAdcashRoute
   AdminCommerceRoute: typeof AdminCommerceRoute
   AdminCommerceCreatorReferenceRoute: typeof AdminCommerceCreatorReferenceRoute
   AdminCommercePricingRoute: typeof AdminCommercePricingRoute
@@ -1066,7 +1050,6 @@ interface AdminRouteChildren {
 }
 const AdminRouteChildren: AdminRouteChildren = {
   AdminSurveyWalletRoute: AdminSurveyWalletRoute,
-  AdminAdcashRoute: AdminAdcashRoute,
   AdminCommerceRoute: AdminCommerceRoute,
   AdminCommerceCreatorReferenceRoute: AdminCommerceCreatorReferenceRoute,
   AdminCommercePricingRoute: AdminCommercePricingRoute,
