@@ -196,7 +196,11 @@ function LiveTvPage() {
     () => query.data?.find((item) => item.id === requestedChannel) || query.data?.[0] || null,
     [query.data, requestedChannel],
   );
-  selectedIdRef.current = selected?.id || "";
+  selectedIdRef.current = selected?.id
+    && nativeState.channelId === selected.id
+    && nativeState.state !== "IDLE"
+    ? selected.id
+    : "";
 
   const isOffline = !isOnline || nativeState.state === "OFFLINE" || (query.isError && Boolean(query.data?.length));
 
@@ -259,6 +263,12 @@ function LiveTvPage() {
       void closeNativeVlc().catch(() => {});
     };
   }, [selected?.id, selected?.provider, selected?.name]);
+
+  useEffect(() => {
+    if (nativeState.state === "IDLE") {
+      document.documentElement.classList.remove("xora-tv-header-hidden");
+    }
+  }, [nativeState.state]);
 
   useEffect(() => {
     const root = document.documentElement;
