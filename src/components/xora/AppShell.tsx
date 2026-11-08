@@ -377,7 +377,7 @@ export function AppShell({
           { to: "/", label: "Home", icon: House },
           { to: "/shorts", label: "Shorts", icon: Clapperboard },
           { to: "/xtv-series", label: "Series", icon: MonitorPlay },
-          { to: "/tv", label: "Live TV", icon: Radio },
+          { to: "/tv", label: "Live TV", icon: RadioTower },
         ].map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
