@@ -287,7 +287,7 @@ public class XoraVlcPlugin extends Plugin {
             restoreWebViewForNormalMode();
         }
         applyModeLayout();
-        emitPlaybackState(
+        emitLegacyPlaybackState(
             mediaPlayer != null && mediaPlayer.isPlaying(),
             false,
             playbackFailed,
@@ -770,7 +770,7 @@ public class XoraVlcPlugin extends Plugin {
                 break;
         }
         applyModeLayout();
-        emitPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
+        emitLegacyPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
     }
 
     private void togglePlaybackInternal() {
