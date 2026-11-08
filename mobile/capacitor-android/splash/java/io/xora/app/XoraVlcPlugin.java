@@ -1467,6 +1467,8 @@ public class XoraVlcPlugin extends Plugin {
 
     private void closePlayerInternal(boolean notifyClosed) {
         final String closedChannelId = currentChannelId;
+        final boolean emittedIdleState = playbackState != PlaybackState.IDLE;
+        if (emittedIdleState) setState(PlaybackState.IDLE);
         playerGeneration++;
         playbackAttemptGeneration++;
         clearStartupTimeout();
@@ -1534,11 +1536,13 @@ public class XoraVlcPlugin extends Plugin {
         playbackState = PlaybackState.IDLE;
 
         if (notifyClosed) {
-            JSObject state = new JSObject();
-            state.put("state", PlaybackState.IDLE.name());
-            state.put("channelId", closedChannelId);
-            state.put("message", "");
-            notifyListeners("stateChanged", state);
+            if (!emittedIdleState) {
+                JSObject state = new JSObject();
+                state.put("state", PlaybackState.IDLE.name());
+                state.put("channelId", closedChannelId);
+                state.put("message", "");
+                notifyListeners("stateChanged", state);
+            }
             emitPlaybackState(false, false, false, true);
         }
     }
