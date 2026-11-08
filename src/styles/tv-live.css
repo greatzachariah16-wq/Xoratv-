@@ -1,7 +1,8 @@
 :root { --nav-h: 64px; }
 
 .skeleton:empty,
-.ad-slot:empty { display: none; }
+.ad-slot:empty,
+.adsterra-banner-ad:empty { display: none; }
 
 .xora-tv-page {
   min-width: 0;
