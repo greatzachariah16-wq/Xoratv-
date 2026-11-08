@@ -1197,7 +1197,17 @@ public class XoraVlcPlugin extends Plugin {
                     setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
                     return;
                 }
-                startCurrentStream(true);
+                if (currentStreamIndex + 1 < streamUrls.size()) {
+                    currentStreamIndex++;
+                    startCurrentStream(true);
+                } else if (!decoderFallbackAttempted) {
+                    decoderFallbackAttempted = true;
+                    startCurrentStream(false);
+                } else {
+                    currentStreamIndex = 0;
+                    decoderFallbackAttempted = false;
+                    startCurrentStream(true);
+                }
             };
             mainHandler.postDelayed(retryTask, delay);
         } else {
