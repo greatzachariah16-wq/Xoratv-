@@ -345,7 +345,7 @@ function LiveTvPage() {
             </div>
           </header>
 
-          {offline ? (
+          {offline && !nativePlayer ? (
             <div className="xora-tv-offline-banner mb-3 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-xs text-muted-foreground">
               <WifiOff className="size-4 shrink-0 text-amber-600" />
               <span>You're offline. Playback resumes automatically.</span>
@@ -354,7 +354,7 @@ function LiveTvPage() {
 
           {selected ? (
             <>
-              <section className="xora-tv-featured-card mb-4 rounded-2xl border-2 border-[#b15232] bg-card px-4 py-3 shadow-sm">
+              <section className="xora-tv-selected-header mb-4 rounded-2xl border-2 border-[#b15232] bg-card px-4 py-3 shadow-sm">
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#b15232]">
