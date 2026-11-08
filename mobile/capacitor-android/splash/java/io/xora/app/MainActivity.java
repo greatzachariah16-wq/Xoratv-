@@ -5,6 +5,7 @@ import android.content.res.Configuration;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.os.Bundle;
+import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
@@ -56,6 +57,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(XoraStartupPlugin.class);
         registerPlugin(XoraVlcPlugin.class);
         super.onCreate(savedInstanceState);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         applyXoraSystemBars();
     }
 
