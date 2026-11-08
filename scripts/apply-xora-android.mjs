@@ -93,6 +93,12 @@ if (!appGradle.includes("libvlc-all")) {
     'dependencies {\n    implementation "org.videolan.android:libvlc-all:3.7.7"',
   );
 }
+if (!appGradle.includes("com.squareup.okhttp3:okhttp")) {
+  appGradle = appGradle.replace(
+    "dependencies {",
+    'dependencies {\n    implementation "com.squareup.okhttp3:okhttp:4.12.0"',
+  );
+}
 if (!appGradle.includes("core-splashscreen")) {
   appGradle = appGradle.replace(
     "dependencies {",
