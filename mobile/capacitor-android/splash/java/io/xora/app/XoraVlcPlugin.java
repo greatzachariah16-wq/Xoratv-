@@ -584,6 +584,8 @@ public class XoraVlcPlugin extends Plugin {
         offlineBanner.setTextColor(Color.WHITE);
         offlineBanner.setTextSize(10);
         offlineBanner.setGravity(Gravity.CENTER);
+        offlineBanner.setSingleLine(true);
+        offlineBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
         offlineBanner.setPadding(dp(10), dp(6), dp(10), dp(6));
         offlineBanner.setBackground(roundedBackground(0xDD3A302A, dp(9)));
         offlineBanner.setVisibility(View.GONE);
