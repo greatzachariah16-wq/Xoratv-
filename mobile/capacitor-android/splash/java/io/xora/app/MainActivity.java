@@ -1,7 +1,7 @@
 package io.xora.app;
 
 import android.animation.Keyframe;
-import android.content.res.Configuration;
+import android.content.res.Configuration;\nimport android.media.AudioManager;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.os.Bundle;
@@ -56,7 +56,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(XoraStartupPlugin.class);
         registerPlugin(XoraVlcPlugin.class);
         super.onCreate(savedInstanceState);
-        applyXoraSystemBars();
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);\n        applyXoraSystemBars();
     }
 
     /** Keep Android's system chrome visually continuous with the cream app surface. */
