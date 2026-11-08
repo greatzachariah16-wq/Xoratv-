@@ -187,9 +187,9 @@ function LiveTvPage() {
     queryKey: ["iptv-org-live-tv-page", search, category],
     queryFn: () => loadChannels(search, category),
     staleTime: 60_000,
-    refetchInterval: isOnline ? 5 * 60_000 : false,
-    refetchOnWindowFocus: isOnline,
-    retry: (failureCount) => isOnline && failureCount < 3,
+    refetchInterval: isOnline && nativeState.state !== "OFFLINE" ? 5 * 60_000 : false,
+    refetchOnWindowFocus: isOnline && nativeState.state !== "OFFLINE",
+    retry: (failureCount) => isOnline && nativeState.state !== "OFFLINE" && failureCount < 3,
   });
 
   const selected = useMemo(
