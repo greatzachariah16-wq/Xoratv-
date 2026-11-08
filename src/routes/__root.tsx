@@ -189,7 +189,7 @@ function RootComponent() {
       if (
         event.message === "Script error." ||
         event.message?.includes("Script error") ||
-        event.filename?.includes("highrevenueformat") ||
+        event.filename?.includes("highrevenueformat")
       ) {
         event.preventDefault();
         return true;
