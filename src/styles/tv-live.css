@@ -1,10 +1,10 @@
-:root { --nav-h: 64px; }
-
 .skeleton:empty,
 .ad-slot:empty,
 .adsterra-banner-ad:empty { display: none; }
 
+
 .xora-tv-page {
+  --nav-h: 64px;
   min-width: 0;
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
   color: var(--foreground);
