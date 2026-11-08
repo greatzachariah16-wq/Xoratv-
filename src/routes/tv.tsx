@@ -202,7 +202,15 @@ function LiveTvPage() {
     ? selected.id
     : "";
 
-  const isOffline = !isOnline || nativeState.state === "OFFLINE" || (query.isError && Boolean(query.data?.length));
+  // On Android, trust the native player's network assessment once it has reported
+  // a state for the selected channel. A failed channel-list/API request is not proof
+  // that the phone itself is offline.
+  const nativeNetworkStatusAvailable = isNativeVlcPlatform()
+    && nativeState.channelId === selected?.id
+    && nativeState.state !== "IDLE";
+  const isOffline = nativeNetworkStatusAvailable
+    ? nativeState.state === "OFFLINE"
+    : !isOnline;
 
   useEffect(() => {
     let mounted = true;
@@ -274,14 +282,35 @@ function LiveTvPage() {
     const root = document.documentElement;
     root.classList.add("xora-tv-page-open");
     let lastY = window.scrollY;
+    let accumulatedScroll = 0;
+    let previousDirection = 0;
     const onScroll = () => {
       const currentY = window.scrollY;
-      if (currentY < 24 || currentY < lastY - 2) {
-        root.classList.remove("xora-tv-header-hidden");
-      } else if (currentY > lastY + 2 && selectedIdRef.current) {
-        root.classList.add("xora-tv-header-hidden");
-      }
+      const delta = currentY - lastY;
       lastY = currentY;
+
+      if (currentY < 24) {
+        accumulatedScroll = 0;
+        previousDirection = 0;
+        root.classList.remove("xora-tv-header-hidden");
+        return;
+      }
+      if (Math.abs(delta) < 1) return;
+
+      const direction = delta > 0 ? 1 : -1;
+      if (direction !== previousDirection) accumulatedScroll = 0;
+      previousDirection = direction;
+      accumulatedScroll += delta;
+
+      // Ignore tiny scroll jitter. Hide only after a meaningful downward gesture
+      // and reveal with a shorter upward gesture so channel browsing feels steady.
+      if (direction > 0 && accumulatedScroll >= 24 && selectedIdRef.current) {
+        root.classList.add("xora-tv-header-hidden");
+        accumulatedScroll = 0;
+      } else if (direction < 0 && accumulatedScroll <= -16) {
+        root.classList.remove("xora-tv-header-hidden");
+        accumulatedScroll = 0;
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {

@@ -149,11 +149,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: PREVIEW_NO_ADS ? [] : [
       {
-        id: "adcash-library",
-        src: "https://acscdn.com/script/aclib.js",
-        async: true,
-      },
-      {
         id: "hilltop-inpage-push-script",
         src: "//untimely-hello.com/bIXqV.std/G/lf0qYuWKcK/-exmD9lupZ/UolXkrPmTzcv0/NQTHQ/0VMyTYMGtUN/z/Qy1uNaDCQ_xMNawR",
         async: true,
@@ -194,8 +189,7 @@ function RootComponent() {
       if (
         event.message === "Script error." ||
         event.message?.includes("Script error") ||
-        event.filename?.includes("highrevenueformat") ||
-        event.filename?.includes("monetag")
+        event.filename?.includes("highrevenueformat")
       ) {
         event.preventDefault();
         return true;

@@ -30,7 +30,6 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSecurityBar } from "@/components/admin/AdminSecurityBar";
 import { AdminNavigationMenu } from "@/components/admin/AdminNavigationMenu";
 import { Button } from "@/components/ui/button";
-import { AdcashSwitch } from "@/components/admin/AdcashSwitch";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -379,18 +378,6 @@ function AdminPage() {
               );
             })}
           </div>
-        </section>
-
-        <section className="mt-8 space-y-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              Ad Monetization
-            </p>
-            <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
-              Adcash Control Manager
-            </h2>
-          </div>
-          <AdcashSwitch />
         </section>
 
         {/* Recent Moderation Quick Snapshot */}

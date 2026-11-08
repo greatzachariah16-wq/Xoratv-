@@ -197,15 +197,6 @@ export const ADMIN_SECTIONS: AdminSectionItem[] = [
     accentColor: "text-amber-500",
   },
   {
-    id: "adcash-controls",
-    title: "Adcash Controls",
-    category: "growth",
-    description: "Manage the app's Adcash placement controls.",
-    icon: SlidersHorizontal,
-    href: "/admin/adcash",
-    accentColor: "text-primary",
-  },
-  {
     id: "campaign-manager",
     title: "Campaign Manager",
     category: "growth",
