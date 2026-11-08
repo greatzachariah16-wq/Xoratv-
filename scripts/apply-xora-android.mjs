@@ -59,6 +59,9 @@ manifest = manifest.replace(
 if (!manifest.includes("android.permission.INTERNET")) {
   manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>');
 }
+if (!manifest.includes("android.permission.ACCESS_NETWORK_STATE")) {
+  manifest = manifest.replace("</manifest>", '    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n</manifest>');
+}
 // The live player is an inline native view over the WebView, not a separate Activity.
 manifest = manifest.replace(
   /\s*<activity\b(?=[^>]*android:name="io\.xora\.app\.XoraVlcActivity")[^>]*\/>\s*/g,
@@ -97,6 +100,12 @@ if (!appGradle.includes("core-splashscreen")) {
   appGradle = appGradle.replace(
     "dependencies {",
     'dependencies {\n    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"',
+  );
+}
+if (!appGradle.includes("com.squareup.okhttp3:okhttp")) {
+  appGradle = appGradle.replace(
+    "dependencies {",
+    'dependencies {\n    implementation "com.squareup.okhttp3:okhttp:4.12.0"',
   );
 }
 fs.writeFileSync(appGradlePath, appGradle);
