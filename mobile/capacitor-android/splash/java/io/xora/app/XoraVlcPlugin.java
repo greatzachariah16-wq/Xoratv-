@@ -1161,6 +1161,24 @@ public class XoraVlcPlugin extends Plugin {
         }
     }
 
+    private boolean tryNextStream() {
+        if (mediaPlayer == null || userPaused || !isNetworkUsable()) return false;
+
+        if (currentStreamIndex + 1 < streamUrls.size()) {
+            currentStreamIndex++;
+            decoderFallbackAttempted = false;
+            startCurrentStream(true);
+            return true;
+        }
+
+        if (!decoderFallbackAttempted) {
+            decoderFallbackAttempted = true;
+            startCurrentStream(false);
+            return true;
+        }
+        return false;
+    }
+
     private void retryCurrentStream() {
         if (streamUrls.isEmpty() || libVLC == null || videoLayout == null) return;
         if (!isNetworkUsable()) {
@@ -1216,11 +1234,13 @@ public class XoraVlcPlugin extends Plugin {
             case MediaPlayer.Event.Stopped:
                 clearStartupTimeout();
                 if (userPaused || !isNetworkUsable()) break;
-                if (decoderFallbackAttempted) {
-                    probeAndSetError(streamUrls.get(currentStreamIndex), eventPlayerGeneration, eventAttemptGeneration, false);
-                } else {
-                    decoderFallbackAttempted = true;
-                    startCurrentStream(false);
+                if (!tryNextStream()) {
+                    probeAndSetError(
+                        streamUrls.get(currentStreamIndex),
+                        eventPlayerGeneration,
+                        eventAttemptGeneration,
+                        false
+                    );
                 }
                 break;
 
@@ -1231,11 +1251,13 @@ public class XoraVlcPlugin extends Plugin {
                     if (!isNetworkUsable()) setState(PlaybackState.OFFLINE);
                     break;
                 }
-                if (!decoderFallbackAttempted) {
-                    decoderFallbackAttempted = true;
-                    startCurrentStream(false);
-                } else {
-                    probeAndSetError(streamUrls.get(currentStreamIndex), eventPlayerGeneration, eventAttemptGeneration, false);
+                if (!tryNextStream()) {
+                    probeAndSetError(
+                        streamUrls.get(currentStreamIndex),
+                        eventPlayerGeneration,
+                        eventAttemptGeneration,
+                        false
+                    );
                 }
                 break;
 
