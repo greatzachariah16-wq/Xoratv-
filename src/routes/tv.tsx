@@ -361,6 +361,10 @@ function LiveTvPage() {
             </div>
           </header>
 
+          <div className="xora-tv-notice">
+            <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
+          </div>
+
           {selected ? (
             <section className="xora-tv-now-card xora-tv-featured-card" aria-label="Selected live channel">
               <div className="xora-tv-now-topline">
