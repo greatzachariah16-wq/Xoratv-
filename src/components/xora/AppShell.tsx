@@ -22,7 +22,6 @@ import {
   Settings,
   Shield,
   Signal,
-  TvMinimalPlay,
   UserRound,
   UserRoundPen,
   WalletCards,
@@ -42,7 +41,7 @@ const NAV = [
   { to: "/", label: "Home", icon: House },
   { to: "/shorts", label: "Shorts", icon: Clapperboard },
   { to: "/xtv-series", label: "X Series", icon: MonitorPlay },
-  { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
+  { to: "/tv", label: "Live TV", icon: RadioTower },
   { to: "/xsports", label: "XSports", icon: XSportsIcon },
   { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
@@ -360,7 +359,7 @@ export function AppShell({
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
-          <div className="mb-5 flex min-h-[50px] items-center justify-center">
+          <div className="ad-slot mb-5 flex items-center justify-center">
             <AdsterraBannerAd
               adKey="075ef17698a6be8914c3d3aaaf74c814"
               width={320}
@@ -378,7 +377,7 @@ export function AppShell({
           { to: "/", label: "Home", icon: House },
           { to: "/shorts", label: "Shorts", icon: Clapperboard },
           { to: "/xtv-series", label: "Series", icon: MonitorPlay },
-          { to: "/tv", label: "Live TV", icon: TvMinimalPlay },
+          { to: "/tv", label: "Live TV", icon: RadioTower },
         ].map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
@@ -388,12 +387,12 @@ export function AppShell({
               onClick={() => setMobileMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
+                active ? "text-[#b5532f] after:absolute after:left-1/2 after:top-0 after:h-0.5 after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-[#b5532f]" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-primary/12" : "bg-transparent")}>
-                <Icon className={cn("size-[20px] stroke-[2]", active && "stroke-[2.35]")} aria-hidden="true" />
+              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-[#b5532f]/10" : "bg-transparent")}>
+                <Icon className={cn("size-[20px] stroke-[2]", active && "fill-current stroke-[2.35]")} aria-hidden="true" />
               </span>
               <span className="max-w-full truncate">{label}</span>
             </Link>

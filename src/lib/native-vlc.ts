@@ -1,5 +1,22 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
+export type NativeVlcStatus =
+  | "IDLE"
+  | "OFFLINE"
+  | "CONNECTING"
+  | "BUFFERING"
+  | "PLAYING"
+  | "ERR_REGION"
+  | "ERR_CHANNEL_DOWN"
+  | "ERR_TIMEOUT"
+  | "ERR_UNKNOWN";
+
+export type NativeVlcStateChangedEvent = {
+  state: NativeVlcStatus;
+  channelId: string;
+  message: string;
+};
+
 export type NativeVlcPlaybackState = {
   playing: boolean;
   waiting: boolean;
@@ -17,6 +34,7 @@ type NativeVlcPlugin = {
   open(options: {
     url: string;
     title?: string;
+    channelId?: string;
     fallbackUrl1?: string;
     fallbackUrl2?: string;
   }): Promise<void>;
@@ -30,6 +48,10 @@ type NativeVlcPlugin = {
     eventName: "playbackState",
     listenerFunc: (state: NativeVlcPlaybackState) => void,
   ): Promise<ListenerHandle>;
+  addListener(
+    eventName: "stateChanged",
+    listenerFunc: (state: NativeVlcStateChangedEvent) => void,
+  ): Promise<ListenerHandle>;
 };
 
 const NativeVlc = registerPlugin<NativeVlcPlugin>("XoraVlc");
@@ -38,10 +60,11 @@ export function isNativeVlcPlatform(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-/** Open the fixed native LibVLC surface above the scrolling XoraTV WebView. */
+/** Open the native LibVLC player above the scrolling XoraTV WebView. */
 export async function openNativeVlc(options: {
   url: string;
   title?: string;
+  channelId?: string;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
     throw new Error("Native playback is available only in the XoraTV Android app.");
@@ -77,8 +100,21 @@ export async function closeNativeVlc(): Promise<void> {
   if (isNativeVlcPlatform()) await NativeVlc.close();
 }
 
-export function addNativeVlcListener(
+export function addNativeVlcStateListener(
+  listener: (state: NativeVlcStateChangedEvent) => void,
+): Promise<ListenerHandle> {
+  return NativeVlc.addListener("stateChanged", listener);
+}
+
+export function addNativeVlcPlaybackListener(
   listener: (state: NativeVlcPlaybackState) => void,
 ): Promise<ListenerHandle> {
   return NativeVlc.addListener("playbackState", listener);
 }
+
+export function addNativeVlcListener(
+  listener: (state: NativeVlcPlaybackState) => void,
+): Promise<ListenerHandle> {
+  return addNativeVlcPlaybackListener(listener);
+}
+
