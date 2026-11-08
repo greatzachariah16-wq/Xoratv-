@@ -1319,11 +1319,8 @@ public class XoraVlcPlugin extends Plugin {
                     setState(PlaybackState.OFFLINE);
                     return;
                 }
-                final PlaybackState mapped = fromStartupTimeout && probeResult == PlaybackState.ERR_UNKNOWN
-                    ? PlaybackState.ERR_TIMEOUT
-                    : probeResult;
-                setState(mapped);
-                if (mapped == PlaybackState.ERR_TIMEOUT || mapped == PlaybackState.ERR_UNKNOWN) {
+                setState(probeResult);
+                if (probeResult == PlaybackState.ERR_TIMEOUT || probeResult == PlaybackState.ERR_UNKNOWN) {
                     scheduleAutoRetry();
                 }
             });
