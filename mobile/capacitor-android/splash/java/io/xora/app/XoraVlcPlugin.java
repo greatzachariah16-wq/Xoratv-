@@ -543,13 +543,6 @@ public class XoraVlcPlugin extends Plugin {
         };
         rootContainer.addOnLayoutChangeListener(rootLayoutListener);
 
-        ArrayList<String> options = new ArrayList<>();
-        options.add("--network-caching=4000");
-        options.add("--live-caching=4000");
-        options.add("--drop-late-frames");
-        options.add("--skip-frames");
-        libVLC = new LibVLC(getContext(), options);
-
         playerGeneration++;
         applyModeLayout();
     }
@@ -912,10 +905,18 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void startCurrentStream(boolean usePreferredDecoder) {
-        if (libVLC == null || videoLayout == null || currentStreamIndex >= streamUrls.size()) return;
+        if (videoLayout == null || currentStreamIndex >= streamUrls.size()) return;
         if (!networkUsable) {
             setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
             return;
+        }
+        if (libVLC == null) {
+            ArrayList<String> options = new ArrayList<>();
+            options.add("--network-caching=4000");
+            options.add("--live-caching=4000");
+            options.add("--drop-late-frames");
+            options.add("--skip-frames");
+            libVLC = new LibVLC(getContext(), options);
         }
         clearStartupTimeout();
         clearRetryTask();
@@ -999,7 +1000,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void retryCurrentStream() {
-        if (streamUrls.isEmpty() || libVLC == null || videoLayout == null) return;
+        if (streamUrls.isEmpty() || videoLayout == null) return;
         if (!networkUsable) {
             setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
             return;
