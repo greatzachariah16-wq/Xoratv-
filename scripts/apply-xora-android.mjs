@@ -126,15 +126,15 @@ const wrapperPropertiesPath = path.join(androidRoot, "gradle/wrapper/gradle-wrap
 if (fs.existsSync(wrapperPropertiesPath)) {
   let wrapperProperties = fs.readFileSync(wrapperPropertiesPath, "utf8");
   wrapperProperties = wrapperProperties.replace(
-    /distributionUrl=.*gradle-([0-9.]+)-all\\.zip/,
+    /distributionUrl=.*gradle-([0-9.]+)-all\.zip/,
     "distributionUrl=https\\://services.gradle.org/distributions/gradle-$1-bin.zip",
   );
   if (/networkTimeout=/.test(wrapperProperties)) {
-    wrapperProperties = wrapperProperties.replace(/networkTimeout=\\d+/, "networkTimeout=120000");
+    wrapperProperties = wrapperProperties.replace(/networkTimeout=\d+/, "networkTimeout=120000");
   } else {
     wrapperProperties = wrapperProperties.replace(
-      /\\s*$/,
-      "\\nnetworkTimeout=120000\\n",
+      /\s*$/,
+      "\nnetworkTimeout=120000\n",
     );
   }
   fs.writeFileSync(wrapperPropertiesPath, wrapperProperties);
