@@ -1612,7 +1612,6 @@ section[aria-label="X-Series live channels"] {
 }
 .xora-tv-page {
   min-width: 0;
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
 }
 .xora-tv-page-header {
   transition: transform 200ms ease;
