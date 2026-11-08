@@ -231,17 +231,22 @@ public class XoraVlcPlugin extends Plugin {
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
+        refreshNetworkState();
         if (pipRequested && !isActivityInPipMode()) {
             pipRequested = false;
             pipMode = false;
             restoreWebViewForNormalMode();
             applyModeLayout();
-            emitPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
+            emitLegacyPlaybackState(mediaPlayer != null && mediaPlayer.isPlaying(), false, playbackFailed, false);
         }
         if (mediaPlayer != null && playingBeforeAppPause && !userPaused && !playbackFailed
             && !isActivityInPipMode()) {
-            requestAudioFocus();
-            mediaPlayer.play();
+            if (networkUsable) {
+                requestAudioFocus();
+                mediaPlayer.play();
+            } else {
+                setPlaybackState(PlaybackState.OFFLINE, "You're offline. Playback resumes automatically.", false);
+            }
         }
         playingBeforeAppPause = false;
     }
@@ -440,8 +445,6 @@ public class XoraVlcPlugin extends Plugin {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ));
-        playerOverlay.addView(videoFrame);
-
         topBar = new LinearLayout(getContext());
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
