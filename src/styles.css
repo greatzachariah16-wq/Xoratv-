@@ -1616,8 +1616,8 @@ section[aria-label="X-Series live channels"] {
 .xora-tv-page-header {
   transition: transform 200ms ease;
 }
-.xora-tv-featured-card {
-  height: min(420px, 55vh);
+/* The native featured-video surface uses the matching min(420dp, 55vh) size. */
+.xora-tv-selected-header {
   min-height: 112px;
   display: flex;
   flex-direction: column;
