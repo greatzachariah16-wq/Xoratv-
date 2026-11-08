@@ -168,8 +168,8 @@ public class XoraVlcPlugin extends Plugin {
 
             @Override
             public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
-                boolean validated = hasValidatedInternet(capabilities);
-                mainHandler.post(() -> setNetworkUsable(validated));
+                boolean internetAvailable = hasUsableInternet(capabilities);
+                mainHandler.post(() -> setNetworkUsable(internetAvailable));
             }
 
             @Override
@@ -193,7 +193,7 @@ public class XoraVlcPlugin extends Plugin {
                 NetworkCapabilities capabilities = active == null
                     ? null
                     : connectivityManager.getNetworkCapabilities(active);
-                usable = hasValidatedInternet(capabilities);
+                usable = hasUsableInternet(capabilities);
             } catch (SecurityException ignored) {
                 usable = false;
             }
@@ -201,10 +201,15 @@ public class XoraVlcPlugin extends Plugin {
         setNetworkUsable(usable);
     }
 
-    private boolean hasValidatedInternet(NetworkCapabilities capabilities) {
+    /**
+     * NET_CAPABILITY_VALIDATED is a useful positive signal, but it is not safe as a
+     * hard requirement for playback. Some Android 8.x/OEM network stacks omit it while
+     * ordinary app traffic still works. INTERNET means the network can carry app traffic;
+     * actual stream reachability is then determined by LibVLC and the stream probe.
+     */
+    private boolean hasUsableInternet(NetworkCapabilities capabilities) {
         return capabilities != null
-            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     private boolean isNetworkUsable() {
