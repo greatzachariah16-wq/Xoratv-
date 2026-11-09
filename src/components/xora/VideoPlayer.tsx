@@ -670,12 +670,12 @@ export function NativeVideoPlayer({
     <div
       ref={containerRef}
       className={cn(
-        "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
+        "group relative w-full max-w-full overflow-hidden bg-ink",
         nativeVlcOnly && nativeVlcActive
           ? "hidden"
           : isFullscreen
             ? "h-full rounded-none"
-            : aspect,
+            : cn(aspect, feedCard ? "rounded-[24px]" : "rounded-xl"),
         className,
       )}
     >
