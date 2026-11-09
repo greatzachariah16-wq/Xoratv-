@@ -214,6 +214,7 @@ export function ProviderEmbedPlayer({
     };
   }, [isClient, isPlaying, user, postId]);
 
+  const youtubeVideoId = embedUrl.includes("youtube") ? embedUrl.match(/\/embed\/([\w-]{11})/)?.[1] : null;
   const dataSaver = getActiveDataSaverConfig();
   let embedSrc = embedUrl;
   const currentOrigin =
@@ -300,9 +301,9 @@ export function ProviderEmbedPlayer({
         <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
       ) : !hasStarted ? (
         <div className="absolute inset-0 overflow-hidden bg-[#2A1F1A]">
-          {embedUrl.includes("youtube") && /youtube(?:-nocookie)?\\.com\\/embed\\/([\\w-]{11})/.test(embedUrl) && !thumbnailFailed ? (
+          {youtubeVideoId && !thumbnailFailed ? (
             <img
-              src={`https://img.youtube.com/vi/${embedUrl.match(/youtube(?:-nocookie)?\\.com\\/embed\\/([\\w-]{11})/)?.[1] ?? ""}/hqdefault.jpg`}
+              src={`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`}
               alt=""
               width={1280}
               height={720}

@@ -45,11 +45,19 @@ manifest = manifest
 // Enable Android's native picture-in-picture action for the inline LibVLC surface.
 const mainActivityTag = /<activity\b(?=[^>]*android:name="[^"]*MainActivity")[^>]*>/;
 if (mainActivityTag.test(manifest)) {
-  manifest = manifest.replace(mainActivityTag, (tag) =>
-    tag.includes("android:supportsPictureInPicture=")
-      ? tag
-      : tag.replace(/>$/, ' android:supportsPictureInPicture="true">')
-  );
+  manifest = manifest.replace(mainActivityTag, (tag) => {
+    let updated = tag;
+    if (!updated.includes("android:supportsPictureInPicture=")) {
+      updated = updated.replace(/>$/, ' android:supportsPictureInPicture="true">');
+    }
+    if (!updated.includes("android:configChanges=")) {
+      updated = updated.replace(
+        />$/,
+        ' android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode">',
+      );
+    }
+    return updated;
+  });
 }
 manifest = manifest.replace(
   /<application\b(?![^>]*android:resizeableActivity=)/,

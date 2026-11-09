@@ -39,6 +39,13 @@ type NativeVlcPlugin = {
     fallbackUrl2?: string;
   }): Promise<void>;
   close(): Promise<void>;
+  switchChannel(options: {
+    url: string;
+    title?: string;
+    channelId?: string;
+    fallbackUrl1?: string;
+    fallbackUrl2?: string;
+  }): Promise<void>;
   togglePlayback(): Promise<void>;
   toggleMute(): Promise<void>;
   cycleMode(): Promise<void>;
@@ -118,3 +125,47 @@ export function addNativeVlcListener(
   return addNativeVlcPlaybackListener(listener);
 }
 
+
+/** Switches the source on the existing native LibVLC surface when one is already open. */
+export async function switchNativeVlcChannel(options: {
+  url: string;
+  title?: string;
+  channelId?: string;
+}): Promise<void> {
+  if (!isNativeVlcPlatform()) {
+    throw new Error("Native playback is available only in the XoraTV Android app.");
+  }
+
+  const absoluteUrl = new URL(options.url, window.location.origin);
+  if (absoluteUrl.protocol !== "https:") {
+    throw new Error("A secure stream URL is required.");
+  }
+
+  const fallbackUrls: string[] = [];
+  if (
+    absoluteUrl.pathname === "/api/tv/stream" &&
+    absoluteUrl.searchParams.get("provider") === "nexus" &&
+    absoluteUrl.searchParams.has("channel")
+  ) {
+    for (const attempt of [1, 2]) {
+      const candidate = new URL(absoluteUrl.toString());
+      candidate.searchParams.set("attempt", String(attempt));
+      fallbackUrls.push(candidate.toString());
+    }
+  }
+
+  await NativeVlc.switchChannel({
+    ...options,
+    url: absoluteUrl.toString(),
+    fallbackUrl1: fallbackUrls[0],
+    fallbackUrl2: fallbackUrls[1],
+  });
+}
+
+export async function retryNativeVlc(): Promise<void> {
+  if (isNativeVlcPlatform()) await NativeVlc.retry();
+}
+
+export async function toggleNativeVlcPlayback(): Promise<void> {
+  if (isNativeVlcPlatform()) await NativeVlc.togglePlayback();
+}

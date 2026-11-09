@@ -419,6 +419,60 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void switchChannel(PluginCall call) {
+        String url = call.getString("url");
+        String fallbackUrl1 = call.getString("fallbackUrl1");
+        String fallbackUrl2 = call.getString("fallbackUrl2");
+        String requestedTitle = call.getString("title", "Live TV");
+        String requestedChannelId = call.getString("channelId");
+
+        if (!isSecureUrl(url)) {
+            call.reject("A secure stream URL is required.");
+            return;
+        }
+
+        getActivity().runOnUiThread(() -> {
+            try {
+                if (videoLayout == null || mediaPlayer == null) {
+                    call.reject("The native player is not ready to switch channels.");
+                    return;
+                }
+                clearStartupTimeout();
+                clearBufferingWatchdog();
+                clearRetry();
+                streamUrls.clear();
+                streamUrls.add(url);
+                if (isSecureUrl(fallbackUrl1) && !streamUrls.contains(fallbackUrl1)) {
+                    streamUrls.add(fallbackUrl1);
+                }
+                if (isSecureUrl(fallbackUrl2) && !streamUrls.contains(fallbackUrl2)) {
+                    streamUrls.add(fallbackUrl2);
+                }
+                currentChannelId = requestedChannelId == null ? channelIdFromUrl(url) : requestedChannelId;
+                currentChannelTitle = requestedTitle == null || requestedTitle.trim().isEmpty()
+                    ? "Live TV"
+                    : requestedTitle.trim();
+                currentStreamIndex = 0;
+                autoRetryCount = 0;
+                userPaused = false;
+                isMuted = false;
+                decoderFallbackAttempted = false;
+                bufferingStallRestarted = false;
+                playingBeforeAppPause = false;
+                resumeWhenOnline = true;
+                if (isNetworkUsable()) {
+                    startCurrentStream(true);
+                } else {
+                    setState(PlaybackState.OFFLINE);
+                }
+                call.resolve();
+            } catch (Exception error) {
+                call.reject("Could not switch the live channel.", error);
+            }
+        });
+    }
+
+    @PluginMethod
     public void close(PluginCall call) {
         getActivity().runOnUiThread(() -> {
             closePlayerInternal(false);
@@ -1075,13 +1129,20 @@ public class XoraVlcPlugin extends Plugin {
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         final String selectedUrl = streamUrls.get(currentStreamIndex);
 
-        MediaPlayer previousPlayer = mediaPlayer;
-        mediaPlayer = null;
-        releaseMediaPlayer(previousPlayer);
-
-        final MediaPlayer activePlayer = new MediaPlayer(libVLC);
-        activePlayer.attachViews(videoLayout, null, false, false);
-        mediaPlayer = activePlayer;
+        MediaPlayer activePlayer = mediaPlayer;
+        if (activePlayer == null) {
+            activePlayer = new MediaPlayer(libVLC);
+            activePlayer.attachViews(videoLayout, null, false, false);
+            mediaPlayer = activePlayer;
+        } else {
+            // Keep the same native player and attached video surface while replacing
+            // the media source; the previous attempt generation is already invalidated.
+            try {
+                activePlayer.stop();
+            } catch (RuntimeException ignored) {
+                // LibVLC may already have stopped the previous media.
+            }
+        }
 
         boolean preferSoftware = prefersSoftwareDecoder(selectedUrl);
         boolean useHardwareDecoder = preferSoftware ? !usePreferredDecoder : usePreferredDecoder;
@@ -1119,7 +1180,7 @@ public class XoraVlcPlugin extends Plugin {
             probeAndSetError(selectedUrl, activePlayerGeneration, activeAttemptGeneration, true);
         };
         streamStartupTimeout = timeout;
-        mainHandler.postDelayed(timeout, 25000L);
+        mainHandler.postDelayed(timeout, 15000L);
         updateControlLabels();
     }
 

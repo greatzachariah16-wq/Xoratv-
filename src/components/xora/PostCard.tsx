@@ -167,7 +167,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
         <div className="px-3 pt-3">
           {post.kind === "video" ? (
             <div className="relative">
-              {videoOpened || autoPlay ? (
+              {videoOpened || autoPlay || Boolean(embedInfo) ? (
                 <VideoPlayer
                   source={post.source}
                   streamUrl={post.stream_url}
