@@ -46,6 +46,7 @@ export function ProviderEmbedPlayer({
 
   useEffect(() => {
     setIsClient(true);
+    setCurrentOrigin(window.location.origin);
   }, []);
 
   useEffect(() => {
@@ -217,8 +218,6 @@ export function ProviderEmbedPlayer({
   const youtubeVideoId = embedUrl.includes("youtube") ? embedUrl.match(/\/embed\/([\w-]{11})/)?.[1] : null;
   const { config: dataSaver } = useDataSaver();
   let embedSrc = embedUrl;
-  const currentOrigin =
-    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
   if (!embedSrc.includes("enablejsapi=1") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += (embedSrc.includes("?") ? "&" : "?") + "enablejsapi=1";
   }
