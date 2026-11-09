@@ -594,7 +594,8 @@ public class XoraVlcPlugin extends Plugin {
         playerOverlay.setElevation(dp(28));
 
         videoFrame = new FrameLayout(getContext());
-        videoFrame.setBackgroundColor(Color.BLACK);
+        videoFrame.setBackground(roundedBackground(Color.BLACK, dp(24)));
+        videoFrame.setClipToOutline(true);
         videoFrame.setClickable(true);
         videoFrame.setOnClickListener(view -> {
             if (!controlsVisible) showControls();

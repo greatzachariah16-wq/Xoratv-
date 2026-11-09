@@ -1732,7 +1732,8 @@ section[aria-label="X-Series live channels"] {
 
 .xora-tv-channel-card,
 .xora-channel-tile,
-.xora-post-card {
+.xora-post-card,
+.xora-kids-carousel {
   border: 1px solid rgba(42, 31, 26, 0.08);
   border-radius: 24px;
   box-shadow: 0 1px 2px rgba(42, 31, 26, 0.06), 0 10px 28px rgba(42, 31, 26, 0.09);
@@ -1740,17 +1741,20 @@ section[aria-label="X-Series live channels"] {
 @media (prefers-reduced-motion: no-preference) {
   .xora-tv-channel-card,
   .xora-channel-tile,
-  .xora-post-card {
+  .xora-post-card,
+  .xora-kids-carousel {
     transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
   }
   .xora-tv-channel-card:active,
   .xora-channel-tile:active,
-  .xora-post-card:active { transform: scale(.97); }
+  .xora-post-card:active,
+  .xora-kids-carousel:active { transform: scale(.97); }
 }
 @media (prefers-reduced-motion: reduce) {
   .xora-tv-channel-card,
   .xora-channel-tile,
-  .xora-post-card { transition: none; }
+  .xora-post-card,
+  .xora-kids-carousel { transition: none; }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

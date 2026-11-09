@@ -11,7 +11,7 @@ export interface KidsCarouselProps {
 
 function KidsCarouselComponent({ channels, onOpenKids }: KidsCarouselProps) {
   return (
-    <section className="card-surface relative mt-8 overflow-hidden pb-4 pt-4 sm:pt-6">
+    <section className="card-surface xora-kids-carousel relative mt-8 overflow-hidden pb-4 pt-4 sm:pt-6">
       <div className="pointer-events-none absolute -right-14 -top-14 size-40 rounded-full bg-primary/5 blur-2xl" />
       <div className="relative">
         <div className="mb-4 flex items-center justify-between gap-3 px-4">
