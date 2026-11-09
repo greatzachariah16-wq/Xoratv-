@@ -12,15 +12,11 @@ interface PillProps extends ComponentPropsWithoutRef<"button"> {
 const variants: Record<PillVariant, string> = {
   solid: "bg-primary text-primary-foreground hover:bg-primary/90",
   soft: "bg-primary/10 text-primary hover:bg-primary/15",
-  outline: "border border-primary/20 bg-card text-foreground hover:border-primary/45 hover:text-primary",
+  outline:
+    "border border-primary/20 bg-card text-foreground hover:border-primary/45 hover:text-primary",
 };
 
-export function Pill({
-  asChild = false,
-  variant = "soft",
-  className,
-  ...props
-}: PillProps) {
+export function Pill({ asChild = false, variant = "soft", className, ...props }: PillProps) {
   const Component = asChild ? Slot : "button";
 
   return (
