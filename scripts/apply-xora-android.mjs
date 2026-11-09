@@ -63,7 +63,7 @@ if (mainActivityTag.test(manifest)) {
       ...(configChangesMatch ? configChangesMatch[1].split("|") : []),
       ...requiredConfigChanges,
     ]);
-    const configChangesValue = 'android:configChanges="' + Array.from(mergedConfigChanges).join("|") + '"';
+    const configChangesValue = `android:configChanges="${Array.from(mergedConfigChanges).join("|")}"`;
     if (configChangesMatch) {
       updated = updated.replace(configChangesMatch[0], configChangesValue);
     } else {
@@ -74,7 +74,7 @@ if (mainActivityTag.test(manifest)) {
 }
 manifest = manifest.replace(
   /<application\b(?![^>]*android:resizeableActivity=)/,
-  '<application android:resizeableActivity="true"'
+  '<application android:resizeableActivity="true"',
 );
 
 // The native Live TV plugin reads ConnectivityManager state and registers a
@@ -86,7 +86,7 @@ for (const permission of [
   if (!manifest.includes(permission)) {
     manifest = manifest.replace(
       "</manifest>",
-      `    <uses-permission android:name="${permission}" />\n</manifest>`
+      `    <uses-permission android:name="${permission}" />\n</manifest>`,
     );
   }
 }
