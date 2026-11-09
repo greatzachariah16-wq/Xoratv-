@@ -50,6 +50,8 @@ type NativeVlcPlugin = {
   toggleMute(): Promise<void>;
   cycleMode(): Promise<void>;
   retry(): Promise<void>;
+  lockLandscape(): Promise<void>;
+  unlockOrientation(): Promise<void>;
   enterPictureInPicture(): Promise<void>;
   addListener(
     eventName: "playbackState",
@@ -168,4 +170,12 @@ export async function retryNativeVlc(): Promise<void> {
 
 export async function toggleNativeVlcPlayback(): Promise<void> {
   if (isNativeVlcPlatform()) await NativeVlc.togglePlayback();
+}
+
+export async function lockNativeVlcLandscape(): Promise<void> {
+  if (isNativeVlcPlatform()) await NativeVlc.lockLandscape();
+}
+
+export async function unlockNativeVlcOrientation(): Promise<void> {
+  if (isNativeVlcPlatform()) await NativeVlc.unlockOrientation();
 }

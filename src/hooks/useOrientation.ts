@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { isNativeVlcPlatform, lockNativeVlcLandscape, unlockNativeVlcOrientation } from "@/lib/native-vlc";
 
 export interface OrientationState {
   isLandscape: boolean;
@@ -86,7 +87,12 @@ export function useOrientation() {
   const lockLandscape = useCallback(
     async (element?: HTMLElement | null): Promise<boolean> => {
       try {
-        // If element provided and not currently fullscreen, request fullscreen first as orientation.lock often requires fullscreen
+        if (isNativeVlcPlatform()) {
+          await lockNativeVlcLandscape();
+          updateOrientation();
+          return true;
+        }
+        // Web fallback: orientation lock may require fullscreen in some browsers.
         if (element && !document.fullscreenElement && element.requestFullscreen) {
           await element.requestFullscreen().catch(() => {});
         }
@@ -114,6 +120,11 @@ export function useOrientation() {
   // Request Portrait or Unlock orientation
   const unlockOrientation = useCallback(async (): Promise<void> => {
     try {
+      if (isNativeVlcPlatform()) {
+        await unlockNativeVlcOrientation();
+        updateOrientation();
+        return;
+      }
       if (
         typeof screen !== "undefined" &&
         screen.orientation &&

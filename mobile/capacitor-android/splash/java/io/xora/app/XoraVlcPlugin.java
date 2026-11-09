@@ -2,6 +2,7 @@ package io.xora.app;
 
 import android.app.PictureInPictureParams;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -422,6 +423,22 @@ public class XoraVlcPlugin extends Plugin {
                 closePlayerInternal(false);
                 call.reject("Could not start this channel.", error);
             }
+        });
+    }
+
+    @PluginMethod
+    public void lockLandscape(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void unlockOrientation(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            call.resolve();
         });
     }
 
