@@ -215,6 +215,14 @@ function LiveTvPage() {
 
   // Do not silently start the first channel when a visitor opens Live TV.
   // Playback begins only when a channel has been explicitly selected in the URL.
+  const availableCategories = useMemo(
+    () => Array.from(new Set((query.data ?? []).flatMap((channel) => channel.categories ?? [])))
+      .filter((item) => item.trim() && item.toLowerCase() !== "sports")
+      .sort((left, right) => left.localeCompare(right))
+      .slice(0, 12),
+    [query.data],
+  );
+
   const selected = useMemo(
     () => requestedChannel
       ? query.data?.find((item) => item.id === requestedChannel) || null
@@ -413,12 +421,27 @@ function LiveTvPage() {
               <Button
                 type="button"
                 size="sm"
-                variant={!category && !search ? "default" : "outline"}
+                variant={!category && !searchQuery ? "default" : "outline"}
                 className="rounded-full"
                 onClick={() => { setSearch(""); void navigate({ search: (previous) => ({ ...previous, q: undefined, category: undefined }), replace: true }); }}
               >
                 All channels
               </Button>
+              {availableCategories.map((item) => (
+                <Button
+                  key={item}
+                  type="button"
+                  size="sm"
+                  variant={category.toLowerCase() === item.toLowerCase() ? "default" : "outline"}
+                  className="rounded-full"
+                  onClick={() => {
+                    setSearch("");
+                    void navigate({ search: (previous) => ({ ...previous, q: undefined, category: item }), replace: true });
+                  }}
+                >
+                  {formatMetadataLabel(item)}
+                </Button>
+              ))}
               {isOffline ? (
                 <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span>
               ) : null}
