@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -53,7 +53,7 @@ type Props = {
   autoPlay?: boolean;
 };
 
-export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
+function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) {
   const likes = useLikes();
   const subscriptions = useSubscriptions();
   const { user } = useAuth();
@@ -148,123 +148,7 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
 
   return (
     <>
-      <article ref={viewRef} className="rise overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow duration-200 hover:shadow-lift">
-        <header className="flex items-center gap-3 px-3 pt-3">
-          <Link
-            to="/profile/$username"
-            params={{ username: author?.username ?? "" }}
-            onClick={() => {
-              if (author?.id) {
-                trackEvent({
-                  type: "click_profile",
-                  authorId: author.id,
-                  feed: post.feed,
-                  userId: user?.id,
-                });
-              }
-            }}
-            className="press flex min-w-0 items-center gap-3"
-          >
-            <UserAvatar path={author?.avatar_url} name={author?.display_name} size={40} />
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-semibold">
-                {author?.display_name || author?.username}
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {timeAgo(post.created_at)}
-                {author?.location ? ` · ${author.location}` : ""}
-              </span>
-            </span>
-          </Link>
-          {!isOwn && author ? (
-            <button
-              type="button"
-              onClick={() => subscriptions.toggle(author.id)}
-              disabled={subscriptions.pending}
-              className={cn(
-                "press ml-auto shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-60",
-                subscriptions.isSubscribed(author.id)
-                  ? "bg-secondary text-secondary-foreground"
-                  : "bg-primary text-primary-foreground",
-              )}
-            >
-              {subscriptions.isSubscribed(author.id) ? "Subscribed" : "Subscribe"}
-            </button>
-          ) : null}
-
-          {/* Options / More menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Post options"
-                className={cn(
-                  "press shrink-0 rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  isOwn || (!isOwn && !author) ? "ml-auto" : "",
-                )}
-              >
-                <MoreHorizontal className="size-4" aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {!isOwn && (
-                <>
-                  <DropdownMenuItem onClick={handleNotInterested} className="gap-2 text-xs">
-                    <EyeOff className="size-3.5 text-muted-foreground" />
-                    Not interested
-                  </DropdownMenuItem>
-                  {author && (
-                    <DropdownMenuItem onClick={handleHideAuthor} className="gap-2 text-xs">
-                      <Ban className="size-3.5 text-muted-foreground" />
-                      Hide @{author.username}
-                    </DropdownMenuItem>
-                  )}
-                </>
-              )}
-              {isOwn && (
-                <DropdownMenuItem
-                  onClick={() => setConfirmOpen(true)}
-                  className="gap-2 text-xs text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="size-3.5" />
-                  Delete post
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {isOwn ? (
-            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this post?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this post? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(event) => {
-                      event.preventDefault();
-                      deleteMutation.mutate(undefined, {
-                        onSettled: () => setConfirmOpen(false),
-                      });
-                    }}
-                    disabled={deleteMutation.isPending}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {deleteMutation.isPending ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    ) : null}
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : null}
-        </header>
-
+      <article ref={viewRef} className="rise card-surface overflow-hidden rounded-[24px] transition-shadow duration-200 hover:shadow-lift">
         <div className="px-3 pt-3">
           {post.kind === "video" ? (
             <div className="relative">
@@ -341,11 +225,127 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
               }}
               className="block"
             >
-              <h3 className="font-display text-[17px] font-semibold leading-snug text-balance hover:text-primary">
+              <h3 className="line-clamp-2 font-display text-[17px] font-semibold leading-snug text-balance hover:text-primary">
                 {post.title}
               </h3>
             </Link>
           ) : null}
+        <header className="mt-3 flex min-w-0 items-center gap-2 border-t border-border/70 pt-3">
+          <Link
+            to="/profile/$username"
+            params={{ username: author?.username ?? "" }}
+            onClick={() => {
+              if (author?.id) {
+                trackEvent({
+                  type: "click_profile",
+                  authorId: author.id,
+                  feed: post.feed,
+                  userId: user?.id,
+                });
+              }
+            }}
+            className="press flex min-w-0 items-center gap-3"
+          >
+            <UserAvatar path={author?.avatar_url} name={author?.display_name} size={36} />
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-sm font-semibold">
+                {author?.display_name || author?.username}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {timeAgo(post.created_at)}
+                {author?.location ? ` · ${author.location}` : ""}
+              </span>
+            </span>
+          </Link>
+          {!isOwn && author ? (
+            <button
+              type="button"
+              onClick={() => subscriptions.toggle(author.id)}
+              disabled={subscriptions.pending}
+              className={cn(
+                "press ml-auto shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-60",
+                subscriptions.isSubscribed(author.id)
+                  ? "bg-secondary text-secondary-foreground"
+                  : "bg-primary text-primary-foreground",
+              )}
+            >
+              {subscriptions.isSubscribed(author.id) ? "Subscribed" : "Subscribe"}
+            </button>
+          ) : null}
+
+          {/* Options / More menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Post options"
+                className={cn(
+                  "press grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  isOwn || (!isOwn && !author) ? "ml-auto" : "",
+                )}
+              >
+                <MoreHorizontal className="size-4" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {!isOwn && (
+                <>
+                  <DropdownMenuItem onClick={handleNotInterested} className="gap-2 text-xs">
+                    <EyeOff className="size-3.5 text-muted-foreground" />
+                    Not interested
+                  </DropdownMenuItem>
+                  {author && (
+                    <DropdownMenuItem onClick={handleHideAuthor} className="gap-2 text-xs">
+                      <Ban className="size-3.5 text-muted-foreground" />
+                      Hide @{author.username}
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+              {isOwn && (
+                <DropdownMenuItem
+                  onClick={() => setConfirmOpen(true)}
+                  className="gap-2 text-xs text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete post
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {isOwn ? (
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this post? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(event) => {
+                      event.preventDefault();
+                      deleteMutation.mutate(undefined, {
+                        onSettled: () => setConfirmOpen(false),
+                      });
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteMutation.isPending ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    ) : null}
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
+        </header>
+
           {post.kind === "video" && post.caption ? (
             <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               {post.caption}
@@ -439,3 +439,5 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
     </>
   );
 }
+
+export const PostCard = memo(PostCardComponent);
