@@ -19,6 +19,8 @@ export interface ProviderEmbedPlayerProps {
   genre?: string | null;
   feed?: FeedType;
   onClose?: () => void;
+  /** Use the compact single-play-control presentation in Home feed cards. */
+  feedCard?: boolean;
 }
 
 export function ProviderEmbedPlayer({
@@ -32,6 +34,7 @@ export function ProviderEmbedPlayer({
   genre,
   feed,
   onClose,
+  feedCard = false,
 }: ProviderEmbedPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -323,37 +326,43 @@ export function ProviderEmbedPlayer({
           ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-black"
           : vertical
             ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
-            : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
+            : cn("aspect-video w-full h-full", feedCard ? "rounded-[24px]" : "rounded-2xl md:rounded-3xl"),
         className,
       )}
     >
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4 transition-opacity duration-300",
-          controlsVisible ? "opacity-100" : "opacity-0",
-        )}
-      >
-        <div className="flex max-w-[70%] items-center gap-2">
-          <span className="rounded bg-primary/20 px-2 py-0.5 text-[9px] font-bold tracking-wider text-primary ring-1 ring-primary/40">
-            XORA CINEMA
-          </span>
-          <span className="truncate text-xs font-semibold text-white drop-shadow">{title}</span>
+      {feedCard ? (
+        <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)] truncate rounded-full border border-white/30 bg-black/60 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white backdrop-blur-md">
+          4K HD
         </div>
-        <div className="flex items-center gap-2">
-          {isLandscape && (
-            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[9px] font-semibold text-primary">
-              <RotateCw className="size-2.5" /> Landscape Active
-            </span>
+      ) : (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4 transition-opacity duration-300",
+            controlsVisible ? "opacity-100" : "opacity-0",
           )}
-          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-md">
-            <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-            4K HD Master
+        >
+          <div className="flex max-w-[70%] items-center gap-2">
+            <span className="rounded bg-primary/20 px-2 py-0.5 text-[9px] font-bold tracking-wider text-primary ring-1 ring-primary/40">
+              XORA CINEMA
+            </span>
+            <span className="truncate text-xs font-semibold text-white drop-shadow">{title}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {isLandscape && (
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[9px] font-semibold text-primary">
+                <RotateCw className="size-2.5" /> Landscape Active
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-md">
+              <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              4K HD Master
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {!playerClosed ? (
-        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black"><X className="size-4" aria-hidden="true" /></button>
+        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className={cn("absolute right-3 top-3 z-40 grid place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black", feedCard ? "size-10" : "size-9")}><X className="size-4" aria-hidden="true" /></button>
       ) : null}
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
@@ -377,11 +386,22 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-2 right-2.5 z-20 flex select-none items-center gap-1.5 rounded-full border border-white/15 bg-black/90 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white shadow-xl backdrop-blur-md">
-        <span className="size-1.5 rounded-full bg-primary" />
-        <span>XORA CINEMA</span>
-      </div>
 
+
+      {feedCard && !isPlaying && !playerClosed ? (
+        <button
+          type="button"
+          onClick={togglePlayState}
+          aria-label="Play video"
+          className="press absolute inset-0 z-30 grid place-items-center bg-black/20"
+        >
+          <span className="grid size-14 place-items-center rounded-full border border-white/40 bg-[rgba(255,253,250,0.25)] text-white shadow-xl backdrop-blur-[12px]">
+            <Play className="ml-1 size-6 fill-current" aria-hidden="true" />
+          </span>
+        </button>
+      ) : null}
+
+      {!feedCard ? (
       <div
         className={cn(
           "absolute bottom-3 left-3 z-30 flex items-center gap-2 transition-opacity duration-300",
@@ -424,6 +444,7 @@ export function ProviderEmbedPlayer({
           </span>
         </button>
       </div>
+      ) : null}
     </div>
   );
 }
