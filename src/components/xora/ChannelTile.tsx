@@ -7,6 +7,7 @@ interface ChannelTileProps {
   channel: NexusTvChannel;
   destination: "kids" | "tv";
   eager?: boolean;
+  layout?: "carousel" | "grid";
 }
 
 export function LiveBadge() {
@@ -21,7 +22,7 @@ export function LiveBadge() {
   );
 }
 
-function ChannelTileComponent({ channel, destination, eager = false }: ChannelTileProps) {
+function ChannelTileComponent({ channel, destination, eager = false, layout = "carousel" }: ChannelTileProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const qualityMatch = channel.name.match(/\s*\((\d{3,4}p|4k|hd)\)\s*$/i);
   const displayName = qualityMatch?.index === undefined
@@ -51,7 +52,7 @@ function ChannelTileComponent({ channel, destination, eager = false }: ChannelTi
       <div className="min-w-0 px-2 pb-2 pt-2">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
-            {channel.name}
+            {displayName}
           </p>
           <LiveBadge />
         </div>
@@ -62,8 +63,10 @@ function ChannelTileComponent({ channel, destination, eager = false }: ChannelTi
     </>
   );
 
-  const className =
-    "card-surface press block w-[140px] min-w-[140px] shrink-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30";
+  const className = [
+    "card-surface press block min-w-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30",
+    layout === "carousel" ? "w-[140px] min-w-[140px] shrink-0" : "w-full",
+  ].join(" ");
 
   if (destination === "kids") {
     return (
