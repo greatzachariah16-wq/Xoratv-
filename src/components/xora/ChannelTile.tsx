@@ -23,7 +23,7 @@ export function LiveBadge() {
 
 function ChannelTileComponent({ channel, destination, eager = false }: ChannelTileProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const qualityMatch = channel.name.match(/\\s*\\((\\d{3,4}p|4k|hd)\\)\\s*$/i);
+  const qualityMatch = channel.name.match(/\s*\((\d{3,4}p|4k|hd)\)\s*$/i);
   const displayName = qualityMatch?.index === undefined
     ? channel.name
     : channel.name.slice(0, qualityMatch.index).trimEnd();
