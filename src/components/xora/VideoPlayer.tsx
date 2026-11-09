@@ -59,6 +59,8 @@ type Props = {
   /** Use the more forgiving buffering/recovery profile for live TV HLS streams. */
   liveTv?: boolean;
   onClose?: () => void;
+  /** Use the single-play-control presentation for Home feed cards. */
+  feedCard?: boolean;
 };
 
 export function NativeVideoPlayer({
@@ -79,6 +81,7 @@ export function NativeVideoPlayer({
   feed,
   liveTv = false,
   onClose,
+  feedCard = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -667,34 +670,52 @@ export function NativeVideoPlayer({
     <div
       ref={containerRef}
       className={cn(
-        "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
+        "group relative w-full max-w-full overflow-hidden bg-ink",
         nativeVlcOnly && nativeVlcActive
           ? "hidden"
           : isFullscreen
             ? "h-full rounded-none"
-            : aspect,
+            : cn(aspect, feedCard ? "rounded-[24px]" : "rounded-xl"),
         className,
       )}
     >
       {!playerClosed ? (
-        <button type="button" onClick={() => {
-          videoRef.current?.pause();
-          if (nativeVlcActiveRef.current) {
-            nativeVlcActiveRef.current = false;
-            setNativeVlcActive(false);
-            void closeNativeVlc();
-          }
-          setPlaying(false);
-          setWaiting(false);
-          setPlayerClosed(true);
-          onClose?.();
-        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
+        <button
+          type="button"
+          onClick={() => {
+            videoRef.current?.pause();
+            if (nativeVlcActiveRef.current) {
+              nativeVlcActiveRef.current = false;
+              setNativeVlcActive(false);
+              void closeNativeVlc();
+            }
+            setPlaying(false);
+            setWaiting(false);
+            setPlayerClosed(true);
+            onClose?.();
+          }}
+          aria-label="Close player"
+          title="Close player"
+          className={cn(
+            "absolute right-3 top-3 z-40 grid place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90",
+            feedCard ? "size-10" : "size-9",
+          )}
+        >
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-[#100e0c] p-4 text-center text-white">
-          <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
+          <div>
+            <p className="font-semibold">Player closed</p>
+            <button
+              type="button"
+              onClick={reopenPlayer}
+              className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15"
+            >
+              Reopen player
+            </button>
+          </div>
         </div>
       ) : null}
       {src && !nativeVlcOnly ? (
@@ -828,10 +849,10 @@ export function NativeVideoPlayer({
         <button
           type="button"
           onClick={toggle}
-          aria-label="Play"
+          aria-label={feedCard ? "Play video" : "Play"}
           className="press absolute inset-0 grid place-items-center bg-black/25"
         >
-          <div className="grid size-14 place-items-center rounded-full bg-background/90 text-foreground shadow-lift">
+          <div className={cn("grid size-14 place-items-center rounded-full text-foreground shadow-lift", feedCard ? "border border-white/40 bg-[rgba(255,253,250,0.25)] backdrop-blur-[12px]" : "bg-background/90")}>
             <Play className="ml-1 size-6 fill-current" aria-hidden="true" />
           </div>
         </button>
@@ -840,7 +861,10 @@ export function NativeVideoPlayer({
       {!nativeVlcOnly ? (
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
+          "absolute inset-x-0 bottom-0 p-3 pt-8 transition-opacity duration-200",
+          feedCard
+            ? "bg-gradient-to-t from-[rgba(42,31,26,0.55)] via-transparent to-transparent"
+            : "bg-gradient-to-t from-black/80 via-black/40 to-transparent",
           playing
             ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
             : "opacity-100",
@@ -848,18 +872,20 @@ export function NativeVideoPlayer({
       >
         {/* Bottom buttons row */}
         <div className="flex items-center gap-2 text-xs font-medium text-background">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={playing ? "Pause" : "Play"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
-          >
-            {playing ? (
-              <Pause className="size-4 fill-current" aria-hidden="true" />
-            ) : (
-              <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
-            )}
-          </button>
+          {!feedCard ? (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={playing ? "Pause" : "Play"}
+              className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
+            >
+              {playing ? (
+                <Pause className="size-4 fill-current" aria-hidden="true" />
+              ) : (
+                <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
 
           <span className="tabular-nums">
             {fmtDuration(Math.round(current))} / {fmtDuration(Math.round(total))}
@@ -895,19 +921,21 @@ export function NativeVideoPlayer({
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
-          >
-            {isFullscreen ? (
-              <Minimize2 className="size-4 text-primary" aria-hidden="true" />
-            ) : (
-              <Maximize2 className="size-4" aria-hidden="true" />
-            )}
-          </button>
+          {!feedCard ? (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="size-4 text-primary" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
       ) : null}
@@ -937,6 +965,7 @@ export function VideoPlayer(props: Props) {
       authorId={props.authorId}
       genre={props.genre}
       feed={props.feed}
+      feedCard={props.feedCard}
       onClose={props.onClose}
     />
   ) : (

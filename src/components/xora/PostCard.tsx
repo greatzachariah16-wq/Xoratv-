@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,7 +20,7 @@ import {
   recordPostShare,
   type PostWithAuthor,
 } from "@/lib/api";
-import { compactNumber, duration, timeAgo } from "@/lib/format";
+import { compactNumber, timeAgo } from "@/lib/format";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +53,7 @@ type Props = {
   autoPlay?: boolean;
 };
 
-export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
+function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) {
   const likes = useLikes();
   const subscriptions = useSubscriptions();
   const { user } = useAuth();
@@ -148,8 +148,80 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
 
   return (
     <>
-      <article ref={viewRef} className="rise overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow duration-200 hover:shadow-lift">
-        <header className="flex items-center gap-3 px-3 pt-3">
+      <article ref={viewRef} className="rise press card-surface overflow-hidden rounded-[24px] transition-shadow duration-200">
+        <div className="px-3 pt-3">
+          {post.kind === "video" ? (
+            <div className="relative">
+              <VideoPlayer
+                source={post.source}
+                streamUrl={post.stream_url}
+                mediaPath={post.media_path}
+                posterPath={post.poster_path}
+                externalUrl={post.stream_url}
+                externalPoster={post.poster_path}
+                vertical={vertical}
+                title={post.title || "Xora video"}
+                postId={post.id}
+                authorId={post.author_id}
+                genre={post.genre}
+                feed={post.feed}
+                autoPlay={autoPlay}
+                loop={autoPlay}
+                feedCard={post.feed === "home"}
+              />
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl bg-surface-2">
+              {post.poster_path ? (
+                <img
+                  src={post.poster_path}
+                  alt={post.title || "Post image"}
+                  loading="lazy"
+                  className="max-h-[520px] w-full object-cover"
+                />
+              ) : null}
+              <p className="whitespace-pre-wrap px-4 py-4 text-[15px] leading-relaxed text-foreground text-pretty">
+                {post.caption}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {post.kind === "video" && post.special_prize_id && post.special_prize_link_token ? (
+          <div className="px-3 pt-2">
+            <a
+              href={`/s/${encodeURIComponent(post.special_prize_link_token)}?postId=${encodeURIComponent(post.id)}`}
+              className="press flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/15"
+            >
+              <Gift className="size-4" aria-hidden="true" />
+              Get your special prize
+            </a>
+          </div>
+        ) : null}
+
+        <div className="px-3 pb-3 pt-3">
+          {post.title ? (
+            <Link
+              to="/video/$postId"
+              params={{ postId: post.id }}
+              onClick={() => {
+                trackEvent({
+                  type: "open_video",
+                  postId: post.id,
+                  authorId: post.author_id,
+                  genre: post.genre,
+                  feed: post.feed,
+                  userId: user?.id,
+                });
+              }}
+              className="block"
+            >
+              <h3 className="line-clamp-2 font-display text-[17px] font-semibold leading-snug text-balance hover:text-primary">
+                {post.title}
+              </h3>
+            </Link>
+          ) : null}
+        <header className="mt-4 flex min-w-0 items-center gap-2 border-t border-border/70 pt-4">
           <Link
             to="/profile/$username"
             params={{ username: author?.username ?? "" }}
@@ -165,7 +237,7 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
             }}
             className="press flex min-w-0 items-center gap-3"
           >
-            <UserAvatar path={author?.avatar_url} name={author?.display_name} size={40} />
+            <UserAvatar path={author?.avatar_url} name={author?.display_name} size={36} />
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-sm font-semibold">
                 {author?.display_name || author?.username}
@@ -199,7 +271,7 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
                 type="button"
                 aria-label="Post options"
                 className={cn(
-                  "press shrink-0 rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  "press grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground",
                   isOwn || (!isOwn && !author) ? "ml-auto" : "",
                 )}
               >
@@ -265,87 +337,6 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
           ) : null}
         </header>
 
-        <div className="px-3 pt-3">
-          {post.kind === "video" ? (
-            <div className="relative">
-              <VideoPlayer
-                source={post.source}
-                streamUrl={post.stream_url}
-                mediaPath={post.media_path}
-                posterPath={post.poster_path}
-                externalUrl={post.stream_url}
-                externalPoster={post.poster_path}
-                vertical={vertical}
-                title={post.title || "Xora video"}
-                postId={post.id}
-                authorId={post.author_id}
-                genre={post.genre}
-                feed={post.feed}
-                autoPlay={autoPlay}
-                loop={autoPlay}
-              />
-              {post.duration_seconds ? (
-                <span className="pointer-events-none absolute left-3 top-3 rounded-md bg-ink/70 px-2 py-1 font-mono text-[10px] text-background">
-                  {duration(post.duration_seconds)}
-                </span>
-              ) : null}
-              {post.source && post.source !== "render" && post.source !== "creator" ? (
-                <span className="pointer-events-none absolute right-3 top-3 rounded-md bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-background">
-                  {post.source}
-                </span>
-              ) : null}
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl bg-surface-2">
-              {post.poster_path ? (
-                <img
-                  src={post.poster_path}
-                  alt={post.title || "Post image"}
-                  loading="lazy"
-                  className="max-h-[520px] w-full object-cover"
-                />
-              ) : null}
-              <p className="whitespace-pre-wrap px-4 py-4 text-[15px] leading-relaxed text-foreground text-pretty">
-                {post.caption}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {post.kind === "video" && post.special_prize_id && post.special_prize_link_token ? (
-          <div className="px-3 pt-2">
-            <a
-              href={`/s/${encodeURIComponent(post.special_prize_link_token)}?postId=${encodeURIComponent(post.id)}`}
-              className="press flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/15"
-            >
-              <Gift className="size-4" aria-hidden="true" />
-              Get your special prize
-            </a>
-          </div>
-        ) : null}
-
-        <div className="px-3 pb-3 pt-3">
-          {post.title ? (
-            <Link
-              to="/video/$postId"
-              params={{ postId: post.id }}
-              onClick={() => {
-                trackEvent({
-                  type: "open_video",
-                  postId: post.id,
-                  authorId: post.author_id,
-                  genre: post.genre,
-                  feed: post.feed,
-                  userId: user?.id,
-                });
-              }}
-              className="block"
-            >
-              <h3 className="font-display text-[17px] font-semibold leading-snug text-balance hover:text-primary">
-                {post.title}
-              </h3>
-            </Link>
-          ) : null}
           {post.kind === "video" && post.caption ? (
             <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               {post.caption}
@@ -439,3 +430,5 @@ export function PostCard({ post, vertical = false, autoPlay = false }: Props) {
     </>
   );
 }
+
+export const PostCard = memo(PostCardComponent);
