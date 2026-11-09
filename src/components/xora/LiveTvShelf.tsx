@@ -26,8 +26,8 @@ export function LiveTvShelf() {
   if (!isLoading && data.length === 0) return null;
 
   return (
-    <section className="mt-7 min-w-0">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="mt-8 min-w-0">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
