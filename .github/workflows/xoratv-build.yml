@@ -26,4 +26,5 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: Project lint
+        if: always()
         run: npm run lint
