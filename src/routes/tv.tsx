@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Search,
   WifiOff,
-  Play,
   Heart,
   Share2,
 } from "lucide-react";
@@ -540,7 +539,7 @@ function LiveTvPage() {
                 <Search aria-hidden="true" />
                 <Input
                   value={search}
-                  onChange={(event) => { setSearch(event.target.value); setCategory(""); }}
+                  onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search channels..."
                   aria-label="Search live channels"
                 />
@@ -550,29 +549,18 @@ function LiveTvPage() {
                 <span>Refresh</span>
               </Button>
             </div>
-            <div className="xora-tv-filter-row">
-              <Button
-                type="button"
-                size="sm"
-                variant={category === "sports" ? "default" : "outline"}
-                className="rounded-full"
-                onClick={() => { setSearch(""); setCategory("sports"); }}
-              >
-                Sports channels
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={!category && !search ? "default" : "outline"}
-                className="rounded-full"
-                onClick={() => { setCategory(""); setSearch(""); }}
-              >
-                All channels
-              </Button>
-              {isOffline ? (
-                <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span>
-              ) : null}
-            </div>
+            <div className="xora-tv-filter-row hide-scrollbar">
+              <Button type="button" size="sm" variant={filter === "all" && !category && !country ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: undefined, category: undefined, country: undefined }), replace: true, resetScroll: false })}>All</Button>
+              <Button type="button" size="sm" variant={filter === "favourites" ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: "favourites" }), replace: true, resetScroll: false })}>Favourites</Button>
+              <Button type="button" size="sm" variant={filter === "recent" ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: "recent" }), replace: true, resetScroll: false })}>Recent</Button>
+              {categoryOptions.map((item) => (
+                <Button key={item} type="button" size="sm" variant={category === item ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, category: category === item ? undefined : item, country: undefined }), replace: true, resetScroll: false })}>{formatMetadataLabel(item)}</Button>
+              ))}
+              {countryOptions.map((item) => (
+                <Button key={item} type="button" size="sm" variant={country === item ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, country: country === item ? undefined : item, category: undefined }), replace: true, resetScroll: false })}>{getCountryName(item)}</Button>
+              ))}
+              {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span> : null}
+            </div>      </div>
           </header>
 
           <div className="xora-tv-notice">
@@ -584,6 +572,8 @@ function LiveTvPage() {
               <div className="xora-tv-now-topline">
                 <span className="xora-tv-now-label">Now selected</span>
                 <span className="xora-tv-live-pill"><i /> LIVE</span>
+                <button type="button" className="xora-tv-favorite" onClick={() => toggleFavorite(selected.id)} aria-label={playerPrefs.favorites.includes(selected.id) ? "Remove from favourites" : "Add to favourites"} aria-pressed={playerPrefs.favorites.includes(selected.id)}><Heart className={playerPrefs.favorites.includes(selected.id) ? "fill-current text-primary" : ""} aria-hidden="true" /></button>
+                <button type="button" className="xora-tv-favorite" onClick={() => void shareSelected()} aria-label="Share channel"><Share2 aria-hidden="true" /></button>
               </div>
               <div className="xora-tv-now-content">
                 <div className="xora-tv-now-copy">
@@ -596,7 +586,8 @@ function LiveTvPage() {
                 </div>
                 {selected.logo ? <img className="xora-tv-now-logo" src={selected.logo} alt="" /> : null}
               </div>
-              {isOffline ? <p className="xora-tv-web-offline-note">You're offline. Playback resumes automatically.</p> : null}
+              {isOffline ? <p className="xora-tv-web-offline-note">You are offline. Playback resumes automatically.</p> : null}
+              {state.startsWith("ERR") ? <div className="xora-tv-error-actions"><strong>Channel unavailable</strong><div><Button type="button" variant="outline" className="min-h-11 rounded-full" onClick={handleRetry}>Retry</Button><Button type="button" className="min-h-11 rounded-full" onClick={handleNextChannel}>Try next channel</Button></div></div> : null}
             </section>
           ) : (
             <section className="xora-tv-empty">
@@ -606,89 +597,32 @@ function LiveTvPage() {
             </section>
           )}
 
+          {renderChannelRail("Recently watched", recentChannels)}
+          {renderChannelRail("Favourites", favoriteChannels)}
+
           <section className="xora-tv-channel-section">
             <div className="xora-tv-section-heading">
               <div>
                 <h2>All channels</h2>
-                <p>{query.data?.length ?? 0} channels available</p>
+                <p>{visibleChannels.length} channels available</p>
               </div>
               {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Cached list</span> : null}
             </div>
 
             {query.isLoading && !query.data ? (
-              <div className="xora-tv-channel-grid">
+              <div className="xora-tv-channel-list-viewport" aria-label="Loading live channels">
                 {Array.from({ length: 8 }).map((_, index) => <div key={index} className="xora-tv-skeleton" />)}
               </div>
-            ) : query.data?.length ? (
-              <div className="xora-tv-channel-grid">
-                {query.data.map((channel) => {
-                  const active = selected?.id === channel.id;
-                  const quality = getChannelQuality(channel);
-                  const categoryName = formatMetadataLabel(channel.categories?.[0] || "General");
-                  return (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      onClick={() => {
-                        if (active) {
-                          if (nativeState.channelId === channel.id && nativeState.state === "IDLE" && isNativeVlcPlatform()) {
-                            const streamUrl = `/api/tv/stream?provider=${channel.provider || "nexus"}&channel=${encodeURIComponent(channel.id)}`;
-                            setNativeState({
-                              state: "CONNECTING",
-                              channelId: channel.id,
-                              message: STATE_LABELS.CONNECTING,
-                            });
-                            void openNativeVlc({
-                              url: streamUrl,
-                              title: getChannelDisplayName(channel),
-                              channelId: channel.id,
-                            }).catch(() => setNativeState({
-                              state: "ERR_UNKNOWN",
-                              channelId: channel.id,
-                              message: STATE_LABELS.ERR_UNKNOWN,
-                            }));
-                            return;
-                          }
-                          return;
-                        }
-                        void navigate({ search: { channel: channel.id }, replace: true });
-                      }}
-                      aria-pressed={active}
-                      className={`xora-tv-channel-card ${active ? "is-selected" : ""}`}
-                    >
-                      {active ? (
-                        <span className="xora-tv-playing-label">
-                          <span>Now playing</span>
-                          <span className="eq" aria-hidden="true"><i /><i /><i /></span>
-                        </span>
-                      ) : null}
-                      <div className="xora-tv-card-badges">
-                        <span className="xora-tv-live-pill"><i /> LIVE</span>
-                        {quality ? <span className="xora-tv-quality-pill">{quality}</span> : null}
-                      </div>
-                      <div className="xora-tv-card-logo">
-                        {channel.logo ? (
-                          <img src={channel.logo} alt="" loading="lazy" decoding="async" />
-                        ) : (
-                          <span>{getChannelDisplayName(channel).slice(0, 3).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <div className="xora-tv-card-meta">
-                        <strong>{getChannelDisplayName(channel)}</strong>
-                        <span className="xora-tv-country-line">
-                          <span aria-hidden="true">{getCountryFlag(channel.country)}</span>
-                          <span>{getCountryName(channel.country)}</span>
-                        </span>
-                        <span className="xora-tv-category-line">{categoryName}</span>
-                      </div>
-                      <span className="xora-tv-card-play" aria-hidden="true"><Play /></span>
-                    </button>
-                  );
-                })}
-              </div>
+            ) : visibleChannels.length ? (
+              <ChannelRows channels={visibleChannels} selectedId={selected?.id} favorites={playerPrefs.favorites} onSelect={selectChannel} onToggleFavorite={toggleFavorite} />
             ) : (
               <div className="xora-tv-no-channels">
-                {query.isError ? "The cached channel list is not available yet. Connect once to save it for offline viewing." : "No channels match this search."}
+                {query.isError ? (
+                  <>
+                    <p>The channel list could not be refreshed.</p>
+                    <Button type="button" variant="outline" className="mt-3 min-h-11 rounded-full" onClick={() => void query.refetch()}>Retry</Button>
+                  </>
+                ) : "No channels match these filters. Try another category or country."}
               </div>
             )}
           </section>
