@@ -843,7 +843,10 @@ export function NativeVideoPlayer({
       {!nativeVlcOnly ? (
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
+          "absolute inset-x-0 bottom-0 p-3 pt-8 transition-opacity duration-200",
+          feedCard
+            ? "bg-gradient-to-t from-[rgba(42,31,26,0.55)] via-transparent to-transparent"
+            : "bg-gradient-to-t from-black/80 via-black/40 to-transparent",
           playing
             ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
             : "opacity-100",
