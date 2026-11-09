@@ -200,9 +200,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
                       style={{ aspectRatio: vertical ? "9 / 16" : "16 / 9" }}
                     />
                   ) : (
-                    <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F] px-8 text-center">
-                      <span className="line-clamp-2 text-sm font-semibold text-white/80">{post.title || "Xora video"}</span>
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
                   )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
                   <span className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
@@ -227,6 +225,8 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
                 <img
                   src={post.poster_path}
                   alt={post.title || "Post image"}
+                  width={1280}
+                  height={720}
                   loading="lazy"
                   className="max-h-[520px] w-full object-cover"
                 />

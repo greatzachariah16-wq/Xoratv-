@@ -313,9 +313,7 @@ export function ProviderEmbedPlayer({
               style={{ aspectRatio: "16 / 9" }}
             />
           ) : (
-            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F] px-8 text-center">
-              <span className="line-clamp-2 text-sm font-semibold text-white/80">{title}</span>
-            </div>
+            <div className="h-full w-full bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
           )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
           <button
