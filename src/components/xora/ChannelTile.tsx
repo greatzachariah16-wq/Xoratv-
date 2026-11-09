@@ -23,6 +23,11 @@ export function LiveBadge() {
 
 function ChannelTileComponent({ channel, destination, eager = false }: ChannelTileProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const qualityMatch = channel.name.match(/\\s*\\((\\d{3,4}p|4k|hd)\\)\\s*$/i);
+  const displayName = qualityMatch?.index === undefined
+    ? channel.name
+    : channel.name.slice(0, qualityMatch.index).trimEnd();
+  const qualityLabel = channel.quality || qualityMatch?.[1] || "Live channel";
   const tile = (
     <>
       <div className="grid aspect-square w-full place-items-center rounded-[18px] bg-primary/[0.06] p-4">
@@ -43,7 +48,7 @@ function ChannelTileComponent({ channel, destination, eager = false }: ChannelTi
           </span>
         )}
       </div>
-      <div className="min-w-0 px-1 pb-2 pt-3">
+      <div className="min-w-0 px-2 pb-2 pt-2">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
             {channel.name}
@@ -51,21 +56,21 @@ function ChannelTileComponent({ channel, destination, eager = false }: ChannelTi
           <LiveBadge />
         </div>
         <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">
-          {channel.quality || "Live channel"}
+          {qualityLabel}
         </p>
       </div>
     </>
   );
 
   const className =
-    "card-surface press block w-[140px] min-w-[140px] shrink-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30 focus-visible:outline-none";
+    "card-surface press block w-[140px] min-w-[140px] shrink-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30";
 
   if (destination === "kids") {
     return (
       <Link
         to="/kids"
         search={{ channel: channel.id }}
-        aria-label={channel.name + (channel.quality ? ", " + channel.quality : "") + ", live"}
+        aria-label={displayName + ", " + qualityLabel + ", live"}
         className={className}
       >
         {tile}
