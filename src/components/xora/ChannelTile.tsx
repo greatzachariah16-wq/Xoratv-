@@ -22,12 +22,18 @@ export function LiveBadge() {
   );
 }
 
-function ChannelTileComponent({ channel, destination, eager = false, layout = "carousel" }: ChannelTileProps) {
+function ChannelTileComponent({
+  channel,
+  destination,
+  eager = false,
+  layout = "carousel",
+}: ChannelTileProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const qualityMatch = channel.name.match(/\s*\((\d{3,4}p|4k|hd)\)\s*$/i);
-  const displayName = qualityMatch?.index === undefined
-    ? channel.name
-    : channel.name.slice(0, qualityMatch.index).trimEnd();
+  const displayName =
+    qualityMatch?.index === undefined
+      ? channel.name
+      : channel.name.slice(0, qualityMatch.index).trimEnd();
   const qualityLabel = channel.quality || qualityMatch?.[1] || "Live channel";
   const tile = (
     <>
