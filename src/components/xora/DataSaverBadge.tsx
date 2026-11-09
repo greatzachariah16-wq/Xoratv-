@@ -110,7 +110,7 @@ export function DataSaverBadge({ className }: { className?: string }) {
 
             <div className="flex items-center justify-between pb-3.5 border-b border-border">
               <div className="flex items-center gap-2.5">
-                <div className="grid size-10 place-items-center rounded-2xl bg-emerald-500/15 text-xora-mint-ink shrink-0">
+                <div className="grid size-10 place-items-center rounded-2xl bg-xora-mint/15 text-xora-mint-ink shrink-0">
                   <Smartphone className="size-5" />
                 </div>
                 <div>
