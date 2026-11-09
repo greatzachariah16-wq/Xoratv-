@@ -341,6 +341,7 @@ function LiveTvPage() {
       const closeWhenReady = () => {
         if (nativePlayerOpenRef.current) {
           nativePlayerOpenRef.current = false;
+          document.documentElement.classList.remove("xora-tv-player-open");
           void closeNativeVlc().catch(() => {});
         }
       };
@@ -376,6 +377,7 @@ function LiveTvPage() {
         channelId: selected.id,
       });
       nativePlayerOpenRef.current = true;
+      document.documentElement.classList.add("xora-tv-player-open");
     })();
     nativePlayerTaskRef.current = task;
     void task.catch((error: unknown) => {
@@ -398,6 +400,7 @@ function LiveTvPage() {
     const closePlayer = () => {
       if (nativePlayerOpenRef.current) {
         nativePlayerOpenRef.current = false;
+        document.documentElement.classList.remove("xora-tv-player-open");
         void closeNativeVlc().catch(() => {});
       }
     };
