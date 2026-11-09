@@ -14,24 +14,15 @@ function KidsCarouselComponent({ channels, onOpenKids }: KidsCarouselProps) {
     <section className="card-surface relative mt-8 overflow-hidden pb-4 pt-4">
       <div className="pointer-events-none absolute -right-14 -top-14 size-40 rounded-full bg-primary/5 blur-2xl" />
       <div className="relative">
-        <div className="mb-4 flex items-center justify-between gap-4 px-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-              <Baby className="size-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="font-editorial text-xl font-semibold tracking-tight text-foreground">
-                  Xora Kids
-                </h2>
-                <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              </div>
-              <p className="truncate text-xs text-muted-foreground">
-                Cartoons, animation & kids TV
-              </p>
+        <div className="mb-4 flex items-center justify-between gap-3 px-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <h2 className="whitespace-nowrap font-editorial text-xl font-semibold tracking-tight text-foreground">Xora Kids</h2>
+              <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
             </div>
+            <p className="mt-1 w-full truncate text-xs text-muted-foreground">Cartoons, animation & kids TV</p>
           </div>
-          <Pill variant="solid" onClick={onOpenKids}>
+          <Pill variant="solid" onClick={onOpenKids} className="h-11 shrink-0 whitespace-nowrap">
             Open Kids
           </Pill>
         </div>
