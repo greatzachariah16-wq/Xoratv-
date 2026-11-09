@@ -40,7 +40,7 @@ export function KidsTvShelf() {
           {["kids-placeholder-1", "kids-placeholder-2", "kids-placeholder-3"].map((key) => (
             <div key={key} className="w-[140px] shrink-0">
               <div className="shimmer aspect-square rounded-[18px]" />
-              <div className="shimmer mt-3 h-3 w-4/5 rounded-full" />
+              <div className="shimmer mt-4 h-3 w-4/5 rounded-full" />
               <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
             </div>
           ))}
