@@ -58,8 +58,8 @@ export function LiveTvShelf() {
       ) : (
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
           {data.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="rise min-w-0" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
-              <ChannelTile channel={channel} destination="tv" layout="grid" eager={index === 0} />
+            <div key={channel.id} className="rise w-[150px] min-w-[150px] shrink-0 snap-start">
+              <ChannelTile channel={channel} destination="tv" layout="carousel" eager={index === 0} />
             </div>
           ))}
         </div>
