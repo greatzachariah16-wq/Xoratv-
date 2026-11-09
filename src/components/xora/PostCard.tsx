@@ -20,7 +20,7 @@ import {
   recordPostShare,
   type PostWithAuthor,
 } from "@/lib/api";
-import { compactNumber, duration, timeAgo } from "@/lib/format";
+import { compactNumber, timeAgo } from "@/lib/format";
 import {
   AlertDialog,
   AlertDialogAction,
