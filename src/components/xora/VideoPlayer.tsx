@@ -22,9 +22,8 @@ import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { trackEvent } from "@/lib/events";
 import type { FeedType } from "@/integrations/firebase/types";
 import {
-  getActiveDataSaverConfig,
   recordPlaybackConsumption,
-  getOptimizedImageUrl,
+  getOptimizedImageUrlWithConfig,
   useDataSaver,
 } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
@@ -93,7 +92,7 @@ export function NativeVideoPlayer({
   const activeSrc = feed === "shorts" && src ? (originalShortsSrc || src) : src;
   const nativeVlcOnly = liveTv && isNativeVlcPlatform();
   const rawPoster = externalPoster ?? signedPoster;
-  const poster = getOptimizedImageUrl(rawPoster);
+  const poster = getOptimizedImageUrlWithConfig(rawPoster, 400, dataSaver);
 
   const [playing, setPlaying] = useState(false);
   const [playerClosed, setPlayerClosed] = useState(false);
