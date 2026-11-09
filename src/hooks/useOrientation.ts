@@ -11,31 +11,11 @@ export interface OrientationState {
  * Hook to monitor device/viewport orientation and manage screen orientation locks.
  */
 export function useOrientation() {
-  const [orientation, setOrientation] = useState<OrientationState>(() => {
-    if (typeof window === "undefined") {
-      return { isLandscape: false, isLockSupported: false, angle: 0, type: "portrait-primary" };
-    }
-    const isLandscape =
-      window.innerWidth > window.innerHeight ||
-      (typeof screen !== "undefined" &&
-        screen.orientation &&
-        screen.orientation.type.startsWith("landscape"));
-    const isLockSupported =
-      typeof screen !== "undefined" &&
-      typeof screen.orientation !== "undefined" &&
-      typeof screen.orientation.lock === "function";
-
-    return {
-      isLandscape: Boolean(isLandscape),
-      isLockSupported: Boolean(isLockSupported),
-      angle: typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle : 0,
-      type:
-        typeof screen !== "undefined" && screen.orientation
-          ? screen.orientation.type
-          : isLandscape
-            ? "landscape-primary"
-            : "portrait-primary",
-    };
+  const [orientation, setOrientation] = useState<OrientationState>({
+    isLandscape: false,
+    isLockSupported: false,
+    angle: 0,
+    type: "portrait-primary",
   });
 
   const updateOrientation = useCallback(() => {

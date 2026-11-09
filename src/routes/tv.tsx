@@ -33,6 +33,7 @@ import {
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
+import { useLandscapeMode } from "@/hooks/useOrientation";
 import "@/styles/tv-live.css";
 
 type Channel = {
@@ -231,6 +232,7 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
 
 function LiveTvPage() {
   const { channel: requestedChannel, q, filter = "all", category, country } = Route.useSearch();
+  const { isLandscape } = useLandscapeMode();
   const navigate = useNavigate({ from: "/tv" });
   const [search, setSearch] = useState(q || "");
   const playerPrefs = usePlayerPrefs();
@@ -529,7 +531,7 @@ function LiveTvPage() {
   return (
     <AppShell>
       <CpxLiveTvGate>
-        <div className="xora-tv-page">
+        <div className={isLandscape ? "xora-tv-page is-landscape" : "xora-tv-page"}>
           <header className="xora-tv-heading">
             <div className="xora-tv-heading-title">
               <span className="xora-tv-heading-icon"><Radio aria-hidden="true" /></span>

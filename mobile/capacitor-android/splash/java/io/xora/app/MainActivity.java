@@ -2,6 +2,7 @@ package io.xora.app;
 
 import android.animation.Keyframe;
 import android.content.res.Configuration;
+import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
@@ -59,6 +60,16 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         applyXoraSystemBars();
+    }
+
+
+    @Override
+    public void onBackPressed() {
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            return;
+        }
+        super.onBackPressed();
     }
 
     /** Keep Android's system chrome visually continuous with the cream app surface. */
