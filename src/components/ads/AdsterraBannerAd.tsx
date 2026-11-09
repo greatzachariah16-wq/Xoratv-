@@ -7,6 +7,8 @@ interface AdsterraBannerAdProps {
   adKey?: string;
   height?: number;
   width?: number;
+  onLoad?: () => void;
+  onError?: () => void;
 }
 
 /**
@@ -21,6 +23,8 @@ export function AdsterraBannerAd({
   adKey = "075ef17698a6be8914c3d3aaaf74c814",
   height = 50,
   width = 320,
+  onLoad,
+  onError,
 }: AdsterraBannerAdProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -106,6 +110,8 @@ export function AdsterraBannerAd({
           key={`adsterra-iframe-${adKey}-${refreshIndex}`}
           srcDoc={adHtml}
           title="Advertisement"
+          onLoad={onLoad}
+          onError={onError}
           width={width}
           height={height}
           frameBorder="0"
