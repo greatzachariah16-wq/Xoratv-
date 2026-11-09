@@ -11,6 +11,7 @@ import {
   EyeOff,
   Ban,
   Gift,
+  Play,
   X,
 } from "lucide-react";
 import {
