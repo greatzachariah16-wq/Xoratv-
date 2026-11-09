@@ -24,4 +24,5 @@ jobs:
       - name: TypeScript validation
         run: npx tsc --noEmit
       - name: Lint
+        if: always()
         run: npm run lint
