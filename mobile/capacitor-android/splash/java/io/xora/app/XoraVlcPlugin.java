@@ -1119,7 +1119,7 @@ public class XoraVlcPlugin extends Plugin {
             probeAndSetError(selectedUrl, activePlayerGeneration, activeAttemptGeneration, true);
         };
         streamStartupTimeout = timeout;
-        mainHandler.postDelayed(timeout, 25000L);
+        mainHandler.postDelayed(timeout, 15000L);
         updateControlLabels();
     }
 
