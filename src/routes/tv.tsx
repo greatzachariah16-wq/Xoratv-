@@ -715,7 +715,7 @@ export const Route = createFileRoute("/tv")({
   validateSearch: (search: Record<string, unknown>) => ({
     channel: typeof search.channel === "string" ? search.channel : undefined,
     q: typeof search.q === "string" ? search.q : undefined,
-    filter: search.filter === "favourites" || search.filter === "recent" ? search.filter : "all" as TvFilter,
+    filter: search.filter === "all" || search.filter === "favourites" || search.filter === "recent" ? search.filter as TvFilter : undefined,
     category: typeof search.category === "string" ? search.category : undefined,
     country: typeof search.country === "string" ? search.country : undefined,
   }),
