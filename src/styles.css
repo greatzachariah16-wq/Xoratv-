@@ -206,6 +206,7 @@ body,
 @utility hide-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {
+    display: none;
     width: 0;
     height: 0;
   }
@@ -280,7 +281,7 @@ body,
   }
 
   .shimmer {
-    animation: none;
+    animation: xora-shimmer 1.5s linear infinite;
   }
 
   .live-dot::after {
@@ -307,13 +308,13 @@ body,
     var(--color-surface-2) 90%
   );
   background-size: 220% 100%;
-  animation: xora-shimmer 1.5s linear infinite;
+  animation: none;
 }
 
 @keyframes xora-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
