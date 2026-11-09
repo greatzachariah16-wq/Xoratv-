@@ -248,6 +248,11 @@ body,
   -webkit-backdrop-filter: blur(16px);
 }
 
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--xora-accent);
+  outline-offset: 3px;
+}
+
 .live-dot {
   position: relative;
   display: inline-block;
