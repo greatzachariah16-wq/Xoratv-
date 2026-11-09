@@ -42,7 +42,7 @@ export function LiveTvShelf() {
           </p>
         </div>
         <Pill asChild variant="outline">
-          <Link to="/tv">View all</Link>
+          <Link to="/tv" search={{ channel: undefined }}>View all</Link>
         </Pill>
       </div>
 
