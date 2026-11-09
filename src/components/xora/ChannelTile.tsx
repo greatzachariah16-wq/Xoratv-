@@ -13,6 +13,7 @@ interface ChannelTileProps {
 export function LiveBadge() {
   return (
     <span
+      role="status"
       aria-label="Live now"
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-xora-mint/10 px-2 py-1 text-[9px] font-bold tracking-[0.08em] text-xora-mint-ink"
     >
