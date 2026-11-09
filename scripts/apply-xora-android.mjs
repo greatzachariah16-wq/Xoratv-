@@ -28,7 +28,10 @@ copyDirectory(path.join(splashRoot, "res"), appRes);
 const javaDestination = path.join(appMain, "java/io/xora/app");
 fs.mkdirSync(javaDestination, { recursive: true });
 for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugin.java"]) {
-  fs.copyFileSync(path.join(splashRoot, "java/io/xora/app", name), path.join(javaDestination, name));
+  fs.copyFileSync(
+    path.join(splashRoot, "java/io/xora/app", name),
+    path.join(javaDestination, name),
+  );
 }
 
 const manifestPath = path.join(appMain, "AndroidManifest.xml");
@@ -37,10 +40,16 @@ manifest = manifest
   .replace(/android:icon="[^"]+"/, 'android:icon="@mipmap/xora_launcher"')
   .replace(/android:roundIcon="[^"]+"/, 'android:roundIcon="@mipmap/xora_launcher"');
 if (!manifest.includes('android:roundIcon="@mipmap/xora_launcher"')) {
-  manifest = manifest.replace(/<application\b/, '<application android:roundIcon="@mipmap/xora_launcher"');
+  manifest = manifest.replace(
+    /<application\b/,
+    '<application android:roundIcon="@mipmap/xora_launcher"',
+  );
 }
 manifest = manifest
-  .replace('android:theme="@style/AppTheme.NoActionBarLaunch"', 'android:theme="@style/Theme.Xora.Launch"')
+  .replace(
+    'android:theme="@style/AppTheme.NoActionBarLaunch"',
+    'android:theme="@style/Theme.Xora.Launch"',
+  )
   .replace('android:theme="@style/AppTheme"', 'android:theme="@style/Theme.Xora"');
 // Enable Android's native picture-in-picture action for the inline LibVLC surface.
 const mainActivityTag = /<activity\b(?=[^>]*android:name="[^"]*MainActivity")[^>]*>/;
@@ -103,7 +112,10 @@ fs.writeFileSync(manifestPath, manifest);
 const stringsPath = path.join(appRes, "values/strings.xml");
 if (fs.existsSync(stringsPath)) {
   let strings = fs.readFileSync(stringsPath, "utf8");
-  strings = strings.replace(/<string name="app_name">[^<]*<\/string>/, '<string name="app_name">XoraTV</string>');
+  strings = strings.replace(
+    /<string name="app_name">[^<]*<\/string>/,
+    '<string name="app_name">XoraTV</string>',
+  );
   fs.writeFileSync(stringsPath, strings);
 }
 
@@ -114,7 +126,10 @@ let appGradle = fs.readFileSync(appGradlePath, "utf8");
 appGradle = appGradle
   .replace(/namespace\s*=\s*"[^"]+"/, 'namespace = "io.xora.app"')
   .replace(/applicationId\s+"[^"]+"/, 'applicationId "io.xora.app"');
-if (!appGradle.includes('namespace = "io.xora.app"') || !appGradle.includes('applicationId "io.xora.app"')) {
+if (
+  !appGradle.includes('namespace = "io.xora.app"') ||
+  !appGradle.includes('applicationId "io.xora.app"')
+) {
   throw new Error("Could not apply Xora Android namespace/applicationId to app/build.gradle.");
 }
 // Keep every LibVLC ABI supplied by the official full artifact. Do not filter architectures.
