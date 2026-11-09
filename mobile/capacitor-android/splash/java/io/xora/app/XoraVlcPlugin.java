@@ -1129,12 +1129,13 @@ public class XoraVlcPlugin extends Plugin {
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         final String selectedUrl = streamUrls.get(currentStreamIndex);
 
-        MediaPlayer activePlayer = mediaPlayer;
-        if (activePlayer == null) {
+        final MediaPlayer activePlayer;
+        if (mediaPlayer == null) {
             activePlayer = new MediaPlayer(libVLC);
             activePlayer.attachViews(videoLayout, null, false, false);
             mediaPlayer = activePlayer;
         } else {
+            activePlayer = mediaPlayer;
             // Keep the same native player and attached video surface while replacing
             // the media source; the previous attempt generation is already invalidated.
             try {
