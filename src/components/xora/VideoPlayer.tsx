@@ -656,7 +656,7 @@ export function NativeVideoPlayer({
           setWaiting(false);
           setPlayerClosed(true);
           onClose?.();
-        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-10 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
+        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-11 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
