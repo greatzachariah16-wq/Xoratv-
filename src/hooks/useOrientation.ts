@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { isNativeVlcPlatform, lockNativeVlcLandscape, unlockNativeVlcOrientation } from "@/lib/native-vlc";
+import {
+  isNativeVlcPlatform,
+  lockNativeVlcLandscape,
+  unlockNativeVlcOrientation,
+} from "@/lib/native-vlc";
 
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: string) => Promise<void>;

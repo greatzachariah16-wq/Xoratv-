@@ -63,7 +63,8 @@ if (mainActivityTag.test(manifest)) {
       ...(configChangesMatch ? configChangesMatch[1].split("|") : []),
       ...requiredConfigChanges,
     ]);
-    const configChangesValue = `android:configChanges="${Array.from(mergedConfigChanges).join("|")}"`;
+    const configChangesValue =
+      `android:configChanges="${Array.from(mergedConfigChanges).join("|")}"`;
     if (configChangesMatch) {
       updated = updated.replace(configChangesMatch[0], configChangesValue);
     } else {

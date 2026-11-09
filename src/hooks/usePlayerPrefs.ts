@@ -11,11 +11,13 @@ type StoredPlayerPrefs = {
 function isStoredPlayerPrefs(value: unknown): value is StoredPlayerPrefs {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return Array.isArray(record.favorites)
-    && record.favorites.every((item) => typeof item === "string")
-    && Array.isArray(record.recent)
-    && record.recent.every((item) => typeof item === "string")
-    && (typeof record.lastWatched === "string" || record.lastWatched === null);
+  return (
+    Array.isArray(record.favorites) &&
+    record.favorites.every((item) => typeof item === "string") &&
+    Array.isArray(record.recent) &&
+    record.recent.every((item) => typeof item === "string") &&
+    (typeof record.lastWatched === "string" || record.lastWatched === null)
+  );
 }
 
 /** Local-only preferences for the Live TV experience. Storage is accessed in effects only. */
@@ -60,9 +62,11 @@ export function usePlayerPrefs() {
   }, []);
 
   const toggleFavorite = useCallback((channelId: string) => {
-    setFavorites((current) => current.includes(channelId)
-      ? current.filter((id) => id !== channelId)
-      : [...current, channelId]);
+    setFavorites((current) =>
+      current.includes(channelId)
+        ? current.filter((id) => id !== channelId)
+        : [...current, channelId],
+    );
   }, []);
 
   return { favorites, recent, lastWatched, rememberChannel, toggleFavorite };
