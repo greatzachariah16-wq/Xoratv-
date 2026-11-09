@@ -5,7 +5,6 @@ import { trackEvent } from "@/lib/events";
 import { getActiveDataSaverConfig } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
-import { useOrientation } from "@/hooks/useOrientation";
 import type { FeedType } from "@/integrations/types";
 
 export interface ProviderEmbedPlayerProps {
@@ -33,14 +32,11 @@ export function ProviderEmbedPlayer({
   feed,
   onClose,
 }: ProviderEmbedPlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isClient, setIsClient] = useState<boolean>(false);
   const [playerClosed, setPlayerClosed] = useState(false);
   const { user } = useAuth();
-  const { lockLandscape, unlockOrientation } = useOrientation();
 
   const embedSessionRef = useRef<{ sessionId: string; nonce: string; devId: string } | null>(null);
   const embedActiveSecondsRef = useRef<number>(0);
@@ -53,14 +49,6 @@ export function ProviderEmbedPlayer({
   useEffect(() => {
     setPlayerClosed(false);
   }, [embedUrl]);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement === containerRef.current));
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
 
   useEffect(() => {
     if (!isClient) return;
@@ -286,15 +274,11 @@ export function ProviderEmbedPlayer({
 
   return (
     <div
-      ref={containerRef}
-      data-landscape={undefined}
       className={cn(
         "group relative overflow-hidden bg-black flex items-center justify-center select-none transition-all duration-300",
-        isFullscreen
-          ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-black"
-          : vertical
-            ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
-            : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
+        vertical
+          ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
+          : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
         className,
       )}
     >
@@ -320,7 +304,7 @@ export function ProviderEmbedPlayer({
           referrerPolicy="strict-origin-when-cross-origin"
           className={cn(
             "h-full w-full border-0 pointer-events-auto",
-            isFullscreen ? "rounded-none" : "rounded-2xl",
+            "rounded-2xl",
           )}
         />
       ) : (
