@@ -944,6 +944,7 @@ export function VideoPlayer(props: Props) {
       authorId={props.authorId}
       genre={props.genre}
       feed={props.feed}
+      feedCard={props.feedCard}
       onClose={props.onClose}
     />
   ) : (
