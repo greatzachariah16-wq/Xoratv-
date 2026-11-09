@@ -441,6 +441,80 @@ function LiveTvPage() {
     ? nativeState.message || STATE_LABELS[nativeState.state]
     : isOffline ? STATE_LABELS.OFFLINE : STATE_LABELS.CONNECTING;
 
+  const allChannels = query.data || [];
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(allChannels.flatMap((channel) => channel.categories || []))).sort((a, b) => a.localeCompare(b)),
+    [allChannels],
+  );
+  const countryOptions = useMemo(
+    () => Array.from(new Set(allChannels.map((channel) => channel.country).filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b)),
+    [allChannels],
+  );
+  const visibleChannels = useMemo(() => {
+    const normalizedQuery = (q || "").trim().toLowerCase();
+    return allChannels.filter((channel) => {
+      const matchesText = !normalizedQuery
+        || channel.name.toLowerCase().includes(normalizedQuery)
+        || (channel.country || "").toLowerCase().includes(normalizedQuery)
+        || channel.categories.some((item) => item.toLowerCase().includes(normalizedQuery));
+      const matchesCategory = !category
+        || channel.categories.some((item) => item.toLowerCase() === category.toLowerCase());
+      const matchesCountry = !country || channel.country === country;
+      const matchesMode = filter === "favourites"
+        ? playerPrefs.favorites.includes(channel.id)
+        : filter === "recent"
+          ? playerPrefs.recent.includes(channel.id)
+          : true;
+      return matchesText && matchesCategory && matchesCountry && matchesMode;
+    });
+  }, [allChannels, q, category, country, filter, playerPrefs.favorites, playerPrefs.recent]);
+
+  const favoriteChannels = useMemo(
+    () => playerPrefs.favorites.map((id) => allChannels.find((channel) => channel.id === id)).filter((channel): channel is Channel => Boolean(channel)),
+    [allChannels, playerPrefs.favorites],
+  );
+  const recentChannels = useMemo(
+    () => playerPrefs.recent.map((id) => allChannels.find((channel) => channel.id === id)).filter((channel): channel is Channel => Boolean(channel)).slice(0, 10),
+    [allChannels, playerPrefs.recent],
+  );
+
+  const renderChannelRail = (title: string, channels: Channel[]) => channels.length ? (
+    <section className="xora-tv-rail" aria-label={title}>
+      <div className="xora-tv-section-heading"><h2>{title}</h2><p>{channels.length} saved</p></div>
+      <div className="hide-scrollbar xora-tv-rail-track">
+        {channels.map((channel) => (
+          <button key={channel.id} type="button" className="xora-tv-rail-card" onClick={() => selectChannel(channel)}>
+            <span className="xora-tv-rail-logo">
+              {channel.logo ? <img src={channel.logo} alt="" width={44} height={44} loading="lazy" /> : <span>{getChannelDisplayName(channel).slice(0, 2).toUpperCase()}</span>}
+            </span>
+            <span className="xora-tv-rail-name">{getChannelDisplayName(channel)}</span>
+            <span className="xora-tv-live-pill"><i /> LIVE</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  ) : null;
+
+  const handleRetry = useCallback(() => {
+    void retryNativeVlc().catch((error) => console.warn("[Xora TV] Retry unavailable:", error));
+  }, []);
+  const handleNextChannel = useCallback(() => {
+    if (!selected || allChannels.length === 0) return;
+    const currentIndex = allChannels.findIndex((channel) => channel.id === selected.id);
+    const nextChannel = allChannels[(currentIndex + 1) % allChannels.length];
+    if (nextChannel) selectChannel(nextChannel);
+  }, [allChannels, selected, selectChannel]);
+  const shareSelected = useCallback(async () => {
+    if (!selected) return;
+    const url = window.location.origin + "/tv?channel=" + encodeURIComponent(selected.id);
+    try {
+      if (navigator.share) await navigator.share({ title: getChannelDisplayName(selected), url });
+      else if (navigator.clipboard) await navigator.clipboard.writeText(url);
+    } catch {
+      // Sharing can be dismissed by the user.
+    }
+  }, [selected]);
+
   const formatTime = (value: string) => {
     try {
       return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
