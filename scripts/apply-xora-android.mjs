@@ -50,11 +50,24 @@ if (mainActivityTag.test(manifest)) {
     if (!updated.includes("android:supportsPictureInPicture=")) {
       updated = updated.replace(/>$/, ' android:supportsPictureInPicture="true">');
     }
-    if (!updated.includes("android:configChanges=")) {
-      updated = updated.replace(
-        />$/,
-        ' android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode">',
-      );
+    const requiredConfigChanges = [
+      "orientation",
+      "screenSize",
+      "keyboardHidden",
+      "smallestScreenSize",
+      "screenLayout",
+      "uiMode",
+    ];
+    const configChangesMatch = updated.match(/android:configChanges="([^"]*)"/);
+    const mergedConfigChanges = new Set([
+      ...(configChangesMatch ? configChangesMatch[1].split("|") : []),
+      ...requiredConfigChanges,
+    ]);
+    const configChangesValue = 'android:configChanges="' + Array.from(mergedConfigChanges).join("|") + '"';
+    if (configChangesMatch) {
+      updated = updated.replace(configChangesMatch[0], configChangesValue);
+    } else {
+      updated = updated.replace(/>$/, " " + configChangesValue + ">");
     }
     return updated;
   });
