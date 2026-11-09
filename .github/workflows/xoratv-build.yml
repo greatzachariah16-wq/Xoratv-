@@ -19,9 +19,9 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm install
+      - name: Build application
+        run: npm run build
       - name: TypeScript validation
         run: npx tsc --noEmit
       - name: Lint
         run: npm run lint
-      - name: Build application
-        run: npm run build
