@@ -231,10 +231,11 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
 }
 
 function LiveTvPage() {
-  const { channel: requestedChannel } = Route.useSearch();
+  const { channel: requestedChannel, q, filter = "all", category, country } = Route.useSearch();
   const navigate = useNavigate({ from: "/tv" });
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
+  const [search, setSearch] = useState(q || "");
+  const playerPrefs = usePlayerPrefs();
+  const nativePlayerOpenRef = useRef(false);
   const [isOnline, setIsOnline] = useState(
     () => typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -244,6 +245,11 @@ function LiveTvPage() {
     message: STATE_LABELS.IDLE,
   });
   const selectedIdRef = useRef("");
+  const selectChannel = useCallback((channel: Channel) => {
+    playerPrefs.rememberChannel(channel.id);
+    void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), replace: true, resetScroll: false });
+  }, [navigate, playerPrefs.rememberChannel]);
+  const toggleFavorite = useCallback((channelId: string) => playerPrefs.toggleFavorite(channelId), [playerPrefs.toggleFavorite]);
 
   useEffect(() => {
     const updateNetwork = () => setIsOnline(navigator.onLine);
@@ -256,8 +262,8 @@ function LiveTvPage() {
   }, []);
 
   const query = useQuery({
-    queryKey: ["iptv-org-live-tv-page", search, category],
-    queryFn: () => loadChannels(search, category),
+    queryKey: ["iptv-org-live-tv-page"],
+    queryFn: () => loadChannels("", ""),
     staleTime: 60_000,
     refetchInterval: isOnline && nativeState.state !== "OFFLINE" ? 5 * 60_000 : false,
     refetchOnWindowFocus: isOnline && nativeState.state !== "OFFLINE",
@@ -265,7 +271,7 @@ function LiveTvPage() {
   });
 
   const selected = useMemo(
-    () => query.data?.find((item) => item.id === requestedChannel) || query.data?.[0] || null,
+    () => requestedChannel ? query.data?.find((item) => item.id === requestedChannel) || null : null,
     [query.data, requestedChannel],
   );
   selectedIdRef.current = selected?.id
@@ -306,6 +312,20 @@ function LiveTvPage() {
   }, []);
 
   useEffect(() => {
+    setSearch(q || "");
+  }, [q]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextQuery = search.trim();
+      if (nextQuery !== (q || "")) {
+        void navigate({ search: (previous) => ({ ...previous, q: nextQuery || undefined }), replace: true, resetScroll: false });
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [search, q, navigate]);
+
+  useEffect(() => {
     if (!selected) return;
     if (!isNativeVlcPlatform()) {
       setNativeState({
@@ -324,10 +344,13 @@ function LiveTvPage() {
       message: isOnline ? STATE_LABELS.CONNECTING : STATE_LABELS.OFFLINE,
     });
 
-    void openNativeVlc({
+    const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
+    void openOrSwitch({
       url: streamUrl,
       title: getChannelDisplayName(selected),
       channelId: selected.id,
+    }).then(() => {
+      if (!cancelled) nativePlayerOpenRef.current = true;
     }).catch((error) => {
       if (cancelled) return;
       console.error("[Xora TV] Native channel open failed:", error);
@@ -340,9 +363,15 @@ function LiveTvPage() {
 
     return () => {
       cancelled = true;
-      void closeNativeVlc().catch(() => {});
     };
   }, [selected?.id, selected?.provider, selected?.name]);
+
+  useEffect(() => () => {
+    if (nativePlayerOpenRef.current) {
+      nativePlayerOpenRef.current = false;
+      void closeNativeVlc().catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (nativeState.state === "IDLE") {
