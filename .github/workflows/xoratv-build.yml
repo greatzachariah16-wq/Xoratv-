@@ -19,9 +19,11 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm install
+      # TanStack Start regenerates its route tree during the Vite build.
+      # Build first so the typecheck reads the generated route tree, not a stale file.
+      - name: Build application
+        run: npm run build
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: Project lint
         run: npm run lint
-      - name: Build application
-        run: npm run build
