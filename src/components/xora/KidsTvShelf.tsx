@@ -28,7 +28,10 @@ export function KidsTvShelf() {
 
   if (isLoading) {
     return (
-      <section aria-label="Loading Xora Kids channels" className="card-surface mt-8 overflow-hidden p-4">
+      <section
+        aria-label="Loading Xora Kids channels"
+        className="card-surface mt-8 overflow-hidden p-4"
+      >
         <div className="mb-4 flex items-center gap-3">
           <div className="shimmer size-10 rounded-2xl" />
           <div className="space-y-2">
