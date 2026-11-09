@@ -41,7 +41,7 @@ export function LiveTvShelf() {
             Browse live channels and discover what is on now.
           </p>
         </div>
-        <Pill asChild variant="outline">
+        <Pill asChild variant="outline" className="h-11 min-h-11 shrink-0 whitespace-nowrap px-4">
           <Link to="/tv" search={{ channel: undefined }}>View all</Link>
         </Pill>
       </div>
