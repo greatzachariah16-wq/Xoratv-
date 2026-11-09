@@ -42,13 +42,23 @@ export function LiveTvShelf() {
           </p>
         </div>
         <Pill asChild variant="outline">
-          <Link to="/tv" search={{ channel: undefined }}>View all</Link>
+          <Link to="/tv" search={{ channel: undefined }}>
+            View all
+          </Link>
         </Pill>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" aria-label="Loading Live TV channels">
-          {["live-placeholder-1", "live-placeholder-2", "live-placeholder-3", "live-placeholder-4"].map((key) => (
+        <div
+          className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+          aria-label="Loading Live TV channels"
+        >
+          {[
+            "live-placeholder-1",
+            "live-placeholder-2",
+            "live-placeholder-3",
+            "live-placeholder-4",
+          ].map((key) => (
             <div key={key} className="card-surface min-w-0 overflow-hidden p-2">
               <div className="shimmer aspect-square rounded-[18px]" />
               <div className="shimmer mt-4 h-3 w-4/5 rounded-full" />
@@ -59,7 +69,11 @@ export function LiveTvShelf() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {data.slice(0, 6).map((channel, index) => (
-            <div key={channel.id} className="rise min-w-0" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+            <div
+              key={channel.id}
+              className="rise min-w-0"
+              style={{ "--i": Math.min(index, 8) } as CSSProperties}
+            >
               <ChannelTile channel={channel} destination="tv" layout="grid" eager={index === 0} />
             </div>
           ))}
