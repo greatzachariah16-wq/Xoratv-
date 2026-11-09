@@ -43,14 +43,9 @@ export function AdSlot({ children, height = 96, label = "Sponsored" }: AdSlotPro
             style={{ height: Math.max(height - 20, 1) }}
           >
             {!loaded ? (
-              <div
-                aria-hidden="true"
-                className="shimmer absolute inset-0 rounded-[20px]"
-              />
+              <div aria-hidden="true" className="shimmer absolute inset-0 rounded-[20px]" />
             ) : null}
-            <div className="relative z-10 flex max-w-full items-center justify-center">
-              {ad}
-            </div>
+            <div className="relative z-10 flex max-w-full items-center justify-center">{ad}</div>
           </div>
         </>
       ) : null}
