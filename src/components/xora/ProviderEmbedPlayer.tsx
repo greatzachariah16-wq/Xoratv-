@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2, Pause, Play, RotateCw, Smartphone, X } from "lucide-react";
+import { Play, Smartphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
 import { getActiveDataSaverConfig } from "@/lib/data-saver";
@@ -38,11 +38,9 @@ export function ProviderEmbedPlayer({
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isClient, setIsClient] = useState<boolean>(false);
-  const [controlsVisible, setControlsVisible] = useState<boolean>(true);
   const [playerClosed, setPlayerClosed] = useState(false);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
-  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
+  const { lockLandscape, unlockOrientation } = useOrientation();
 
   const embedSessionRef = useRef<{ sessionId: string; nonce: string; devId: string } | null>(null);
   const embedActiveSecondsRef = useRef<number>(0);
@@ -64,16 +62,6 @@ export function ProviderEmbedPlayer({
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  const bumpControls = useCallback(() => {
-    setControlsVisible(true);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => {
-      if (isPlaying) {
-        setControlsVisible(false);
-      }
-    }, 3500);
-  }, [isPlaying]);
-
   useEffect(() => {
     if (!isClient) return;
 
@@ -85,7 +73,6 @@ export function ProviderEmbedPlayer({
             setIsPlaying(true);
           } else if (data.info === 2 || data.info === 0) {
             setIsPlaying(false);
-            setControlsVisible(true);
           }
         }
       } catch {
@@ -276,7 +263,6 @@ export function ProviderEmbedPlayer({
 
       const nextPlaying = !isPlaying;
       setIsPlaying(nextPlaying);
-      bumpControls();
 
       try {
         const targetWindow = iframe.contentWindow;
@@ -295,28 +281,13 @@ export function ProviderEmbedPlayer({
         console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
       }
     },
-    [isPlaying, bumpControls],
+    [isPlaying],
   );
-
-  const toggleFullscreen = useCallback(async () => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (document.fullscreenElement) {
-      await document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
-    } else if (container.requestFullscreen) {
-      await container.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    }
-    bumpControls();
-  }, [bumpControls]);
 
   return (
     <div
       ref={containerRef}
-      onMouseMove={bumpControls}
-      onTouchStart={bumpControls}
+      data-landscape={undefined}
       className={cn(
         "group relative overflow-hidden bg-black flex items-center justify-center select-none transition-all duration-300",
         isFullscreen
@@ -371,7 +342,6 @@ export function ProviderEmbedPlayer({
         </button>
       ) : null}
 
-      </div>
     </div>
   );
 }
