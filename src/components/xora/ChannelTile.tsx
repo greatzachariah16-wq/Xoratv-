@@ -1,10 +1,10 @@
 import { memo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { RadioTower } from "lucide-react";
-import type { IptvChannel } from "@/integrations/providers/iptv-org";
+import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
 
 interface ChannelTileProps {
-  channel: IptvChannel;
+  channel: NexusTvChannel;
   destination: "kids" | "tv";
   eager?: boolean;
 }
