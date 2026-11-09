@@ -159,10 +159,10 @@ const STATE_LABELS: Record<NativeVlcStatus, string> = {
 };
 
 function LiveTvPage() {
-  const { channel: requestedChannel } = Route.useSearch();
+  const { channel: requestedChannel, q: searchQuery, category: requestedCategory } = Route.useSearch();
   const navigate = useNavigate({ from: "/tv" });
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
+  const [search, setSearch] = useState(searchQuery ?? "");
+  const category = requestedCategory ?? "";
   const [isOnline, setIsOnline] = useState(
     () => typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -172,6 +172,28 @@ function LiveTvPage() {
     message: STATE_LABELS.IDLE,
   });
   const selectedIdRef = useRef("");
+  const lastChannelTapAtRef = useRef(0);
+
+  useEffect(() => {
+    setSearch(searchQuery ?? "");
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const nextQuery = search.trim();
+      if (nextQuery !== (searchQuery ?? "")) {
+        void navigate({
+          search: (previous) => ({
+            ...previous,
+            q: nextQuery || undefined,
+            category: nextQuery ? undefined : previous.category,
+          }),
+          replace: true,
+        });
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, searchQuery, navigate]);
 
   useEffect(() => {
     const updateNetwork = () => setIsOnline(navigator.onLine);
@@ -184,16 +206,28 @@ function LiveTvPage() {
   }, []);
 
   const query = useQuery({
-    queryKey: ["iptv-org-live-tv-page", search, category],
-    queryFn: () => loadChannels(search, category),
+    queryKey: ["iptv-org-live-tv-page", searchQuery ?? "", category],
+    queryFn: () => loadChannels(searchQuery ?? "", category),
     staleTime: 60_000,
     refetchInterval: isOnline && nativeState.state !== "OFFLINE" ? 5 * 60_000 : false,
     refetchOnWindowFocus: isOnline && nativeState.state !== "OFFLINE",
     retry: (failureCount) => isOnline && nativeState.state !== "OFFLINE" && failureCount < 3,
   });
 
+  // Do not silently start the first channel when a visitor opens Live TV.
+  // Playback begins only when a channel has been explicitly selected in the URL.
+  const availableCategories = useMemo(
+    () => Array.from(new Set((query.data ?? []).flatMap((channel) => channel.categories ?? [])))
+      .filter((item) => item.trim() && item.toLowerCase() !== "sports")
+      .sort((left, right) => left.localeCompare(right))
+      .slice(0, 12),
+    [query.data],
+  );
+
   const selected = useMemo(
-    () => query.data?.find((item) => item.id === requestedChannel) || query.data?.[0] || null,
+    () => requestedChannel
+      ? query.data?.find((item) => item.id === requestedChannel) || null
+      : null,
     [query.data, requestedChannel],
   );
   selectedIdRef.current = selected?.id
@@ -256,6 +290,10 @@ function LiveTvPage() {
       url: streamUrl,
       title: getChannelDisplayName(selected),
       channelId: selected.id,
+    }).then(() => {
+      // A newer channel may have been selected while the native open call was
+      // still in flight. Close that stale player rather than letting it take over.
+      if (cancelled) void closeNativeVlc().catch(() => {});
     }).catch((error) => {
       if (cancelled) return;
       console.error("[Xora TV] Native channel open failed:", error);
@@ -365,7 +403,7 @@ function LiveTvPage() {
                 <Search aria-hidden="true" />
                 <Input
                   value={search}
-                  onChange={(event) => { setSearch(event.target.value); setCategory(""); }}
+                  onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search channels..."
                   aria-label="Search live channels"
                 />
@@ -381,19 +419,34 @@ function LiveTvPage() {
                 size="sm"
                 variant={category === "sports" ? "default" : "outline"}
                 className="rounded-full"
-                onClick={() => { setSearch(""); setCategory("sports"); }}
+                onClick={() => { setSearch(""); void navigate({ search: (previous) => ({ ...previous, q: undefined, category: "sports" }), replace: true }); }}
               >
                 Sports channels
               </Button>
               <Button
                 type="button"
                 size="sm"
-                variant={!category && !search ? "default" : "outline"}
+                variant={!category && !searchQuery ? "default" : "outline"}
                 className="rounded-full"
-                onClick={() => { setCategory(""); setSearch(""); }}
+                onClick={() => { setSearch(""); void navigate({ search: (previous) => ({ ...previous, q: undefined, category: undefined }), replace: true }); }}
               >
                 All channels
               </Button>
+              {availableCategories.map((item) => (
+                <Button
+                  key={item}
+                  type="button"
+                  size="sm"
+                  variant={category.toLowerCase() === item.toLowerCase() ? "default" : "outline"}
+                  className="rounded-full"
+                  onClick={() => {
+                    setSearch("");
+                    void navigate({ search: (previous) => ({ ...previous, q: undefined, category: item }), replace: true });
+                  }}
+                >
+                  {formatMetadataLabel(item)}
+                </Button>
+              ))}
               {isOffline ? (
                 <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span>
               ) : null}
@@ -455,6 +508,9 @@ function LiveTvPage() {
                       key={channel.id}
                       type="button"
                       onClick={() => {
+                        const tappedAt = Date.now();
+                        if (tappedAt - lastChannelTapAtRef.current < 250) return;
+                        lastChannelTapAtRef.current = tappedAt;
                         if (active) {
                           if (nativeState.channelId === channel.id && nativeState.state === "IDLE" && isNativeVlcPlatform()) {
                             const streamUrl = `/api/tv/stream?provider=${channel.provider || "nexus"}&channel=${encodeURIComponent(channel.id)}`;
@@ -476,7 +532,7 @@ function LiveTvPage() {
                           }
                           return;
                         }
-                        void navigate({ search: { channel: channel.id }, replace: true });
+                        void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), replace: true });
                       }}
                       aria-pressed={active}
                       className={`xora-tv-channel-card ${active ? "is-selected" : ""}`}
@@ -517,6 +573,12 @@ function LiveTvPage() {
               </div>
             )}
           </section>
+
+          {selected ? (
+            <p className="sr-only" aria-live="polite" aria-atomic="true">
+              Now playing {getChannelDisplayName(selected)}
+            </p>
+          ) : null}
 
           {selected ? (
             <section className="xora-tv-guide">
@@ -564,6 +626,8 @@ function LiveTvPage() {
 export const Route = createFileRoute("/tv")({
   validateSearch: (search: Record<string, unknown>) => ({
     channel: typeof search.channel === "string" ? search.channel : undefined,
+    q: typeof search.q === "string" ? search.q : undefined,
+    category: typeof search.category === "string" ? search.category : undefined,
   }),
   head: () => ({
     meta: [

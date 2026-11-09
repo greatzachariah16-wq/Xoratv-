@@ -11,6 +11,8 @@ import {
   EyeOff,
   Ban,
   Gift,
+  Play,
+  X,
 } from "lucide-react";
 import {
   deletePost,
@@ -43,6 +45,7 @@ import { trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
+import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { LikePetalBurst } from "./LikePetalBurst";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -65,6 +68,11 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
   const [likeMoment, setLikeMoment] = useState(false);
   const [likeMomentOrigin, setLikeMomentOrigin] = useState<{ x: number; y: number } | null>(null);
   const [displayLikeCount, setDisplayLikeCount] = useState(post.like_count ?? 0);
+  const [youtubeStarted, setYoutubeStarted] = useState(false);
+  const [youtubePreviewClosed, setYoutubePreviewClosed] = useState(false);
+  const [youtubeThumbFailed, setYoutubeThumbFailed] = useState(false);
+  const embedInfo = parseEmbedInfo(post.stream_url || post.source, post.source);
+  const youtubeId = embedInfo?.provider === "youtube" ? embedInfo.videoId : null;
   const likeButtonRef = useRef<HTMLButtonElement | null>(null);
   const viewRef = useRef<HTMLElement | null>(null);
 
@@ -152,22 +160,86 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
         <div className="px-3 pt-3">
           {post.kind === "video" ? (
             <div className="relative">
-              <VideoPlayer
-                source={post.source}
-                streamUrl={post.stream_url}
-                mediaPath={post.media_path}
-                posterPath={post.poster_path}
-                externalUrl={post.stream_url}
-                externalPoster={post.poster_path}
-                vertical={vertical}
-                title={post.title || "Xora video"}
-                postId={post.id}
-                authorId={post.author_id}
-                genre={post.genre}
-                feed={post.feed}
-                autoPlay={autoPlay}
-                loop={autoPlay}
-              />
+              {youtubeId && !youtubeStarted ? (
+                <div className="relative aspect-video w-full overflow-hidden rounded-[24px] bg-[#2A1F1A]">
+                  {!youtubePreviewClosed ? (
+                    <>
+                      <img
+                        src={youtubeThumbFailed
+                          ? `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`
+                          : `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+                        alt={post.title || "Video thumbnail"}
+                        loading="lazy"
+                        decoding="async"
+                        width={480}
+                        height={360}
+                        onError={() => setYoutubeThumbFailed(true)}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/15" />
+                      <span className="absolute left-3 top-3 max-w-[calc(100%-4.5rem)] truncate rounded-full border border-white/25 bg-black/60 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">HD</span>
+                      <button
+                        type="button"
+                        aria-label="Close video preview"
+                        onClick={() => setYoutubePreviewClosed(true)}
+                        className="absolute right-3 top-3 z-20 grid size-11 place-items-center rounded-full border border-white/25 bg-black/65 text-white shadow-lg backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Play video"
+                        onClick={() => setYoutubeStarted(true)}
+                        className="absolute inset-0 z-10 grid place-items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+                      >
+                        <span className="grid size-16 place-items-center rounded-full border border-white/45 bg-white/25 text-white shadow-xl backdrop-blur-xl">
+                          <Play className="ml-1 size-6 fill-current" aria-hidden="true" />
+                        </span>
+                      </button>
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 grid place-items-center gap-2 p-4 text-center text-white">
+                      <span className="text-sm font-semibold">Preview closed</span>
+                      <button type="button" onClick={() => setYoutubePreviewClosed(false)} className="min-h-11 rounded-full border border-white/30 bg-white/10 px-4 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Show preview</button>
+                    </div>
+                  )}
+                </div>
+              ) : youtubeId ? (
+                <VideoPlayer
+                  source={post.source}
+                  streamUrl={post.stream_url}
+                  mediaPath={post.media_path}
+                  posterPath={post.poster_path}
+                  externalUrl={post.stream_url}
+                  externalPoster={post.poster_path}
+                  vertical={vertical}
+                  title={post.title || "Xora video"}
+                  postId={post.id}
+                  authorId={post.author_id}
+                  genre={post.genre}
+                  feed={post.feed}
+                  autoPlay={false}
+                  loop={false}
+                  onClose={() => setYoutubeStarted(false)}
+                />
+              ) : (
+                <VideoPlayer
+                  source={post.source}
+                  streamUrl={post.stream_url}
+                  mediaPath={post.media_path}
+                  posterPath={post.poster_path}
+                  externalUrl={post.stream_url}
+                  externalPoster={post.poster_path}
+                  vertical={vertical}
+                  title={post.title || "Xora video"}
+                  postId={post.id}
+                  authorId={post.author_id}
+                  genre={post.genre}
+                  feed={post.feed}
+                  autoPlay={autoPlay}
+                  loop={autoPlay}
+                />
+              )}
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl bg-surface-2">
@@ -198,7 +270,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
           </div>
         ) : null}
 
-        <div className="px-3 pb-3 pt-3">
+        <div className="px-3 pb-3 pt-6">
           {post.title ? (
             <Link
               to="/video/$postId"
@@ -220,7 +292,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
               </h3>
             </Link>
           ) : null}
-        <header className="mt-4 flex min-w-0 items-center gap-2 border-t border-border/70 pt-4">
+        <header className="mt-6 flex min-w-0 items-center gap-2 border-t border-border/70 pt-4">
           <Link
             to="/profile/$username"
             params={{ username: author?.username ?? "" }}

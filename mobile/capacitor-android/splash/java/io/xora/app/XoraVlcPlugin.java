@@ -138,6 +138,7 @@ public class XoraVlcPlugin extends Plugin {
     private long bufferingStartedAt;
     private Runnable streamStartupTimeout;
     private Runnable bufferingWatchdog;
+    private Runnable bufferingIndicatorDelay;
     private Runnable retryRunnable;
     private Runnable controlsAutoHide;
     private PlayerMode mode = PlayerMode.PINNED;
@@ -1119,7 +1120,7 @@ public class XoraVlcPlugin extends Plugin {
             probeAndSetError(selectedUrl, activePlayerGeneration, activeAttemptGeneration, true);
         };
         streamStartupTimeout = timeout;
-        mainHandler.postDelayed(timeout, 25000L);
+        mainHandler.postDelayed(timeout, 15000L);
         updateControlLabels();
     }
 
@@ -1147,6 +1148,13 @@ public class XoraVlcPlugin extends Plugin {
             bufferingWatchdog = null;
         }
         bufferingStartedAt = 0L;
+    }
+
+    private void clearBufferingIndicatorDelay() {
+        if (bufferingIndicatorDelay != null) {
+            mainHandler.removeCallbacks(bufferingIndicatorDelay);
+            bufferingIndicatorDelay = null;
+        }
     }
 
     private void clearRetry() {
@@ -1383,7 +1391,22 @@ public class XoraVlcPlugin extends Plugin {
             boolean showCard = next == PlaybackState.CONNECTING
                 || next == PlaybackState.BUFFERING
                 || error;
-            statusCard.setVisibility(showCard ? View.VISIBLE : View.GONE);
+            if (next == PlaybackState.BUFFERING) {
+                // Avoid flashing a spinner for brief, normal HLS buffer events.
+                statusCard.setVisibility(View.GONE);
+                if (bufferingIndicatorDelay == null) {
+                    bufferingIndicatorDelay = () -> {
+                        bufferingIndicatorDelay = null;
+                        if (playbackState == PlaybackState.BUFFERING && statusCard != null) {
+                            statusCard.setVisibility(View.VISIBLE);
+                        }
+                    };
+                    mainHandler.postDelayed(bufferingIndicatorDelay, 400L);
+                }
+            } else {
+                clearBufferingIndicatorDelay();
+                statusCard.setVisibility(showCard ? View.VISIBLE : View.GONE);
+            }
             statusIcon.setText(stateIcon(next));
             statusText.setText(stateMessage(next));
             boolean showManualRetry = next == PlaybackState.ERR_REGION
@@ -1478,6 +1501,7 @@ public class XoraVlcPlugin extends Plugin {
         playbackAttemptGeneration++;
         clearStartupTimeout();
         clearBufferingWatchdog();
+        clearBufferingIndicatorDelay();
         clearRetry();
         if (controlsAutoHide != null) mainHandler.removeCallbacks(controlsAutoHide);
         abandonAudioFocus();
