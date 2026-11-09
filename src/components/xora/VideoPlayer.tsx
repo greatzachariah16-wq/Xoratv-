@@ -8,9 +8,6 @@ import {
 import {
   Gauge,
   Loader2,
-  Maximize2,
-  Minimize2,
-  Pause,
   Play,
   Smartphone,
   Volume2,
@@ -80,7 +77,6 @@ export function NativeVideoPlayer({
   liveTv = false,
   onClose,
 }: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { config: dataSaver } = useDataSaver();
   const effectiveStream = streamUrl || externalUrl || null;
@@ -114,7 +110,6 @@ export function NativeVideoPlayer({
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   // Tracking refs to ensure events fire at most once per playback session
@@ -460,12 +455,6 @@ export function NativeVideoPlayer({
     if (video) video.muted = muted;
   }, [muted, src]);
 
-  useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
   const handlePlay = () => {
     const telemetryId = postId || `${title}-${src || "unknown"}`;
     markPlaybackStartup(telemetryId);
@@ -615,22 +604,6 @@ export function NativeVideoPlayer({
     return () => observer.disconnect();
   }, [autoPlay, activeSrc, liveTv, startNativePlayback]);
 
-  const toggleFullscreen = useCallback(() => {
-    const container = containerRef.current;
-    const video = videoRef.current;
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => {});
-      return;
-    }
-    if (container?.requestFullscreen) {
-      void container.requestFullscreen().catch(() => {});
-      return;
-    }
-    // iOS Safari only exposes native fullscreen on the video element.
-    const legacy = video as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
-    legacy?.webkitEnterFullscreen?.();
-  }, []);
-
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
 
   if (!mediaPath && !externalUrl && !streamUrl) {
@@ -665,17 +638,17 @@ export function NativeVideoPlayer({
 
   return (
     <div
-      ref={containerRef}
       className={cn(
         "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
-        nativeVlcOnly && nativeVlcActive
-          ? "hidden"
-          : isFullscreen
-            ? "h-full rounded-none"
-            : aspect,
+        nativeVlcOnly && nativeVlcActive ? "hidden" : aspect,
         className,
       )}
     >
+      <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
+        <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
+          4K HD
+        </span>
+      </div>
       {!playerClosed ? (
         <button type="button" onClick={() => {
           videoRef.current?.pause();
@@ -688,12 +661,12 @@ export function NativeVideoPlayer({
           setWaiting(false);
           setPlayerClosed(true);
           onClose?.();
-        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
+        }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-11 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90">
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
       {playerClosed ? (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-[#100e0c] p-4 text-center text-white">
+        <div className="absolute inset-0 z-30 grid place-items-center bg-ink p-4 text-center text-background">
           <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
         </div>
       ) : null}
@@ -828,10 +801,10 @@ export function NativeVideoPlayer({
         <button
           type="button"
           onClick={toggle}
-          aria-label="Play"
-          className="press absolute inset-0 grid place-items-center bg-black/25"
+          aria-label="Play video"
+          className="press absolute inset-0 grid place-items-center bg-black/10"
         >
-          <div className="grid size-14 place-items-center rounded-full bg-background/90 text-foreground shadow-lift">
+          <div className="grid size-14 place-items-center rounded-full border border-white/40 bg-[rgba(255,253,250,0.25)] text-white shadow-lg backdrop-blur-[12px]">
             <Play className="ml-1 size-6 fill-current" aria-hidden="true" />
           </div>
         </button>
@@ -848,19 +821,6 @@ export function NativeVideoPlayer({
       >
         {/* Bottom buttons row */}
         <div className="flex items-center gap-2 text-xs font-medium text-background">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={playing ? "Pause" : "Play"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
-          >
-            {playing ? (
-              <Pause className="size-4 fill-current" aria-hidden="true" />
-            ) : (
-              <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
-            )}
-          </button>
-
           <span className="tabular-nums">
             {fmtDuration(Math.round(current))} / {fmtDuration(Math.round(total))}
           </span>
@@ -869,10 +829,10 @@ export function NativeVideoPlayer({
 
           {/* Data Saver Mode Pill */}
           <div
-            className="hidden sm:flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400 backdrop-blur-md"
+            className="hidden sm:flex items-center gap-1 rounded-full border border-xora-mint/30 bg-xora-mint/10 px-2.5 py-1.5 text-[10px] font-medium text-xora-mint-ink backdrop-blur-md"
             title={`Optimized for mobile: Max ${dataSaver.maxBitrateKbps} kbps (≤ 300 MB/hr)`}
           >
-            <Gauge className="size-3 text-emerald-400" />
+            <Gauge className="size-3 text-xora-mint-ink" />
             <span>{dataSaver.maxBitrateKbps <= 667 ? "300MB/h Max" : "HD"}</span>
           </div>
 
@@ -886,7 +846,7 @@ export function NativeVideoPlayer({
               setMuted(next);
             }}
             aria-label={muted ? "Unmute" : "Mute"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
+            className="press grid size-11 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
           >
             {muted ? (
               <VolumeX className="size-4" aria-hidden="true" />
@@ -895,19 +855,6 @@ export function NativeVideoPlayer({
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25 transition hover:bg-background/30"
-          >
-            {isFullscreen ? (
-              <Minimize2 className="size-4 text-primary" aria-hidden="true" />
-            ) : (
-              <Maximize2 className="size-4" aria-hidden="true" />
-            )}
-          </button>
         </div>
       </div>
       ) : null}

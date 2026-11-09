@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2, Pause, Play, RotateCw, Smartphone, X } from "lucide-react";
+import { Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
 import { getActiveDataSaverConfig } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
-import { useOrientation } from "@/hooks/useOrientation";
-import type { FeedType } from "@/integrations/types";
+import type { FeedType } from "@/integrations/firebase/types";
 
 export interface ProviderEmbedPlayerProps {
   embedUrl: string;
@@ -33,16 +32,11 @@ export function ProviderEmbedPlayer({
   feed,
   onClose,
 }: ProviderEmbedPlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isClient, setIsClient] = useState<boolean>(false);
-  const [controlsVisible, setControlsVisible] = useState<boolean>(true);
   const [playerClosed, setPlayerClosed] = useState(false);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
-  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   const embedSessionRef = useRef<{ sessionId: string; nonce: string; devId: string } | null>(null);
   const embedActiveSecondsRef = useRef<number>(0);
@@ -57,24 +51,6 @@ export function ProviderEmbedPlayer({
   }, [embedUrl]);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement === containerRef.current));
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
-
-  const bumpControls = useCallback(() => {
-    setControlsVisible(true);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => {
-      if (isPlaying) {
-        setControlsVisible(false);
-      }
-    }, 3500);
-  }, [isPlaying]);
-
-  useEffect(() => {
     if (!isClient) return;
 
     const handleEmbedMessage = (event: MessageEvent) => {
@@ -85,7 +61,6 @@ export function ProviderEmbedPlayer({
             setIsPlaying(true);
           } else if (data.info === 2 || data.info === 0) {
             setIsPlaying(false);
-            setControlsVisible(true);
           }
         }
       } catch {
@@ -276,7 +251,6 @@ export function ProviderEmbedPlayer({
 
       const nextPlaying = !isPlaying;
       setIsPlaying(nextPlaying);
-      bumpControls();
 
       try {
         const targetWindow = iframe.contentWindow;
@@ -295,65 +269,27 @@ export function ProviderEmbedPlayer({
         console.warn("[EmbedPlayer] PostMessage playback dispatch notice:", err);
       }
     },
-    [isPlaying, bumpControls],
+    [isPlaying],
   );
-
-  const toggleFullscreen = useCallback(async () => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (document.fullscreenElement) {
-      await document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
-    } else if (container.requestFullscreen) {
-      await container.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    }
-    bumpControls();
-  }, [bumpControls]);
 
   return (
     <div
-      ref={containerRef}
-      onMouseMove={bumpControls}
-      onTouchStart={bumpControls}
       className={cn(
         "group relative overflow-hidden bg-black flex items-center justify-center select-none transition-all duration-300",
-        isFullscreen
-          ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-black"
-          : vertical
-            ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
-            : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
+        vertical
+          ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
+          : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
         className,
       )}
     >
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4 transition-opacity duration-300",
-          controlsVisible ? "opacity-100" : "opacity-0",
-        )}
-      >
-        <div className="flex max-w-[70%] items-center gap-2">
-          <span className="rounded bg-primary/20 px-2 py-0.5 text-[9px] font-bold tracking-wider text-primary ring-1 ring-primary/40">
-            XORA CINEMA
-          </span>
-          <span className="truncate text-xs font-semibold text-white drop-shadow">{title}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isLandscape && (
-            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[9px] font-semibold text-primary">
-              <RotateCw className="size-2.5" /> Landscape Active
-            </span>
-          )}
-          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-md">
-            <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-            4K HD Master
-          </div>
-        </div>
+      <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-4.5rem)]">
+        <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
+          4K HD
+        </span>
       </div>
 
       {!playerClosed ? (
-        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-9 place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black"><X className="size-4" aria-hidden="true" /></button>
+        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-11 place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black"><X className="size-4" aria-hidden="true" /></button>
       ) : null}
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
@@ -368,7 +304,7 @@ export function ProviderEmbedPlayer({
           referrerPolicy="strict-origin-when-cross-origin"
           className={cn(
             "h-full w-full border-0 pointer-events-auto",
-            isFullscreen ? "rounded-none" : "rounded-2xl",
+            "rounded-2xl",
           )}
         />
       ) : (
@@ -377,53 +313,19 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-2 right-2.5 z-20 flex select-none items-center gap-1.5 rounded-full border border-white/15 bg-black/90 px-2.5 py-1 text-[10px] font-bold tracking-wider text-white shadow-xl backdrop-blur-md">
-        <span className="size-1.5 rounded-full bg-primary" />
-        <span>XORA CINEMA</span>
-      </div>
-
-      <div
-        className={cn(
-          "absolute bottom-3 left-3 z-30 flex items-center gap-2 transition-opacity duration-300",
-          controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        )}
-      >
+      {!playerClosed && !isPlaying ? (
         <button
           type="button"
           onClick={togglePlayState}
-          aria-label={isPlaying ? "Pause Cinema" : "Play Cinema"}
-          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+          aria-label="Play video"
+          className="press absolute inset-0 z-30 grid place-items-center bg-black/10"
         >
-          {isPlaying ? (
-            <>
-              <Pause className="size-3.5 fill-current" />
-              <span>Pause</span>
-            </>
-          ) : (
-            <>
-              <Play className="size-3.5 fill-current text-primary" />
-              <span>Play</span>
-            </>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/85 px-3 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
-        >
-          {isFullscreen ? (
-            <Minimize2 className="size-3.5 text-primary" />
-          ) : (
-            <Maximize2 className="size-3.5" />
-          )}
-          <span className="hidden sm:inline">
-            {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          <span className="grid size-14 place-items-center rounded-full border border-white/40 bg-[rgba(255,253,250,0.25)] text-white shadow-lg backdrop-blur-[12px]">
+            <Play className="ml-0.5 size-6 fill-current" aria-hidden="true" />
           </span>
         </button>
-      </div>
+      ) : null}
+
     </div>
   );
 }
