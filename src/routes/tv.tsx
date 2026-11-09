@@ -175,6 +175,7 @@ type ChannelRowProps = {
   onToggleFavorite: (channelId: string) => void;
 };
 
+// prettier-ignore
 const ChannelRow = memo(function ChannelRow({ channel, selected, favorite, onSelect, onToggleFavorite }: ChannelRowProps) {
   const quality = getChannelQuality(channel);
   return (
@@ -197,6 +198,7 @@ const ChannelRow = memo(function ChannelRow({ channel, selected, favorite, onSel
   );
 });
 
+// prettier-ignore
 function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavorite }: {
   channels: Channel[];
   selectedId?: string;
@@ -231,6 +233,7 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
   );
 }
 
+// prettier-ignore
 function LiveTvPage() {
   const { channel: requestedChannel, q, filter = "all", category, country } = Route.useSearch();
   const { isLandscape, lockLandscape, unlockOrientation } = useLandscapeMode();
@@ -711,6 +714,7 @@ function LiveTvPage() {
   );
 }
 
+// prettier-ignore
 export const Route = createFileRoute("/tv")({
   validateSearch: (search: Record<string, unknown>) => ({
     channel: typeof search.channel === "string" ? search.channel : undefined,
