@@ -46,9 +46,9 @@ export function LiveTvShelf() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" aria-label="Loading Live TV channels">
+        <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-1" aria-label="Loading Live TV channels">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="card-surface overflow-hidden p-2">
+            <div key={index} className="card-surface w-[140px] shrink-0 overflow-hidden p-2">
               <div className="shimmer aspect-square rounded-[18px]" />
               <div className="shimmer mt-3 h-3 w-4/5 rounded-full" />
               <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
@@ -56,14 +56,13 @@ export function LiveTvShelf() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-1">
           {data.slice(0, 6).map((channel, index) => (
-            <ChannelTile
-              key={channel.id}
+            <div key={channel.id} className="snap-start"><ChannelTile
               channel={channel}
               destination="tv"
               eager={index === 0}
-            />
+            /></div>
           ))}
         </div>
       )}
