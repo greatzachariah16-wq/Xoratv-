@@ -72,6 +72,7 @@ function ChannelTileComponent({ channel, destination, eager = false, layout = "c
     return (
       <Link
         to="/kids"
+        preload="intent"
         search={{ channel: channel.id }}
         aria-label={displayName + ", " + qualityLabel + ", live"}
         className={className}
@@ -84,6 +85,7 @@ function ChannelTileComponent({ channel, destination, eager = false, layout = "c
   return (
     <Link
       to="/tv"
+      preload="intent"
       search={{ channel: channel.id }}
       aria-label={displayName + ", " + qualityLabel + ", live"}
       className={className}
