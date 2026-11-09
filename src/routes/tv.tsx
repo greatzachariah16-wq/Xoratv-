@@ -315,6 +315,10 @@ function LiveTvPage() {
   }, [q]);
 
   useEffect(() => {
+    if (selected) playerPrefs.rememberChannel(selected.id);
+  }, [selected?.id, playerPrefs.rememberChannel]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       const nextQuery = search.trim();
       if (nextQuery !== (q || "")) {
@@ -673,6 +677,10 @@ function LiveTvPage() {
 export const Route = createFileRoute("/tv")({
   validateSearch: (search: Record<string, unknown>) => ({
     channel: typeof search.channel === "string" ? search.channel : undefined,
+    q: typeof search.q === "string" ? search.q : undefined,
+    filter: search.filter === "favourites" || search.filter === "recent" ? search.filter : "all" as TvFilter,
+    category: typeof search.category === "string" ? search.category : undefined,
+    country: typeof search.country === "string" ? search.country : undefined,
   }),
   head: () => ({
     meta: [
