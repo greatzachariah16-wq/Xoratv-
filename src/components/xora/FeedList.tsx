@@ -16,6 +16,8 @@ import { rememberShownPostIds } from "@/lib/ranking";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 
 export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?: boolean }) {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => setIsClient(true), []);
   const { user } = useAuth();
   const [mode, setMode] = useState<"for_you" | "following">("for_you");
   const [activeShortId, setActiveShortId] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
     isFetchingNextPage,
   } = useInfiniteQuery({
     ...feedInfiniteQuery(feed, user?.id, mode),
-    enabled: typeof window !== "undefined",
+    enabled: isClient,
   });
 
   const allPosts = useMemo(() => {
