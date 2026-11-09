@@ -110,7 +110,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
   return (
     <div className="space-y-4">
       {feed === "home" || feed === "shorts" ? (
-        <div className="hide-scrollbar -mx-4 flex max-w-full items-center gap-2 overflow-x-auto px-4 pb-4">
+        <div className="xora-feed-filters hide-scrollbar -mx-4 flex w-[calc(100%+2rem)] min-w-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 py-6">
           <Pill
             variant={mode === "for_you" ? "solid" : "outline"}
             onClick={() => setMode("for_you")}

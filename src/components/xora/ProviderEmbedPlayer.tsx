@@ -34,6 +34,8 @@ export function ProviderEmbedPlayer({
 }: ProviderEmbedPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
+  const [hasStarted, setHasStarted] = useState<boolean>(Boolean(autoPlay));
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [isClient, setIsClient] = useState<boolean>(false);
   const [playerClosed, setPlayerClosed] = useState(false);
   const { user } = useAuth();
@@ -48,7 +50,10 @@ export function ProviderEmbedPlayer({
 
   useEffect(() => {
     setPlayerClosed(false);
-  }, [embedUrl]);
+    setHasStarted(Boolean(autoPlay));
+    setIsPlaying(Boolean(autoPlay));
+    setThumbnailFailed(false);
+  }, [embedUrl, autoPlay]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -229,7 +234,7 @@ export function ProviderEmbedPlayer({
         embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
     }
   }
-  if (autoPlay) {
+  if (hasStarted) {
     if (embedSrc.includes("autoplay=0")) {
       embedSrc = embedSrc.replace("autoplay=0", "autoplay=1");
     } else if (!embedSrc.includes("autoplay=1")) {
@@ -293,6 +298,36 @@ export function ProviderEmbedPlayer({
       ) : null}
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
+      ) : !hasStarted ? (
+        <div className="absolute inset-0 overflow-hidden bg-[#2A1F1A]">
+          {embedUrl.includes("youtube") && /youtube(?:-nocookie)?\\.com\\/embed\\/([\\w-]{11})/.test(embedUrl) && !thumbnailFailed ? (
+            <img
+              src={`https://img.youtube.com/vi/${embedUrl.match(/youtube(?:-nocookie)?\\.com\\/embed\\/([\\w-]{11})/)?.[1] ?? ""}/hqdefault.jpg`}
+              alt=""
+              width={1280}
+              height={720}
+              loading="lazy"
+              onError={() => setThumbnailFailed(true)}
+              className="h-full w-full object-cover"
+              style={{ aspectRatio: "16 / 9" }}
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F] px-8 text-center">
+              <span className="line-clamp-2 text-sm font-semibold text-white/80">{title}</span>
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
+          <button
+            type="button"
+            onClick={() => { setHasStarted(true); setIsPlaying(true); }}
+            aria-label="Play video"
+            className="press absolute inset-0 grid place-items-center"
+          >
+            <span className="grid size-16 place-items-center rounded-full border border-white/45 bg-white/20 text-white shadow-xl backdrop-blur-xl">
+              <Play className="ml-1 size-7 fill-current" aria-hidden="true" />
+            </span>
+          </button>
+        </div>
       ) : isClient ? (
         <iframe
           ref={iframeRef}
