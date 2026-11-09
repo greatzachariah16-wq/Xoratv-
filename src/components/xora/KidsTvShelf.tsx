@@ -37,8 +37,8 @@ export function KidsTvShelf() {
           </div>
         </div>
         <div className="hide-scrollbar flex gap-4 overflow-hidden">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="w-[140px] shrink-0">
+          {["kids-placeholder-1", "kids-placeholder-2", "kids-placeholder-3"].map((key) => (
+            <div key={key} className="w-[140px] shrink-0">
               <div className="shimmer aspect-square rounded-[18px]" />
               <div className="shimmer mt-3 h-3 w-4/5 rounded-full" />
               <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
