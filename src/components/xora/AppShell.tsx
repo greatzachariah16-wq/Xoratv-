@@ -74,8 +74,8 @@ function NavIconTile({
         "relative grid shrink-0 place-items-center overflow-hidden rounded-[15px] border transition-all duration-200 before:pointer-events-none before:absolute before:inset-[3px] before:rounded-[11px] before:border before:border-white/55 after:pointer-events-none after:absolute after:inset-x-2 after:bottom-[3px] after:h-px after:bg-white/70",
         compact ? "size-10 rounded-[14px]" : "size-11",
         active
-          ? "border-[#9b472d] bg-gradient-to-br from-[#d77c58] via-[#b15232] to-[#873b27] text-[#fffaf5] shadow-[inset_0_1px_1px_rgba(255,255,255,0.38),0_4px_10px_rgba(130,57,35,0.24)]"
-          : "border-[#e5d1c0] bg-gradient-to-br from-[#fffdf8] via-[#f7ecdf] to-[#e8d3c1] text-[#874b35] shadow-[inset_0_1px_1px_rgba(255,255,255,0.95),0_3px_8px_rgba(82,54,39,0.11)] group-hover:-translate-y-0.5 group-hover:border-[#c98b6d] group-hover:text-[#a4482b] group-hover:shadow-[0_5px_12px_rgba(130,57,35,0.16)]",
+          ? "border-primary bg-primary text-primary-foreground shadow-card"
+          : "border-border bg-card text-primary shadow-sm group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:text-primary group-hover:shadow-card",
       )}
     >
       <span className="pointer-events-none absolute inset-x-2 top-0 h-px bg-white/90" />
@@ -96,12 +96,14 @@ export function AppShell({
   wide = false,
   extraWide = false,
   immersive = false,
+  hideTopBanner = false,
 }: {
   children: ReactNode;
   rail?: ReactNode;
   wide?: boolean;
   extraWide?: boolean;
   immersive?: boolean;
+  hideTopBanner?: boolean;
 }) {
   usePresenceTracker();
   const { user, profile, isAdmin } = useAuth();
@@ -308,7 +310,7 @@ export function AppShell({
               <Link
                 to="/create"
                 onClick={() => setMobileMenuOpen(false)}
-                className="press col-span-2 flex items-center gap-3 rounded-2xl border border-[#d9a98e] bg-gradient-to-r from-[#fff7ef] via-[#f5e7d9] to-[#ead3c1] px-3 py-3 text-sm font-semibold text-[#8f432b] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_3px_10px_rgba(130,57,35,0.12)]"
+                className="press col-span-2 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-3 py-3 text-sm font-semibold text-primary shadow-sm"
               >
                 <NavIconTile icon={Plus} compact />
                 <span className="flex-1">Create a post</span>
@@ -355,24 +357,26 @@ export function AppShell({
       <main id="main" className={immersive ? "min-h-screen w-full" : "lg:pl-[248px] xl:pr-[320px]"}>
         <div
           className={cn(
-            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : "mx-auto px-4 pb-24 pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : "mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] pt-18 lg:px-8 lg:pb-14 lg:pt-8",
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
-          <div className="ad-slot mb-5 flex items-center justify-center">
-            <AdsterraBannerAd
-              adKey="075ef17698a6be8914c3d3aaaf74c814"
-              width={320}
-              height={50}
-              className="my-0 shadow-xs"
-            />
-          </div>
+          {!hideTopBanner ? (
+            <div className="ad-slot mb-5 flex items-center justify-center">
+              <AdsterraBannerAd
+                adKey="075ef17698a6be8914c3d3aaaf74c814"
+                width={320}
+                height={50}
+                className="my-0 shadow-xs"
+              />
+            </div>
+          ) : null}
           {children}
         </div>
       </main>
 
       {!immersive ? (
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-border/90 bg-background/95 px-1 pt-1 shadow-[0_-8px_24px_rgba(50,34,24,0.08)] backdrop-blur-xl lg:hidden">
+      <nav aria-label="Primary mobile navigation" className="xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-[28px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-card lg:hidden">
         {[
           { to: "/", label: "Home", icon: House },
           { to: "/shorts", label: "Shorts", icon: Clapperboard },
@@ -387,11 +391,11 @@ export function AppShell({
               onClick={() => setMobileMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
-                active ? "text-[#b5532f] after:absolute after:left-1/2 after:top-0 after:h-0.5 after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-[#b5532f]" : "text-muted-foreground hover:text-foreground",
+                "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-semibold leading-none transition-colors",
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-[#b5532f]/10" : "bg-transparent")}>
+              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-primary/10 text-primary" : "bg-transparent")}>
                 <Icon className={cn("size-[20px] stroke-[2]", active && "fill-current stroke-[2.35]")} aria-hidden="true" />
               </span>
               <span className="max-w-full truncate">{label}</span>
@@ -427,7 +431,7 @@ export function AppShell({
   );
 }
 
-export function FeedTabs({ active }: { active: "home" | "shorts" | "xtv-series" | "learn" }) {
+export function FeedTabs() {
   const tabs = [
     { key: "home", label: "Home", to: "/" },
     { key: "shorts", label: "Shorts", to: "/shorts" },
@@ -435,21 +439,22 @@ export function FeedTabs({ active }: { active: "home" | "shorts" | "xtv-series" 
     { key: "learn", label: "Learn", to: "/learn" },
   ] as const;
   return (
-    <div className="mb-5 flex gap-1 rounded-full border border-border bg-surface p-1">
+    <nav
+      aria-label="Feed navigation"
+      className="mb-5 flex w-full min-w-0 items-center gap-4 border-b border-border/80"
+    >
       {tabs.map((tab) => (
         <Link
           key={tab.key}
           to={tab.to}
-          className={cn(
-            "press flex-1 rounded-full px-4 py-1.5 text-center text-sm font-medium",
-            active === tab.key
-              ? "bg-primary text-primary-foreground shadow-card"
-              : "text-muted-foreground hover:text-foreground",
-          )}
+          activeOptions={tab.key === "home" ? { exact: true } : undefined}
+          activeProps={{ "data-active": "true" }}
+          inactiveProps={{ "data-active": "false" }}
+          className="press relative inline-flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap px-2 text-sm font-semibold text-muted-foreground transition-colors data-[active=true]:text-foreground after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-8 after:-translate-x-1/2 after:rounded-full after:bg-transparent data-[active=true]:after:bg-primary"
         >
           {tab.label}
         </Link>
       ))}
-    </div>
+    </nav>
   );
 }
