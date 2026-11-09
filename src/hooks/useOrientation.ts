@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { isNativeVlcPlatform, lockNativeVlcLandscape, unlockNativeVlcOrientation } from "@/lib/native-vlc";
 
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: string) => Promise<void>;
+  unlock?: () => void;
+};
+
 export interface OrientationState {
   isLandscape: boolean;
   isLockSupported: boolean;
@@ -22,7 +27,9 @@ export function useOrientation() {
   const updateOrientation = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    const screenOrientation = typeof screen !== "undefined" ? screen.orientation : undefined;
+    const screenOrientation = typeof screen !== "undefined"
+      ? screen.orientation as LockableScreenOrientation | undefined
+      : undefined;
     const isLandscapeByMedia = window.matchMedia("(orientation: landscape)").matches;
     const isLandscapeByDims = window.innerWidth > window.innerHeight;
     const isLandscapeByType = screenOrientation
@@ -33,7 +40,7 @@ export function useOrientation() {
     const isLockSupported =
       typeof screen !== "undefined" &&
       typeof screen.orientation !== "undefined" &&
-      typeof screen.orientation.lock === "function";
+      typeof screenOrientation?.lock === "function";
 
     setOrientation({
       isLandscape,
@@ -97,14 +104,14 @@ export function useOrientation() {
           await element.requestFullscreen().catch(() => {});
         }
 
-        if (
-          typeof screen !== "undefined" &&
-          screen.orientation &&
-          typeof screen.orientation.lock === "function"
-        ) {
-          await screen.orientation.lock("landscape").catch(async () => {
+        const lockableOrientation = typeof screen !== "undefined" && screen.orientation
+          ? screen.orientation as LockableScreenOrientation
+          : undefined;
+        if (lockableOrientation && typeof lockableOrientation.lock === "function") {
+          const lock = lockableOrientation.lock.bind(lockableOrientation);
+          await lock("landscape").catch(async () => {
             // Fallback to landscape-primary if generic landscape is rejected
-            await screen.orientation.lock("landscape-primary").catch(() => {});
+            await lock("landscape-primary").catch(() => {});
           });
           updateOrientation();
           return true;
@@ -125,13 +132,10 @@ export function useOrientation() {
         updateOrientation();
         return;
       }
-      if (
-        typeof screen !== "undefined" &&
-        screen.orientation &&
-        typeof screen.orientation.unlock === "function"
-      ) {
-        screen.orientation.unlock();
-      }
+      const lockableOrientation = typeof screen !== "undefined" && screen.orientation
+        ? screen.orientation as LockableScreenOrientation
+        : undefined;
+      lockableOrientation?.unlock?.();
     } catch {
       // ignore unlock error
     }
