@@ -163,7 +163,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
 
   return (
     <>
-      <article ref={viewRef} className="rise press card-surface overflow-hidden rounded-[24px] transition-shadow duration-200">
+      <article ref={viewRef} className="rise press card-surface xora-post-card overflow-hidden rounded-[24px] transition-shadow duration-200">
         <div className="px-3 pt-3">
           {post.kind === "video" ? (
             <div className="relative">

@@ -1731,22 +1731,26 @@ section[aria-label="X-Series live channels"] {
 .xora-feed-filters > * { flex-shrink: 0; scroll-snap-align: start; white-space: nowrap; }
 
 .xora-tv-channel-card,
-.card-surface {
+.xora-channel-tile,
+.xora-post-card {
   border: 1px solid rgba(42, 31, 26, 0.08);
   border-radius: 24px;
   box-shadow: 0 1px 2px rgba(42, 31, 26, 0.06), 0 10px 28px rgba(42, 31, 26, 0.09);
 }
 @media (prefers-reduced-motion: no-preference) {
   .xora-tv-channel-card,
-  .card-surface.press {
+  .xora-channel-tile,
+  .xora-post-card {
     transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
   }
   .xora-tv-channel-card:active,
-  .card-surface.press:active { transform: scale(.97); }
+  .xora-channel-tile:active,
+  .xora-post-card:active { transform: scale(.97); }
 }
 @media (prefers-reduced-motion: reduce) {
   .xora-tv-channel-card,
-  .card-surface.press { transition: none; }
+  .xora-channel-tile,
+  .xora-post-card { transition: none; }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

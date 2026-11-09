@@ -64,7 +64,7 @@ function ChannelTileComponent({ channel, destination, eager = false, layout = "c
   );
 
   const className = [
-    "card-surface press block min-w-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30",
+    "card-surface xora-channel-tile press block min-w-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30",
     layout === "carousel" ? "w-[150px] min-w-[150px] shrink-0 snap-start" : "w-full",
   ].join(" ");
 

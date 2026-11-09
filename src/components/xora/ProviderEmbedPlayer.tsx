@@ -349,7 +349,7 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      {!playerClosed && !isPlaying ? (
+      {!playerClosed && hasStarted && !isPlaying ? (
         <button
           type="button"
           onClick={togglePlayState}
