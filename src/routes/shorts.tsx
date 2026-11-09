@@ -25,7 +25,7 @@ function Shorts() {
         <h1 className="font-display text-2xl font-semibold tracking-tight">Shorts</h1>
         <p className="mt-1 text-sm text-muted-foreground">Vertical, fast, made for the thumb.</p>
       </header>
-      <FeedTabs active="shorts" />
+      <FeedTabs />
       <FeedList feed="shorts" vertical />
     </AppShell>
   );
