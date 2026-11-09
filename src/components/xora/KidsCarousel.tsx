@@ -1,11 +1,11 @@
 import { memo, type CSSProperties } from "react";
-import type { IptvChannel } from "@/integrations/providers/iptv-org";
+import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
 import { Baby, Sparkles } from "lucide-react";
 import { Pill } from "@/components/xora/Pill";
 import { ChannelTile } from "@/components/xora/ChannelTile";
 
 export interface KidsCarouselProps {
-  channels: ReadonlyArray<IptvChannel>;
+  channels: ReadonlyArray<NexusTvChannel>;
   onOpenKids: () => void;
 }
 
