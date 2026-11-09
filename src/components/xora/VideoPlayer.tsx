@@ -680,24 +680,42 @@ export function NativeVideoPlayer({
       )}
     >
       {!playerClosed ? (
-        <button type="button" onClick={() => {
-          videoRef.current?.pause();
-          if (nativeVlcActiveRef.current) {
-            nativeVlcActiveRef.current = false;
-            setNativeVlcActive(false);
-            void closeNativeVlc();
-          }
-          setPlaying(false);
-          setWaiting(false);
-          setPlayerClosed(true);
-          onClose?.();
-        }} aria-label="Close player" title="Close player" className={cn("absolute right-3 top-3 z-40 grid place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90", feedCard ? "size-10" : "size-9")}>
+        <button
+          type="button"
+          onClick={() => {
+            videoRef.current?.pause();
+            if (nativeVlcActiveRef.current) {
+              nativeVlcActiveRef.current = false;
+              setNativeVlcActive(false);
+              void closeNativeVlc();
+            }
+            setPlaying(false);
+            setWaiting(false);
+            setPlayerClosed(true);
+            onClose?.();
+          }}
+          aria-label="Close player"
+          title="Close player"
+          className={cn(
+            "absolute right-3 top-3 z-40 grid place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur-md transition hover:bg-black/90",
+            feedCard ? "size-10" : "size-9",
+          )}
+        >
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
       {playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-[#100e0c] p-4 text-center text-white">
-          <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
+          <div>
+            <p className="font-semibold">Player closed</p>
+            <button
+              type="button"
+              onClick={reopenPlayer}
+              className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15"
+            >
+              Reopen player
+            </button>
+          </div>
         </div>
       ) : null}
       {src && !nativeVlcOnly ? (
