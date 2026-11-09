@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
-import { getActiveDataSaverConfig } from "@/lib/data-saver";
+import { useDataSaver } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import type { FeedType } from "@/integrations/firebase/types";
@@ -215,7 +215,7 @@ export function ProviderEmbedPlayer({
   }, [isClient, isPlaying, user, postId]);
 
   const youtubeVideoId = embedUrl.includes("youtube") ? embedUrl.match(/\/embed\/([\w-]{11})/)?.[1] : null;
-  const dataSaver = getActiveDataSaverConfig();
+  const { config: dataSaver } = useDataSaver();
   let embedSrc = embedUrl;
   const currentOrigin =
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
