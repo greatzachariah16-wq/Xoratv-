@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Sparkles, Users, Compass, Loader2 } from "lucide-react";
@@ -11,6 +11,7 @@ import { ExoClickNativeAd } from "@/components/ads/ExoClickNativeAd";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
 import { DataSaverBadge } from "./DataSaverBadge";
+import { Pill } from "@/components/xora/Pill";
 import { cn } from "@/lib/utils";
 import { rememberShownPostIds } from "@/lib/ranking";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
@@ -110,37 +111,24 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
   return (
     <div className="space-y-4">
       {feed === "home" || feed === "shorts" ? (
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-card/70 p-1 shadow-sm backdrop-blur-md">
-            <button
-              type="button"
-              onClick={() => setMode("for_you")}
-              className={cn(
-                "press group flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                mode === "for_you"
-                  ? "bg-gradient-to-br from-primary/15 via-primary/10 to-accent/20 text-foreground shadow-sm ring-1 ring-primary/20"
-                  : "text-muted-foreground hover:bg-background/75 hover:text-foreground",
-              )}
-            >
-              <Compass className="size-4 shrink-0" aria-hidden="true" />
-              For You
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("following")}
-              className={cn(
-                "press group flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                mode === "following"
-                  ? "bg-gradient-to-br from-primary/15 via-primary/10 to-accent/20 text-foreground shadow-sm ring-1 ring-primary/20"
-                  : "text-muted-foreground hover:bg-background/75 hover:text-foreground",
-              )}
-            >
-              <Users className="size-4 shrink-0" aria-hidden="true" />
-              Subscriptions
-            </button>
-          </div>
-
-          <DataSaverBadge />
+        <div className="hide-scrollbar -mx-4 flex max-w-full items-center gap-2 overflow-x-auto px-4 pb-3">
+          <Pill
+            variant={mode === "for_you" ? "solid" : "outline"}
+            onClick={() => setMode("for_you")}
+            aria-pressed={mode === "for_you"}
+          >
+            <Compass className="size-4 shrink-0" aria-hidden="true" />
+            For You
+          </Pill>
+          <Pill
+            variant={mode === "following" ? "solid" : "outline"}
+            onClick={() => setMode("following")}
+            aria-pressed={mode === "following"}
+          >
+            <Users className="size-4 shrink-0" aria-hidden="true" />
+            Subscriptions
+          </Pill>
+          <DataSaverBadge className="h-11 min-w-max shrink-0 whitespace-nowrap px-4" />
         </div>
       ) : null}
 
@@ -182,7 +170,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
             const isAutoPlay = feed === "shorts" || vertical ? activeShortId === post.id : false;
             const showInHouseAd = (index + 1) % 5 === 0;
             return (
-              <div key={`${post.id}-${index}`}>
+              <div key={post.id} style={{ "--i": Math.min(index, 8) } as CSSProperties}>
                 <div
                   ref={(el) => {
                     if (el) cardRefs.current.set(post.id, el);
