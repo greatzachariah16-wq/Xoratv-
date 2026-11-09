@@ -167,6 +167,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
                 feed={post.feed}
                 autoPlay={autoPlay}
                 loop={autoPlay}
+                feedCard={post.feed === "home"}
               />
             </div>
           ) : (
