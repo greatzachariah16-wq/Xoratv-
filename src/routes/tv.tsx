@@ -714,10 +714,12 @@ function LiveTvPage() {
 export const Route = createFileRoute("/tv")({
   validateSearch: (search: Record<string, unknown>) => ({
     channel: typeof search.channel === "string" ? search.channel : undefined,
-    q: typeof search.q === "string" ? search.q : undefined,
-    filter: search.filter === "all" || search.filter === "favourites" || search.filter === "recent" ? search.filter as TvFilter : undefined,
-    category: typeof search.category === "string" ? search.category : undefined,
-    country: typeof search.country === "string" ? search.country : undefined,
+    ...(typeof search.q === "string" ? { q: search.q } : {}),
+    ...(search.filter === "all" || search.filter === "favourites" || search.filter === "recent"
+      ? { filter: search.filter as TvFilter }
+      : {}),
+    ...(typeof search.category === "string" ? { category: search.category } : {}),
+    ...(typeof search.country === "string" ? { country: search.country } : {}),
   }),
   head: () => ({
     meta: [

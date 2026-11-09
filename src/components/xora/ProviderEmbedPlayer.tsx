@@ -37,6 +37,7 @@ export function ProviderEmbedPlayer({
   const [hasStarted, setHasStarted] = useState<boolean>(Boolean(autoPlay));
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [isClient, setIsClient] = useState<boolean>(false);
+  const [currentOrigin, setCurrentOrigin] = useState("");
   const [playerClosed, setPlayerClosed] = useState(false);
   const { user } = useAuth();
 
