@@ -644,6 +644,11 @@ export function NativeVideoPlayer({
         className,
       )}
     >
+      <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
+        <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
+          4K HD
+        </span>
+      </div>
       {!playerClosed ? (
         <button type="button" onClick={() => {
           videoRef.current?.pause();
