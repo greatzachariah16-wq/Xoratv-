@@ -292,7 +292,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
               </h3>
             </Link>
           ) : null}
-        <header className="mt-4 flex min-w-0 items-center gap-2 border-t border-border/70 pt-4">
+        <header className="mt-6 flex min-w-0 items-center gap-2 border-t border-border/70 pt-4">
           <Link
             to="/profile/$username"
             params={{ username: author?.username ?? "" }}
