@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 import type { IptvChannel } from "@/integrations/providers/iptv-org";
 import { Baby, Sparkles } from "lucide-react";
 import { Pill } from "@/components/xora/Pill";
@@ -38,7 +38,7 @@ function KidsCarouselComponent({ channels, onOpenKids }: KidsCarouselProps) {
 
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1">
           {channels.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as React.CSSProperties}>
+            <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
               <ChannelTile channel={channel} destination="kids" eager={index === 0} />
             </div>
           ))}
