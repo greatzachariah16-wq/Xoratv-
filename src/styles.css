@@ -1720,7 +1720,6 @@ section[aria-label="X-Series live channels"] {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(42, 31, 26, 0.1);
   box-shadow: 0 1px 2px rgba(42, 31, 26, 0.06), 0 10px 28px rgba(42, 31, 26, 0.12);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 @media (prefers-reduced-motion: no-preference) {
   .card-surface.press, .xora-tv-channel-card {
@@ -1730,4 +1729,22 @@ section[aria-label="X-Series live channels"] {
 }
 @media (prefers-reduced-motion: reduce) {
   .card-surface.press, .xora-tv-channel-card { transition: none; }
+}
+
+/* Live TV filters stay on one accessible, horizontally scrollable line. */
+.xora-tv-filter-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-block: 24px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.xora-tv-filter-row::-webkit-scrollbar { display: none; }
+.xora-tv-filter-row > * { flex: 0 0 auto; white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .xora-tv-filter-row { scroll-snap-type: x proximity; }
+  .xora-tv-filter-row > * { scroll-snap-align: start; }
 }
