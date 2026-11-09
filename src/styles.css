@@ -23,6 +23,12 @@ body,
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-editorial: "Fraunces", Georgia, serif;
+  --color-xora-bg: var(--xora-bg);
+  --color-xora-card: var(--xora-card);
+  --color-xora-ink: var(--xora-ink);
+  --color-xora-accent: var(--xora-accent);
+  --color-xora-mint: var(--xora-mint);
+  --color-xora-mint-ink: var(--xora-mint-ink);
   --radius-card: 24px;
   --radius-pill: 999px;
   --radius-ad: 20px;
@@ -88,6 +94,7 @@ body,
   --xora-ink: #2A1F1A;
   --xora-accent: #B5502E;
   --xora-mint: #2FBF8F;
+  --xora-mint-ink: #167653;
   --xora-line: rgba(42, 31, 26, 0.08);
   --background: var(--xora-bg);
   --foreground: var(--xora-ink);
@@ -233,6 +240,12 @@ body,
 .font-editorial {
   font-family: var(--font-editorial);
   letter-spacing: -0.025em;
+}
+
+.xora-floating-nav {
+  background: rgba(250, 246, 240, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .live-dot {
