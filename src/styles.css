@@ -1749,3 +1749,10 @@ section[aria-label="X-Series live channels"] {
   .xora-tv-filter-row { scroll-snap-type: x proximity; }
   .xora-tv-filter-row > * { scroll-snap-align: start; }
 }
+
+.xora-feed-filter-rail {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 28px), transparent 100%);
+  scroll-padding-inline: 1rem;
+}
+.xora-feed-filter-rail > * { flex-shrink: 0; scroll-snap-align: start; white-space: nowrap; }
