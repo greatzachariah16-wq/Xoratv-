@@ -161,3 +161,6 @@ export function useOrientation() {
     unlockOrientation,
   };
 }
+
+/** Live TV uses the shared orientation controller rather than registering a second listener set. */
+export const useLandscapeMode = useOrientation;
