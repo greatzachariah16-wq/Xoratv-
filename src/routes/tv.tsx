@@ -172,6 +172,7 @@ function LiveTvPage() {
     message: STATE_LABELS.IDLE,
   });
   const selectedIdRef = useRef("");
+  const lastChannelTapAtRef = useRef(0);
 
   useEffect(() => {
     setSearch(searchQuery ?? "");
@@ -289,6 +290,10 @@ function LiveTvPage() {
       url: streamUrl,
       title: getChannelDisplayName(selected),
       channelId: selected.id,
+    }).then(() => {
+      // A newer channel may have been selected while the native open call was
+      // still in flight. Close that stale player rather than letting it take over.
+      if (cancelled) void closeNativeVlc().catch(() => {});
     }).catch((error) => {
       if (cancelled) return;
       console.error("[Xora TV] Native channel open failed:", error);
@@ -503,6 +508,9 @@ function LiveTvPage() {
                       key={channel.id}
                       type="button"
                       onClick={() => {
+                        const tappedAt = Date.now();
+                        if (tappedAt - lastChannelTapAtRef.current < 250) return;
+                        lastChannelTapAtRef.current = tappedAt;
                         if (active) {
                           if (nativeState.channelId === channel.id && nativeState.state === "IDLE" && isNativeVlcPlatform()) {
                             const streamUrl = `/api/tv/stream?provider=${channel.provider || "nexus"}&channel=${encodeURIComponent(channel.id)}`;
@@ -565,6 +573,12 @@ function LiveTvPage() {
               </div>
             )}
           </section>
+
+          {selected ? (
+            <p className="sr-only" aria-live="polite" aria-atomic="true">
+              Now playing {getChannelDisplayName(selected)}
+            </p>
+          ) : null}
 
           {selected ? (
             <section className="xora-tv-guide">
