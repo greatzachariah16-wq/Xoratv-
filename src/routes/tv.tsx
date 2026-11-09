@@ -159,10 +159,10 @@ const STATE_LABELS: Record<NativeVlcStatus, string> = {
 };
 
 function LiveTvPage() {
-  const { channel: requestedChannel } = Route.useSearch();
+  const { channel: requestedChannel, q: searchQuery, category: requestedCategory } = Route.useSearch();
   const navigate = useNavigate({ from: "/tv" });
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
+  const [search, setSearch] = useState(searchQuery ?? "");
+  const category = requestedCategory ?? "";
   const [isOnline, setIsOnline] = useState(
     () => typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -172,6 +172,27 @@ function LiveTvPage() {
     message: STATE_LABELS.IDLE,
   });
   const selectedIdRef = useRef("");
+
+  useEffect(() => {
+    setSearch(searchQuery ?? "");
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const nextQuery = search.trim();
+      if (nextQuery !== (searchQuery ?? "")) {
+        void navigate({
+          search: (previous) => ({
+            ...previous,
+            q: nextQuery || undefined,
+            category: nextQuery ? undefined : previous.category,
+          }),
+          replace: true,
+        });
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, searchQuery, navigate]);
 
   useEffect(() => {
     const updateNetwork = () => setIsOnline(navigator.onLine);
@@ -184,8 +205,8 @@ function LiveTvPage() {
   }, []);
 
   const query = useQuery({
-    queryKey: ["iptv-org-live-tv-page", search, category],
-    queryFn: () => loadChannels(search, category),
+    queryKey: ["iptv-org-live-tv-page", searchQuery ?? "", category],
+    queryFn: () => loadChannels(searchQuery ?? "", category),
     staleTime: 60_000,
     refetchInterval: isOnline && nativeState.state !== "OFFLINE" ? 5 * 60_000 : false,
     refetchOnWindowFocus: isOnline && nativeState.state !== "OFFLINE",
@@ -369,7 +390,7 @@ function LiveTvPage() {
                 <Search aria-hidden="true" />
                 <Input
                   value={search}
-                  onChange={(event) => { setSearch(event.target.value); setCategory(""); }}
+                  onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search channels..."
                   aria-label="Search live channels"
                 />
@@ -385,7 +406,7 @@ function LiveTvPage() {
                 size="sm"
                 variant={category === "sports" ? "default" : "outline"}
                 className="rounded-full"
-                onClick={() => { setSearch(""); setCategory("sports"); }}
+                onClick={() => { setSearch(""); void navigate({ search: (previous) => ({ ...previous, q: undefined, category: "sports" }), replace: true }); }}
               >
                 Sports channels
               </Button>
@@ -394,7 +415,7 @@ function LiveTvPage() {
                 size="sm"
                 variant={!category && !search ? "default" : "outline"}
                 className="rounded-full"
-                onClick={() => { setCategory(""); setSearch(""); }}
+                onClick={() => { setSearch(""); void navigate({ search: (previous) => ({ ...previous, q: undefined, category: undefined }), replace: true }); }}
               >
                 All channels
               </Button>
@@ -480,7 +501,7 @@ function LiveTvPage() {
                           }
                           return;
                         }
-                        void navigate({ search: { channel: channel.id }, replace: true });
+                        void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), replace: true });
                       }}
                       aria-pressed={active}
                       className={`xora-tv-channel-card ${active ? "is-selected" : ""}`}
@@ -568,6 +589,8 @@ function LiveTvPage() {
 export const Route = createFileRoute("/tv")({
   validateSearch: (search: Record<string, unknown>) => ({
     channel: typeof search.channel === "string" ? search.channel : undefined,
+    q: typeof search.q === "string" ? search.q : undefined,
+    category: typeof search.category === "string" ? search.category : undefined,
   }),
   head: () => ({
     meta: [
