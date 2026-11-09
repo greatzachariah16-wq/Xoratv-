@@ -238,6 +238,7 @@ function LiveTvPage() {
   const [search, setSearch] = useState(q || "");
   const playerPrefs = usePlayerPrefs();
   const nativePlayerOpenRef = useRef(false);
+  const nativePlayerTaskRef = useRef<Promise<void> | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [nativeState, setNativeState] = useState<NativeVlcStateChangedEvent>({
     state: "IDLE",
@@ -335,12 +336,18 @@ function LiveTvPage() {
   }, [search, q, navigate]);
 
   useEffect(() => {
+    let cancelled = false;
     if (!selected) {
-      if (nativePlayerOpenRef.current) {
-        nativePlayerOpenRef.current = false;
-        void closeNativeVlc().catch(() => {});
-      }
-      return;
+      const closeWhenReady = () => {
+        if (nativePlayerOpenRef.current) {
+          nativePlayerOpenRef.current = false;
+          void closeNativeVlc().catch(() => {});
+        }
+      };
+      const pendingTask = nativePlayerTaskRef.current;
+      if (pendingTask) void pendingTask.catch(() => {}).then(closeWhenReady);
+      else closeWhenReady();
+      return () => { cancelled = true; };
     }
     if (!isNativeVlcPlatform()) {
       setNativeState({
@@ -348,10 +355,9 @@ function LiveTvPage() {
         channelId: selected.id,
         message: "Watch live channels in the XoraTV Android app.",
       });
-      return;
+      return () => { cancelled = true; };
     }
 
-    let cancelled = false;
     const streamUrl = `/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`;
     setNativeState({
       state: isOnline ? "CONNECTING" : "OFFLINE",
@@ -359,14 +365,20 @@ function LiveTvPage() {
       message: isOnline ? STATE_LABELS.CONNECTING : STATE_LABELS.OFFLINE,
     });
 
-    const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
-    void openOrSwitch({
-      url: streamUrl,
-      title: getChannelDisplayName(selected),
-      channelId: selected.id,
-    }).then(() => {
-      if (!cancelled) nativePlayerOpenRef.current = true;
-    }).catch((error) => {
+    const previousTask = nativePlayerTaskRef.current;
+    const task = (async () => {
+      if (previousTask) await previousTask.catch(() => {});
+      if (cancelled) return;
+      const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
+      await openOrSwitch({
+        url: streamUrl,
+        title: getChannelDisplayName(selected),
+        channelId: selected.id,
+      });
+      nativePlayerOpenRef.current = true;
+    })();
+    nativePlayerTaskRef.current = task;
+    void task.catch((error: unknown) => {
       if (cancelled) return;
       console.error("[Xora TV] Native channel open failed:", error);
       setNativeState({
@@ -379,13 +391,18 @@ function LiveTvPage() {
     return () => {
       cancelled = true;
     };
-  }, [selected?.id, selected?.provider, selected?.name]);
+  }, [selected?.id, selected?.provider, selected?.name, isOnline]);
 
   useEffect(() => () => {
-    if (nativePlayerOpenRef.current) {
-      nativePlayerOpenRef.current = false;
-      void closeNativeVlc().catch(() => {});
-    }
+    const pendingTask = nativePlayerTaskRef.current;
+    const closePlayer = () => {
+      if (nativePlayerOpenRef.current) {
+        nativePlayerOpenRef.current = false;
+        void closeNativeVlc().catch(() => {});
+      }
+    };
+    if (pendingTask) void pendingTask.catch(() => {}).then(closePlayer);
+    else closePlayer();
   }, []);
 
   useEffect(() => {
