@@ -326,7 +326,10 @@ export function ProviderEmbedPlayer({
           ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-black"
           : vertical
             ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
-            : cn("aspect-video w-full h-full", feedCard ? "rounded-[24px]" : "rounded-2xl md:rounded-3xl"),
+            : cn(
+                "aspect-video w-full h-full",
+                feedCard ? "rounded-[24px]" : "rounded-2xl md:rounded-3xl",
+              ),
         className,
       )}
     >
@@ -362,10 +365,36 @@ export function ProviderEmbedPlayer({
       )}
 
       {!playerClosed ? (
-        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className={cn("absolute right-3 top-3 z-40 grid place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black", feedCard ? "size-10" : "size-9")}><X className="size-4" aria-hidden="true" /></button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsPlaying(false);
+            setPlayerClosed(true);
+            onClose?.();
+          }}
+          aria-label="Close player"
+          title="Close player"
+          className={cn(
+            "absolute right-3 top-3 z-40 grid place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black",
+            feedCard ? "size-10" : "size-9",
+          )}
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
       ) : null}
       {playerClosed ? (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
+        <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white">
+          <div>
+            <p className="font-semibold">Player closed</p>
+            <button
+              type="button"
+              onClick={() => setPlayerClosed(false)}
+              className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15"
+            >
+              Reopen player
+            </button>
+          </div>
+        </div>
       ) : isClient ? (
         <iframe
           ref={iframeRef}
@@ -386,8 +415,6 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-
-
       {feedCard && !isPlaying && !playerClosed ? (
         <button
           type="button"
@@ -402,48 +429,48 @@ export function ProviderEmbedPlayer({
       ) : null}
 
       {!feedCard ? (
-      <div
-        className={cn(
-          "absolute bottom-3 left-3 z-30 flex items-center gap-2 transition-opacity duration-300",
-          controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        )}
-      >
-        <button
-          type="button"
-          onClick={togglePlayState}
-          aria-label={isPlaying ? "Pause Cinema" : "Play Cinema"}
-          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
-        >
-          {isPlaying ? (
-            <>
-              <Pause className="size-3.5 fill-current" />
-              <span>Pause</span>
-            </>
-          ) : (
-            <>
-              <Play className="size-3.5 fill-current text-primary" />
-              <span>Play</span>
-            </>
+        <div
+          className={cn(
+            "absolute bottom-3 left-3 z-30 flex items-center gap-2 transition-opacity duration-300",
+            controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
           )}
-        </button>
+        >
+          <button
+            type="button"
+            onClick={togglePlayState}
+            aria-label={isPlaying ? "Pause Cinema" : "Play Cinema"}
+            className="flex items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+          >
+            {isPlaying ? (
+              <>
+                <Pause className="size-3.5 fill-current" />
+                <span>Pause</span>
+              </>
+            ) : (
+              <>
+                <Play className="size-3.5 fill-current text-primary" />
+                <span>Play</span>
+              </>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/85 px-3 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
-        >
-          {isFullscreen ? (
-            <Minimize2 className="size-3.5 text-primary" />
-          ) : (
-            <Maximize2 className="size-3.5" />
-          )}
-          <span className="hidden sm:inline">
-            {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          </span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/85 px-3 py-1.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+          >
+            {isFullscreen ? (
+              <Minimize2 className="size-3.5 text-primary" />
+            ) : (
+              <Maximize2 className="size-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            </span>
+          </button>
+        </div>
       ) : null}
     </div>
   );
