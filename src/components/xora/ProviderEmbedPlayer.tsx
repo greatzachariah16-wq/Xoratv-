@@ -5,7 +5,7 @@ import { trackEvent } from "@/lib/events";
 import { getActiveDataSaverConfig } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
-import type { FeedType } from "@/integrations/types";
+import type { FeedType } from "@/integrations/firebase/types";
 
 export interface ProviderEmbedPlayerProps {
   embedUrl: string;
