@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -9,6 +9,8 @@ import {
   Search,
   WifiOff,
   Play,
+  Heart,
+  Share2,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Input } from "@/components/ui/input";
@@ -26,9 +28,12 @@ import {
   closeNativeVlc,
   isNativeVlcPlatform,
   openNativeVlc,
+  switchNativeVlcChannel,
+  retryNativeVlc,
   type NativeVlcStateChangedEvent,
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
+import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
 import "@/styles/tv-live.css";
 
 type Channel = {
@@ -157,6 +162,73 @@ const STATE_LABELS: Record<NativeVlcStatus, string> = {
   ERR_TIMEOUT: "Network too slow",
   ERR_UNKNOWN: "Unable to play this channel",
 };
+
+
+type TvFilter = "all" | "favourites" | "recent";
+
+type ChannelRowProps = {
+  channel: Channel;
+  selected: boolean;
+  favorite: boolean;
+  onSelect: (channel: Channel) => void;
+  onToggleFavorite: (channelId: string) => void;
+};
+
+const ChannelRow = memo(function ChannelRow({ channel, selected, favorite, onSelect, onToggleFavorite }: ChannelRowProps) {
+  const quality = getChannelQuality(channel);
+  return (
+    <div className={"xora-tv-channel-row " + (selected ? "is-selected" : "")} data-channel-id={channel.id}>
+      <button type="button" className="xora-tv-channel-select" onClick={() => onSelect(channel)} aria-pressed={selected} aria-label={"Play " + getChannelDisplayName(channel)}>
+        <span className="xora-tv-row-logo">
+          {channel.logo ? <img src={channel.logo} alt="" width={48} height={48} loading="lazy" decoding="async" /> : <span>{getChannelDisplayName(channel).slice(0, 2).toUpperCase()}</span>}
+        </span>
+        <span className="xora-tv-row-copy">
+          <strong>{getChannelDisplayName(channel)}</strong>
+          <small>{getCountryFlag(channel.country)} {getCountryName(channel.country)}</small>
+        </span>
+        <span className="xora-tv-live-pill"><i /> LIVE</span>
+        {quality ? <span className="xora-tv-quality-pill">{quality}</span> : null}
+      </button>
+      <button type="button" className="xora-tv-favorite" onClick={() => onToggleFavorite(channel.id)} aria-label={favorite ? "Remove from favourites" : "Add to favourites"} aria-pressed={favorite}>
+        <Heart className={favorite ? "fill-current text-primary" : ""} aria-hidden="true" />
+      </button>
+    </div>
+  );
+});
+
+function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavorite }: {
+  channels: Channel[];
+  selectedId?: string;
+  favorites: string[];
+  onSelect: (channel: Channel) => void;
+  onToggleFavorite: (channelId: string) => void;
+}) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const virtualized = channels.length > 60;
+  const rowHeight = 64;
+  const start = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 6) : 0;
+  const end = virtualized ? Math.min(channels.length, Math.ceil((scrollTop + 600) / rowHeight) + 6) : channels.length;
+
+  useEffect(() => {
+    if (!selectedId || !virtualized) return;
+    const index = channels.findIndex((channel) => channel.id === selectedId);
+    if (index < 0) return;
+    const nextTop = Math.max(0, index * rowHeight - 160);
+    if (viewportRef.current) viewportRef.current.scrollTop = nextTop;
+    setScrollTop(nextTop);
+  }, [channels, selectedId, virtualized]);
+
+  return (
+    <div ref={viewportRef} className="xora-tv-channel-list-viewport" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)} aria-label="Live TV channels">
+      {virtualized ? <div aria-hidden="true" style={{ height: start * rowHeight }} /> : null}
+      {channels.slice(start, end).map((channel) => (
+        <ChannelRow key={channel.id} channel={channel} selected={selectedId === channel.id} favorite={favorites.includes(channel.id)} onSelect={onSelect} onToggleFavorite={onToggleFavorite} />
+      ))}
+      {virtualized ? <div aria-hidden="true" style={{ height: (channels.length - end) * rowHeight }} /> : null}
+    </div>
+  );
+}
 
 function LiveTvPage() {
   const { channel: requestedChannel } = Route.useSearch();
