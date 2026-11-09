@@ -51,7 +51,7 @@ export function LiveTvShelf() {
           {["live-placeholder-1", "live-placeholder-2", "live-placeholder-3", "live-placeholder-4"].map((key) => (
             <div key={key} className="card-surface min-w-0 overflow-hidden p-2">
               <div className="shimmer aspect-square rounded-[18px]" />
-              <div className="shimmer mt-3 h-3 w-4/5 rounded-full" />
+              <div className="shimmer mt-4 h-3 w-4/5 rounded-full" />
               <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
             </div>
           ))}
