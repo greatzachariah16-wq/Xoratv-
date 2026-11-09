@@ -37,7 +37,7 @@ export function LiveTvShelf() {
               Live TV
             </h2>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 truncate whitespace-nowrap text-xs text-muted-foreground">
             Browse live channels and discover what is on now.
           </p>
         </div>

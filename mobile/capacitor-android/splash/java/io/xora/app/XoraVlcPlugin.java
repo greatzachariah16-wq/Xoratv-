@@ -288,7 +288,13 @@ public class XoraVlcPlugin extends Plugin {
         if (mediaPlayer != null && mediaPlayer.isPlaying()
             && !pipRequested && !isActivityInPipMode()) {
             playingBeforeAppPause = true;
-            mediaPlayer.pause();
+            playbackAttemptGeneration++;
+            clearStartupTimeout();
+            clearBufferingWatchdog();
+            clearRetry();
+            // Stop the media connection while the app is backgrounded. The
+            // same MediaPlayer and attached surface are reused on resume.
+            mediaPlayer.stop();
         }
     }
 
@@ -305,7 +311,7 @@ public class XoraVlcPlugin extends Plugin {
         if (mediaPlayer != null && playingBeforeAppPause && !userPaused
             && isNetworkUsable() && !isActivityInPipMode()) {
             requestAudioFocus();
-            mediaPlayer.play();
+            startCurrentStream(true);
         }
         playingBeforeAppPause = false;
         updateControlLabels();
