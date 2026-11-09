@@ -168,16 +168,6 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
                 autoPlay={autoPlay}
                 loop={autoPlay}
               />
-              {post.duration_seconds ? (
-                <span className="pointer-events-none absolute left-3 top-3 rounded-md bg-ink/70 px-2 py-1 font-mono text-[10px] text-background">
-                  {duration(post.duration_seconds)}
-                </span>
-              ) : null}
-              {post.source && post.source !== "render" && post.source !== "creator" ? (
-                <span className="pointer-events-none absolute right-3 top-3 rounded-md bg-ink/70 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-background">
-                  {post.source}
-                </span>
-              ) : null}
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl bg-surface-2">
