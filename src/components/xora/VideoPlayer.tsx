@@ -824,10 +824,10 @@ export function NativeVideoPlayer({
 
           {/* Data Saver Mode Pill */}
           <div
-            className="hidden sm:flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400 backdrop-blur-md"
+            className="hidden sm:flex items-center gap-1 rounded-full border border-xora-mint/30 bg-xora-mint/10 px-2.5 py-1.5 text-[10px] font-medium text-xora-mint-ink backdrop-blur-md"
             title={`Optimized for mobile: Max ${dataSaver.maxBitrateKbps} kbps (≤ 300 MB/hr)`}
           >
-            <Gauge className="size-3 text-emerald-400" />
+            <Gauge className="size-3 text-xora-mint-ink" />
             <span>{dataSaver.maxBitrateKbps <= 667 ? "300MB/h Max" : "HD"}</span>
           </div>
 
@@ -841,7 +841,7 @@ export function NativeVideoPlayer({
               setMuted(next);
             }}
             aria-label={muted ? "Unmute" : "Mute"}
-            className="press grid size-9 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
+            className="press grid size-11 shrink-0 place-items-center rounded-full bg-background/20 text-background ring-1 ring-background/25"
           >
             {muted ? (
               <VolumeX className="size-4" aria-hidden="true" />
