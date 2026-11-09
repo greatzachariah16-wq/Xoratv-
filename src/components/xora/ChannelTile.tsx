@@ -56,7 +56,7 @@ function ChannelTileComponent({ channel, destination, eager = false, layout = "c
           </p>
           <LiveBadge />
         </div>
-        <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">
+        <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">
           {qualityLabel}
         </p>
       </div>
