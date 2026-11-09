@@ -206,7 +206,7 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
   const [scrollTop, setScrollTop] = useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const virtualized = channels.length > 60;
-  const rowHeight = 64;
+  const rowHeight = 72;
   const start = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 6) : 0;
   const end = virtualized ? Math.min(channels.length, Math.ceil((scrollTop + 600) / rowHeight) + 6) : channels.length;
 
@@ -237,16 +237,18 @@ function LiveTvPage() {
   const [search, setSearch] = useState(q || "");
   const playerPrefs = usePlayerPrefs();
   const nativePlayerOpenRef = useRef(false);
-  const [isOnline, setIsOnline] = useState(
-    () => typeof navigator === "undefined" ? true : navigator.onLine,
-  );
+  const [isOnline, setIsOnline] = useState(true);
   const [nativeState, setNativeState] = useState<NativeVlcStateChangedEvent>({
     state: "IDLE",
     channelId: "",
     message: STATE_LABELS.IDLE,
   });
   const selectedIdRef = useRef("");
+  const lastChannelTapAtRef = useRef(0);
   const selectChannel = useCallback((channel: Channel) => {
+    const now = Date.now();
+    if (now - lastChannelTapAtRef.current < 250) return;
+    lastChannelTapAtRef.current = now;
     playerPrefs.rememberChannel(channel.id);
     void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), replace: true, resetScroll: false });
   }, [navigate, playerPrefs.rememberChannel]);
@@ -254,6 +256,7 @@ function LiveTvPage() {
 
   useEffect(() => {
     const updateNetwork = () => setIsOnline(navigator.onLine);
+    updateNetwork();
     window.addEventListener("online", updateNetwork);
     window.addEventListener("offline", updateNetwork);
     return () => {

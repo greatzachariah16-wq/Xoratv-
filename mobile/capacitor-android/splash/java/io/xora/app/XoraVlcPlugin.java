@@ -879,11 +879,20 @@ public class XoraVlcPlugin extends Plugin {
 
             case PINNED:
             default:
-                videoHeight = Math.round(width * 9f / 16f);
-                videoHeight = Math.min(videoHeight, Math.max(1, height));
-                overlayWidth = width;
-                overlayHeight = videoHeight;
-                setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
+                if (width > height && height <= dp(500)) {
+                    // On a phone in landscape, reserve a fixed right-side channel panel.
+                    panelWidth = Math.min(dp(320), Math.round(width * 0.48f));
+                    overlayWidth = Math.max(1, width - panelWidth);
+                    videoHeight = height;
+                    overlayHeight = height;
+                    setWebViewRegion(overlayWidth, 0, panelWidth, height);
+                } else {
+                    videoHeight = Math.round(width * 9f / 16f);
+                    videoHeight = Math.min(videoHeight, Math.max(1, height));
+                    overlayWidth = width;
+                    overlayHeight = videoHeight;
+                    setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
+                }
                 break;
         }
 
