@@ -10,6 +10,7 @@ import {
   WifiOff,
   Heart,
   Share2,
+  RotateCw,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Input } from "@/components/ui/input";
@@ -232,7 +233,7 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
 
 function LiveTvPage() {
   const { channel: requestedChannel, q, filter = "all", category, country } = Route.useSearch();
-  const { isLandscape } = useLandscapeMode();
+  const { isLandscape, lockLandscape, unlockOrientation } = useLandscapeMode();
   const navigate = useNavigate({ from: "/tv" });
   const [search, setSearch] = useState(q || "");
   const playerPrefs = usePlayerPrefs();
@@ -250,7 +251,7 @@ function LiveTvPage() {
     if (now - lastChannelTapAtRef.current < 250) return;
     lastChannelTapAtRef.current = now;
     playerPrefs.rememberChannel(channel.id);
-    void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), replace: true, resetScroll: false });
+    void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), resetScroll: false });
   }, [navigate, playerPrefs.rememberChannel]);
   const toggleFavorite = useCallback((channelId: string) => playerPrefs.toggleFavorite(channelId), [playerPrefs.toggleFavorite]);
 
@@ -334,7 +335,13 @@ function LiveTvPage() {
   }, [search, q, navigate]);
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected) {
+      if (nativePlayerOpenRef.current) {
+        nativePlayerOpenRef.current = false;
+        void closeNativeVlc().catch(() => {});
+      }
+      return;
+    }
     if (!isNativeVlcPlatform()) {
       setNativeState({
         state: "IDLE",
@@ -553,6 +560,10 @@ function LiveTvPage() {
                   aria-label="Search live channels"
                 />
               </div>
+              <Button type="button" variant="outline" className="xora-tv-refresh" onClick={() => void (isLandscape ? unlockOrientation() : lockLandscape())} aria-label={isLandscape ? "Return to portrait" : "Rotate to landscape"}>
+                <RotateCw className="size-4" aria-hidden="true" />
+                <span>{isLandscape ? "Portrait" : "Landscape"}</span>
+              </Button>
               <Button variant="outline" className="xora-tv-refresh" onClick={() => void query.refetch()} disabled={!isOnline}>
                 <RefreshCw className="size-4" aria-hidden="true" />
                 <span>Refresh</span>
@@ -591,6 +602,7 @@ function LiveTvPage() {
                   <div className="xora-tv-state-row" aria-live="polite">
                     <span className={`xora-tv-state-dot state-${state.toLowerCase()}`} />
                     <span>{state === "PLAYING" ? "Playing live" : stateMessage}</span>
+                    <span className="sr-only">{state === "PLAYING" ? "Now playing " + getChannelDisplayName(selected) : ""}</span>
                   </div>
                 </div>
                 {selected.logo ? <img className="xora-tv-now-logo" src={selected.logo} alt="" /> : null}
