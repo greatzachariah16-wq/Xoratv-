@@ -400,6 +400,7 @@ public class XoraVlcPlugin extends Plugin {
                 currentChannelTitle = requestedTitle == null || requestedTitle.trim().isEmpty()
                     ? "Live TV"
                     : requestedTitle.trim();
+                if (channelTitleText != null) channelTitleText.setText(currentChannelTitle);
                 currentStreamIndex = 0;
                 autoRetryCount = 0;
                 userPaused = false;
