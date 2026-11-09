@@ -14,7 +14,7 @@ async function loadKidsChannels(): Promise<NexusTvChannel[]> {
 export function KidsTvShelf() {
   const navigate = useNavigate();
   const openKids = useCallback(() => {
-    void navigate({ to: "/kids" });
+    void navigate({ to: "/kids", search: { channel: undefined } });
   }, [navigate]);
 
   const { data = [], isLoading } = useQuery({
