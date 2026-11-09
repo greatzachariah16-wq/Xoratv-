@@ -1,15 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import type { CSSProperties } from "react";
 import { Radio } from "lucide-react";
-import type { IptvChannel } from "@/integrations/providers/iptv-org";
+import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
 import { ChannelTile } from "@/components/xora/ChannelTile";
 import { Pill } from "@/components/xora/Pill";
 import { Link } from "@tanstack/react-router";
 
-async function loadChannels(): Promise<IptvChannel[]> {
+async function loadChannels(): Promise<NexusTvChannel[]> {
   const res = await fetch("/api/tv/channels?limit=12");
   if (!res.ok) return [];
-  const data = (await res.json()) as { ok?: boolean; channels?: IptvChannel[] };
+  const data = (await res.json()) as { ok?: boolean; channels?: NexusTvChannel[] };
   return Array.isArray(data.channels) ? data.channels : [];
 }
 
