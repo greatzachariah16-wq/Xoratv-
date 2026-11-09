@@ -192,8 +192,12 @@ function LiveTvPage() {
     retry: (failureCount) => isOnline && nativeState.state !== "OFFLINE" && failureCount < 3,
   });
 
+  // Do not silently start the first channel when a visitor opens Live TV.
+  // Playback begins only when a channel has been explicitly selected in the URL.
   const selected = useMemo(
-    () => query.data?.find((item) => item.id === requestedChannel) || query.data?.[0] || null,
+    () => requestedChannel
+      ? query.data?.find((item) => item.id === requestedChannel) || null
+      : null,
     [query.data, requestedChannel],
   );
   selectedIdRef.current = selected?.id
