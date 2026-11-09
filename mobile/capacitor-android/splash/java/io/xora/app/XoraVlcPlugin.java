@@ -138,6 +138,7 @@ public class XoraVlcPlugin extends Plugin {
     private long bufferingStartedAt;
     private Runnable streamStartupTimeout;
     private Runnable bufferingWatchdog;
+    private Runnable bufferingIndicatorDelay;
     private Runnable retryRunnable;
     private Runnable controlsAutoHide;
     private PlayerMode mode = PlayerMode.PINNED;
@@ -1133,6 +1134,7 @@ public class XoraVlcPlugin extends Plugin {
         }
 
         clearStartupTimeout();
+        clearBufferingWatchdog();
         clearRetry();
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
@@ -1213,6 +1215,10 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void clearBufferingWatchdog() {
+        if (bufferingIndicatorDelay != null) {
+            mainHandler.removeCallbacks(bufferingIndicatorDelay);
+            bufferingIndicatorDelay = null;
+        }
         if (bufferingWatchdog != null) {
             mainHandler.removeCallbacks(bufferingWatchdog);
             bufferingWatchdog = null;
@@ -1288,7 +1294,7 @@ public class XoraVlcPlugin extends Plugin {
 
             case MediaPlayer.Event.Buffering:
                 if (event.getBuffering() < 100f) {
-                    setState(PlaybackState.BUFFERING);
+                    scheduleBufferingIndicator(eventPlayer, eventPlayerGeneration, eventAttemptGeneration);
                     startBufferingWatchdog(eventPlayer, eventPlayerGeneration, eventAttemptGeneration);
                 }
                 break;
@@ -1342,6 +1348,22 @@ public class XoraVlcPlugin extends Plugin {
             default:
                 break;
         }
+    }
+
+    private void scheduleBufferingIndicator(
+        MediaPlayer eventPlayer,
+        long eventPlayerGeneration,
+        long eventAttemptGeneration
+    ) {
+        if (bufferingIndicatorDelay != null) return;
+        bufferingIndicatorDelay = () -> {
+            bufferingIndicatorDelay = null;
+            if (isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                && playbackState != PlaybackState.PLAYING && !userPaused) {
+                setState(PlaybackState.BUFFERING);
+            }
+        };
+        mainHandler.postDelayed(bufferingIndicatorDelay, 400L);
     }
 
     private void startBufferingWatchdog(
