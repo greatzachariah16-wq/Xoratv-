@@ -376,48 +376,68 @@ export function AppShell({
       </main>
 
       {!immersive ? (
-      <nav aria-label="Primary mobile navigation" className="xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-[28px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-card lg:hidden">
-        {[
-          { to: "/", label: "Home", icon: House },
-          { to: "/shorts", label: "Shorts", icon: Clapperboard },
-          { to: "/xtv-series", label: "Series", icon: MonitorPlay },
-          { to: "/tv", label: "Live TV", icon: RadioTower },
-        ].map(({ to, label, icon: Icon }) => {
-          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-          return (
-            <Link
-              key={to}
-              to={to}
-              onClick={() => setMobileMenuOpen(false)}
-              aria-current={active ? "page" : undefined}
+        <nav
+          aria-label="Primary mobile navigation"
+          className="xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-[28px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-card lg:hidden"
+        >
+          {[
+            { to: "/", label: "Home", icon: House },
+            { to: "/shorts", label: "Shorts", icon: Clapperboard },
+            { to: "/xtv-series", label: "Series", icon: MonitorPlay },
+            { to: "/tv", label: "Live TV", icon: RadioTower },
+          ].map(({ to, label, icon: Icon }) => {
+            const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setMobileMenuOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-semibold leading-none transition-colors",
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-8 place-items-center rounded-xl transition-colors",
+                    active ? "bg-primary/10 text-primary" : "bg-transparent",
+                  )}
+                >
+                  <Icon
+                    className={cn("size-[20px] stroke-[2]", active && "fill-current stroke-[2.35]")}
+                    aria-hidden="true"
+                  />
+                </span>
+                <span className="max-w-full truncate">{label}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            aria-label="More navigation"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className={cn(
+              "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
+              mobileMenuOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span
               className={cn(
-                "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-semibold leading-none transition-colors",
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                "grid size-8 place-items-center rounded-xl transition-colors",
+                mobileMenuOpen && "bg-primary/12",
               )}
             >
-              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-primary/10 text-primary" : "bg-transparent")}>
-                <Icon className={cn("size-[20px] stroke-[2]", active && "fill-current stroke-[2.35]")} aria-hidden="true" />
-              </span>
-              <span className="max-w-full truncate">{label}</span>
-            </Link>
-          );
-        })}
-        <button
-          type="button"
-          aria-label="More navigation"
-          aria-expanded={mobileMenuOpen}
-          onClick={() => setMobileMenuOpen((open) => !open)}
-          className={cn(
-            "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
-            mobileMenuOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", mobileMenuOpen && "bg-primary/12")}>
-            {mobileMenuOpen ? <X className="size-[20px]" aria-hidden="true" /> : <Menu className="size-[20px]" aria-hidden="true" />}
-          </span>
-          <span>More</span>
-        </button>
-      </nav>
+              {mobileMenuOpen ? (
+                <X className="size-[20px]" aria-hidden="true" />
+              ) : (
+                <Menu className="size-[20px]" aria-hidden="true" />
+              )}
+            </span>
+            <span>More</span>
+          </button>
+        </nav>
       ) : null}
 
       {!immersive && rail ? (
@@ -425,7 +445,6 @@ export function AppShell({
           {rail}
         </aside>
       ) : null}
-
 
     </div>
   );
