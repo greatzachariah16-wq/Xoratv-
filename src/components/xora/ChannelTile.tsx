@@ -13,7 +13,7 @@ export function LiveBadge() {
   return (
     <span
       aria-label="Live now"
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[rgba(47,191,143,0.12)] px-2 py-1 text-[9px] font-bold tracking-[0.08em] text-[#167653]"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-xora-mint/10 px-2 py-1 text-[9px] font-bold tracking-[0.08em] text-xora-mint-ink"
     >
       <span className="live-dot" aria-hidden="true" />
       LIVE
@@ -25,7 +25,7 @@ function ChannelTileComponent({ channel, destination, eager = false }: ChannelTi
   const [imageFailed, setImageFailed] = useState(false);
   const tile = (
     <>
-      <div className="grid aspect-square w-full place-items-center rounded-[18px] bg-[rgba(181,80,46,0.06)] p-4">
+      <div className="grid aspect-square w-full place-items-center rounded-[18px] bg-primary/[0.06] p-4">
         {channel.logo && !imageFailed ? (
           <img
             src={channel.logo}
