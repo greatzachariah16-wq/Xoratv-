@@ -1600,3 +1600,90 @@ section[aria-label="X-Series live channels"] {
     transform: none !important;
   }
 }
+
+
+/* XoraTV Home polish tokens and shared presentation primitives. */
+@theme inline {
+  --font-editorial: "Fraunces", Georgia, serif;
+  --color-xora-mint: var(--xora-mint);
+  --color-xora-mint-ink: var(--xora-mint-ink);
+}
+
+:root {
+  --xora-bg: #FAF6F0;
+  --xora-card: #FFFDFA;
+  --xora-ink: #2A1F1A;
+  --xora-accent: #B5502E;
+  --xora-mint: #2FBF8F;
+  --xora-mint-ink: #176B50;
+  --xora-line: rgba(42, 31, 26, 0.08);
+  --xora-shadow: 0 1px 2px rgba(42, 31, 26, 0.05), 0 8px 24px rgba(42, 31, 26, 0.07);
+  --background: var(--xora-bg);
+  --foreground: var(--xora-ink);
+  --surface: var(--xora-card);
+  --card: var(--xora-card);
+  --card-foreground: var(--xora-ink);
+  --primary: var(--xora-accent);
+  --primary-foreground: var(--xora-card);
+  --ink: var(--xora-ink);
+  --sage: var(--xora-mint);
+  --border: var(--xora-line);
+  --input: var(--xora-line);
+  --ring: var(--xora-accent);
+}
+
+.font-editorial {
+  font-family: "Fraunces", Georgia, serif;
+}
+
+.card-surface {
+  border: 1px solid var(--xora-line);
+  border-radius: 24px;
+  background: var(--xora-card);
+  box-shadow: var(--xora-shadow);
+}
+
+.xora-floating-nav {
+  background: rgba(250, 246, 240, 0.85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 999px;
+  background: var(--xora-mint);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: xora-home-rise 320ms ease-out both;
+    animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+  }
+
+  .live-dot {
+    animation: xora-live-pulse 1.6s ease-in-out infinite;
+  }
+
+  .press:active {
+    transform: scale(0.97);
+    transition: transform 200ms ease-out;
+  }
+}
+
+@keyframes xora-home-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes xora-live-pulse {
+  0%, 100% { opacity: 0.65; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .live-dot { animation: none !important; }
+}
