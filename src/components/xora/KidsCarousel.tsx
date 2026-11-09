@@ -38,7 +38,11 @@ function KidsCarouselComponent({ channels, onOpenKids }: KidsCarouselProps) {
 
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1">
           {channels.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+            <div
+              key={channel.id}
+              className="rise snap-start"
+              style={{ "--i": Math.min(index, 8) } as CSSProperties}
+            >
               <ChannelTile channel={channel} destination="kids" eager={index === 0} />
             </div>
           ))}
