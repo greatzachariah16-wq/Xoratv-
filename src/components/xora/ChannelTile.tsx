@@ -82,7 +82,7 @@ function ChannelTileComponent({ channel, destination, eager = false }: ChannelTi
     <Link
       to="/tv"
       search={{ channel: channel.id }}
-      aria-label={channel.name + (channel.quality ? ", " + channel.quality : "") + ", live"}
+      aria-label={displayName + ", " + qualityLabel + ", live"}
       className={className}
     >
       {tile}
