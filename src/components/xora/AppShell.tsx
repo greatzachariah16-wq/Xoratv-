@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -58,6 +58,36 @@ const NAV = [
 ] as const;
 
 type NavIconComponent = (typeof NAV)[number]["icon"];
+
+type NavDestination = (typeof NAV)[number]["to"];
+type NavDestinationLinkProps = Pick<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "className" | "onClick" | "aria-current"
+> & {
+  to: NavDestination;
+  children: ReactNode;
+};
+
+/** Opening Live TV from primary navigation clears stale playback selection. */
+function NavDestinationLink({ to, children, ...linkProps }: NavDestinationLinkProps) {
+  if (to === "/tv") {
+    return (
+      <Link
+        to="/tv"
+        search={{ channel: undefined, q: undefined, filter: undefined, category: undefined, country: undefined }}
+        {...linkProps}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <Link to={to} {...linkProps}>
+      {children}
+    </Link>
+  );
+}
 
 function NavIconTile({
   icon: Icon,
@@ -147,9 +177,9 @@ export function AppShell({
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
             return (
-              <Link
+              <NavDestinationLink
                 key={to}
-                to={to}
+                to={to as NavDestination}
                 className={cn(
                   "press group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold tracking-[0.01em] transition-all",
                   active
@@ -165,7 +195,7 @@ export function AppShell({
                 {to === "/notifications" && unread > 0 ? (
                   <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{unread}</span>
                 ) : null}
-              </Link>
+              </NavDestinationLink>
             );
           })}
           {currentProfile ? (
@@ -293,9 +323,9 @@ export function AppShell({
               {NAV.map(({ to, label, icon: Icon }) => {
                 const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
                 return (
-                  <Link
+                  <NavDestinationLink
                     key={to}
-                    to={to}
+                    to={to as NavDestination}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "press flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold shadow-sm transition-all",
@@ -304,7 +334,7 @@ export function AppShell({
                   >
                     <NavIconTile icon={Icon} active={active} />
                     <span className="min-w-0 flex-1 leading-tight">{label}</span>
-                  </Link>
+                  </NavDestinationLink>
                 );
               })}
               <Link
@@ -385,9 +415,9 @@ export function AppShell({
         ].map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
-            <Link
+            <NavDestinationLink
               key={to}
-              to={to}
+              to={to as NavDestination}
               onClick={() => setMobileMenuOpen(false)}
               aria-current={active ? "page" : undefined}
               className={cn(
@@ -399,7 +429,7 @@ export function AppShell({
                 <Icon className={cn("size-[20px] stroke-[2]", active && "fill-current stroke-[2.35]")} aria-hidden="true" />
               </span>
               <span className="max-w-full truncate">{label}</span>
-            </Link>
+            </NavDestinationLink>
           );
         })}
         <button
