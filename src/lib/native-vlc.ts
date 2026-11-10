@@ -110,6 +110,10 @@ export async function openNativeVlc(options: {
   url: string;
   title?: string;
   channelId?: string;
+  candidates?: NativeVlcCandidate[];
+  proxyFallbackUrl?: string;
+  fallbackUrl1?: string;
+  fallbackUrl2?: string;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
     throw new Error("Native playback is available only in the XoraTV Android app.");
@@ -158,6 +162,10 @@ export async function switchNativeVlcChannel(options: {
   url: string;
   title?: string;
   channelId?: string;
+  candidates?: NativeVlcCandidate[];
+  proxyFallbackUrl?: string;
+  fallbackUrl1?: string;
+  fallbackUrl2?: string;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
     throw new Error("Native playback is available only in the XoraTV Android app.");
