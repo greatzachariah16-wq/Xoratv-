@@ -1586,7 +1586,10 @@ public class XoraVlcPlugin extends Plugin {
             .header("Range", "bytes=0-0")
             .build();
 
-        try (Response response = probeClient.newCall(request).execute()) {
+        OkHttpClient requestClient = isLocalProxyUrl(url)
+            ? probeClient.newBuilder().proxy(Proxy.NO_PROXY).build()
+            : probeClient;
+        try (Response response = requestClient.newCall(request).execute()) {
             int code = response.code();
             if (code == 403 || code == 451) return PlaybackState.ERR_REGION;
             if (code == 404 || code == 410) return PlaybackState.ERR_CHANNEL_DOWN;
@@ -1798,11 +1801,3 @@ public class XoraVlcPlugin extends Plugin {
         pipRequested = false;
         pipMode = false;
         controlsVisible = true;
-        playbackState = PlaybackState.IDLE;
-
-        if (notifyClosed) {
-            if (!emittedIdleState) {
-                JSObject state = new JSObject();
-                state.put("state", PlaybackState.IDLE.name());
-                state.put("channelId", closedChannelId);
-                state.put("message", "");
