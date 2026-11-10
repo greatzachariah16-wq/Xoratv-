@@ -28,6 +28,17 @@ export type NativeVlcPlaybackState = {
   pip?: boolean;
 };
 
+export type NativeVlcCandidate = { url: string; headers?: Record<string, string> };
+export type NativeVlcResolution = {
+  mode: "direct" | "proxy";
+  url: string;
+  headers?: Record<string, string>;
+  candidates: NativeVlcCandidate[];
+  proxyUrl?: string;
+  proxyFallbackUrls?: string[];
+  reason?: string;
+};
+
 type ListenerHandle = { remove(): Promise<void> };
 
 type NativeVlcPlugin = {
@@ -37,6 +48,8 @@ type NativeVlcPlugin = {
     channelId?: string;
     fallbackUrl1?: string;
     fallbackUrl2?: string;
+    candidates?: NativeVlcCandidate[];
+    proxyFallbackUrl?: string;
   }): Promise<void>;
   close(): Promise<void>;
   switchChannel(options: {
@@ -45,6 +58,8 @@ type NativeVlcPlugin = {
     channelId?: string;
     fallbackUrl1?: string;
     fallbackUrl2?: string;
+    candidates?: NativeVlcCandidate[];
+    proxyFallbackUrl?: string;
   }): Promise<void>;
   togglePlayback(): Promise<void>;
   toggleMute(): Promise<void>;
@@ -69,6 +84,27 @@ export function isNativeVlcPlatform(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
+/** Resolve a channel into direct origin candidates plus its server-proxy fallback. */
+export async function resolveNativeVlcPlayback(
+  provider: "nexus" | "iptv-org",
+  channelId: string,
+): Promise<NativeVlcResolution> {
+  const endpoint = new URL("/api/tv/stream", window.location.origin);
+  endpoint.searchParams.set("provider", provider);
+  endpoint.searchParams.set("channel", channelId);
+  endpoint.searchParams.set("resolve", "1");
+  const response = await fetch(endpoint.toString(), {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("Could not resolve this channel (HTTP " + response.status + ").");
+  const payload = await response.json() as NativeVlcResolution;
+  if (!payload || (payload.mode !== "direct" && payload.mode !== "proxy") || !payload.url) {
+    throw new Error("The channel resolver returned an invalid playback response.");
+  }
+  return payload;
+}
+
 /** Open the native LibVLC player above the scrolling XoraTV WebView. */
 export async function openNativeVlc(options: {
   url: string;
@@ -84,24 +120,13 @@ export async function openNativeVlc(options: {
     throw new Error("A secure stream URL is required.");
   }
 
-  const fallbackUrls: string[] = [];
-  if (
-    absoluteUrl.pathname === "/api/tv/stream" &&
-    absoluteUrl.searchParams.get("provider") === "nexus" &&
-    absoluteUrl.searchParams.has("channel")
-  ) {
-    for (const attempt of [1, 2]) {
-      const candidate = new URL(absoluteUrl.toString());
-      candidate.searchParams.set("attempt", String(attempt));
-      fallbackUrls.push(candidate.toString());
-    }
-  }
-
   await NativeVlc.open({
     ...options,
     url: absoluteUrl.toString(),
-    fallbackUrl1: fallbackUrls[0],
-    fallbackUrl2: fallbackUrls[1],
+    candidates: options.candidates,
+    proxyFallbackUrl: options.proxyFallbackUrl,
+    fallbackUrl1: options.fallbackUrl1,
+    fallbackUrl2: options.fallbackUrl2,
   });
 }
 
@@ -143,24 +168,13 @@ export async function switchNativeVlcChannel(options: {
     throw new Error("A secure stream URL is required.");
   }
 
-  const fallbackUrls: string[] = [];
-  if (
-    absoluteUrl.pathname === "/api/tv/stream" &&
-    absoluteUrl.searchParams.get("provider") === "nexus" &&
-    absoluteUrl.searchParams.has("channel")
-  ) {
-    for (const attempt of [1, 2]) {
-      const candidate = new URL(absoluteUrl.toString());
-      candidate.searchParams.set("attempt", String(attempt));
-      fallbackUrls.push(candidate.toString());
-    }
-  }
-
   await NativeVlc.switchChannel({
     ...options,
     url: absoluteUrl.toString(),
-    fallbackUrl1: fallbackUrls[0],
-    fallbackUrl2: fallbackUrls[1],
+    candidates: options.candidates,
+    proxyFallbackUrl: options.proxyFallbackUrl,
+    fallbackUrl1: options.fallbackUrl1,
+    fallbackUrl2: options.fallbackUrl2,
   });
 }
 
