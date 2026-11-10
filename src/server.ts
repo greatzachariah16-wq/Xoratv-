@@ -1224,7 +1224,7 @@ export default {
           if (!rememberedProxy && proxyPreferenceExpiry) proxyPreferenceCache.delete(preferenceKey);
           const forceProxy = proxyOnlyChannels.has(channelId) || rememberedProxy;
           const directCandidates = forceProxy ? [] : candidates
-            .filter((candidate) => /^https?:\/\//i.test(candidate.streamUrl))
+            .filter((candidate) => /^https:\/\//i.test(candidate.streamUrl))
             .map((candidate) => ({
               url: candidate.streamUrl,
               headers: {
@@ -1232,12 +1232,13 @@ export default {
                 ...(candidate.referrer ? { Referer: candidate.referrer } : {}),
               },
             }));
-          const payload = forceProxy
-            ? { mode: "proxy", url: proxyUrlFor(0), proxyUrl: proxyUrlFor(0), candidates: [], reason: "provider-requires-proxy" }
+          const useProxyFirst = forceProxy || directCandidates.length === 0;
+          const payload = useProxyFirst
+            ? { mode: "proxy", url: proxyUrlFor(0), proxyUrl: proxyUrlFor(0), candidates: [], reason: forceProxy ? "provider-requires-proxy" : "no-direct-candidate" }
             : {
                 mode: "direct",
-                url: directCandidates[0]?.url || proxyUrlFor(0),
-                headers: directCandidates[0]?.headers || {},
+                url: directCandidates[0].url,
+                headers: directCandidates[0].headers,
                 candidates: directCandidates,
                 proxyUrl: proxyUrlFor(0),
                 proxyFallbackUrls: [proxyUrlFor(1), proxyUrlFor(2)],
