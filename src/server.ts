@@ -1182,6 +1182,50 @@ export default {
           });
         }
 
+        // Hybrid native playback resolution: let Android/LibVLC fetch ordinary HLS
+        // playlists and segments directly. Keep the proxy URL as an automatic fallback.
+        if (url.searchParams.get("resolve") === "1") {
+          const candidates = provider === "nexus"
+            ? await getNexusPlaybackCandidates(channelId, 3)
+            : [{ streamUrl: playback.streamUrl, referrer: playback.referrer, userAgent: playback.userAgent }];
+          const proxyUrlFor = (candidateAttempt: number) => {
+            const proxy = new URL("/api/tv/stream", url.origin);
+            proxy.searchParams.set("provider", provider);
+            proxy.searchParams.set("channel", channelId);
+            proxy.searchParams.set("attempt", String(candidateAttempt));
+            return proxy.toString();
+          };
+          const proxyOnlyChannels = new Set([
+            "tna-wrestling-pluto",
+            "wrestling-legends-tv",
+            "wwe-superstar-central",
+          ]);
+          const forceProxy = proxyOnlyChannels.has(channelId);
+          const directCandidates = forceProxy ? [] : candidates
+            .filter((candidate) => /^https?:\\/\\//i.test(candidate.streamUrl))
+            .map((candidate) => ({
+              url: candidate.streamUrl,
+              headers: {
+                "User-Agent": candidate.userAgent || "Mozilla/5.0",
+                ...(candidate.referrer ? { Referer: candidate.referrer } : {}),
+              },
+            }));
+          const payload = forceProxy
+            ? { mode: "proxy", url: proxyUrlFor(0), proxyUrl: proxyUrlFor(0), candidates: [], reason: "provider-requires-proxy" }
+            : {
+                mode: "direct",
+                url: directCandidates[0]?.url || proxyUrlFor(0),
+                headers: directCandidates[0]?.headers || {},
+                candidates: directCandidates,
+                proxyUrl: proxyUrlFor(0),
+                proxyFallbackUrls: [proxyUrlFor(1), proxyUrlFor(2)],
+              };
+          return new Response(JSON.stringify(payload), {
+            status: 200,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+          });
+        }
+
         const target = requestedUrl || playback.streamUrl;
         let targetUrl: URL;
         try {
