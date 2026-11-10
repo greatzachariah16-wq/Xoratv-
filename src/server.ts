@@ -1203,9 +1203,11 @@ export default {
         // Hybrid native playback resolution: let Android/LibVLC fetch ordinary HLS
         // playlists and segments directly. Keep the proxy URL as an automatic fallback.
         if (url.searchParams.get("resolve") === "1") {
-          const candidates = provider === "nexus"
-            ? await getNexusPlaybackCandidates(channelId, 3)
-            : await getIptvPlaybackCandidates(channelId);
+          const candidates = fixedPlayback[channelId]
+            ? [{ streamUrl: fixedPlayback[channelId].streamUrl, referrer: fixedPlayback[channelId].referrer, userAgent: fixedPlayback[channelId].userAgent }]
+            : provider === "nexus"
+              ? await getNexusPlaybackCandidates(channelId, 3)
+              : await getIptvPlaybackCandidates(channelId);
           const proxyUrlFor = (candidateAttempt: number) => {
             const proxy = new URL("/api/tv/stream", url.origin);
             proxy.searchParams.set("provider", provider);
@@ -1216,7 +1218,6 @@ export default {
           const proxyOnlyChannels = new Set([
             "tna-wrestling-pluto",
             "wrestling-legends-tv",
-            "wwe-superstar-central",
           ]);
           const preferenceKey = channelId;
           const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
