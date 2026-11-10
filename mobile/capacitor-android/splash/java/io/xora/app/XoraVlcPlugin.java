@@ -1105,11 +1105,17 @@ public class XoraVlcPlugin extends Plugin {
             userPaused = false;
             requestAudioFocus();
             if (isNetworkUsable()) {
-                try {
-                    refreshLocalPlaybackSessions();
-                    startCurrentStream(true);
-                } catch (IOException error) {
-                    setState(PlaybackState.ERR_UNKNOWN);
+                if (touchCurrentLocalSession()) {
+                    // Keep the paused MediaPlayer position when its local session is still valid.
+                    mediaPlayer.play();
+                    setState(PlaybackState.CONNECTING);
+                } else {
+                    try {
+                        refreshLocalPlaybackSessions();
+                        startCurrentStream(true);
+                    } catch (IOException error) {
+                        setState(PlaybackState.ERR_UNKNOWN);
+                    }
                 }
             } else {
                 setState(PlaybackState.OFFLINE);
@@ -1390,6 +1396,13 @@ public class XoraVlcPlugin extends Plugin {
             return true;
         }
         return false;
+    }
+
+    private boolean touchCurrentLocalSession() {
+        return localHlsProxy != null
+            && currentStreamIndex >= 0
+            && currentStreamIndex < streamUrls.size()
+            && localHlsProxy.touchSession(streamUrls.get(currentStreamIndex));
     }
 
     private void retryCurrentStream() {
@@ -1798,6 +1811,3 @@ public class XoraVlcPlugin extends Plugin {
         bufferingStallRestarted = false;
         resumeWhenOnline = false;
         playingBeforeAppPause = false;
-        pipRequested = false;
-        pipMode = false;
-        controlsVisible = true;

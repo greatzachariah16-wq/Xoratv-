@@ -85,6 +85,21 @@ public final class LocalHlsProxy extends NanoHTTPD {
         return localUrl;
     }
 
+    public boolean touchSession(String localUrl) {
+        String prefix = "http://127.0.0.1:" + listeningPort + "/play/";
+        if (localUrl == null || !localUrl.startsWith(prefix)) return false;
+        String id = localUrl.substring(prefix.length());
+        Session session = sessions.get(id);
+        if (session == null) return false;
+        long now = System.currentTimeMillis();
+        if (now - session.lastAccessAt > SESSION_TTL_MS) {
+            sessions.remove(id, session);
+            return false;
+        }
+        session.lastAccessAt = now;
+        return true;
+    }
+
     public void clearSessions() {
         sessions.clear();
     }
