@@ -10,7 +10,8 @@ If port 8787 is occupied, the native proxy tries ports 8788 through 8797. The se
 
 ## Local media responsibilities
 
-- Fetch HLS playlists with resolver-supplied User-Agent, Referer and other supported headers.
+- Fetch HLS playlists with resolver-supplied User-Agent, Referer and other supported headers (Origin, Authorization and Cookie are also supported when explicitly supplied by the resolver).
+- Support GET and HEAD requests; forward Range headers while keeping provider-controlled request headers on the phone.
 - Resolve relative playlist references against the final upstream URL after redirects.
 - Rewrite bare media/variant URI lines and URI attributes in HLS tags, including key, map, media and rendition references.
 - Relay segments, initialization maps and encryption keys as streams rather than loading media objects into memory.
