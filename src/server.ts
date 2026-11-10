@@ -1215,15 +1215,14 @@ export default {
             proxy.searchParams.set("attempt", String(candidateAttempt));
             return proxy.toString();
           };
-          const proxyOnlyChannels = new Set([
-            "tna-wrestling-pluto",
-            "wrestling-legends-tv",
-          ]);
           const preferenceKey = channelId;
           const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
           const rememberedProxy = proxyPreferenceExpiry > Date.now();
           if (!rememberedProxy && proxyPreferenceExpiry) proxyPreferenceCache.delete(preferenceKey);
-          const forceProxy = proxyOnlyChannels.has(channelId) || rememberedProxy;
+          // LocalHlsProxy now handles provider Referer/User-Agent requirements on-device,
+          // so channels previously forced through Render may try their ranked origin candidates.
+          // Keep the 15-minute preference only for channels that actually fell back to Render.
+          const forceProxy = rememberedProxy;
           const directCandidates = forceProxy ? [] : candidates
             .filter((candidate) => /^https:\/\//i.test(candidate.streamUrl))
             .map((candidate) => ({
@@ -1235,7 +1234,7 @@ export default {
             }));
           const useProxyFirst = forceProxy || directCandidates.length === 0;
           const payload = useProxyFirst
-            ? { mode: "proxy", url: proxyUrlFor(0), proxyUrl: proxyUrlFor(0), candidates: [], reason: forceProxy ? "provider-requires-proxy" : "no-direct-candidate" }
+            ? { mode: "proxy", url: proxyUrlFor(0), proxyUrl: proxyUrlFor(0), candidates: [], reason: rememberedProxy ? "recent-proxy-fallback" : "no-direct-candidate" }
             : {
                 mode: "direct",
                 url: directCandidates[0].url,
