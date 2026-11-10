@@ -20,8 +20,18 @@ import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runne
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
-import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo, getIptvPlaybackCandidates } from "./integrations/providers/iptv-org";
-import { fetchNexusChannels, getNexusChannel, getNexusGuide, getNexusPlaybackCandidates } from "./integrations/providers/iptv-nexus";
+import {
+  fetchIptvChannels,
+  getIptvStreamUrl,
+  getIptvPlaybackInfo,
+  getIptvPlaybackCandidates,
+} from "./integrations/providers/iptv-org";
+import {
+  fetchNexusChannels,
+  getNexusChannel,
+  getNexusGuide,
+  getNexusPlaybackCandidates,
+} from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
@@ -1204,7 +1214,13 @@ export default {
         // playlists and segments directly. Keep the proxy URL as an automatic fallback.
         if (url.searchParams.get("resolve") === "1") {
           const candidates = fixedPlayback[channelId]
-            ? [{ streamUrl: fixedPlayback[channelId].streamUrl, referrer: fixedPlayback[channelId].referrer, userAgent: fixedPlayback[channelId].userAgent }]
+            ? [
+                {
+                  streamUrl: fixedPlayback[channelId].streamUrl,
+                  referrer: fixedPlayback[channelId].referrer,
+                  userAgent: fixedPlayback[channelId].userAgent,
+                },
+              ]
             : provider === "nexus"
               ? await getNexusPlaybackCandidates(channelId, 3)
               : await getIptvPlaybackCandidates(channelId);
@@ -1218,23 +1234,35 @@ export default {
           const preferenceKey = channelId;
           const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
           const rememberedProxy = proxyPreferenceExpiry > Date.now();
-          if (!rememberedProxy && proxyPreferenceExpiry) proxyPreferenceCache.delete(preferenceKey);
-          // LocalHlsProxy now handles provider Referer/User-Agent requirements on-device,
-          // so channels previously forced through Render may try their ranked origin candidates.
-          // Keep the 15-minute preference only for channels that actually fell back to Render.
+          if (!rememberedProxy && proxyPreferenceExpiry) {
+            proxyPreferenceCache.delete(preferenceKey);
+          }
+          // LocalHlsProxy handles provider Referer/User-Agent requirements on-device,
+          // so previously proxy-first channels may try their ranked origin candidates.
+          // Keep the 15-minute preference only after a channel actually fell back to Render.
           const forceProxy = rememberedProxy;
-          const directCandidates = forceProxy ? [] : candidates
-            .filter((candidate) => /^https:\/\//i.test(candidate.streamUrl))
-            .map((candidate) => ({
-              url: candidate.streamUrl,
-              headers: {
-                "User-Agent": candidate.userAgent || "Mozilla/5.0",
-                ...(candidate.referrer ? { Referer: candidate.referrer } : {}),
-              },
-            }));
+          const directCandidates = forceProxy
+            ? []
+            : candidates
+                .filter((candidate) => /^https:\/\//i.test(candidate.streamUrl))
+                .map((candidate) => ({
+                  url: candidate.streamUrl,
+                  headers: {
+                    "User-Agent": candidate.userAgent || "Mozilla/5.0",
+                    ...(candidate.referrer ? { Referer: candidate.referrer } : {}),
+                  },
+                }));
           const useProxyFirst = forceProxy || directCandidates.length === 0;
           const payload = useProxyFirst
-            ? { mode: "proxy", url: proxyUrlFor(0), proxyUrl: proxyUrlFor(0), candidates: [], reason: rememberedProxy ? "recent-proxy-fallback" : "no-direct-candidate" }
+            ? {
+                mode: "proxy",
+                url: proxyUrlFor(0),
+                proxyUrl: proxyUrlFor(0),
+                candidates: [],
+                reason: rememberedProxy
+                  ? "recent-proxy-fallback"
+                  : "no-direct-candidate",
+              }
             : {
                 mode: "direct",
                 url: directCandidates[0].url,
@@ -1245,7 +1273,11 @@ export default {
               };
           return new Response(JSON.stringify(payload), {
             status: 200,
-            headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store",
+            },
           });
         }
 

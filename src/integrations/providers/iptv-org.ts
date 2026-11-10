@@ -309,18 +309,22 @@ const PLAYBACK_HEALTH_TTL_MS = 5 * 60 * 1000;
 const IPTV_HEALTH_CHECK_BUDGET = 40;
 const IPTV_HEALTH_CHECK_CONCURRENCY = 8;
 
-export async function getIptvPlaybackCandidates(channelId: string): Promise<IptvPlaybackCandidate[]> {
+export async function getIptvPlaybackCandidates(
+  channelId: string,
+): Promise<IptvPlaybackCandidate[]> {
   const channels = await loadChannels();
   const channel = channels.find((item) => item.id === channelId);
   if (!channel || !/^https?:\/\//i.test(channel.streamUrl)) return [];
 
-  return [{
-    streamUrl: channel.streamUrl,
-    referrer: null,
-    userAgent: null,
-    quality: channel.quality || null,
-    labels: [],
-  }];
+  return [
+    {
+      streamUrl: channel.streamUrl,
+      referrer: null,
+      userAgent: null,
+      quality: channel.quality || null,
+      labels: [],
+    },
+  ];
 }
 
 async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolean> {

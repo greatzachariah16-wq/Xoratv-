@@ -98,8 +98,10 @@ export async function resolveNativeVlcPlayback(
     headers: { Accept: "application/json" },
     cache: "no-store",
   });
-  if (!response.ok) throw new Error("Could not resolve this channel (HTTP " + response.status + ").");
-  const payload = await response.json() as NativeVlcResolution;
+  if (!response.ok) {
+    throw new Error("Could not resolve this channel (HTTP " + response.status + ").");
+  }
+  const payload = (await response.json()) as NativeVlcResolution;
   if (!payload || (payload.mode !== "direct" && payload.mode !== "proxy") || !payload.url) {
     throw new Error("The channel resolver returned an invalid playback response.");
   }

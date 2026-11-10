@@ -27,7 +27,12 @@ copyDirectory(path.join(splashRoot, "res"), appRes);
 
 const javaDestination = path.join(appMain, "java/io/xora/app");
 fs.mkdirSync(javaDestination, { recursive: true });
-for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugin.java", "LocalHlsProxy.java"]) {
+for (const name of [
+  "MainActivity.java",
+  "XoraStartupPlugin.java",
+  "XoraVlcPlugin.java",
+  "LocalHlsProxy.java",
+]) {
   fs.copyFileSync(
     path.join(splashRoot, "java/io/xora/app", name),
     path.join(javaDestination, name),
