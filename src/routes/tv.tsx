@@ -239,6 +239,8 @@ function LiveTvPage() {
   const { isLandscape, lockLandscape, unlockOrientation } = useLandscapeMode();
   const navigate = useNavigate({ from: "/tv" });
   const [search, setSearch] = useState(q || "");
+  // A channel in the URL restores navigation/filter context only; playback requires an explicit tap in this page session.
+  const [activeChannelId, setActiveChannelId] = useState("");
   const playerPrefs = usePlayerPrefs();
   const nativePlayerOpenRef = useRef(false);
   const nativePlayerTaskRef = useRef<Promise<void> | null>(null);
@@ -254,6 +256,7 @@ function LiveTvPage() {
     const now = Date.now();
     if (now - lastChannelTapAtRef.current < 250) return;
     lastChannelTapAtRef.current = now;
+    setActiveChannelId(channel.id);
     playerPrefs.rememberChannel(channel.id);
     void navigate({ search: (previous) => ({ ...previous, channel: channel.id }), resetScroll: false });
   }, [navigate, playerPrefs.rememberChannel]);
@@ -280,8 +283,8 @@ function LiveTvPage() {
   });
 
   const selected = useMemo(
-    () => requestedChannel ? query.data?.find((item) => item.id === requestedChannel) || null : null,
-    [query.data, requestedChannel],
+    () => activeChannelId ? query.data?.find((item) => item.id === activeChannelId) || null : null,
+    [query.data, activeChannelId],
   );
   selectedIdRef.current = selected?.id
     && nativeState.channelId === selected.id
