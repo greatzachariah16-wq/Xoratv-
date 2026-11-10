@@ -82,6 +82,9 @@ public class XoraVlcPlugin extends Plugin {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ArrayList<String> streamUrls = new ArrayList<>();
     private final ArrayList<JSONObject> streamHeaders = new ArrayList<>();
+    private final ArrayList<String> streamTransports = new ArrayList<>();
+    private final ArrayList<String> upstreamStreamUrls = new ArrayList<>();
+    private LocalHlsProxy localHlsProxy;
     private int directCandidateCount = 0;
     private String lastReportedTransport = "";
     private final ExecutorService probeExecutor = Executors.newSingleThreadExecutor();
@@ -376,32 +379,59 @@ public class XoraVlcPlugin extends Plugin {
         );
     }
 
-    private void addStreamCandidate(String candidateUrl, JSONObject headers) {
-        if (!isSecureUrl(candidateUrl) || streamUrls.contains(candidateUrl)) return;
-        streamUrls.add(candidateUrl);
-        streamHeaders.add(headers == null ? new JSONObject() : headers);
+    private void addStreamCandidate(String upstreamUrl, JSONObject headers, String transport) throws IOException {
+        if (!isSecureUrl(upstreamUrl) || upstreamStreamUrls.contains(upstreamUrl)) return;
+        if (localHlsProxy == null) {
+            OkHttpClient mediaClient = probeClient != null
+                ? probeClient.newBuilder()
+                    .connectTimeout(12, TimeUnit.SECONDS)
+                    .readTimeout(45, TimeUnit.SECONDS)
+                    .writeTimeout(15, TimeUnit.SECONDS)
+                    .callTimeout(0, TimeUnit.MILLISECONDS)
+                    .build()
+                : new OkHttpClient.Builder()
+                    .connectTimeout(12, TimeUnit.SECONDS)
+                    .readTimeout(45, TimeUnit.SECONDS)
+                    .writeTimeout(15, TimeUnit.SECONDS)
+                    .retryOnConnectionFailure(true)
+                    .build();
+            localHlsProxy = LocalHlsProxy.start(mediaClient);
+        }
+        String localUrl = localHlsProxy.createSession(upstreamUrl, headers);
+        upstreamStreamUrls.add(upstreamUrl);
+        streamUrls.add(localUrl);
+        // All provider headers are applied by LocalHlsProxy, never by LibVLC.
+        streamHeaders.add(new JSONObject());
+        streamTransports.add(transport);
     }
 
-    private void configureStreamCandidates(PluginCall call, String url, String fallbackUrl1, String fallbackUrl2) {
+    private void configureStreamCandidates(PluginCall call, String url, String fallbackUrl1, String fallbackUrl2) throws IOException {
         streamUrls.clear();
         streamHeaders.clear();
+        streamTransports.clear();
+        upstreamStreamUrls.clear();
         directCandidateCount = 0;
+        lastReportedTransport = "";
+        if (localHlsProxy != null) localHlsProxy.clearSessions();
+
         JSONArray candidates = call.getArray("candidates");
         if (candidates != null && candidates.length() > 0) {
             for (int i = 0; i < candidates.length(); i++) {
                 JSONObject candidate = candidates.optJSONObject(i);
                 if (candidate == null) continue;
-                addStreamCandidate(candidate.optString("url", ""), candidate.optJSONObject("headers"));
+                addStreamCandidate(candidate.optString("url", ""), candidate.optJSONObject("headers"), "local");
             }
             directCandidateCount = streamUrls.size();
         } else {
-            addStreamCandidate(url, call.getObject("headers"));
+            addStreamCandidate(url, call.getObject("headers"), "proxy");
         }
+
         String proxyFallbackUrl = call.getString("proxyFallbackUrl");
-        if (isSecureUrl(proxyFallbackUrl)) addStreamCandidate(proxyFallbackUrl, null);
-        if (isSecureUrl(fallbackUrl1)) addStreamCandidate(fallbackUrl1, null);
-        if (isSecureUrl(fallbackUrl2)) addStreamCandidate(fallbackUrl2, null);
-        if (streamUrls.isEmpty()) addStreamCandidate(url, null);
+        if (isSecureUrl(proxyFallbackUrl)) addStreamCandidate(proxyFallbackUrl, null, "proxy");
+        if (isSecureUrl(fallbackUrl1)) addStreamCandidate(fallbackUrl1, null, "proxy");
+        if (isSecureUrl(fallbackUrl2)) addStreamCandidate(fallbackUrl2, null, "proxy");
+        if (streamUrls.isEmpty()) addStreamCandidate(url, null, "proxy");
+        if (streamUrls.isEmpty()) throw new IOException("Could not create a local playback session.");
     }
 
     @PluginMethod
@@ -581,6 +611,13 @@ public class XoraVlcPlugin extends Plugin {
         if (url == null || url.trim().isEmpty()) return false;
         Uri uri = Uri.parse(url);
         return "https".equalsIgnoreCase(uri.getScheme());
+    }
+
+    private boolean isLocalProxyUrl(String url) {
+        if (url == null) return false;
+        Uri uri = Uri.parse(url);
+        return "http".equalsIgnoreCase(uri.getScheme())
+            && "127.0.0.1".equals(uri.getHost());
     }
 
     // Keep decoder preferences isolated to the channel that needs software decoding.
@@ -1186,6 +1223,11 @@ public class XoraVlcPlugin extends Plugin {
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         final String selectedUrl = streamUrls.get(currentStreamIndex);
+        // Enforce the core invariant: LibVLC must never receive an origin or Render URL.
+        if (!isLocalProxyUrl(selectedUrl)) {
+            setState(PlaybackState.ERR_UNKNOWN);
+            return;
+        }
 
         final MediaPlayer activePlayer;
         if (mediaPlayer == null) {
@@ -1203,7 +1245,8 @@ public class XoraVlcPlugin extends Plugin {
             }
         }
 
-        boolean preferSoftware = prefersSoftwareDecoder(selectedUrl);
+        boolean preferSoftware = "tna-wrestling-pluto".equals(currentChannelId)
+            || "wrestling-legends-tv".equals(currentChannelId);
         boolean useHardwareDecoder = preferSoftware ? !usePreferredDecoder : usePreferredDecoder;
 
         activePlayer.setEventListener(event -> {
@@ -1215,15 +1258,7 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
-        JSONObject requestHeaders = currentStreamIndex < streamHeaders.size()
-            ? streamHeaders.get(currentStreamIndex)
-            : null;
-        if (requestHeaders != null) {
-            String userAgent = requestHeaders.optString("User-Agent", "");
-            String referer = requestHeaders.optString("Referer", "");
-            if (!userAgent.isEmpty()) media.addOption(":http-user-agent=" + userAgent);
-            if (!referer.isEmpty()) media.addOption(":http-referrer=" + referer);
-        }
+        // LibVLC receives loopback URLs only. The local proxy injects provider headers.
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
         media.addOption(":http-reconnect");
@@ -1566,7 +1601,9 @@ public class XoraVlcPlugin extends Plugin {
             retryButton.setVisibility(showManualRetry ? View.VISIBLE : View.GONE);
             offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
         }
-        String transport = currentStreamIndex < directCandidateCount ? "direct" : "proxy";
+        String transport = currentStreamIndex < streamTransports.size()
+            ? streamTransports.get(currentStreamIndex)
+            : "local";
         if (previous != next || !transport.equals(lastReportedTransport)) {
             JSObject state = new JSObject();
             state.put("state", next.name());
@@ -1665,6 +1702,10 @@ public class XoraVlcPlugin extends Plugin {
         MediaPlayer previousPlayer = mediaPlayer;
         mediaPlayer = null;
         releaseMediaPlayer(previousPlayer);
+        if (localHlsProxy != null) {
+            localHlsProxy.stop();
+            localHlsProxy = null;
+        }
 
         LibVLC previousLibVLC = libVLC;
         libVLC = null;
@@ -1702,6 +1743,13 @@ public class XoraVlcPlugin extends Plugin {
         originalWebViewParams = null;
 
         streamUrls.clear();
+        streamHeaders.clear();
+        streamTransports.clear();
+        upstreamStreamUrls.clear();
+        if (localHlsProxy != null) {
+            localHlsProxy.stop();
+            localHlsProxy = null;
+        }
         currentStreamIndex = 0;
         currentChannelId = "";
         currentChannelTitle = "Live TV";
