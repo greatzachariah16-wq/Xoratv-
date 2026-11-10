@@ -15,6 +15,7 @@ export type NativeVlcStateChangedEvent = {
   state: NativeVlcStatus;
   channelId: string;
   message: string;
+  transport?: "direct" | "proxy";
 };
 
 export type NativeVlcPlaybackState = {
