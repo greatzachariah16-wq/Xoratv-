@@ -96,6 +96,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession request) {
+        okhttp3.Response upstreamResponse = null;
         try {
             cleanupExpiredSessions();
             String[] parts = request.getUri().split("/");
@@ -132,7 +133,8 @@ public final class LocalHlsProxy extends NanoHTTPD {
             String range = request.getHeaders().get("range");
             if (range != null && !range.isEmpty()) builder.header("Range", range);
 
-            okhttp3.Response upstream = client.newCall(builder.build()).execute();
+            upstreamResponse = client.newCall(builder.build()).execute();
+            final okhttp3.Response upstream = upstreamResponse;
             ResponseBody body = upstream.body();
             String contentType = upstream.header("Content-Type", "application/octet-stream");
             String finalUrl = upstream.request().url().toString();
@@ -175,6 +177,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
             Log.v(TAG, "Relayed " + request.getUri() + " from " + safeHost(finalUrl) + " (" + upstream.code() + ")");
             return response;
         } catch (Exception error) {
+            if (upstreamResponse != null) upstreamResponse.close();
             Log.w(TAG, "Local HLS request failed: " + error.getClass().getSimpleName());
             return textResponse(Response.Status.INTERNAL_ERROR, "Upstream media request failed");
         }
