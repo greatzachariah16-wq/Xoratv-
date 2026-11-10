@@ -311,6 +311,13 @@ function LiveTvPage() {
       if (!event.channelId || event.channelId === selectedIdRef.current) {
         setNativeState(event);
       }
+      if (event.transport === "proxy" && event.channelId) {
+        void fetch("/api/tv/playback-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channelId: event.channelId, transport: "proxy" }),
+        }).catch(() => {});
+      }
     }).then((handle) => {
       if (!mounted) void handle.remove();
       else listenerHandle = handle;
