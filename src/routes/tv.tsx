@@ -30,6 +30,7 @@ import {
   openNativeVlc,
   switchNativeVlcChannel,
   retryNativeVlc,
+  resolveNativeVlcPlayback,
   type NativeVlcStateChangedEvent,
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
@@ -365,7 +366,6 @@ function LiveTvPage() {
       return () => { cancelled = true; };
     }
 
-    const streamUrl = `/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`;
     setNativeState({
       state: isOnline ? "CONNECTING" : "OFFLINE",
       channelId: selected.id,
@@ -376,11 +376,17 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
+      const resolution = await resolveNativeVlcPlayback(selected.provider || "nexus", selected.id);
+      if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: streamUrl,
+        url: resolution.url,
         title: getChannelDisplayName(selected),
         channelId: selected.id,
+        candidates: resolution.candidates,
+        proxyFallbackUrl: resolution.proxyUrl,
+        fallbackUrl1: resolution.proxyFallbackUrls?.[0],
+        fallbackUrl2: resolution.proxyFallbackUrls?.[1],
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
