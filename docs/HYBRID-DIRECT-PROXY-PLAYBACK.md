@@ -1,5 +1,7 @@
 # XoraTV Hybrid Direct + Proxy Playback
 
+> Historical architecture note for PR #251. The on-device local HLS proxy in PR #252 supersedes direct LibVLC-to-provider playback for Android.
+
 ## Separation from existing player work
 
 The pre-existing architecture is recorded in [PLAYER-ARCHITECTURE-BASELINE.md](./PLAYER-ARCHITECTURE-BASELINE.md). This feature is a separate incremental change on branch `feat/hybrid-direct-proxy-playback`.

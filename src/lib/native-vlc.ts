@@ -85,7 +85,7 @@ export function isNativeVlcPlatform(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-/** Resolve a channel into direct origin candidates plus its server-proxy fallback. */
+/** Resolve upstream candidates for LocalHlsProxy plus its emergency server-proxy fallback. */
 export async function resolveNativeVlcPlayback(
   provider: "nexus" | "iptv-org",
   channelId: string,

@@ -1210,8 +1210,8 @@ export default {
           });
         }
 
-        // Hybrid native playback resolution: let Android/LibVLC fetch ordinary HLS
-        // playlists and segments directly. Keep the proxy URL as an automatic fallback.
+        // Resolve origin candidates for the Android LocalHlsProxy. Keep the Render media
+        // relay as an emergency upstream fallback; LibVLC itself receives loopback URLs only.
         if (url.searchParams.get("resolve") === "1") {
           const candidates = fixedPlayback[channelId]
             ? [
