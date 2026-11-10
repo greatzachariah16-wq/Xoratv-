@@ -1149,7 +1149,7 @@ export default {
       try {
         const body = await request.json() as { provider?: string; channelId?: string; transport?: string };
         if (body.transport === "proxy" && body.channelId) {
-          const key = (body.provider || "nexus") + ":" + body.channelId;
+          const key = body.channelId;
           proxyPreferenceCache.set(key, Date.now() + PROXY_PREFERENCE_TTL_MS);
         }
         return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1218,7 +1218,7 @@ export default {
             "wrestling-legends-tv",
             "wwe-superstar-central",
           ]);
-          const preferenceKey = provider + ":" + channelId;
+          const preferenceKey = channelId;
           const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
           const rememberedProxy = proxyPreferenceExpiry > Date.now();
           if (!rememberedProxy && proxyPreferenceExpiry) proxyPreferenceCache.delete(preferenceKey);
