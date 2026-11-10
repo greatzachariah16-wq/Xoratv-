@@ -1531,7 +1531,7 @@ public class XoraVlcPlugin extends Plugin {
                 }
                 // A failed direct origin should fall through to the proxy immediately,
                 // rather than waiting for the user's manual retry.
-                if (currentStreamIndex < directCandidateCount && probeResult != PlaybackState.PLAYING) {
+                if (currentStreamIndex + 1 < streamUrls.size() && probeResult != PlaybackState.PLAYING) {
                     if (tryNextStream()) return;
                 }
                 setState(probeResult);

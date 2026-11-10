@@ -39,13 +39,13 @@ public final class LocalHlsProxy extends NanoHTTPD {
         final String id;
         final String upstreamUrl;
         final JSONObject headers;
-        final long createdAt;
+        volatile long lastAccessAt;
 
         Session(String id, String upstreamUrl, JSONObject headers) {
             this.id = id;
             this.upstreamUrl = upstreamUrl;
-            this.headers = headers == null ? new JSONObject() : new JSONObject(headers.toString());
-            this.createdAt = System.currentTimeMillis();
+            this.headers = headers == null ? new JSONObject() : headers;
+            this.lastAccessAt = System.currentTimeMillis();
         }
     }
 
@@ -104,6 +104,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
             String sessionId = parts[2];
             Session session = sessions.get(sessionId);
             if (session == null) return textResponse(Response.Status.GONE, "Playback session expired");
+            session.lastAccessAt = System.currentTimeMillis();
 
             String upstreamUrl;
             if ("play".equals(route)) {
@@ -259,7 +260,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
     private void cleanupExpiredSessions() {
         long now = System.currentTimeMillis();
         for (Map.Entry<String, Session> entry : sessions.entrySet()) {
-            if (now - entry.getValue().createdAt > SESSION_TTL_MS) sessions.remove(entry.getKey(), entry.getValue());
+            if (now - entry.getValue().lastAccessAt > SESSION_TTL_MS) sessions.remove(entry.getKey(), entry.getValue());
         }
     }
 
