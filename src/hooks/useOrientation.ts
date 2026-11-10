@@ -1,4 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
+import {
+  isNativeVlcPlatform,
+  lockNativeVlcLandscape,
+  unlockNativeVlcOrientation,
+} from "@/lib/native-vlc";
+
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: string) => Promise<void>;
+  unlock?: () => void;
+};
 
 export interface OrientationState {
   isLandscape: boolean;
@@ -11,37 +21,19 @@ export interface OrientationState {
  * Hook to monitor device/viewport orientation and manage screen orientation locks.
  */
 export function useOrientation() {
-  const [orientation, setOrientation] = useState<OrientationState>(() => {
-    if (typeof window === "undefined") {
-      return { isLandscape: false, isLockSupported: false, angle: 0, type: "portrait-primary" };
-    }
-    const isLandscape =
-      window.innerWidth > window.innerHeight ||
-      (typeof screen !== "undefined" &&
-        screen.orientation &&
-        screen.orientation.type.startsWith("landscape"));
-    const isLockSupported =
-      typeof screen !== "undefined" &&
-      typeof screen.orientation !== "undefined" &&
-      typeof screen.orientation.lock === "function";
-
-    return {
-      isLandscape: Boolean(isLandscape),
-      isLockSupported: Boolean(isLockSupported),
-      angle: typeof screen !== "undefined" && screen.orientation ? screen.orientation.angle : 0,
-      type:
-        typeof screen !== "undefined" && screen.orientation
-          ? screen.orientation.type
-          : isLandscape
-            ? "landscape-primary"
-            : "portrait-primary",
-    };
+  const [orientation, setOrientation] = useState<OrientationState>({
+    isLandscape: false,
+    isLockSupported: false,
+    angle: 0,
+    type: "portrait-primary",
   });
 
   const updateOrientation = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    const screenOrientation = typeof screen !== "undefined" ? screen.orientation : undefined;
+    const screenOrientation = typeof screen !== "undefined"
+      ? screen.orientation as LockableScreenOrientation | undefined
+      : undefined;
     const isLandscapeByMedia = window.matchMedia("(orientation: landscape)").matches;
     const isLandscapeByDims = window.innerWidth > window.innerHeight;
     const isLandscapeByType = screenOrientation
@@ -52,7 +44,7 @@ export function useOrientation() {
     const isLockSupported =
       typeof screen !== "undefined" &&
       typeof screen.orientation !== "undefined" &&
-      typeof screen.orientation.lock === "function";
+      typeof screenOrientation?.lock === "function";
 
     setOrientation({
       isLandscape,
@@ -106,19 +98,24 @@ export function useOrientation() {
   const lockLandscape = useCallback(
     async (element?: HTMLElement | null): Promise<boolean> => {
       try {
-        // If element provided and not currently fullscreen, request fullscreen first as orientation.lock often requires fullscreen
+        if (isNativeVlcPlatform()) {
+          await lockNativeVlcLandscape();
+          updateOrientation();
+          return true;
+        }
+        // Web fallback: orientation lock may require fullscreen in some browsers.
         if (element && !document.fullscreenElement && element.requestFullscreen) {
           await element.requestFullscreen().catch(() => {});
         }
 
-        if (
-          typeof screen !== "undefined" &&
-          screen.orientation &&
-          typeof screen.orientation.lock === "function"
-        ) {
-          await screen.orientation.lock("landscape").catch(async () => {
+        const lockableOrientation = typeof screen !== "undefined" && screen.orientation
+          ? screen.orientation as LockableScreenOrientation
+          : undefined;
+        if (lockableOrientation && typeof lockableOrientation.lock === "function") {
+          const lock = lockableOrientation.lock.bind(lockableOrientation);
+          await lock("landscape").catch(async () => {
             // Fallback to landscape-primary if generic landscape is rejected
-            await screen.orientation.lock("landscape-primary").catch(() => {});
+            await lock("landscape-primary").catch(() => {});
           });
           updateOrientation();
           return true;
@@ -134,13 +131,15 @@ export function useOrientation() {
   // Request Portrait or Unlock orientation
   const unlockOrientation = useCallback(async (): Promise<void> => {
     try {
-      if (
-        typeof screen !== "undefined" &&
-        screen.orientation &&
-        typeof screen.orientation.unlock === "function"
-      ) {
-        screen.orientation.unlock();
+      if (isNativeVlcPlatform()) {
+        await unlockNativeVlcOrientation();
+        updateOrientation();
+        return;
       }
+      const lockableOrientation = typeof screen !== "undefined" && screen.orientation
+        ? screen.orientation as LockableScreenOrientation
+        : undefined;
+      lockableOrientation?.unlock?.();
     } catch {
       // ignore unlock error
     }
@@ -161,3 +160,6 @@ export function useOrientation() {
     unlockOrientation,
   };
 }
+
+/** Live TV uses the shared orientation controller rather than registering a second listener set. */
+export const useLandscapeMode = useOrientation;

@@ -64,14 +64,15 @@ function ChannelTileComponent({ channel, destination, eager = false, layout = "c
   );
 
   const className = [
-    "card-surface press block min-w-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30",
-    layout === "carousel" ? "w-[140px] min-w-[140px] shrink-0" : "w-full",
+    "card-surface xora-channel-tile press block min-w-0 overflow-hidden p-2 text-left transition-colors hover:border-primary/30",
+    layout === "carousel" ? "w-[150px] min-w-[150px] shrink-0 snap-start" : "w-full",
   ].join(" ");
 
   if (destination === "kids") {
     return (
       <Link
         to="/kids"
+        preload="intent"
         search={{ channel: channel.id }}
         aria-label={displayName + ", " + qualityLabel + ", live"}
         className={className}
@@ -84,6 +85,7 @@ function ChannelTileComponent({ channel, destination, eager = false, layout = "c
   return (
     <Link
       to="/tv"
+      preload="intent"
       search={{ channel: channel.id }}
       aria-label={displayName + ", " + qualityLabel + ", live"}
       className={className}

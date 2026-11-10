@@ -11,6 +11,7 @@ import {
   EyeOff,
   Ban,
   Gift,
+  Play,
 } from "lucide-react";
 import {
   deletePost,
@@ -43,6 +44,7 @@ import { trackEvent } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import { UserAvatar } from "./UserAvatar";
 import { VideoPlayer } from "./VideoPlayer";
+import { parseEmbedInfo } from "@/integrations/providers/embed";
 import { LikePetalBurst } from "./LikePetalBurst";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -65,12 +67,25 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
   const [likeMoment, setLikeMoment] = useState(false);
   const [likeMomentOrigin, setLikeMomentOrigin] = useState<{ x: number; y: number } | null>(null);
   const [displayLikeCount, setDisplayLikeCount] = useState(post.like_count ?? 0);
+  const [videoOpened, setVideoOpened] = useState(false);
+  const [thumbnailFallback, setThumbnailFallback] = useState(false);
   const likeButtonRef = useRef<HTMLButtonElement | null>(null);
   const viewRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setDisplayLikeCount(post.like_count ?? 0);
   }, [post.like_count]);
+
+  useEffect(() => {
+    setVideoOpened(false);
+    setThumbnailFallback(false);
+  }, [post.id, post.stream_url, post.poster_path]);
+
+  const embedInfo = parseEmbedInfo(post.stream_url || post.media_path, post.source);
+  const youtubeThumbnail = embedInfo?.provider === "youtube" && embedInfo.videoId
+    ? `https://img.youtube.com/vi/${embedInfo.videoId}/hqdefault.jpg`
+    : null;
+  const feedThumbnail = thumbnailFallback ? post.poster_path : youtubeThumbnail || post.poster_path;
 
   useEffect(() => {
     if (post.kind !== "video" || typeof IntersectionObserver === "undefined") return;
@@ -148,26 +163,61 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
 
   return (
     <>
-      <article ref={viewRef} className="rise press card-surface overflow-hidden rounded-[24px] transition-shadow duration-200">
+      <article ref={viewRef} className="rise press card-surface xora-post-card overflow-hidden rounded-[24px] transition-shadow duration-200">
         <div className="px-3 pt-3">
           {post.kind === "video" ? (
             <div className="relative">
-              <VideoPlayer
-                source={post.source}
-                streamUrl={post.stream_url}
-                mediaPath={post.media_path}
-                posterPath={post.poster_path}
-                externalUrl={post.stream_url}
-                externalPoster={post.poster_path}
-                vertical={vertical}
-                title={post.title || "Xora video"}
-                postId={post.id}
-                authorId={post.author_id}
-                genre={post.genre}
-                feed={post.feed}
-                autoPlay={autoPlay}
-                loop={autoPlay}
-              />
+              {videoOpened || autoPlay || Boolean(embedInfo) ? (
+                <VideoPlayer
+                  source={post.source}
+                  streamUrl={post.stream_url}
+                  mediaPath={post.media_path}
+                  posterPath={post.poster_path}
+                  externalUrl={post.stream_url}
+                  externalPoster={post.poster_path}
+                  vertical={vertical}
+                  title={post.title || "Xora video"}
+                  postId={post.id}
+                  authorId={post.author_id}
+                  genre={post.genre}
+                  feed={post.feed}
+                  autoPlay={autoPlay}
+                  loop={autoPlay}
+                  onClose={() => setVideoOpened(false)}
+                />
+              ) : (
+                <div className={cn("relative aspect-video w-full overflow-hidden rounded-[24px] bg-[#2A1F1A]", vertical && "aspect-[9/16]")}>
+                  {feedThumbnail ? (
+                    <img
+                      src={feedThumbnail}
+                      alt=""
+                      width={1280}
+                      height={720}
+                      loading="lazy"
+                      decoding="async"
+                      onError={() => setThumbnailFallback(true)}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      style={{ aspectRatio: vertical ? "9 / 16" : "16 / 9" }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
+                  )}
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
+                  <span className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
+                    4K HD
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setVideoOpened(true)}
+                    aria-label="Play video"
+                    className="press absolute inset-0 z-20 grid place-items-center bg-black/10"
+                  >
+                    <span className="grid size-16 place-items-center rounded-full border border-white/45 bg-white/20 text-white shadow-xl backdrop-blur-xl">
+                      <Play className="ml-1 size-7 fill-current" aria-hidden="true" />
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl bg-surface-2">
@@ -175,6 +225,8 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
                 <img
                   src={post.poster_path}
                   alt={post.title || "Post image"}
+                  width={1280}
+                  height={720}
                   loading="lazy"
                   className="max-h-[520px] w-full object-cover"
                 />
@@ -198,7 +250,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
           </div>
         ) : null}
 
-        <div className="px-3 pb-3 pt-3">
+        <div className={cn("px-3 pb-3", post.kind === "video" ? "pt-6" : "pt-3")}>
           {post.title ? (
             <Link
               to="/video/$postId"
@@ -220,7 +272,7 @@ function PostCardComponent({ post, vertical = false, autoPlay = false }: Props) 
               </h3>
             </Link>
           ) : null}
-        <header className="mt-4 flex min-w-0 items-center gap-2 border-t border-border/70 pt-4">
+        <header className={cn("flex min-w-0 items-center gap-2 border-t border-border/70 pt-4", post.kind === "video" ? "mt-6" : "mt-4")}>
           <Link
             to="/profile/$username"
             params={{ username: author?.username ?? "" }}

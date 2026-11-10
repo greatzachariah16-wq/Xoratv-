@@ -37,19 +37,19 @@ export function LiveTvShelf() {
               Live TV
             </h2>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 truncate whitespace-nowrap text-xs text-muted-foreground">
             Browse live channels and discover what is on now.
           </p>
         </div>
-        <Pill asChild variant="outline">
+        <Pill asChild variant="outline" className="h-11 min-h-11 shrink-0 whitespace-nowrap px-4">
           <Link to="/tv" search={{ channel: undefined }}>View all</Link>
         </Pill>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" aria-label="Loading Live TV channels">
+        <div className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2" aria-label="Loading Live TV channels">
           {["live-placeholder-1", "live-placeholder-2", "live-placeholder-3", "live-placeholder-4"].map((key) => (
-            <div key={key} className="card-surface min-w-0 overflow-hidden p-2">
+            <div key={key} className="card-surface w-[150px] min-w-[150px] shrink-0 overflow-hidden p-2">
               <div className="shimmer aspect-square rounded-[18px]" />
               <div className="shimmer mt-4 h-3 w-4/5 rounded-full" />
               <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
@@ -57,10 +57,10 @@ export function LiveTvShelf() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {data.slice(0, 6).map((channel, index) => (
-            <div key={channel.id} className="rise min-w-0" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
-              <ChannelTile channel={channel} destination="tv" layout="grid" eager={index === 0} />
+        <div className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
+          {data.slice(0, 8).map((channel, index) => (
+            <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+              <ChannelTile channel={channel} destination="tv" layout="carousel" eager={index === 0} />
             </div>
           ))}
         </div>

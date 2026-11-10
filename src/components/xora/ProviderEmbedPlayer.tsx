@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
-import { getActiveDataSaverConfig } from "@/lib/data-saver";
+import { useDataSaver } from "@/lib/data-saver";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import type { FeedType } from "@/integrations/firebase/types";
@@ -34,7 +34,10 @@ export function ProviderEmbedPlayer({
 }: ProviderEmbedPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
+  const [hasStarted, setHasStarted] = useState<boolean>(Boolean(autoPlay));
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [isClient, setIsClient] = useState<boolean>(false);
+  const [currentOrigin, setCurrentOrigin] = useState("");
   const [playerClosed, setPlayerClosed] = useState(false);
   const { user } = useAuth();
 
@@ -44,11 +47,15 @@ export function ProviderEmbedPlayer({
 
   useEffect(() => {
     setIsClient(true);
+    setCurrentOrigin(window.location.origin);
   }, []);
 
   useEffect(() => {
     setPlayerClosed(false);
-  }, [embedUrl]);
+    setHasStarted(Boolean(autoPlay));
+    setIsPlaying(Boolean(autoPlay));
+    setThumbnailFailed(false);
+  }, [embedUrl, autoPlay]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -209,10 +216,11 @@ export function ProviderEmbedPlayer({
     };
   }, [isClient, isPlaying, user, postId]);
 
-  const dataSaver = getActiveDataSaverConfig();
+  const youtubeVideoId = embedUrl.includes("youtube")
+    ? embedUrl.match(/\/embed\/([\w-]{11})/)?.[1]
+    : null;
+  const { config: dataSaver } = useDataSaver();
   let embedSrc = embedUrl;
-  const currentOrigin =
-    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
   if (!embedSrc.includes("enablejsapi=1") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += (embedSrc.includes("?") ? "&" : "?") + "enablejsapi=1";
   }
@@ -229,7 +237,7 @@ export function ProviderEmbedPlayer({
         embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
     }
   }
-  if (autoPlay) {
+  if (hasStarted) {
     if (embedSrc.includes("autoplay=0")) {
       embedSrc = embedSrc.replace("autoplay=0", "autoplay=1");
     } else if (!embedSrc.includes("autoplay=1")) {
@@ -289,10 +297,64 @@ export function ProviderEmbedPlayer({
       </div>
 
       {!playerClosed ? (
-        <button type="button" onClick={() => { setIsPlaying(false); setPlayerClosed(true); onClose?.(); }} aria-label="Close player" title="Close player" className="absolute right-3 top-3 z-40 grid size-11 place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black"><X className="size-4" aria-hidden="true" /></button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsPlaying(false);
+            setPlayerClosed(true);
+            onClose?.();
+          }}
+          aria-label="Close player"
+          title="Close player"
+          className="absolute right-3 top-3 z-40 grid size-11 place-items-center rounded-full border border-white/20 bg-black/80 text-white shadow-lg backdrop-blur-md transition hover:bg-black"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
       ) : null}
       {playerClosed ? (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white"><div><p className="font-semibold">Player closed</p><button type="button" onClick={() => setPlayerClosed(false)} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div></div>
+        <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white">
+          <div>
+            <p className="font-semibold">Player closed</p>
+            <button
+              type="button"
+              onClick={() => setPlayerClosed(false)}
+              className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15"
+            >
+              Reopen player
+            </button>
+          </div>
+        </div>
+      ) : !hasStarted ? (
+        <div className="absolute inset-0 overflow-hidden bg-[#2A1F1A]">
+          {youtubeVideoId && !thumbnailFailed ? (
+            <img
+              src={`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`}
+              alt=""
+              width={1280}
+              height={720}
+              loading="lazy"
+              onError={() => setThumbnailFailed(true)}
+              className="h-full w-full object-cover"
+              style={{ aspectRatio: "16 / 9" }}
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
+          )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
+          <button
+            type="button"
+            onClick={() => {
+              setHasStarted(true);
+              setIsPlaying(true);
+            }}
+            aria-label="Play video"
+            className="press absolute inset-0 grid place-items-center"
+          >
+            <span className="grid size-16 place-items-center rounded-full border border-white/45 bg-white/20 text-white shadow-xl backdrop-blur-xl">
+              <Play className="ml-1 size-7 fill-current" aria-hidden="true" />
+            </span>
+          </button>
+        </div>
       ) : isClient ? (
         <iframe
           ref={iframeRef}
@@ -302,10 +364,7 @@ export function ProviderEmbedPlayer({
           allowFullScreen
           loading="lazy"
           referrerPolicy="strict-origin-when-cross-origin"
-          className={cn(
-            "h-full w-full border-0 pointer-events-auto",
-            "rounded-2xl",
-          )}
+          className={cn("h-full w-full border-0 pointer-events-auto", "rounded-2xl")}
         />
       ) : (
         <div className="h-full w-full flex items-center justify-center bg-black/90 text-xs text-white/40">
@@ -313,7 +372,7 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      {!playerClosed && !isPlaying ? (
+      {!playerClosed && hasStarted && !isPlaying ? (
         <button
           type="button"
           onClick={togglePlayState}
@@ -325,7 +384,6 @@ export function ProviderEmbedPlayer({
           </span>
         </button>
       ) : null}
-
     </div>
   );
 }

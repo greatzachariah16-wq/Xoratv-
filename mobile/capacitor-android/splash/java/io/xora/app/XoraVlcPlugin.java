@@ -2,6 +2,7 @@ package io.xora.app;
 
 import android.app.PictureInPictureParams;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -138,6 +139,8 @@ public class XoraVlcPlugin extends Plugin {
     private long bufferingStartedAt;
     private Runnable streamStartupTimeout;
     private Runnable bufferingWatchdog;
+    private Runnable bufferingIndicatorDelay;
+    private Runnable stablePlaybackReset;
     private Runnable retryRunnable;
     private Runnable controlsAutoHide;
     private PlayerMode mode = PlayerMode.PINNED;
@@ -287,7 +290,13 @@ public class XoraVlcPlugin extends Plugin {
         if (mediaPlayer != null && mediaPlayer.isPlaying()
             && !pipRequested && !isActivityInPipMode()) {
             playingBeforeAppPause = true;
-            mediaPlayer.pause();
+            playbackAttemptGeneration++;
+            clearStartupTimeout();
+            clearBufferingWatchdog();
+            clearRetry();
+            // Stop the media connection while the app is backgrounded. The
+            // same MediaPlayer and attached surface are reused on resume.
+            mediaPlayer.stop();
         }
     }
 
@@ -304,7 +313,7 @@ public class XoraVlcPlugin extends Plugin {
         if (mediaPlayer != null && playingBeforeAppPause && !userPaused
             && isNetworkUsable() && !isActivityInPipMode()) {
             requestAudioFocus();
-            mediaPlayer.play();
+            startCurrentStream(true);
         }
         playingBeforeAppPause = false;
         updateControlLabels();
@@ -392,6 +401,7 @@ public class XoraVlcPlugin extends Plugin {
                 currentChannelTitle = requestedTitle == null || requestedTitle.trim().isEmpty()
                     ? "Live TV"
                     : requestedTitle.trim();
+                if (channelTitleText != null) channelTitleText.setText(currentChannelTitle);
                 currentStreamIndex = 0;
                 autoRetryCount = 0;
                 userPaused = false;
@@ -414,6 +424,77 @@ public class XoraVlcPlugin extends Plugin {
             } catch (Exception error) {
                 closePlayerInternal(false);
                 call.reject("Could not start this channel.", error);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void lockLandscape(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void unlockOrientation(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void switchChannel(PluginCall call) {
+        String url = call.getString("url");
+        String fallbackUrl1 = call.getString("fallbackUrl1");
+        String fallbackUrl2 = call.getString("fallbackUrl2");
+        String requestedTitle = call.getString("title", "Live TV");
+        String requestedChannelId = call.getString("channelId");
+
+        if (!isSecureUrl(url)) {
+            call.reject("A secure stream URL is required.");
+            return;
+        }
+
+        getActivity().runOnUiThread(() -> {
+            try {
+                if (videoLayout == null || mediaPlayer == null) {
+                    call.reject("The native player is not ready to switch channels.");
+                    return;
+                }
+                clearStartupTimeout();
+                clearBufferingWatchdog();
+                clearRetry();
+                streamUrls.clear();
+                streamUrls.add(url);
+                if (isSecureUrl(fallbackUrl1) && !streamUrls.contains(fallbackUrl1)) {
+                    streamUrls.add(fallbackUrl1);
+                }
+                if (isSecureUrl(fallbackUrl2) && !streamUrls.contains(fallbackUrl2)) {
+                    streamUrls.add(fallbackUrl2);
+                }
+                currentChannelId = requestedChannelId == null ? channelIdFromUrl(url) : requestedChannelId;
+                currentChannelTitle = requestedTitle == null || requestedTitle.trim().isEmpty()
+                    ? "Live TV"
+                    : requestedTitle.trim();
+                if (channelTitleText != null) channelTitleText.setText(currentChannelTitle);
+                currentStreamIndex = 0;
+                autoRetryCount = 0;
+                userPaused = false;
+                isMuted = false;
+                decoderFallbackAttempted = false;
+                bufferingStallRestarted = false;
+                playingBeforeAppPause = false;
+                resumeWhenOnline = true;
+                if (isNetworkUsable()) {
+                    startCurrentStream(true);
+                } else {
+                    setState(PlaybackState.OFFLINE);
+                }
+                call.resolve();
+            } catch (Exception error) {
+                call.reject("Could not switch the live channel.", error);
             }
         });
     }
@@ -516,7 +597,8 @@ public class XoraVlcPlugin extends Plugin {
         playerOverlay.setElevation(dp(28));
 
         videoFrame = new FrameLayout(getContext());
-        videoFrame.setBackgroundColor(Color.BLACK);
+        videoFrame.setBackground(roundedBackground(Color.BLACK, dp(24)));
+        videoFrame.setClipToOutline(true);
         videoFrame.setClickable(true);
         videoFrame.setOnClickListener(view -> {
             if (!controlsVisible) showControls();
@@ -825,11 +907,20 @@ public class XoraVlcPlugin extends Plugin {
 
             case PINNED:
             default:
-                videoHeight = Math.round(width * 9f / 16f);
-                videoHeight = Math.min(videoHeight, Math.max(1, height));
-                overlayWidth = width;
-                overlayHeight = videoHeight;
-                setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
+                if (width > height && height <= dp(500)) {
+                    // On a phone in landscape, reserve a fixed right-side channel panel.
+                    panelWidth = Math.min(dp(320), Math.round(width * 0.48f));
+                    overlayWidth = Math.max(1, width - panelWidth);
+                    videoHeight = height;
+                    overlayHeight = height;
+                    setWebViewRegion(overlayWidth, 0, panelWidth, height);
+                } else {
+                    videoHeight = Math.round(width * 9f / 16f);
+                    videoHeight = Math.min(videoHeight, Math.max(1, height));
+                    overlayWidth = width;
+                    overlayHeight = videoHeight;
+                    setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
+                }
                 break;
         }
 
@@ -1070,18 +1161,27 @@ public class XoraVlcPlugin extends Plugin {
         }
 
         clearStartupTimeout();
+        clearBufferingWatchdog();
         clearRetry();
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         final String selectedUrl = streamUrls.get(currentStreamIndex);
 
-        MediaPlayer previousPlayer = mediaPlayer;
-        mediaPlayer = null;
-        releaseMediaPlayer(previousPlayer);
-
-        final MediaPlayer activePlayer = new MediaPlayer(libVLC);
-        activePlayer.attachViews(videoLayout, null, false, false);
-        mediaPlayer = activePlayer;
+        final MediaPlayer activePlayer;
+        if (mediaPlayer == null) {
+            activePlayer = new MediaPlayer(libVLC);
+            activePlayer.attachViews(videoLayout, null, false, false);
+            mediaPlayer = activePlayer;
+        } else {
+            activePlayer = mediaPlayer;
+            // Keep the same native player and attached video surface while replacing
+            // the media source; the previous attempt generation is already invalidated.
+            try {
+                activePlayer.stop();
+            } catch (RuntimeException ignored) {
+                // LibVLC may already have stopped the previous media.
+            }
+        }
 
         boolean preferSoftware = prefersSoftwareDecoder(selectedUrl);
         boolean useHardwareDecoder = preferSoftware ? !usePreferredDecoder : usePreferredDecoder;
@@ -1119,7 +1219,7 @@ public class XoraVlcPlugin extends Plugin {
             probeAndSetError(selectedUrl, activePlayerGeneration, activeAttemptGeneration, true);
         };
         streamStartupTimeout = timeout;
-        mainHandler.postDelayed(timeout, 25000L);
+        mainHandler.postDelayed(timeout, 15000L);
         updateControlLabels();
     }
 
@@ -1141,7 +1241,19 @@ public class XoraVlcPlugin extends Plugin {
         }
     }
 
+    private void clearStablePlaybackReset() {
+        if (stablePlaybackReset != null) {
+            mainHandler.removeCallbacks(stablePlaybackReset);
+            stablePlaybackReset = null;
+        }
+    }
+
     private void clearBufferingWatchdog() {
+        clearStablePlaybackReset();
+        if (bufferingIndicatorDelay != null) {
+            mainHandler.removeCallbacks(bufferingIndicatorDelay);
+            bufferingIndicatorDelay = null;
+        }
         if (bufferingWatchdog != null) {
             mainHandler.removeCallbacks(bufferingWatchdog);
             bufferingWatchdog = null;
@@ -1217,7 +1329,10 @@ public class XoraVlcPlugin extends Plugin {
 
             case MediaPlayer.Event.Buffering:
                 if (event.getBuffering() < 100f) {
-                    setState(PlaybackState.BUFFERING);
+                    // A short return to PLAYING must not reset recovery attempts;
+                    // only a sustained 30-second healthy session earns a reset.
+                    clearStablePlaybackReset();
+                    scheduleBufferingIndicator(eventPlayer, eventPlayerGeneration, eventAttemptGeneration);
                     startBufferingWatchdog(eventPlayer, eventPlayerGeneration, eventAttemptGeneration);
                 }
                 break;
@@ -1226,9 +1341,17 @@ public class XoraVlcPlugin extends Plugin {
                 clearStartupTimeout();
                 clearBufferingWatchdog();
                 clearRetry();
-                autoRetryCount = 0;
-                bufferingStallRestarted = false;
                 setState(PlaybackState.PLAYING);
+                Runnable stableReset = () -> {
+                    stablePlaybackReset = null;
+                    if (isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                        && playbackState == PlaybackState.PLAYING) {
+                        autoRetryCount = 0;
+                        bufferingStallRestarted = false;
+                    }
+                };
+                stablePlaybackReset = stableReset;
+                mainHandler.postDelayed(stableReset, 30000L);
                 updateControlLabels();
                 showControls();
                 break;
@@ -1271,6 +1394,22 @@ public class XoraVlcPlugin extends Plugin {
             default:
                 break;
         }
+    }
+
+    private void scheduleBufferingIndicator(
+        MediaPlayer eventPlayer,
+        long eventPlayerGeneration,
+        long eventAttemptGeneration
+    ) {
+        if (bufferingIndicatorDelay != null) return;
+        bufferingIndicatorDelay = () -> {
+            bufferingIndicatorDelay = null;
+            if (isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                && playbackState != PlaybackState.PLAYING && !userPaused) {
+                setState(PlaybackState.BUFFERING);
+            }
+        };
+        mainHandler.postDelayed(bufferingIndicatorDelay, 400L);
     }
 
     private void startBufferingWatchdog(

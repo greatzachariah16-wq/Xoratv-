@@ -70,7 +70,7 @@ export function parseEmbedInfo(
       return {
         provider: "youtube",
         videoId,
-        embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&controls=1&enablejsapi=1&origin=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "")}`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&controls=1&enablejsapi=1`,
       };
     }
   }

@@ -254,25 +254,30 @@ export function useDataSaver() {
 /**
  * Optimizes an image URL (e.g. Unsplash or Cloudinary) for the 300MB/hr data saver budget.
  */
-export function getOptimizedImageUrl(url?: string | null, targetWidth = 400): string | null {
+export function getOptimizedImageUrlWithConfig(
+  url: string | null | undefined,
+  targetWidth: number,
+  config: DataSaverConfig,
+): string | null {
   if (!url) return null;
-  const config = getActiveDataSaverConfig();
   if (!config.enableImageCompression) return url;
 
-  // Optimize Unsplash images
   if (url.includes("images.unsplash.com")) {
     const clean = url.replace(/([?&])w=\d+/g, "").replace(/([?&])q=\d+/g, "");
     const separator = clean.includes("?") ? "&" : "?";
-    return `${clean}${separator}w=${targetWidth}&q=65&auto=format`;
+    return clean + separator + "w=" + targetWidth + "&q=65&auto=format";
   }
 
-  // Optimize Cloudinary image URLs
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
-    const transform = `w_${targetWidth},q_auto:eco,f_auto`;
+    const transform = "w_" + targetWidth + ",q_auto:eco,f_auto";
     if (!url.includes(transform)) {
-      return url.replace("/image/upload/", `/image/upload/${transform}/`);
+      return url.replace("/image/upload/", "/image/upload/" + transform + "/");
     }
   }
 
   return url;
+}
+
+export function getOptimizedImageUrl(url?: string | null, targetWidth = 400): string | null {
+  return getOptimizedImageUrlWithConfig(url, targetWidth, getActiveDataSaverConfig());
 }
