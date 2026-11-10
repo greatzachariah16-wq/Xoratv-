@@ -350,7 +350,7 @@ async function loadStreamRecords(): Promise<IptvStreamRecord[]> {
 }
 
 function playbackQualityScore(quality: string | null | undefined): number {
-  const match = quality?.match(/(\\d{3,4})p/i);
+  const match = quality?.match(/(\d{3,4})p/i);
   return match ? Number(match[1]) : 0;
 }
 
