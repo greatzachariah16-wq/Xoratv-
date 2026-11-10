@@ -403,7 +403,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void addStreamCandidate(String upstreamUrl, JSONObject headers, String transport) throws IOException {
-        if (!isSecureUrl(upstreamUrl) || upstreamStreamUrls.contains(upstreamUrl)) return;
+        if (!isHttpUrl(upstreamUrl) || upstreamStreamUrls.contains(upstreamUrl)) return;
         if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient());
         String localUrl = localHlsProxy.createSession(upstreamUrl, headers);
         upstreamStreamUrls.add(upstreamUrl);
@@ -629,6 +629,14 @@ public class XoraVlcPlugin extends Plugin {
         if (url == null || url.trim().isEmpty()) return false;
         Uri uri = Uri.parse(url);
         return "https".equalsIgnoreCase(uri.getScheme());
+    }
+
+    private boolean isHttpUrl(String url) {
+        if (url == null || url.trim().isEmpty()) return false;
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        return uri.getHost() != null
+            && ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme));
     }
 
     private boolean isLocalProxyUrl(String url) {
@@ -1798,9 +1806,3 @@ public class XoraVlcPlugin extends Plugin {
                 state.put("state", PlaybackState.IDLE.name());
                 state.put("channelId", closedChannelId);
                 state.put("message", "");
-                notifyListeners("stateChanged", state);
-            }
-            emitPlaybackState(false, false, false, true);
-        }
-    }
-}

@@ -1246,7 +1246,7 @@ export default {
           const directCandidates = forceProxy
             ? []
             : candidates
-                .filter((candidate) => /^https:\/\//i.test(candidate.streamUrl))
+                .filter((candidate) => /^https?:\/\//i.test(candidate.streamUrl))
                 .map((candidate) => ({
                   url: candidate.streamUrl,
                   headers: {
@@ -1267,7 +1267,8 @@ export default {
               }
             : {
                 mode: "direct",
-                url: directCandidates[0].url,
+                // Keep the Capacitor entry URL HTTPS; every candidate origin is wrapped locally.
+                url: proxyUrlFor(0),
                 headers: directCandidates[0].headers,
                 candidates: directCandidates,
                 proxyUrl: proxyUrlFor(0),
