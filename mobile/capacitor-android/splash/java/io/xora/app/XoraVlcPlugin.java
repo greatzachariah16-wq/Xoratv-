@@ -37,6 +37,9 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
@@ -78,6 +81,8 @@ public class XoraVlcPlugin extends Plugin {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ArrayList<String> streamUrls = new ArrayList<>();
+    private final ArrayList<JSONObject> streamHeaders = new ArrayList<>();
+    private int directCandidateCount = 0;
     private final ExecutorService probeExecutor = Executors.newSingleThreadExecutor();
 
     private FrameLayout rootContainer;
@@ -370,6 +375,34 @@ public class XoraVlcPlugin extends Plugin {
         );
     }
 
+    private void addStreamCandidate(String candidateUrl, JSONObject headers) {
+        if (!isSecureUrl(candidateUrl) || streamUrls.contains(candidateUrl)) return;
+        streamUrls.add(candidateUrl);
+        streamHeaders.add(headers == null ? new JSONObject() : headers);
+    }
+
+    private void configureStreamCandidates(PluginCall call, String url, String fallbackUrl1, String fallbackUrl2) {
+        streamUrls.clear();
+        streamHeaders.clear();
+        directCandidateCount = 0;
+        JSONArray candidates = call.getArray("candidates");
+        if (candidates != null && candidates.length() > 0) {
+            for (int i = 0; i < candidates.length(); i++) {
+                JSONObject candidate = candidates.optJSONObject(i);
+                if (candidate == null) continue;
+                addStreamCandidate(candidate.optString("url", ""), candidate.optJSONObject("headers"));
+            }
+            directCandidateCount = streamUrls.size();
+        } else {
+            addStreamCandidate(url, call.getObject("headers"));
+        }
+        String proxyFallbackUrl = call.getString("proxyFallbackUrl");
+        if (isSecureUrl(proxyFallbackUrl)) addStreamCandidate(proxyFallbackUrl, null);
+        if (isSecureUrl(fallbackUrl1)) addStreamCandidate(fallbackUrl1, null);
+        if (isSecureUrl(fallbackUrl2)) addStreamCandidate(fallbackUrl2, null);
+        if (streamUrls.isEmpty()) addStreamCandidate(url, null);
+    }
+
     @PluginMethod
     public void open(PluginCall call) {
         String url = call.getString("url");
@@ -386,14 +419,7 @@ public class XoraVlcPlugin extends Plugin {
         getActivity().runOnUiThread(() -> {
             try {
                 closePlayerInternal(false);
-                streamUrls.clear();
-                streamUrls.add(url);
-                if (isSecureUrl(fallbackUrl1) && !streamUrls.contains(fallbackUrl1)) {
-                    streamUrls.add(fallbackUrl1);
-                }
-                if (isSecureUrl(fallbackUrl2) && !streamUrls.contains(fallbackUrl2)) {
-                    streamUrls.add(fallbackUrl2);
-                }
+                configureStreamCandidates(call, url, fallbackUrl1, fallbackUrl2);
 
                 currentChannelId = requestedChannelId == null
                     ? channelIdFromUrl(url)
@@ -466,14 +492,7 @@ public class XoraVlcPlugin extends Plugin {
                 clearStartupTimeout();
                 clearBufferingWatchdog();
                 clearRetry();
-                streamUrls.clear();
-                streamUrls.add(url);
-                if (isSecureUrl(fallbackUrl1) && !streamUrls.contains(fallbackUrl1)) {
-                    streamUrls.add(fallbackUrl1);
-                }
-                if (isSecureUrl(fallbackUrl2) && !streamUrls.contains(fallbackUrl2)) {
-                    streamUrls.add(fallbackUrl2);
-                }
+                configureStreamCandidates(call, url, fallbackUrl1, fallbackUrl2);
                 currentChannelId = requestedChannelId == null ? channelIdFromUrl(url) : requestedChannelId;
                 currentChannelTitle = requestedTitle == null || requestedTitle.trim().isEmpty()
                     ? "Live TV"
@@ -1195,6 +1214,15 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
+        JSONObject requestHeaders = currentStreamIndex < streamHeaders.size()
+            ? streamHeaders.get(currentStreamIndex)
+            : null;
+        if (requestHeaders != null) {
+            String userAgent = requestHeaders.optString("User-Agent", "");
+            String referer = requestHeaders.optString("Referer", "");
+            if (!userAgent.isEmpty()) media.addOption(":http-user-agent=" + userAgent);
+            if (!referer.isEmpty()) media.addOption(":http-referrer=" + referer);
+        }
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
         media.addOption(":http-reconnect");
@@ -1465,6 +1493,11 @@ public class XoraVlcPlugin extends Plugin {
                     setState(PlaybackState.OFFLINE);
                     return;
                 }
+                // A failed direct origin should fall through to the proxy immediately,
+                // rather than waiting for the user's manual retry.
+                if (currentStreamIndex < directCandidateCount && probeResult != PlaybackState.PLAYING) {
+                    if (tryNextStream()) return;
+                }
                 setState(probeResult);
                 if (probeResult == PlaybackState.ERR_TIMEOUT || probeResult == PlaybackState.ERR_UNKNOWN) {
                     scheduleAutoRetry();
@@ -1537,6 +1570,7 @@ public class XoraVlcPlugin extends Plugin {
             state.put("state", next.name());
             state.put("channelId", currentChannelId);
             state.put("message", stateMessage(next));
+            state.put("transport", currentStreamIndex < directCandidateCount ? "direct" : "proxy");
             notifyListeners("stateChanged", state);
         }
 
