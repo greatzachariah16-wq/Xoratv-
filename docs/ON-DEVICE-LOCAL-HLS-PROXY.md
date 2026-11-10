@@ -15,7 +15,7 @@ If port 8787 is occupied, the native proxy tries ports 8788 through 8797. The se
 - Rewrite bare media/variant URI lines and URI attributes in HLS tags, including key, map, media and rendition references.
 - Relay segments, initialization maps and encryption keys as streams rather than loading media objects into memory.
 - Forward Range requests and Content-Range / Accept-Ranges response metadata.
-- Keep multiple session IDs in a concurrent map; sessions expire after 45 minutes and are cleared on channel change, player close or plugin destruction.
+- Keep multiple session IDs in a concurrent map; sessions expire after 45 minutes of inactivity and are cleared on channel change, player close or plugin destruction.
 - Log only session IDs and upstream hostnames, never complete signed URLs.
 
 ## Transport reporting
