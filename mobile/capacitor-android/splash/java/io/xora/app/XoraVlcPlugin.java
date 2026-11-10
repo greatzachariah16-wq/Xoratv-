@@ -140,6 +140,7 @@ public class XoraVlcPlugin extends Plugin {
     private Runnable streamStartupTimeout;
     private Runnable bufferingWatchdog;
     private Runnable bufferingIndicatorDelay;
+    private Runnable stablePlaybackReset;
     private Runnable retryRunnable;
     private Runnable controlsAutoHide;
     private PlayerMode mode = PlayerMode.PINNED;
@@ -1240,7 +1241,15 @@ public class XoraVlcPlugin extends Plugin {
         }
     }
 
+    private void clearStablePlaybackReset() {
+        if (stablePlaybackReset != null) {
+            mainHandler.removeCallbacks(stablePlaybackReset);
+            stablePlaybackReset = null;
+        }
+    }
+
     private void clearBufferingWatchdog() {
+        clearStablePlaybackReset();
         if (bufferingIndicatorDelay != null) {
             mainHandler.removeCallbacks(bufferingIndicatorDelay);
             bufferingIndicatorDelay = null;
@@ -1320,6 +1329,9 @@ public class XoraVlcPlugin extends Plugin {
 
             case MediaPlayer.Event.Buffering:
                 if (event.getBuffering() < 100f) {
+                    // A short return to PLAYING must not reset recovery attempts;
+                    // only a sustained 30-second healthy session earns a reset.
+                    clearStablePlaybackReset();
                     scheduleBufferingIndicator(eventPlayer, eventPlayerGeneration, eventAttemptGeneration);
                     startBufferingWatchdog(eventPlayer, eventPlayerGeneration, eventAttemptGeneration);
                 }
@@ -1329,9 +1341,17 @@ public class XoraVlcPlugin extends Plugin {
                 clearStartupTimeout();
                 clearBufferingWatchdog();
                 clearRetry();
-                autoRetryCount = 0;
-                bufferingStallRestarted = false;
                 setState(PlaybackState.PLAYING);
+                Runnable stableReset = () -> {
+                    stablePlaybackReset = null;
+                    if (isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                        && playbackState == PlaybackState.PLAYING) {
+                        autoRetryCount = 0;
+                        bufferingStallRestarted = false;
+                    }
+                };
+                stablePlaybackReset = stableReset;
+                mainHandler.postDelayed(stableReset, 30000L);
                 updateControlLabels();
                 showControls();
                 break;
