@@ -245,7 +245,12 @@ public class XoraVlcPlugin extends Plugin {
         if (playbackState == PlaybackState.OFFLINE && resumeWhenOnline && !userPaused) {
             resumeWhenOnline = false;
             autoRetryCount = 0;
-            startCurrentStream(true);
+            try {
+                refreshLocalPlaybackSessions();
+                startCurrentStream(true);
+            } catch (IOException error) {
+                setState(PlaybackState.ERR_UNKNOWN);
+            }
         }
     }
 
@@ -322,7 +327,12 @@ public class XoraVlcPlugin extends Plugin {
         if (mediaPlayer != null && playingBeforeAppPause && !userPaused
             && isNetworkUsable() && !isActivityInPipMode()) {
             requestAudioFocus();
-            startCurrentStream(true);
+            try {
+                refreshLocalPlaybackSessions();
+                startCurrentStream(true);
+            } catch (IOException error) {
+                setState(PlaybackState.ERR_UNKNOWN);
+            }
         }
         playingBeforeAppPause = false;
         updateControlLabels();
@@ -379,30 +389,38 @@ public class XoraVlcPlugin extends Plugin {
         );
     }
 
+    private OkHttpClient buildLocalProxyClient() {
+        OkHttpClient.Builder builder = probeClient != null
+            ? probeClient.newBuilder()
+            : new OkHttpClient.Builder();
+        return builder
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .retryOnConnectionFailure(true)
+            .build();
+    }
+
     private void addStreamCandidate(String upstreamUrl, JSONObject headers, String transport) throws IOException {
         if (!isSecureUrl(upstreamUrl) || upstreamStreamUrls.contains(upstreamUrl)) return;
-        if (localHlsProxy == null) {
-            OkHttpClient mediaClient = probeClient != null
-                ? probeClient.newBuilder()
-                    .connectTimeout(12, TimeUnit.SECONDS)
-                    .readTimeout(45, TimeUnit.SECONDS)
-                    .writeTimeout(15, TimeUnit.SECONDS)
-                    .callTimeout(0, TimeUnit.MILLISECONDS)
-                    .build()
-                : new OkHttpClient.Builder()
-                    .connectTimeout(12, TimeUnit.SECONDS)
-                    .readTimeout(45, TimeUnit.SECONDS)
-                    .writeTimeout(15, TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .build();
-            localHlsProxy = LocalHlsProxy.start(mediaClient);
-        }
+        if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient());
         String localUrl = localHlsProxy.createSession(upstreamUrl, headers);
         upstreamStreamUrls.add(upstreamUrl);
         streamUrls.add(localUrl);
-        // All provider headers are applied by LocalHlsProxy, never by LibVLC.
-        streamHeaders.add(new JSONObject());
+        // Keep the resolver headers beside the upstream URL so sessions can be renewed on resume.
+        streamHeaders.add(headers == null ? new JSONObject() : headers);
         streamTransports.add(transport);
+    }
+
+    private void refreshLocalPlaybackSessions() throws IOException {
+        if (upstreamStreamUrls.isEmpty()) throw new IOException("No upstream playback candidates are available.");
+        if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient());
+        localHlsProxy.clearSessions();
+        for (int i = 0; i < upstreamStreamUrls.size(); i++) {
+            JSONObject headers = i < streamHeaders.size() ? streamHeaders.get(i) : null;
+            streamUrls.set(i, localHlsProxy.createSession(upstreamStreamUrls.get(i), headers));
+        }
     }
 
     private void configureStreamCandidates(PluginCall call, String url, String fallbackUrl1, String fallbackUrl2) throws IOException {
@@ -1079,8 +1097,12 @@ public class XoraVlcPlugin extends Plugin {
             userPaused = false;
             requestAudioFocus();
             if (isNetworkUsable()) {
-                mediaPlayer.play();
-                setState(PlaybackState.CONNECTING);
+                try {
+                    refreshLocalPlaybackSessions();
+                    startCurrentStream(true);
+                } catch (IOException error) {
+                    setState(PlaybackState.ERR_UNKNOWN);
+                }
             } else {
                 setState(PlaybackState.OFFLINE);
             }
@@ -1374,6 +1396,12 @@ public class XoraVlcPlugin extends Plugin {
         autoRetryCount = 0;
         decoderFallbackAttempted = false;
         bufferingStallRestarted = false;
+        try {
+            refreshLocalPlaybackSessions();
+        } catch (IOException error) {
+            setState(PlaybackState.ERR_UNKNOWN);
+            return;
+        }
         currentStreamIndex = 0;
         startCurrentStream(true);
     }
