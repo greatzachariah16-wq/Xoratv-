@@ -1159,7 +1159,7 @@ export default {
       try {
         const body = await request.json() as { provider?: string; channelId?: string; transport?: string };
         if (body.transport === "proxy" && body.channelId) {
-          const key = body.channelId;
+          const key = `local-hls-v1:${body.channelId}`;
           proxyPreferenceCache.set(key, Date.now() + PROXY_PREFERENCE_TTL_MS);
         }
         return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1231,7 +1231,9 @@ export default {
             proxy.searchParams.set("attempt", String(candidateAttempt));
             return proxy.toString();
           };
-          const preferenceKey = channelId;
+          const preferenceKey = `local-hls-v1:${channelId}`;
+          // Drop a legacy hybrid-cache entry so pre-local-proxy failures do not force Render first.
+          proxyPreferenceCache.delete(channelId);
           const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
           const rememberedProxy = proxyPreferenceExpiry > Date.now();
           if (!rememberedProxy && proxyPreferenceExpiry) {
