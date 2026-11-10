@@ -207,15 +207,22 @@ public final class LocalHlsProxy extends NanoHTTPD {
     }
 
     private String localResourceUrl(String baseUrl, String reference, String sessionId) {
+        // Data URIs are embedded payloads, not network requests.
+        if (reference != null && reference.regionMatches(true, 0, "data:", 0, 5)) return reference;
         try {
             URI resolved = new URI(baseUrl).resolve(new URI(reference));
             String absolute = resolved.toString();
-            if (!isHttpUrl(absolute)) return reference;
+            if (!isHttpUrl(absolute)) return localUnavailableUrl(sessionId);
             return "http://127.0.0.1:" + listeningPort + "/resource/" + sessionId
                 + "?url=" + URLEncoder.encode(absolute, "UTF-8");
         } catch (Exception ignored) {
-            return reference;
+            // Never leave an unparsed provider URL in a playlist sent to LibVLC.
+            return localUnavailableUrl(sessionId);
         }
+    }
+
+    private String localUnavailableUrl(String sessionId) {
+        return "http://127.0.0.1:" + listeningPort + "/unsupported/" + sessionId;
     }
 
     private boolean isPlaylist(String url, String contentType) {
@@ -229,8 +236,17 @@ public final class LocalHlsProxy extends NanoHTTPD {
         try {
             URI uri = new URI(value);
             String scheme = uri.getScheme();
-            return uri.getHost() != null && ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
-                && uri.getUserInfo() == null;
+            String host = uri.getHost();
+            if (host == null || uri.getUserInfo() != null
+                || !("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))) return false;
+            String normalizedHost = host.toLowerCase(java.util.Locale.US);
+            if (normalizedHost.startsWith("[") && normalizedHost.endsWith("]")) {
+                normalizedHost = normalizedHost.substring(1, normalizedHost.length() - 1);
+            }
+            return !("localhost".equals(normalizedHost)
+                || normalizedHost.endsWith(".localhost")
+                || "127.0.0.1".equals(normalizedHost)
+                || "::1".equals(normalizedHost));
         } catch (Exception ignored) {
             return false;
         }
