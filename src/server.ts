@@ -20,7 +20,7 @@ import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runne
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
-import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo } from "./integrations/providers/iptv-org";
+import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo, getIptvPlaybackCandidates } from "./integrations/providers/iptv-org";
 import { fetchNexusChannels, getNexusChannel, getNexusGuide, getNexusPlaybackCandidates } from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
@@ -1193,7 +1193,7 @@ export default {
               } : null);
             })()
           : await getIptvPlaybackInfo(channelId));
-        if (!playback) {
+        if (!playback && url.searchParams.get("resolve") !== "1") {
           return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
             status: 404,
             headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
@@ -1205,7 +1205,7 @@ export default {
         if (url.searchParams.get("resolve") === "1") {
           const candidates = provider === "nexus"
             ? await getNexusPlaybackCandidates(channelId, 3)
-            : [{ streamUrl: playback.streamUrl, referrer: playback.referrer, userAgent: playback.userAgent }];
+            : await getIptvPlaybackCandidates(channelId);
           const proxyUrlFor = (candidateAttempt: number) => {
             const proxy = new URL("/api/tv/stream", url.origin);
             proxy.searchParams.set("provider", provider);
