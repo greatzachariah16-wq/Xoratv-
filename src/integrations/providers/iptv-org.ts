@@ -304,6 +304,56 @@ type IptvPlaybackCandidate = {
   labels: string[];
 };
 
+type IptvStreamRecord = {
+  channel: string | null;
+  feed: string | null;
+  title: string;
+  url: string;
+  referrer: string | null;
+  user_agent: string | null;
+  quality: string | null;
+  labels?: string[];
+};
+
+const STREAMS_API = "https://iptv-org.github.io/api/streams.json";
+const STREAMS_CACHE_TTL_MS = 10 * 60 * 1000;
+let streamRecordsCache: { records: IptvStreamRecord[]; expiresAt: number } | null = null;
+let streamRecordsLoading: Promise<IptvStreamRecord[]> | null = null;
+
+async function loadStreamRecords(): Promise<IptvStreamRecord[]> {
+  if (streamRecordsCache && streamRecordsCache.expiresAt > Date.now()) {
+    return streamRecordsCache.records;
+  }
+  if (streamRecordsLoading) return streamRecordsLoading;
+
+  streamRecordsLoading = fetch(STREAMS_API, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(20000),
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`IPTV-org streams API failed: ${response.status}`);
+      const records = (await response.json()) as IptvStreamRecord[];
+      if (!Array.isArray(records)) throw new Error("IPTV-org streams API returned invalid data.");
+      streamRecordsCache = {
+        records,
+        expiresAt: Date.now() + STREAMS_CACHE_TTL_MS,
+      };
+      streamRecordsLoading = null;
+      return records;
+    })
+    .catch((error) => {
+      streamRecordsLoading = null;
+      throw error;
+    });
+
+  return streamRecordsLoading;
+}
+
+function playbackQualityScore(quality: string | null | undefined): number {
+  const match = quality?.match(/(\\d{3,4})p/i);
+  return match ? Number(match[1]) : 0;
+}
+
 const playbackHealthCache = new Map<string, { ok: boolean; expiresAt: number }>();
 const PLAYBACK_HEALTH_TTL_MS = 5 * 60 * 1000;
 const IPTV_HEALTH_CHECK_BUDGET = 40;
@@ -312,6 +362,37 @@ const IPTV_HEALTH_CHECK_CONCURRENCY = 8;
 export async function getIptvPlaybackCandidates(
   channelId: string,
 ): Promise<IptvPlaybackCandidate[]> {
+  try {
+    const records = await loadStreamRecords();
+    const seen = new Set<string>();
+    const candidates = records
+      .filter(
+        (record) =>
+          record.channel === channelId && /^https?:\/\//i.test(record.url),
+      )
+      .sort(
+        (a, b) =>
+          playbackQualityScore(b.quality) - playbackQualityScore(a.quality),
+      )
+      .filter((record) => {
+        if (seen.has(record.url)) return false;
+        seen.add(record.url);
+        return true;
+      })
+      .slice(0, 3)
+      .map((record) => ({
+        streamUrl: record.url,
+        referrer: record.referrer || null,
+        userAgent: record.user_agent || null,
+        quality: record.quality || null,
+        labels: record.labels || [],
+      }));
+
+    if (candidates.length > 0) return candidates;
+  } catch {
+    // Keep the existing playlist fallback if the metadata endpoint is unavailable.
+  }
+
   const channels = await loadChannels();
   const channel = channels.find((item) => item.id === channelId);
   if (!channel || !/^https?:\/\//i.test(channel.streamUrl)) return [];
