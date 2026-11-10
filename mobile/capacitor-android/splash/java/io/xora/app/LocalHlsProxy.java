@@ -34,6 +34,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
     private static final long SESSION_TTL_MS = 45L * 60L * 1000L;
     private static final int MAX_PLAYLIST_BYTES = 4 * 1024 * 1024;
     private static final Pattern URI_ATTRIBUTE = Pattern.compile("URI=\"([^\"]+)\"");
+    private static final Pattern CONTENT_RANGE = Pattern.compile("bytes\\s+(\\d+)-(\\d+)/", Pattern.CASE_INSENSITIVE);
 
     private static final class Session {
         final String id;
@@ -155,6 +156,17 @@ public final class LocalHlsProxy extends NanoHTTPD {
             }
 
             long length = body == null ? 0 : body.contentLength();
+            if (length < 0 && upstream.code() == 206) {
+                Matcher rangeMatch = CONTENT_RANGE.matcher(upstream.header("Content-Range", ""));
+                if (rangeMatch.find()) {
+                    try {
+                        length = Long.parseLong(rangeMatch.group(2))
+                            - Long.parseLong(rangeMatch.group(1)) + 1L;
+                    } catch (NumberFormatException ignored) {
+                        length = -1L;
+                    }
+                }
+            }
             InputStream stream = body == null ? new java.io.ByteArrayInputStream(new byte[0])
                 : new FilterInputStream(body.byteStream()) {
                     @Override
