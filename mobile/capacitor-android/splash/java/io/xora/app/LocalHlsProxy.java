@@ -256,11 +256,20 @@ public final class LocalHlsProxy extends NanoHTTPD {
     }
 
     private boolean isAllowedRequestHeader(String name) {
-        return "User-Agent".equalsIgnoreCase(name)
-            || "Referer".equalsIgnoreCase(name)
-            || "Origin".equalsIgnoreCase(name)
-            || "Authorization".equalsIgnoreCase(name)
-            || "Cookie".equalsIgnoreCase(name);
+        if (name == null || name.trim().isEmpty()) return false;
+        String normalized = name.toLowerCase(java.util.Locale.US);
+        // Preserve resolver-supplied origin headers, including provider-specific X-* headers,
+        // while preventing hop-by-hop, host, range, and proxy credentials from being spoofed.
+        return !("host".equals(normalized)
+            || "connection".equals(normalized)
+            || "content-length".equals(normalized)
+            || "transfer-encoding".equals(normalized)
+            || "accept-encoding".equals(normalized)
+            || "range".equals(normalized)
+            || "te".equals(normalized)
+            || "trailer".equals(normalized)
+            || "upgrade".equals(normalized)
+            || normalized.startsWith("proxy-"));
     }
 
     private byte[] readBounded(InputStream input, int maximum) throws IOException {
