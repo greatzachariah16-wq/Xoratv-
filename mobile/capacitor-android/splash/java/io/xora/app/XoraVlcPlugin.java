@@ -83,6 +83,7 @@ public class XoraVlcPlugin extends Plugin {
     private final ArrayList<String> streamUrls = new ArrayList<>();
     private final ArrayList<JSONObject> streamHeaders = new ArrayList<>();
     private int directCandidateCount = 0;
+    private String lastReportedTransport = "";
     private final ExecutorService probeExecutor = Executors.newSingleThreadExecutor();
 
     private FrameLayout rootContainer;
@@ -1565,13 +1566,15 @@ public class XoraVlcPlugin extends Plugin {
             retryButton.setVisibility(showManualRetry ? View.VISIBLE : View.GONE);
             offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
         }
-        if (previous != next) {
+        String transport = currentStreamIndex < directCandidateCount ? "direct" : "proxy";
+        if (previous != next || !transport.equals(lastReportedTransport)) {
             JSObject state = new JSObject();
             state.put("state", next.name());
             state.put("channelId", currentChannelId);
             state.put("message", stateMessage(next));
-            state.put("transport", currentStreamIndex < directCandidateCount ? "direct" : "proxy");
+            state.put("transport", transport);
             notifyListeners("stateChanged", state);
+            lastReportedTransport = transport;
         }
 
         emitPlaybackState(
