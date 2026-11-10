@@ -33,6 +33,8 @@ const PLUTO_WRESTLING_DIAGNOSTIC_CHANNELS = new Set([
   "wrestling-legends-tv",
 ]);
 const plutoWrestlingDiagnosticCounts = new Map<string, number>();
+const proxyPreferenceCache = new Map<string, number>();
+const PROXY_PREFERENCE_TTL_MS = 15 * 60 * 1000;
 const MAX_PLUTO_WRESTLING_DIAGNOSTIC_SAMPLES = 32;
 
 function logPlutoWrestlingDiagnostic(channelId: string, details: Record<string, unknown>) {
@@ -1143,6 +1145,22 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/tv/playback-feedback" && request.method === "POST") {
+      try {
+        const body = await request.json() as { provider?: string; channelId?: string; transport?: string };
+        if (body.transport === "proxy" && body.channelId) {
+          const key = (body.provider || "nexus") + ":" + body.channelId;
+          proxyPreferenceCache.set(key, Date.now() + PROXY_PREFERENCE_TTL_MS);
+        }
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      } catch {
+        return new Response(JSON.stringify({ ok: false }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // IPTV playback proxy: Nexus is used by main TV; IPTV-org remains available for existing Xora Kids/X-Series paths.
     // IPTV-org publishes per-stream Referer/User-Agent requirements in streams.json.
     if ((url.pathname === "/api/tv/stream" || url.pathname.startsWith("/api/tv/stream/")) && request.method === "GET") {
@@ -1200,9 +1218,13 @@ export default {
             "wrestling-legends-tv",
             "wwe-superstar-central",
           ]);
-          const forceProxy = proxyOnlyChannels.has(channelId);
+          const preferenceKey = provider + ":" + channelId;
+          const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
+          const rememberedProxy = proxyPreferenceExpiry > Date.now();
+          if (!rememberedProxy && proxyPreferenceExpiry) proxyPreferenceCache.delete(preferenceKey);
+          const forceProxy = proxyOnlyChannels.has(channelId) || rememberedProxy;
           const directCandidates = forceProxy ? [] : candidates
-            .filter((candidate) => /^https?:\\/\\//i.test(candidate.streamUrl))
+            .filter((candidate) => /^https?:\/\//i.test(candidate.streamUrl))
             .map((candidate) => ({
               url: candidate.streamUrl,
               headers: {
