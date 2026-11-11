@@ -30,7 +30,6 @@ import {
   openNativeVlc,
   switchNativeVlcChannel,
   retryNativeVlc,
-  resolveNativeVlcPlayback,
   type NativeVlcStateChangedEvent,
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
@@ -383,17 +382,17 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
-      const resolution = await resolveNativeVlcPlayback(selected.provider || "nexus", selected.id);
+      // Match Xora Kids and XSports: Android fetches the Render stream endpoint,
+      // then its on-device LocalHlsBuffer stores the rolling HLS segments locally.
+      const streamUrl = new URL("/api/tv/stream", window.location.origin);
+      streamUrl.searchParams.set("provider", selected.provider || "nexus");
+      streamUrl.searchParams.set("channel", selected.id);
       if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: resolution.url,
+        url: streamUrl.toString(),
         title: getChannelDisplayName(selected),
         channelId: selected.id,
-        candidates: resolution.candidates,
-        proxyFallbackUrl: resolution.proxyUrl,
-        fallbackUrl1: resolution.proxyFallbackUrls?.[0],
-        fallbackUrl2: resolution.proxyFallbackUrls?.[1],
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
