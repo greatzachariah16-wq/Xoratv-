@@ -1273,9 +1273,7 @@ export default {
                 url: proxyUrlFor(0),
                 proxyUrl: proxyUrlFor(0),
                 candidates: [],
-                reason: rememberedProxy
-                  ? "recent-proxy-fallback"
-                  : "no-direct-candidate",
+                reason: rememberedProxy ? "recent-proxy-fallback" : "no-direct-candidate",
               }
             : {
                 mode: "direct",
