@@ -1730,6 +1730,11 @@ public class XoraVlcPlugin extends Plugin {
         if (progress == null) return;
         bufferHealthKnown = progress.ready;
         bufferHealthy = progress.healthy;
+        if (startupBufferActive && statusText != null) {
+            statusText.setText(!progress.healthy
+                ? "Slow internet connection · building stream buffer"
+                : "Preparing your live stream on this device");
+        }
         if (bufferProgressBar != null) bufferProgressBar.setProgress(progress.percent);
         if (bufferProgressText != null) {
             long seconds = Math.max(0L, Math.min(60L, Math.round(progress.bufferedMillis / 1000.0)));
