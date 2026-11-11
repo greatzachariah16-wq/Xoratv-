@@ -199,6 +199,7 @@ final class LocalHlsBuffer {
 
     private void run() {
         long startedAt = System.currentTimeMillis();
+        int transientFailures = 0;
         try {
             if (!directory.exists() && !directory.mkdirs()) {
                 throw new IOException("Could not create the Android stream cache.");
@@ -226,10 +227,16 @@ final class LocalHlsBuffer {
 
                 PlaylistDocument document = fetchPlaylist(mediaPlaylistUrl);
                 if (document == null) {
+                    transientFailures++;
                     if (!ready) throw new IOException("The stream playlist could not be refreshed.");
+                    if (transientFailures >= 3) {
+                        healthy = false;
+                        notifyListener();
+                    }
                     sleep(1500L);
                     continue;
                 }
+                transientFailures = 0;
                 mediaPlaylistUrl = document.url;
                 if (isMasterPlaylist(document.body)) {
                     String variant = chooseVariant(document.url, document.body);
@@ -415,7 +422,6 @@ final class LocalHlsBuffer {
                 continue;
             }
             if (line.startsWith("#EXTINF:")) {
-                pendingTags.add(line);
                 try {
                     String value = line.substring(8);
                     int comma = value.indexOf(',');
@@ -523,7 +529,7 @@ final class LocalHlsBuffer {
         output.append("#EXT-X-MEDIA-SEQUENCE:").append(snapshot.get(0).sequence).append('\n');
         for (Segment segment : snapshot) {
             for (String tag : segment.tags) {
-                if (tag.startsWith("#EXT-X-BYTERANGE:")) continue;
+                if (tag.startsWith("#EXT-X-BYTERANGE:") || tag.startsWith("#EXTINF:")) continue;
                 output.append(rewriteTag(tag)).append('\n');
             }
             output.append("#EXTINF:").append(String.format(Locale.US, "%.3f", segment.duration)).append(",\n");
