@@ -423,7 +423,7 @@ public class XoraVlcPlugin extends Plugin {
 
     private void refreshLocalPlaybackSessions() throws IOException {
         if (upstreamStreamUrls.isEmpty()) throw new IOException("No upstream playback candidates are available.");
-        if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient());
+        if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient(), getContext().getCacheDir());
         localHlsProxy.clearSessions();
         for (int i = 0; i < upstreamStreamUrls.size(); i++) {
             JSONObject headers = i < streamHeaders.size() ? streamHeaders.get(i) : null;
