@@ -122,7 +122,37 @@ export function NativeVideoPlayer({
     dataSaverController.setMode(
       mode === "high" ? "off" : mode === "data-saver" ? "300mb_saver" : "auto",
     );
-  }, [dataSaverController.setMode]);
+
+    const video = videoRef.current;
+    if (!video || hlsRef.current) return;
+
+    const connection = typeof navigator === "undefined"
+      ? undefined
+      : (navigator as Navigator & { connection?: { effectiveType?: string } }).connection;
+    const useLowSource = mode === "data-saver"
+      || (mode === "auto" && Boolean(connection?.effectiveType && ["slow-2g", "2g", "3g"].includes(connection.effectiveType)));
+    const lowerSource = shortsFallbackSrc && shortsFallbackSrc !== activeSrc
+      ? shortsFallbackSrc
+      : activeSrc ? get240pDeliveryUrl(activeSrc) : null;
+    const nextSource = useLowSource && lowerSource && lowerSource !== activeSrc
+      ? lowerSource
+      : activeSrc;
+
+    if (!nextSource || video.currentSrc === nextSource) return;
+
+    const resumeAt = video.currentTime;
+    const wasPlaying = !video.paused;
+    const restorePosition = () => {
+      video.removeEventListener("loadedmetadata", restorePosition);
+      if (Number.isFinite(resumeAt) && Number.isFinite(video.duration)) {
+        video.currentTime = Math.min(resumeAt, video.duration);
+      }
+      if (wasPlaying) void video.play().catch(() => {});
+    };
+    video.addEventListener("loadedmetadata", restorePosition, { once: true });
+    video.src = nextSource;
+    video.load();
+  }, [activeSrc, dataSaverController.setMode, shortsFallbackSrc]);
   const connection = useConnectionQuality(videoRef, hlsRef, {
     sourceKey: activeSrc || "",
     engineRevision: hlsRevision,
@@ -403,7 +433,6 @@ export function NativeVideoPlayer({
             if (Hls.isSupported()) {
               hlsInstance = new Hls({
                 enableWorker: true,
-                startLevel: connection.mode === "data-saver" ? 0 : -1,
                 lowLatencyMode: liveTv ? true : false,
                 backBufferLength: liveTv ? 30 : 4,
                 maxBitrate: liveTv ? 0 : dataSaver.maxBitrateKbps * 1000,
@@ -448,7 +477,7 @@ export function NativeVideoPlayer({
             videoRef.current.src = activeSrc;
           })
           .catch(() => {
-            if (videoRef.current) videoRef.current.src = activeSrc;
+            if (!disposed && videoRef.current) videoRef.current.src = activeSrc;
           });
 
         return () => {
@@ -486,6 +515,7 @@ export function NativeVideoPlayer({
     markPlaybackStartup(telemetryId);
     recordPlaybackTelemetry(telemetryId, { playbackSeconds: current });
     setPlaying(true);
+    revealSignalChip();
     if (!trackedStart.current && postId) {
       trackedStart.current = true;
       trackEvent({
@@ -596,20 +626,7 @@ export function NativeVideoPlayer({
 
   const handleSelectQualityMode = useCallback((mode: ConnectionQualityMode) => {
     connection.setMode(mode);
-    const video = videoRef.current;
-    if (feed !== "shorts" || mode !== "data-saver" || !video || !shortsFallbackSrc) return;
-    if (video.currentSrc === shortsFallbackSrc || shortsFallbackSrc === activeSrc) return;
-
-    const resumeAt = video.currentTime;
-    const wasPlaying = !video.paused;
-    shortsRetriedOriginal.current = true;
-    video.addEventListener("loadedmetadata", () => {
-      video.currentTime = Math.min(resumeAt, Number.isFinite(video.duration) ? video.duration : resumeAt);
-      if (wasPlaying) void video.play().catch(() => {});
-    }, { once: true });
-    video.src = shortsFallbackSrc;
-    video.load();
-  }, [activeSrc, connection.setMode, feed, shortsFallbackSrc]);
+  }, [connection.setMode]);
 
   const startNativePlayback = useCallback(async () => {
     if (!nativeVlcOnly || !activeSrc || nativeVlcActiveRef.current) return;
