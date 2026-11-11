@@ -366,14 +366,8 @@ export async function getIptvPlaybackCandidates(
     const records = await loadStreamRecords();
     const seen = new Set<string>();
     const candidates = records
-      .filter(
-        (record) =>
-          record.channel === channelId && /^https?:\/\//i.test(record.url),
-      )
-      .sort(
-        (a, b) =>
-          playbackQualityScore(b.quality) - playbackQualityScore(a.quality),
-      )
+      .filter((record) => record.channel === channelId && /^https?:\/\//i.test(record.url))
+      .sort((a, b) => playbackQualityScore(b.quality) - playbackQualityScore(a.quality))
       .filter((record) => {
         if (seen.has(record.url)) return false;
         seen.add(record.url);
@@ -428,27 +422,39 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
     });
 
     if (!response.ok) {
-      playbackHealthCache.set(candidate.streamUrl, { ok: false, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
+      playbackHealthCache.set(candidate.streamUrl, {
+        ok: false,
+        expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS,
+      });
       return false;
     }
 
     const contentType = response.headers.get("content-type") || "";
     const looksLikeHls =
-      /mpegurl/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
+      /mpegurl/i.test(contentType) || /\\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
 
-    let ok = /mpegurl/i.test(contentType) || /video\//i.test(contentType) || /octet-stream/i.test(contentType);
+    let ok =
+      /mpegurl/i.test(contentType) ||
+      /video\\//i.test(contentType) ||
+      /octet-stream/i.test(contentType);
 
     if (looksLikeHls) {
       const text = await response.text();
       ok = text.includes("#EXTM3U");
-    } else {
-      try { await response.body?.cancel(); } catch {}
+    } else if (response.body) {
+      await response.body.cancel().catch(() => undefined);
     }
 
-    playbackHealthCache.set(candidate.streamUrl, { ok, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
+    playbackHealthCache.set(candidate.streamUrl, {
+      ok,
+      expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS,
+    });
     return ok;
   } catch {
-    playbackHealthCache.set(candidate.streamUrl, { ok: false, expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS });
+    playbackHealthCache.set(candidate.streamUrl, {
+      ok: false,
+      expiresAt: Date.now() + PLAYBACK_HEALTH_TTL_MS,
+    });
     return false;
   } finally {
     clearTimeout(timeout);
