@@ -267,7 +267,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
         long end = Math.max(0L, fullLength - 1L);
         Response.IStatus status = Response.Status.OK;
         String range = request.getHeaders().get("range");
-        if (range != null && range.matches("bytes=\\\\d+-\\\\d*")) {
+        if (range != null && range.matches("bytes=\\d+-\\d*")) {
             String value = range.substring(6);
             String[] parts = value.split("-", 2);
             start = Long.parseLong(parts[0]);
