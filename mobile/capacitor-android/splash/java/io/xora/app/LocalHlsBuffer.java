@@ -507,12 +507,16 @@ final class LocalHlsBuffer {
             builder.header("Range", "bytes=" + offset + "-" + (offset + length - 1L));
         }
         long bytes = 0L;
+        boolean requestedByteRange = segment.byteRange != null;
         try (Response response = client.newCall(builder.build()).execute()) {
             if (response.code() == 403 || response.code() == 451
                 || response.code() == 404 || response.code() == 410) {
                 throw new BufferHttpException(response.code(), "The media segment is not available.");
             }
             if (!response.isSuccessful()) throw new IOException("A media segment could not be downloaded.");
+            if (requestedByteRange && response.code() != 206) {
+                throw new IOException("The HLS source did not honor a required byte-range request.");
+            }
             ResponseBody body = response.body();
             if (body == null) throw new IOException("The media segment was empty.");
             try (InputStream input = body.byteStream(); FileOutputStream output = new FileOutputStream(temporary)) {
