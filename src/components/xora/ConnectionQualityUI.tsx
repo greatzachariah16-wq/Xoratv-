@@ -183,7 +183,7 @@ export function BufferOverlay({
           role="status"
           aria-live="polite"
           className={
-            "pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] left-1/2 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-md transition-opacity duration-200 " +
+            "pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] left-1/2 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-md transition-opacity duration-200 " +
             (recovering ? "opacity-0" : "opacity-100")
           }
         >
