@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -21,8 +23,7 @@ jobs:
         run: npm install
       - name: Build application
         run: npm run build
-      - name: TypeScript validation
-        run: npx tsc --noEmit
-      - name: Lint
-        if: always()
-        run: npm run lint
+      - name: TypeScript and lint regression validation
+        env:
+          XORA_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: node scripts/check-pr-regressions.mjs

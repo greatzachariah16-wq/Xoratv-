@@ -20,8 +20,18 @@ import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runne
 import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
-import { fetchIptvChannels, getIptvStreamUrl, getIptvPlaybackInfo } from "./integrations/providers/iptv-org";
-import { fetchNexusChannels, getNexusChannel, getNexusGuide, getNexusPlaybackCandidates } from "./integrations/providers/iptv-nexus";
+import {
+  fetchIptvChannels,
+  getIptvStreamUrl,
+  getIptvPlaybackInfo,
+  getIptvPlaybackCandidates,
+} from "./integrations/providers/iptv-org";
+import {
+  fetchNexusChannels,
+  getNexusChannel,
+  getNexusGuide,
+  getNexusPlaybackCandidates,
+} from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
@@ -33,6 +43,8 @@ const PLUTO_WRESTLING_DIAGNOSTIC_CHANNELS = new Set([
   "wrestling-legends-tv",
 ]);
 const plutoWrestlingDiagnosticCounts = new Map<string, number>();
+const proxyPreferenceCache = new Map<string, number>();
+const PROXY_PREFERENCE_TTL_MS = 15 * 60 * 1000;
 const MAX_PLUTO_WRESTLING_DIAGNOSTIC_SAMPLES = 32;
 
 function logPlutoWrestlingDiagnostic(channelId: string, details: Record<string, unknown>) {
@@ -1143,6 +1155,26 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/tv/playback-feedback" && request.method === "POST") {
+      try {
+        const body = (await request.json()) as {
+          provider?: string;
+          channelId?: string;
+          transport?: string;
+        };
+        if (body.transport === "proxy" && body.channelId) {
+          const key = `local-hls-v1:${body.channelId}`;
+          proxyPreferenceCache.set(key, Date.now() + PROXY_PREFERENCE_TTL_MS);
+        }
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      } catch {
+        return new Response(JSON.stringify({ ok: false }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // IPTV playback proxy: Nexus is used by main TV; IPTV-org remains available for existing Xora Kids/X-Series paths.
     // IPTV-org publishes per-stream Referer/User-Agent requirements in streams.json.
     if ((url.pathname === "/api/tv/stream" || url.pathname.startsWith("/api/tv/stream/")) && request.method === "GET") {
@@ -1161,20 +1193,100 @@ export default {
         const fixedPlayback: Record<string, { streamUrl: string; referrer: string | null; userAgent: string }> = {
           "wwe-superstar-central": { streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8", referrer: null, userAgent: "Mozilla/5.0" },
         };
-        const playback = fixedPlayback[channelId] || (provider === "nexus"
-          ? await (async () => {
-              const candidates = await getNexusPlaybackCandidates(channelId, 3);
-              // Do not silently repeat candidate zero for attempts 1 and 2.
-              // A missing ranked candidate is a real miss so LibVLC can move on.
-              if (candidates.length > 0) return candidates[attempt] || null;
-              if (attempt > 0) return null;
-              return await getNexusChannel(channelId).then((channel) => channel ? {
-                streamUrl: channel.streamUrl,
-                referrer: channel.referrer,
-                userAgent: channel.userAgent,
-              } : null);
-            })()
-          : await getIptvPlaybackInfo(channelId));
+        const resolveLocalPlayback = url.searchParams.get("resolve") === "1";
+        const playback = resolveLocalPlayback
+          ? null
+          : fixedPlayback[channelId] ||
+            (provider === "nexus"
+              ? await (async () => {
+                  const candidates = await getNexusPlaybackCandidates(channelId, 3);
+                  // Do not silently repeat candidate zero for attempts 1 and 2.
+                  // A missing ranked candidate is a real miss so LibVLC can move on.
+                  if (candidates.length > 0) return candidates[attempt] || null;
+                  if (attempt > 0) return null;
+                  return await getNexusChannel(channelId).then((channel) =>
+                    channel
+                      ? {
+                          streamUrl: channel.streamUrl,
+                          referrer: channel.referrer,
+                          userAgent: channel.userAgent,
+                        }
+                      : null,
+                  );
+                })()
+              : await getIptvPlaybackInfo(channelId));
+        // Resolve origin candidates for the Android LocalHlsProxy. Keep the Render media
+        // relay as an emergency upstream fallback; LibVLC itself receives loopback URLs only.
+        if (resolveLocalPlayback) {
+          const candidates = fixedPlayback[channelId]
+            ? [
+                {
+                  streamUrl: fixedPlayback[channelId].streamUrl,
+                  referrer: fixedPlayback[channelId].referrer,
+                  userAgent: fixedPlayback[channelId].userAgent,
+                },
+              ]
+            : provider === "nexus"
+              ? await getNexusPlaybackCandidates(channelId, 3)
+              : await getIptvPlaybackCandidates(channelId);
+          const proxyUrlFor = (candidateAttempt: number) => {
+            const proxy = new URL("/api/tv/stream", url.origin);
+            proxy.searchParams.set("provider", provider);
+            proxy.searchParams.set("channel", channelId);
+            proxy.searchParams.set("attempt", String(candidateAttempt));
+            return proxy.toString();
+          };
+          const preferenceKey = `local-hls-v1:${channelId}`;
+          // Drop a legacy hybrid-cache entry so pre-local-proxy failures do not force Render first.
+          proxyPreferenceCache.delete(channelId);
+          const proxyPreferenceExpiry = proxyPreferenceCache.get(preferenceKey) || 0;
+          const rememberedProxy = proxyPreferenceExpiry > Date.now();
+          if (!rememberedProxy && proxyPreferenceExpiry) {
+            proxyPreferenceCache.delete(preferenceKey);
+          }
+          // LocalHlsProxy handles provider Referer/User-Agent requirements on-device,
+          // so previously proxy-first channels may try their ranked origin candidates.
+          // Keep the 15-minute preference only after a channel actually fell back to Render.
+          const forceProxy = rememberedProxy;
+          const directCandidates = forceProxy
+            ? []
+            : candidates
+                .filter((candidate) => /^https?:\/\//i.test(candidate.streamUrl))
+                .map((candidate) => ({
+                  url: candidate.streamUrl,
+                  headers: {
+                    "User-Agent": candidate.userAgent || "Mozilla/5.0",
+                    ...(candidate.referrer ? { Referer: candidate.referrer } : {}),
+                  },
+                }));
+          const useProxyFirst = forceProxy || directCandidates.length === 0;
+          const payload = useProxyFirst
+            ? {
+                mode: "proxy",
+                url: proxyUrlFor(0),
+                proxyUrl: proxyUrlFor(0),
+                candidates: [],
+                reason: rememberedProxy ? "recent-proxy-fallback" : "no-direct-candidate",
+              }
+            : {
+                mode: "direct",
+                // Keep the Capacitor entry URL HTTPS; every candidate origin is wrapped locally.
+                url: proxyUrlFor(0),
+                headers: directCandidates[0].headers,
+                candidates: directCandidates,
+                proxyUrl: proxyUrlFor(0),
+                proxyFallbackUrls: [proxyUrlFor(1), proxyUrlFor(2)],
+              };
+          return new Response(JSON.stringify(payload), {
+            status: 200,
+            headers: {
+              ...CORS_HEADERS,
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store",
+            },
+          });
+        }
+
         if (!playback) {
           return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
             status: 404,

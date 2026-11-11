@@ -30,6 +30,7 @@ import {
   openNativeVlc,
   switchNativeVlcChannel,
   retryNativeVlc,
+  resolveNativeVlcPlayback,
   type NativeVlcStateChangedEvent,
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
@@ -310,6 +311,13 @@ function LiveTvPage() {
       if (!event.channelId || event.channelId === selectedIdRef.current) {
         setNativeState(event);
       }
+      if (event.transport === "proxy" && event.channelId) {
+        void fetch("/api/tv/playback-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channelId: event.channelId, transport: "proxy" }),
+        }).catch(() => {});
+      }
     }).then((handle) => {
       if (!mounted) void handle.remove();
       else listenerHandle = handle;
@@ -365,7 +373,6 @@ function LiveTvPage() {
       return () => { cancelled = true; };
     }
 
-    const streamUrl = `/api/tv/stream?provider=${selected.provider || "nexus"}&channel=${encodeURIComponent(selected.id)}`;
     setNativeState({
       state: isOnline ? "CONNECTING" : "OFFLINE",
       channelId: selected.id,
@@ -376,11 +383,17 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
+      const resolution = await resolveNativeVlcPlayback(selected.provider || "nexus", selected.id);
+      if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: streamUrl,
+        url: resolution.url,
         title: getChannelDisplayName(selected),
         channelId: selected.id,
+        candidates: resolution.candidates,
+        proxyFallbackUrl: resolution.proxyUrl,
+        fallbackUrl1: resolution.proxyFallbackUrls?.[0],
+        fallbackUrl2: resolution.proxyFallbackUrls?.[1],
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
@@ -482,7 +495,7 @@ function LiveTvPage() {
     ? nativeState.message || STATE_LABELS[nativeState.state]
     : isOffline ? STATE_LABELS.OFFLINE : STATE_LABELS.CONNECTING;
 
-  const allChannels = query.data || [];
+  const allChannels = useMemo(() => query.data ?? [], [query.data]);
   const categoryOptions = useMemo(
     () => Array.from(new Set(allChannels.flatMap((channel) => channel.categories || []))).sort((a, b) => a.localeCompare(b)),
     [allChannels],

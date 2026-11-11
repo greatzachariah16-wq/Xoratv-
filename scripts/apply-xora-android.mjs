@@ -27,7 +27,12 @@ copyDirectory(path.join(splashRoot, "res"), appRes);
 
 const javaDestination = path.join(appMain, "java/io/xora/app");
 fs.mkdirSync(javaDestination, { recursive: true });
-for (const name of ["MainActivity.java", "XoraStartupPlugin.java", "XoraVlcPlugin.java"]) {
+for (const name of [
+  "MainActivity.java",
+  "XoraStartupPlugin.java",
+  "XoraVlcPlugin.java",
+  "LocalHlsProxy.java",
+]) {
   fs.copyFileSync(
     path.join(splashRoot, "java/io/xora/app", name),
     path.join(javaDestination, name),
@@ -144,6 +149,12 @@ if (!appGradle.includes("com.squareup.okhttp3:okhttp")) {
   appGradle = appGradle.replace(
     "dependencies {",
     'dependencies {\n    implementation "com.squareup.okhttp3:okhttp:4.12.0"',
+  );
+}
+if (!appGradle.includes("org.nanohttpd:nanohttpd")) {
+  appGradle = appGradle.replace(
+    "dependencies {",
+    'dependencies {\n    implementation "org.nanohttpd:nanohttpd:2.3.1"',
   );
 }
 if (!appGradle.includes("core-splashscreen")) {
