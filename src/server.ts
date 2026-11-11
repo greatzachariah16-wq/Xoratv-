@@ -1157,7 +1157,11 @@ export default {
 
     if (url.pathname === "/api/tv/playback-feedback" && request.method === "POST") {
       try {
-        const body = await request.json() as { provider?: string; channelId?: string; transport?: string };
+        const body = (await request.json()) as {
+          provider?: string;
+          channelId?: string;
+          transport?: string;
+        };
         if (body.transport === "proxy" && body.channelId) {
           const key = `local-hls-v1:${body.channelId}`;
           proxyPreferenceCache.set(key, Date.now() + PROXY_PREFERENCE_TTL_MS);
@@ -1189,21 +1193,29 @@ export default {
         const fixedPlayback: Record<string, { streamUrl: string; referrer: string | null; userAgent: string }> = {
           "wwe-superstar-central": { streamUrl: "https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8", referrer: null, userAgent: "Mozilla/5.0" },
         };
-        const playback = fixedPlayback[channelId] || (provider === "nexus"
-          ? await (async () => {
-              const candidates = await getNexusPlaybackCandidates(channelId, 3);
-              // Do not silently repeat candidate zero for attempts 1 and 2.
-              // A missing ranked candidate is a real miss so LibVLC can move on.
-              if (candidates.length > 0) return candidates[attempt] || null;
-              if (attempt > 0) return null;
-              return await getNexusChannel(channelId).then((channel) => channel ? {
-                streamUrl: channel.streamUrl,
-                referrer: channel.referrer,
-                userAgent: channel.userAgent,
-              } : null);
-            })()
-          : await getIptvPlaybackInfo(channelId));
-        if (!playback && url.searchParams.get("resolve") !== "1") {
+        const resolveLocalPlayback = url.searchParams.get("resolve") === "1";
+        const playback = resolveLocalPlayback
+          ? null
+          : fixedPlayback[channelId] ||
+            (provider === "nexus"
+              ? await (async () => {
+                  const candidates = await getNexusPlaybackCandidates(channelId, 3);
+                  // Do not silently repeat candidate zero for attempts 1 and 2.
+                  // A missing ranked candidate is a real miss so LibVLC can move on.
+                  if (candidates.length > 0) return candidates[attempt] || null;
+                  if (attempt > 0) return null;
+                  return await getNexusChannel(channelId).then((channel) =>
+                    channel
+                      ? {
+                          streamUrl: channel.streamUrl,
+                          referrer: channel.referrer,
+                          userAgent: channel.userAgent,
+                        }
+                      : null,
+                  );
+                })()
+              : await getIptvPlaybackInfo(channelId));
+        if (!playback && !resolveLocalPlayback) {
           return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
             status: 404,
             headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
@@ -1212,7 +1224,7 @@ export default {
 
         // Resolve origin candidates for the Android LocalHlsProxy. Keep the Render media
         // relay as an emergency upstream fallback; LibVLC itself receives loopback URLs only.
-        if (url.searchParams.get("resolve") === "1") {
+        if (resolveLocalPlayback) {
           const candidates = fixedPlayback[channelId]
             ? [
                 {
