@@ -495,7 +495,7 @@ function LiveTvPage() {
     ? nativeState.message || STATE_LABELS[nativeState.state]
     : isOffline ? STATE_LABELS.OFFLINE : STATE_LABELS.CONNECTING;
 
-  const allChannels = query.data || [];
+  const allChannels = useMemo(() => query.data ?? [], [query.data]);
   const categoryOptions = useMemo(
     () => Array.from(new Set(allChannels.flatMap((channel) => channel.categories || []))).sort((a, b) => a.localeCompare(b)),
     [allChannels],
