@@ -35,9 +35,9 @@ function SignalBars({ quality, className = "" }: { quality: ConnectionQuality; c
       className={"h-3.5 w-[18px] shrink-0 " + qualityCopy[quality].color + " " + className}
       fill="currentColor"
     >
-      <rect x="1" y="8.5" width="3.5" height="4.5" rx="1" opacity={activeBars >= 1 ? 1 : 0.24} />
-      <rect x="7.25" y="5" width="3.5" height="8" rx="1" opacity={activeBars >= 2 ? 1 : 0.24} />
-      <rect x="13.5" y="1" width="3.5" height="12" rx="1" opacity={activeBars >= 3 ? 1 : 0.24} />
+      <rect x="1" y="8.5" width="3.5" height="4.5" rx="1" opacity={activeBars >= 1 ? 1 : 0.24} className={"origin-bottom transition-transform duration-200 motion-reduce:transition-none " + (activeBars >= 1 ? "scale-y-100" : "scale-y-50")} />
+      <rect x="7.25" y="5" width="3.5" height="8" rx="1" opacity={activeBars >= 2 ? 1 : 0.24} className={"origin-bottom transition-transform duration-200 motion-reduce:transition-none " + (activeBars >= 2 ? "scale-y-100" : "scale-y-50")} />
+      <rect x="13.5" y="1" width="3.5" height="12" rx="1" opacity={activeBars >= 3 ? 1 : 0.24} className={"origin-bottom transition-transform duration-200 motion-reduce:transition-none " + (activeBars >= 3 ? "scale-y-100" : "scale-y-50")} />
     </svg>
   );
 }
@@ -101,10 +101,15 @@ export function SignalChip({
           setPopoverOpen((open) => !open);
           onOpen();
         }}
-        className="pointer-events-auto flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 text-xs font-semibold tabular-nums text-white shadow-lg backdrop-blur-md transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black/80"
+        className={
+          "pointer-events-auto flex min-h-11 min-w-11 items-center justify-center rounded-full p-0 text-white shadow-lg transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black/80 " +
+          (isExpanded ? "opacity-100" : "opacity-55")
+        }
       >
-        <SignalBars quality={quality} className="transition-transform duration-200 motion-reduce:transition-none" />
-        {isExpanded ? <span>{qualityLabel}</span> : null}
+        <span className="flex h-7 items-center gap-2 rounded-full border border-white/10 bg-black/40 px-2.5 text-xs font-semibold tabular-nums text-white backdrop-blur-md">
+          <SignalBars quality={quality} />
+          {isExpanded ? <span>{qualityLabel}</span> : null}
+        </span>
       </button>
 
       {popoverOpen ? (
