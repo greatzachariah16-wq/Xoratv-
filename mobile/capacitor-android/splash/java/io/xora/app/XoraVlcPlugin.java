@@ -1771,7 +1771,7 @@ public class XoraVlcPlugin extends Plugin {
             if (bufferProgressText != null) bufferProgressText.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferHealthBanner != null) {
-                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown && !bufferHealthy;
+                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown;
                 bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
             }
         }
