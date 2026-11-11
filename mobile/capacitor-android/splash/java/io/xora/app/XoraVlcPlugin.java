@@ -485,9 +485,12 @@ public class XoraVlcPlugin extends Plugin {
         getActivity().runOnUiThread(() -> {
             try {
                 closePlayerInternal(false);
-                if ("auto".equals(requestedQualityMode)
+                boolean hasNativeQualityPreference = getContext()
+                    .getSharedPreferences("xora_player_preferences", Context.MODE_PRIVATE)
+                    .contains("quality_mode");
+                if (!hasNativeQualityPreference && ("auto".equals(requestedQualityMode)
                     || "data-saver".equals(requestedQualityMode)
-                    || "high".equals(requestedQualityMode)) {
+                    || "high".equals(requestedQualityMode))) {
                     saveNativeQualityMode(requestedQualityMode);
                 }
                 configureStreamCandidates(call, url, fallbackUrl1, fallbackUrl2);
