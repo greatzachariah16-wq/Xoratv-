@@ -291,10 +291,11 @@ export function useConnectionQuality(
     const recoverPlayback = () => {
       if (disposed || video.paused) return;
       const wasWaiting = waitingStartedAtRef.current !== null;
+      const wasVisible = statusRef.current === "stalled" || statusRef.current === "longStalled";
       waitingStartedAtRef.current = null;
       resetWaitingTimers();
 
-      if (wasWaiting) {
+      if (wasWaiting && wasVisible) {
         setPlaybackStatus("recovering");
         clearTimer(recoverTimerRef.current);
         recoverTimerRef.current = window.setTimeout(() => {
@@ -320,6 +321,7 @@ export function useConnectionQuality(
     video.addEventListener("canplay", onCanPlay);
     video.addEventListener("progress", onProgress);
     video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("pause", onPause);
 
     const hls = hlsRef?.current ?? null;
     let hlsApi: HlsEventApi | null = null;
@@ -336,7 +338,6 @@ export function useConnectionQuality(
       hlsApi.on("hlsFragBuffered", onHlsProgress);
       hlsApi.on("hlsBufferAppended", onHlsProgress);
       hlsApi.on("hlsManifestParsed", onManifestParsed);
-      hlsApi.off = hlsApi.off.bind(hls);
       const removeHlsListeners = () => {
         hlsApi?.off("hlsError", onHlsError);
         hlsApi?.off("hlsFragBuffered", onHlsProgress);
@@ -353,6 +354,7 @@ export function useConnectionQuality(
         video.removeEventListener("canplay", onCanPlay);
         video.removeEventListener("progress", onProgress);
         video.removeEventListener("timeupdate", onTimeUpdate);
+        video.removeEventListener("pause", onPause);
         removeHlsListeners();
         window.clearInterval(interval);
         resetWaitingTimers();
@@ -370,6 +372,7 @@ export function useConnectionQuality(
       video.removeEventListener("canplay", onCanPlay);
       video.removeEventListener("progress", onProgress);
       video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("pause", onPause);
       window.clearInterval(interval);
       resetWaitingTimers();
       clearTimer(recoverTimerRef.current);
