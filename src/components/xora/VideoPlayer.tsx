@@ -158,6 +158,8 @@ export function NativeVideoPlayer({
     engineRevision: hlsRevision,
     onModeChange: updateDataSaverMode,
   });
+  const connectionMode = connection.mode;
+  const connectionReady = connection.ready;
   const revealSignalChip = useCallback(() => {
     setSignalActivityKey((currentKey) => currentKey + 1);
   }, []);
@@ -629,13 +631,14 @@ export function NativeVideoPlayer({
   };
 
   const startNativePlayback = useCallback(async () => {
-    if (!nativeVlcOnly || !activeSrc || nativeVlcActiveRef.current) return;
+    if (!connectionReady || !nativeVlcOnly || !activeSrc || nativeVlcActiveRef.current) return;
     setWaiting(true);
     setFailed(false);
     try {
       await openNativeVlc({
         url: nativeStreamUrl || activeSrc,
         title,
+        qualityMode: connectionMode,
       });
       nativeVlcActiveRef.current = true;
       setNativeVlcActive(true);
@@ -644,7 +647,7 @@ export function NativeVideoPlayer({
       setWaiting(false);
       setFailed(true);
     }
-  }, [activeSrc, nativeStreamUrl, nativeVlcOnly, title]);
+  }, [activeSrc, connectionMode, connectionReady, nativeStreamUrl, nativeVlcOnly, title]);
 
   const toggle = useCallback(() => {
     if (liveTv && isNativeVlcPlatform()) {
@@ -715,7 +718,7 @@ export function NativeVideoPlayer({
   const reopenPlayer = () => {
     setPlayerClosed(false);
     if (nativeVlcOnly && nativeStreamUrl) {
-      void openNativeVlc({ url: nativeStreamUrl, title })
+      void openNativeVlc({ url: nativeStreamUrl, title, qualityMode: connectionMode })
         .then(() => {
           nativeVlcActiveRef.current = true;
           setNativeVlcActive(true);
