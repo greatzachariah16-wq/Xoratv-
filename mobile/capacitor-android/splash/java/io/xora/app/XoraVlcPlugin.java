@@ -475,6 +475,7 @@ public class XoraVlcPlugin extends Plugin {
         String fallbackUrl2 = call.getString("fallbackUrl2");
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
+        String requestedQualityMode = call.getString("qualityMode");
 
         if (!isSecureUrl(url)) {
             call.reject("A secure stream URL is required.");
@@ -484,6 +485,11 @@ public class XoraVlcPlugin extends Plugin {
         getActivity().runOnUiThread(() -> {
             try {
                 closePlayerInternal(false);
+                if ("auto".equals(requestedQualityMode)
+                    || "data-saver".equals(requestedQualityMode)
+                    || "high".equals(requestedQualityMode)) {
+                    saveNativeQualityMode(requestedQualityMode);
+                }
                 configureStreamCandidates(call, url, fallbackUrl1, fallbackUrl2);
 
                 currentChannelId = requestedChannelId == null
