@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioAttributes;
@@ -26,6 +27,7 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ProgressBar;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -99,6 +101,9 @@ public class XoraVlcPlugin extends Plugin {
     private TextView statusIcon;
     private TextView statusText;
     private TextView offlineBanner;
+    private TextView bufferProgressText;
+    private TextView bufferHealthBanner;
+    private ProgressBar bufferProgressBar;
     private TextView channelTitleText;
     private TextView liveBadge;
     private TextView playButton;
@@ -127,6 +132,9 @@ public class XoraVlcPlugin extends Plugin {
     private boolean audioFocusHeld;
     private boolean resumeAfterFocusGain;
     private boolean playingBeforeAppPause;
+    private boolean startupBufferActive;
+    private boolean bufferHealthKnown;
+    private boolean bufferHealthy = true;
 
     private int currentStreamIndex;
     private int autoRetryCount;
@@ -404,7 +412,7 @@ public class XoraVlcPlugin extends Plugin {
 
     private void addStreamCandidate(String upstreamUrl, JSONObject headers, String transport) throws IOException {
         if (!isHttpUrl(upstreamUrl) || upstreamStreamUrls.contains(upstreamUrl)) return;
-        if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient());
+        if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient(), getContext().getCacheDir());
         String localUrl = localHlsProxy.createSession(upstreamUrl, headers);
         upstreamStreamUrls.add(upstreamUrl);
         streamUrls.add(localUrl);
@@ -767,6 +775,24 @@ public class XoraVlcPlugin extends Plugin {
         offlineParams.setMargins(dp(12), dp(58), dp(12), 0);
         videoFrame.addView(offlineBanner, offlineParams);
 
+        bufferHealthBanner = new TextView(getContext());
+        bufferHealthBanner.setTextColor(Color.WHITE);
+        bufferHealthBanner.setTextSize(10);
+        bufferHealthBanner.setGravity(Gravity.CENTER);
+        bufferHealthBanner.setSingleLine(true);
+        bufferHealthBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        bufferHealthBanner.setPadding(dp(10), dp(6), dp(10), dp(6));
+        bufferHealthBanner.setBackground(roundedBackground(0xDD315847, dp(9)));
+        bufferHealthBanner.setText("Stream buffer healthy");
+        bufferHealthBanner.setVisibility(View.GONE);
+        FrameLayout.LayoutParams healthParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP
+        );
+        healthParams.setMargins(dp(12), dp(58), dp(12), 0);
+        videoFrame.addView(bufferHealthBanner, healthParams);
+
         statusCard = new LinearLayout(getContext());
         statusCard.setOrientation(LinearLayout.VERTICAL);
         statusCard.setGravity(Gravity.CENTER);
@@ -787,6 +813,26 @@ public class XoraVlcPlugin extends Plugin {
         statusText.setEllipsize(android.text.TextUtils.TruncateAt.END);
         statusText.setPadding(dp(4), dp(5), dp(4), dp(2));
         statusCard.addView(statusText);
+
+        bufferProgressText = new TextView(getContext());
+        bufferProgressText.setTextColor(0xFFEEDFD4);
+        bufferProgressText.setTextSize(10);
+        bufferProgressText.setGravity(Gravity.CENTER);
+        bufferProgressText.setPadding(dp(2), dp(5), dp(2), dp(3));
+        bufferProgressText.setVisibility(View.GONE);
+        statusCard.addView(bufferProgressText);
+
+        bufferProgressBar = new ProgressBar(getContext(), null, android.R.attr.progressBarStyleHorizontal);
+        bufferProgressBar.setMax(100);
+        bufferProgressBar.setProgress(0);
+        bufferProgressBar.setProgressTintList(ColorStateList.valueOf(0xFFE5A58D));
+        bufferProgressBar.setProgressBackgroundTintList(ColorStateList.valueOf(0x55FFFFFF));
+        bufferProgressBar.setVisibility(View.GONE);
+        LinearLayout.LayoutParams bufferBarParams = new LinearLayout.LayoutParams(
+            Math.min(dp(230), getContext().getResources().getDisplayMetrics().widthPixels - dp(96)), dp(5)
+        );
+        bufferBarParams.setMargins(0, dp(3), 0, dp(8));
+        statusCard.addView(bufferProgressBar, bufferBarParams);
 
         retryButton = new Button(getContext());
         retryButton.setText("Retry");
@@ -1256,9 +1302,50 @@ public class XoraVlcPlugin extends Plugin {
         clearStartupTimeout();
         clearBufferingWatchdog();
         clearRetry();
+        final String selectedUrl = streamUrls.get(currentStreamIndex);
+        if (!isLocalProxyUrl(selectedUrl)) {
+            setState(PlaybackState.ERR_UNKNOWN);
+            return;
+        }
+        if (localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
+            final long bufferPlayerGeneration = playerGeneration;
+            final long bufferAttemptGeneration = ++playbackAttemptGeneration;
+            startupBufferActive = true;
+            setState(PlaybackState.CONNECTING);
+            try {
+                localHlsProxy.prebufferSession(selectedUrl, progress -> mainHandler.post(() -> {
+                    if (bufferPlayerGeneration != playerGeneration
+                        || bufferAttemptGeneration != playbackAttemptGeneration
+                        || currentStreamIndex >= streamUrls.size()
+                        || !selectedUrl.equals(streamUrls.get(currentStreamIndex))) return;
+                    updateBufferProgress(progress);
+                    if (progress.failed) {
+                        startupBufferActive = false;
+                        if (progress.error.startsWith("region:")) {
+                            if (!tryNextStream()) setState(PlaybackState.ERR_REGION);
+                        } else if (progress.error.startsWith("down:")) {
+                            if (!tryNextStream()) setState(PlaybackState.ERR_CHANNEL_DOWN);
+                        } else {
+                            if (!tryNextStream()) setState(PlaybackState.ERR_TIMEOUT);
+                        }
+                        return;
+                    }
+                    if (progress.ready) {
+                        startupBufferActive = false;
+                        setBufferProgressVisible(false);
+                        startCurrentStream(usePreferredDecoder);
+                    }
+                }));
+            } catch (IOException error) {
+                startupBufferActive = false;
+                setState(PlaybackState.ERR_UNKNOWN);
+            }
+            return;
+        }
+        startupBufferActive = false;
+        setBufferProgressVisible(false);
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
-        final String selectedUrl = streamUrls.get(currentStreamIndex);
         // Enforce the core invariant: LibVLC must never receive an origin or Render URL.
         if (!isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
@@ -1652,6 +1739,12 @@ public class XoraVlcPlugin extends Plugin {
                     && autoRetryCount >= 3);
             retryButton.setVisibility(showManualRetry ? View.VISIBLE : View.GONE);
             offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
+            if (bufferProgressText != null) bufferProgressText.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
+            if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
+            if (bufferHealthBanner != null) {
+                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown && !bufferHealthy;
+                bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
+            }
         }
         String transport = currentStreamIndex < streamTransports.size()
             ? streamTransports.get(currentStreamIndex)
@@ -1678,7 +1771,7 @@ public class XoraVlcPlugin extends Plugin {
     private String stateMessage(PlaybackState state) {
         switch (state) {
             case OFFLINE: return "You're offline. Playback resumes automatically.";
-            case CONNECTING: return "Connecting to channel";
+            case CONNECTING: return startupBufferActive ? "Preparing your live stream on this device" : "Connecting to channel";
             case BUFFERING: return "Buffering";
             case PLAYING: return "";
             case ERR_REGION: return "Not available in your region";
@@ -1780,6 +1873,12 @@ public class XoraVlcPlugin extends Plugin {
         statusIcon = null;
         statusText = null;
         offlineBanner = null;
+        bufferProgressText = null;
+        bufferProgressBar = null;
+        bufferHealthBanner = null;
+        startupBufferActive = false;
+        bufferHealthKnown = false;
+        bufferHealthy = true;
         channelTitleText = null;
         liveBadge = null;
         topScrim = null;
