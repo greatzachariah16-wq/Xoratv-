@@ -32,6 +32,7 @@ for (const name of [
   "XoraStartupPlugin.java",
   "XoraVlcPlugin.java",
   "LocalHlsProxy.java",
+  "LocalHlsBuffer.java",
 ]) {
   fs.copyFileSync(
     path.join(splashRoot, "java/io/xora/app", name),

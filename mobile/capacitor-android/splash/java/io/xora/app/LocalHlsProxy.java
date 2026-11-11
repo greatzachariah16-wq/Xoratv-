@@ -6,6 +6,8 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FilterInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -40,6 +42,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
         final String id;
         final String upstreamUrl;
         final JSONObject headers;
+        volatile LocalHlsBuffer buffer;
         volatile long lastAccessAt;
 
         Session(String id, String upstreamUrl, JSONObject headers) {
@@ -53,19 +56,21 @@ public final class LocalHlsProxy extends NanoHTTPD {
     private final OkHttpClient client;
     private final ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();
     private final int listeningPort;
+    private final File cacheDirectory;
 
-    private LocalHlsProxy(OkHttpClient client, int port) throws IOException {
+    private LocalHlsProxy(OkHttpClient client, int port, File cacheDirectory) throws IOException {
         super("127.0.0.1", port);
         this.client = client;
+        this.cacheDirectory = cacheDirectory;
         start(5000, false);
         this.listeningPort = getListeningPort();
     }
 
-    public static LocalHlsProxy start(OkHttpClient client) throws IOException {
+    public static LocalHlsProxy start(OkHttpClient client, File cacheDirectory) throws IOException {
         IOException lastError = null;
         for (int port = FIRST_PORT; port <= LAST_PORT; port++) {
             try {
-                LocalHlsProxy proxy = new LocalHlsProxy(client, port);
+                LocalHlsProxy proxy = new LocalHlsProxy(client, port, cacheDirectory);
                 Log.i(TAG, "Local HLS proxy listening on 127.0.0.1:" + proxy.listeningPort);
                 return proxy;
             } catch (IOException error) {
@@ -85,6 +90,36 @@ public final class LocalHlsProxy extends NanoHTTPD {
         return localUrl;
     }
 
+    public void prebufferSession(String localUrl, LocalHlsBuffer.Listener listener) throws IOException {
+        Session session = findSession(localUrl);
+        if (session == null) throw new IOException("Playback session is unavailable.");
+        LocalHlsBuffer buffer = session.buffer;
+        if (buffer == null) {
+            synchronized (session) {
+                buffer = session.buffer;
+                if (buffer == null) {
+                    File directory = new File(cacheDirectory, session.id);
+                    buffer = new LocalHlsBuffer(client, directory, session.id, listeningPort, session.headers, listener);
+                    buffer.setOriginUrl(session.upstreamUrl);
+                    session.buffer = buffer;
+                }
+            }
+        }
+        buffer.setListener(listener);
+        buffer.start();
+    }
+
+    public boolean isBufferReady(String localUrl) {
+        Session session = findSession(localUrl);
+        return session != null && session.buffer != null && session.buffer.isReady();
+    }
+
+    private Session findSession(String localUrl) {
+        String prefix = "http://127.0.0.1:" + listeningPort + "/play/";
+        if (localUrl == null || !localUrl.startsWith(prefix)) return null;
+        return sessions.get(localUrl.substring(prefix.length()));
+    }
+
     public boolean touchSession(String localUrl) {
         String prefix = "http://127.0.0.1:" + listeningPort + "/play/";
         if (localUrl == null || !localUrl.startsWith(prefix)) return false;
@@ -94,6 +129,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
         long now = System.currentTimeMillis();
         if (now - session.lastAccessAt > SESSION_TTL_MS) {
             sessions.remove(id, session);
+            if (session.buffer != null) session.buffer.stop();
             return false;
         }
         session.lastAccessAt = now;
@@ -101,12 +137,15 @@ public final class LocalHlsProxy extends NanoHTTPD {
     }
 
     public void clearSessions() {
+        for (Session session : sessions.values()) {
+            if (session.buffer != null) session.buffer.stop();
+        }
         sessions.clear();
     }
 
     @Override
     public void stop() {
-        sessions.clear();
+        clearSessions();
         super.stop();
     }
 
@@ -125,10 +164,23 @@ public final class LocalHlsProxy extends NanoHTTPD {
 
             String upstreamUrl;
             if ("play".equals(route)) {
+                LocalHlsBuffer buffer = session.buffer;
+                if (buffer != null && buffer.isReady() && !buffer.getPlaylist().isEmpty()) {
+                    Response response = newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", buffer.getPlaylist());
+                    addCommonHeaders(response);
+                    return response;
+                }
                 upstreamUrl = session.upstreamUrl;
             } else if ("resource".equals(route)) {
                 upstreamUrl = request.getParms().get("url");
                 if (!isHttpUrl(upstreamUrl)) return textResponse(Response.Status.BAD_REQUEST, "Invalid media URL");
+                if ("GET".equals(request.getMethod().name()) && session.buffer != null) {
+                    try {
+                        long sequence = Long.parseLong(request.getParms().getOrDefault("seq", "-1"));
+                        File cached = sequence >= 0 ? session.buffer.getCachedResource(upstreamUrl, sequence) : null;
+                        if (cached != null && cached.isFile()) return cachedFileResponse(request, cached);
+                    } catch (NumberFormatException ignored) { }
+                }
             } else {
                 return textResponse(Response.Status.NOT_FOUND, "Not found");
             }
@@ -208,6 +260,51 @@ public final class LocalHlsProxy extends NanoHTTPD {
             Log.w(TAG, "Local HLS request failed: " + error.getClass().getSimpleName());
             return textResponse(Response.Status.INTERNAL_ERROR, "Upstream media request failed");
         }
+    }
+
+    private Response cachedFileResponse(IHTTPSession request, File file) throws IOException {
+        long fullLength = file.length();
+        long start = 0L;
+        long end = Math.max(0L, fullLength - 1L);
+        Response.IStatus status = Response.Status.OK;
+        String range = request.getHeaders().get("range");
+        if (range != null && range.startsWith("bytes=")) {
+            String value = range.substring(6).trim();
+            String[] parts = value.split("-", 2);
+            if (parts.length != 2) return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range");
+            if (parts[0].isEmpty()) {
+                long suffixLength;
+                try { suffixLength = Long.parseLong(parts[1]); }
+                catch (NumberFormatException invalid) { return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range"); }
+                if (suffixLength <= 0L) return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range");
+                start = Math.max(0L, fullLength - suffixLength);
+            } else {
+                try { start = Long.parseLong(parts[0]); }
+                catch (NumberFormatException invalid) { return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range"); }
+                if (!parts[1].isEmpty()) {
+                    try { end = Math.min(end, Long.parseLong(parts[1])); }
+                    catch (NumberFormatException invalid) { return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range"); }
+                }
+            }
+            if (start >= fullLength || end < start) return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range");
+            status = Response.Status.PARTIAL_CONTENT;
+        }
+        final long responseLength = end - start + 1L;
+        FileInputStream input = new FileInputStream(file);
+        long skipped = 0L;
+        while (skipped < start) {
+            long amount = input.skip(start - skipped);
+            if (amount <= 0L) throw new IOException("Could not seek within the cached segment.");
+            skipped += amount;
+        }
+        Response response = newFixedLengthResponse(status, "application/octet-stream", new FilterInputStream(input) {}, responseLength);
+        response.addHeader("Accept-Ranges", "bytes");
+        response.addHeader("Content-Length", String.valueOf(responseLength));
+        if (status == Response.Status.PARTIAL_CONTENT) {
+            response.addHeader("Content-Range", "bytes " + start + "-" + end + "/" + fullLength);
+        }
+        addCommonHeaders(response);
+        return response;
     }
 
     private String rewritePlaylist(String playlist, String finalUrl, String sessionId) {
@@ -315,7 +412,11 @@ public final class LocalHlsProxy extends NanoHTTPD {
     private void cleanupExpiredSessions() {
         long now = System.currentTimeMillis();
         for (Map.Entry<String, Session> entry : sessions.entrySet()) {
-            if (now - entry.getValue().lastAccessAt > SESSION_TTL_MS) sessions.remove(entry.getKey(), entry.getValue());
+            if (now - entry.getValue().lastAccessAt > SESSION_TTL_MS) {
+                Session expired = entry.getValue();
+                if (expired.buffer != null) expired.buffer.stop();
+                sessions.remove(entry.getKey(), expired);
+            }
         }
     }
 
