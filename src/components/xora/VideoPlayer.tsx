@@ -7,7 +7,6 @@ import {
 } from "@/lib/native-vlc";
 import {
   Gauge,
-  Loader2,
   Play,
   Smartphone,
   Volume2,
@@ -30,6 +29,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { generateDeviceFingerprint } from "@/lib/fraud/fingerprint";
 import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
+import { BufferOverlay, SignalChip } from "./ConnectionQualityUI";
+import {
+  useConnectionQuality,
+  type ConnectionQualityMode,
+} from "./use-connection-quality";
 import { markPlaybackStartup, recordPlaybackTelemetry, startPlaybackTelemetry } from "@/lib/playback-telemetry";
 
 type Props = {
@@ -77,7 +81,10 @@ export function NativeVideoPlayer({
   onClose,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const { config: dataSaver } = useDataSaver();
+  const hlsRef = useRef<import("hls.js").default | null>(null);
+  const [hlsRevision, setHlsRevision] = useState(0);
+  const dataSaverController = useDataSaver();
+  const { config: dataSaver } = dataSaverController;
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
   const signedPoster = useSignedUrl("posters", externalPoster ? null : posterPath);
@@ -109,7 +116,21 @@ export function NativeVideoPlayer({
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
+  const [signalActivityKey, setSignalActivityKey] = useState(0);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
+  const updateDataSaverMode = useCallback((mode: ConnectionQualityMode) => {
+    dataSaverController.setMode(
+      mode === "high" ? "off" : mode === "data-saver" ? "300mb_saver" : "auto",
+    );
+  }, [dataSaverController.setMode]);
+  const connection = useConnectionQuality(videoRef, hlsRef, {
+    sourceKey: activeSrc || "",
+    engineRevision: hlsRevision,
+    onModeChange: updateDataSaverMode,
+  });
+  const revealSignalChip = useCallback(() => {
+    setSignalActivityKey((currentKey) => currentKey + 1);
+  }, []);
 
   // Tracking refs to ensure events fire at most once per playback session
   const trackedStart = useRef(false);
@@ -374,13 +395,15 @@ export function NativeVideoPlayer({
         let retryTimer: ReturnType<typeof setTimeout> | null = null;
         let recovered = false;
         let networkRecoveryCount = 0;
+        let disposed = false;
 
         import("hls.js")
           .then(({ default: Hls }) => {
-            if (!videoRef.current) return;
+            if (disposed || !videoRef.current) return;
             if (Hls.isSupported()) {
               hlsInstance = new Hls({
                 enableWorker: true,
+                startLevel: connection.mode === "data-saver" ? 0 : -1,
                 lowLatencyMode: liveTv ? true : false,
                 backBufferLength: liveTv ? 30 : 4,
                 maxBitrate: liveTv ? 0 : dataSaver.maxBitrateKbps * 1000,
@@ -394,6 +417,8 @@ export function NativeVideoPlayer({
                 manifestLoadingMaxRetry: 4,
                 levelLoadingMaxRetry: 4,
               });
+              hlsRef.current = hlsInstance;
+              setHlsRevision((revision) => revision + 1);
               hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
                 if (!data.fatal) return;
 
@@ -427,7 +452,9 @@ export function NativeVideoPlayer({
           });
 
         return () => {
+          disposed = true;
           if (retryTimer) clearTimeout(retryTimer);
+          if (hlsRef.current === hlsInstance) hlsRef.current = null;
           hlsInstance?.destroy();
           if (timer3sRef.current) clearTimeout(timer3sRef.current);
           video.pause();
@@ -536,6 +563,54 @@ export function NativeVideoPlayer({
     }
   };
 
+  const handleBufferRetry = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !activeSrc) return;
+
+    const isLive = liveTv || !Number.isFinite(video.duration);
+    const resumeAt = video.currentTime;
+    const hls = hlsRef.current;
+
+    if (hls) {
+      hls.stopLoad();
+      hls.loadSource(activeSrc);
+      hls.startLoad(isLive ? -1 : resumeAt);
+      void video.play().catch(() => {});
+      return;
+    }
+
+    const restorePlayback = () => {
+      video.removeEventListener("loadedmetadata", restorePlayback);
+      if (isLive && video.seekable.length > 0) {
+        const lastRange = video.seekable.length - 1;
+        video.currentTime = Math.max(video.seekable.start(lastRange), video.seekable.end(lastRange) - 0.5);
+      } else if (!isLive && Number.isFinite(resumeAt)) {
+        video.currentTime = resumeAt;
+      }
+      void video.play().catch(() => {});
+    };
+
+    video.addEventListener("loadedmetadata", restorePlayback, { once: true });
+    video.load();
+  }, [activeSrc, liveTv]);
+
+  const handleSelectQualityMode = useCallback((mode: ConnectionQualityMode) => {
+    connection.setMode(mode);
+    const video = videoRef.current;
+    if (feed !== "shorts" || mode !== "data-saver" || !video || !shortsFallbackSrc) return;
+    if (video.currentSrc === shortsFallbackSrc || shortsFallbackSrc === activeSrc) return;
+
+    const resumeAt = video.currentTime;
+    const wasPlaying = !video.paused;
+    shortsRetriedOriginal.current = true;
+    video.addEventListener("loadedmetadata", () => {
+      video.currentTime = Math.min(resumeAt, Number.isFinite(video.duration) ? video.duration : resumeAt);
+      if (wasPlaying) void video.play().catch(() => {});
+    }, { once: true });
+    video.src = shortsFallbackSrc;
+    video.load();
+  }, [activeSrc, connection.setMode, feed, shortsFallbackSrc]);
+
   const startNativePlayback = useCallback(async () => {
     if (!nativeVlcOnly || !activeSrc || nativeVlcActiveRef.current) return;
     setWaiting(true);
@@ -635,8 +710,13 @@ export function NativeVideoPlayer({
     }
   };
 
+  const debugEnabled = import.meta.env.DEV
+    || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1");
+
   return (
     <div
+      onPointerMove={revealSignalChip}
+      onFocusCapture={revealSignalChip}
       className={cn(
         "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
         nativeVlcOnly && nativeVlcActive ? "hidden" : aspect,
@@ -778,11 +858,32 @@ export function NativeVideoPlayer({
         />
       ) : null}
 
-      {/* Buffering indicator */}
-      {waiting && !failed ? (
-        <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40">
-          <Loader2 className="size-8 animate-spin text-background" aria-hidden="true" />
-        </div>
+      {!nativeVlcOnly && !playerClosed ? (
+        <>
+          <SignalChip
+            quality={connection.quality}
+            expanded={connection.status !== "playing"}
+            mode={connection.mode}
+            activityKey={signalActivityKey}
+            onOpen={revealSignalChip}
+            onSelectMode={handleSelectQualityMode}
+            hideUntilControls={isLandscape}
+          />
+          <BufferOverlay
+            status={connection.status}
+            bufferPercent={connection.bufferPercent}
+            toast={connection.toast}
+            onRetry={handleBufferRetry}
+            onDataSaver={() => handleSelectQualityMode("data-saver")}
+          />
+          {debugEnabled ? (
+            <div className="pointer-events-none absolute right-2 top-2 z-40 rounded-md bg-black/75 px-2 py-1 text-[9px] tabular-nums text-white/80">
+              {connection.bufferAheadSeconds === null ? "—" : connection.bufferAheadSeconds.toFixed(1) + "s"}
+              {" · level "}
+              {connection.currentLevel === null ? "auto" : connection.currentLevel}
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {/* Error overlay */}
