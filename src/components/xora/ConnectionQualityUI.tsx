@@ -103,7 +103,8 @@ export function SignalChip({
         }}
         className={
           "pointer-events-auto flex min-h-11 min-w-11 items-center justify-center rounded-full p-0 text-white shadow-lg transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black/80 " +
-          (isExpanded ? "opacity-100" : "opacity-55")
+          (isExpanded ? "opacity-100" : "opacity-55") +
+          (hideUntilControls ? " pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto" : "")
         }
       >
         <span className="flex h-7 items-center gap-2 rounded-full border border-white/10 bg-black/40 px-2.5 text-xs font-semibold tabular-nums text-white backdrop-blur-md">
