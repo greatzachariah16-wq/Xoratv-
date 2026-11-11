@@ -129,6 +129,7 @@ public final class LocalHlsProxy extends NanoHTTPD {
         long now = System.currentTimeMillis();
         if (now - session.lastAccessAt > SESSION_TTL_MS) {
             sessions.remove(id, session);
+            if (session.buffer != null) session.buffer.stop();
             return false;
         }
         session.lastAccessAt = now;
