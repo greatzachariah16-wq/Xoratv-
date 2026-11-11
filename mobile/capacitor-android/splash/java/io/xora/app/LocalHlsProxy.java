@@ -268,11 +268,24 @@ public final class LocalHlsProxy extends NanoHTTPD {
         long end = Math.max(0L, fullLength - 1L);
         Response.IStatus status = Response.Status.OK;
         String range = request.getHeaders().get("range");
-        if (range != null && range.matches("bytes=\\d+-\\d*")) {
-            String value = range.substring(6);
+        if (range != null && range.startsWith("bytes=")) {
+            String value = range.substring(6).trim();
             String[] parts = value.split("-", 2);
-            start = Long.parseLong(parts[0]);
-            if (parts.length > 1 && !parts[1].isEmpty()) end = Math.min(end, Long.parseLong(parts[1]));
+            if (parts.length != 2) return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range");
+            if (parts[0].isEmpty()) {
+                long suffixLength;
+                try { suffixLength = Long.parseLong(parts[1]); }
+                catch (NumberFormatException invalid) { return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range"); }
+                if (suffixLength <= 0L) return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range");
+                start = Math.max(0L, fullLength - suffixLength);
+            } else {
+                try { start = Long.parseLong(parts[0]); }
+                catch (NumberFormatException invalid) { return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range"); }
+                if (!parts[1].isEmpty()) {
+                    try { end = Math.min(end, Long.parseLong(parts[1])); }
+                    catch (NumberFormatException invalid) { return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range"); }
+                }
+            }
             if (start >= fullLength || end < start) return textResponse(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range");
             status = Response.Status.PARTIAL_CONTENT;
         }
