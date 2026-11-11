@@ -527,6 +527,7 @@ final class LocalHlsBuffer {
         for (Segment segment : snapshot) actualTargetDuration = Math.max(actualTargetDuration, (int) Math.ceil(segment.duration));
         output.append("#EXT-X-TARGETDURATION:").append(actualTargetDuration).append('\n');
         output.append("#EXT-X-MEDIA-SEQUENCE:").append(snapshot.get(0).sequence).append('\n');
+        if (!endList) output.append("#EXT-X-START:TIME-OFFSET=-60,PRECISE=YES\\n");
         for (Segment segment : snapshot) {
             for (String tag : segment.tags) {
                 if (tag.startsWith("#EXT-X-BYTERANGE:") || tag.startsWith("#EXTINF:")) continue;
@@ -629,6 +630,7 @@ final class LocalHlsBuffer {
 
     private void fail(String kind, int code, String message) {
         failed = true;
+        if (ready) healthy = false;
         error = (kind == null ? "" : kind) + ":" + (message == null ? "" : message);
         errorCode = code;
         notifyListener();
