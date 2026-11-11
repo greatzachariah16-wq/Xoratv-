@@ -1807,6 +1807,16 @@ public class XoraVlcPlugin extends Plugin {
 
     private void updateBufferProgress(LocalHlsBuffer.Progress progress) {
         if (progress == null) return;
+        if (playbackState == PlaybackState.BUFFERING) {
+            connectionQuality = "weak";
+            pendingConnectionQuality = "";
+            if (connectionQualityHysteresis != null) {
+                mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = null;
+            }
+            updateNativeConnectionChip(true);
+            return;
+        }
         if (startupBufferActive && statusText != null) {
             statusText.setText("Preparing your live stream on this device");
         }
@@ -1834,7 +1844,6 @@ public class XoraVlcPlugin extends Plugin {
                 mainHandler.removeCallbacks(connectionQualityHysteresis);
                 connectionQualityHysteresis = null;
             }
-            updateNativeConnectionChip(false);
         }
     }
 
