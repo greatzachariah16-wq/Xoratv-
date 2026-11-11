@@ -280,10 +280,12 @@ export function useConnectionQuality(
         setPlaybackStatus("longStalled");
         if (!autoSwitchedThisStallRef.current) {
           autoSwitchedThisStallRef.current = true;
-          chooseQualityMode("data-saver");
-          setToast("Switched to Data saver");
-          clearTimer(toastTimerRef.current);
-          toastTimerRef.current = window.setTimeout(() => setToast(""), 2_400);
+          if (modeRef.current !== "data-saver") {
+            chooseQualityMode("data-saver");
+            setToast("Switched to Data saver");
+            clearTimer(toastTimerRef.current);
+            toastTimerRef.current = window.setTimeout(() => setToast(""), 2_400);
+          }
         }
       }, 6_000);
     };
