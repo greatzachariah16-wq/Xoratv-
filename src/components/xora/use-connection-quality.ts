@@ -314,6 +314,13 @@ export function useConnectionQuality(
     const onCanPlay = () => recoverPlayback();
     const onProgress = () => sampleQuality();
     const onTimeUpdate = () => sampleQuality();
+    const onPause = () => {
+      waitingStartedAtRef.current = null;
+      resetWaitingTimers();
+      clearTimer(recoverTimerRef.current);
+      setPlaybackStatus("playing");
+      autoSwitchedThisStallRef.current = false;
+    };
 
     video.addEventListener("waiting", onWaiting);
     video.addEventListener("stalled", onStalled);
