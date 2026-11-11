@@ -136,7 +136,6 @@ public class XoraVlcPlugin extends Plugin {
     private boolean resumeAfterFocusGain;
     private boolean playingBeforeAppPause;
     private boolean startupBufferActive;
-    private boolean bufferHealthy = true;
     private boolean longBufferingVisible;
     private String connectionQuality = "good";
     private String pendingConnectionQuality = "";
@@ -1808,7 +1807,6 @@ public class XoraVlcPlugin extends Plugin {
 
     private void updateBufferProgress(LocalHlsBuffer.Progress progress) {
         if (progress == null) return;
-        bufferHealthy = progress.healthy;
         if (startupBufferActive && statusText != null) {
             statusText.setText("Preparing your live stream on this device");
         }
@@ -2005,7 +2003,7 @@ public class XoraVlcPlugin extends Plugin {
         switch (state) {
             case OFFLINE: return "⌁";
             case CONNECTING: return "◌";
-            case BUFFERING: return "◌";
+            case BUFFERING: return "▂";
             case ERR_REGION: return "⊘";
             case ERR_CHANNEL_DOWN: return "⌁";
             case ERR_TIMEOUT: return "◷";
@@ -2096,7 +2094,6 @@ public class XoraVlcPlugin extends Plugin {
         bufferingSpinner = null;
         dataSaverButton = null;
         startupBufferActive = false;
-        bufferHealthy = true;
         longBufferingVisible = false;
         connectionQuality = "good";
         pendingConnectionQuality = "";
