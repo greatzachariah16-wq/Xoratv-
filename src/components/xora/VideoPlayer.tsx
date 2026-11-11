@@ -624,9 +624,9 @@ export function NativeVideoPlayer({
     video.load();
   }, [activeSrc, liveTv]);
 
-  const handleSelectQualityMode = useCallback((mode: ConnectionQualityMode) => {
+  const handleSelectQualityMode = (mode: ConnectionQualityMode) => {
     connection.setMode(mode);
-  }, [connection.setMode]);
+  };
 
   const startNativePlayback = useCallback(async () => {
     if (!nativeVlcOnly || !activeSrc || nativeVlcActiveRef.current) return;
