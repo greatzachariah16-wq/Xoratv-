@@ -75,7 +75,10 @@ function compareDiagnostics(label, base, head) {
   const baseTotal = [...base.values()].reduce((sum, count) => sum + count, 0);
   const headTotal = [...head.values()].reduce((sum, count) => sum + count, 0);
   console.log(
-    `${label}: base=${baseTotal}, PR=${headTotal}, new=${regressions.reduce((sum, item) => sum + item.additional, 0)}`,
+    `${label}: base=${baseTotal}, PR=${headTotal}, new=${regressions.reduce(
+      (sum, item) => sum + item.additional,
+      0,
+    )}`,
   );
 
   if (regressions.length > 0) {
@@ -91,7 +94,9 @@ function runTypeScript(cwd) {
   const result = run(process.execPath, [compiler, "--noEmit", "--pretty", "false"], cwd);
   const diagnostics = parseTypeScriptDiagnostics(result.stdout + result.stderr);
   if (result.status !== 0 && diagnostics.size === 0) {
-    throw new Error(`TypeScript failed without parseable diagnostics in ${cwd}: ${result.stderr.slice(0, 2000)}`);
+    throw new Error(
+      `TypeScript failed without parseable diagnostics in ${cwd}: ${result.stderr.slice(0, 2000)}`,
+    );
   }
   return diagnostics;
 }
@@ -101,7 +106,9 @@ function runLint(cwd) {
   const result = run(process.execPath, [eslint, ".", "--format", "json"], cwd);
   const diagnostics = parseLintDiagnostics(result.stdout, cwd);
   if (result.status !== 0 && diagnostics.size === 0) {
-    throw new Error(`ESLint failed without parseable diagnostics in ${cwd}: ${result.stderr.slice(0, 2000)}`);
+    throw new Error(
+      `ESLint failed without parseable diagnostics in ${cwd}: ${result.stderr.slice(0, 2000)}`,
+    );
   }
   return diagnostics;
 }
@@ -136,7 +143,9 @@ try {
   if (worktreeAdded) {
     const removed = run("git", ["worktree", "remove", "--force", baseDir], root);
     if (removed.status !== 0) {
-      console.error(`Could not remove temporary base worktree: ${removed.stderr || removed.stdout}`);
+      console.error(
+        `Could not remove temporary base worktree: ${removed.stderr || removed.stdout}`,
+      );
       process.exitCode = 1;
     }
   }
