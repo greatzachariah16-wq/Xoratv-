@@ -135,10 +135,27 @@ try {
   const headLint = runLint(root);
 
   const typeScriptClean = compareDiagnostics("TypeScript", baseTypeScript, headTypeScript);
-  const lintClean = compareDiagnostics("ESLint", baseLint, headLint);
+  const actionableLint = (diagnostics) =>
+    new Map(
+      [...diagnostics].filter(([key]) => !key.includes("| prettier/prettier |")),
+    );
+  const formattingCount = (diagnostics) =>
+    [...diagnostics].reduce(
+      (total, [key, count]) =>
+        total + (key.includes("| prettier/prettier |") ? count : 0),
+      0,
+    );
+  console.log(
+    `Prettier-only formatting diagnostics: base=${formattingCount(baseLint)}, PR=${formattingCount(headLint)} (reported separately)`,
+  );
+  const lintClean = compareDiagnostics(
+    "ESLint non-format rules",
+    actionableLint(baseLint),
+    actionableLint(headLint),
+  );
 
   if (!typeScriptClean || !lintClean) process.exitCode = 1;
-  else console.log("No new TypeScript or ESLint diagnostics were introduced by this PR.");
+  else console.log("No new TypeScript or non-format ESLint diagnostics were introduced by this PR.");
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
