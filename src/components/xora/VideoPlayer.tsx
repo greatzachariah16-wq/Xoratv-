@@ -138,10 +138,11 @@ export function NativeVideoPlayer({
       ? lowerSource
       : activeSrc;
 
+    if (!nextSource) return;
     const resolvedNextSource = typeof window === "undefined"
       ? nextSource
       : new URL(nextSource, window.location.href).href;
-    if (!nextSource || video.currentSrc === resolvedNextSource) return;
+    if (video.currentSrc === resolvedNextSource) return;
 
     const resumeAt = video.currentTime;
     const wasPlaying = !video.paused;
@@ -881,7 +882,9 @@ export function NativeVideoPlayer({
       {!nativeVlcOnly && !playerClosed ? (
         <>
           <SignalChip
-            quality={connection.quality}
+            quality={connection.status === "hint" || connection.status === "stalled" || connection.status === "longStalled"
+              ? "weak"
+              : connection.quality}
             expanded={connection.status !== "playing"}
             mode={connection.mode}
             activityKey={signalActivityKey}
