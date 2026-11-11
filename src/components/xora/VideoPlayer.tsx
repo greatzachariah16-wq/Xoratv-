@@ -138,7 +138,10 @@ export function NativeVideoPlayer({
       ? lowerSource
       : activeSrc;
 
-    if (!nextSource || video.currentSrc === nextSource) return;
+    const resolvedNextSource = typeof window === "undefined"
+      ? nextSource
+      : new URL(nextSource, window.location.href).href;
+    if (!nextSource || video.currentSrc === resolvedNextSource) return;
 
     const resumeAt = video.currentTime;
     const wasPlaying = !video.paused;
