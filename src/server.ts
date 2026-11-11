@@ -1215,13 +1215,6 @@ export default {
                   );
                 })()
               : await getIptvPlaybackInfo(channelId));
-        if (!playback && !resolveLocalPlayback) {
-          return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
-            status: 404,
-            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-          });
-        }
-
         // Resolve origin candidates for the Android LocalHlsProxy. Keep the Render media
         // relay as an emergency upstream fallback; LibVLC itself receives loopback URLs only.
         if (resolveLocalPlayback) {
@@ -1291,6 +1284,13 @@ export default {
               "Content-Type": "application/json",
               "Cache-Control": "no-store",
             },
+          });
+        }
+
+        if (!playback) {
+          return new Response(JSON.stringify({ ok: false, error: "IPTV channel not found." }), {
+            status: 404,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
           });
         }
 
