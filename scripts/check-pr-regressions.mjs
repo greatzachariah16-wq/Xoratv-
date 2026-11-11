@@ -52,11 +52,7 @@ function parseLintDiagnostics(output, cwd) {
   for (const report of reports) {
     const file = path.relative(cwd, report.filePath).split(path.sep).join("/");
     for (const message of report.messages || []) {
-      const key = [
-        file,
-        message.ruleId || "fatal",
-        message.message,
-      ].join(" | ");
+      const key = [file, message.ruleId || "fatal", message.message].join(" | ");
       addCounts(counts, key);
     }
   }
