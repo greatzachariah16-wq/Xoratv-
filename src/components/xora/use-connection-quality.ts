@@ -400,6 +400,7 @@ export function useConnectionQuality(
   return {
     quality,
     status,
+    ready: modeReady,
     bufferAheadSeconds,
     bufferPercent,
     mode,
