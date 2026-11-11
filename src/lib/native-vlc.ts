@@ -114,6 +114,7 @@ export async function openNativeVlc(options: {
   url: string;
   title?: string;
   channelId?: string;
+  qualityMode?: "auto" | "data-saver" | "high";
   candidates?: NativeVlcCandidate[];
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
