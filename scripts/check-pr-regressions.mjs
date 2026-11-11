@@ -125,6 +125,13 @@ try {
 
   fs.symlinkSync(path.join(root, "node_modules"), path.join(baseDir, "node_modules"), "dir");
 
+  console.log(`Preparing baseline build at ${baseSha.slice(0, 12)}...`);
+  const baseBuild = run("npm", ["run", "build"], baseDir);
+  console.log(`Baseline build: ${baseBuild.status === 0 ? "passed" : "failed"}`);
+  if (baseBuild.status !== 0) {
+    console.warn((baseBuild.stderr || baseBuild.stdout).slice(-2000));
+  }
+
   console.log(`Comparing PR diagnostics with base ${baseSha.slice(0, 12)}...`);
   const baseTypeScript = runTypeScript(baseDir);
   const headTypeScript = runTypeScript(root);
