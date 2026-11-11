@@ -2,7 +2,6 @@ package io.xora.app;
 
 import android.app.PictureInPictureParams;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -106,6 +105,7 @@ public class XoraVlcPlugin extends Plugin {
     private TextView offlineBanner;
     private TextView connectionQualityChip;
     private ProgressBar bufferProgressBar;
+    private ProgressBar bufferingSpinner;
     private Button dataSaverButton;
     private TextView channelTitleText;
     private TextView liveBadge;
@@ -833,11 +833,11 @@ public class XoraVlcPlugin extends Plugin {
         bufferProgressBar.setProgressTintList(ColorStateList.valueOf(0xFFE5A58D));
         bufferProgressBar.setProgressBackgroundTintList(ColorStateList.valueOf(0x55FFFFFF));
         bufferProgressBar.setVisibility(View.GONE);
-        LinearLayout.LayoutParams bufferBarParams = new LinearLayout.LayoutParams(
-            Math.min(dp(230), getContext().getResources().getDisplayMetrics().widthPixels - dp(96)), dp(5)
+        FrameLayout.LayoutParams bufferBarParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, dp(4), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL
         );
-        bufferBarParams.setMargins(0, dp(3), 0, dp(8));
-        statusCard.addView(bufferProgressBar, bufferBarParams);
+        bufferBarParams.setMargins(dp(24), 0, dp(24), dp(64));
+        videoFrame.addView(bufferProgressBar, bufferBarParams);
 
         dataSaverButton = new Button(getContext());
         dataSaverButton.setText("Data saver");
@@ -854,6 +854,7 @@ public class XoraVlcPlugin extends Plugin {
         retryButton.setTextSize(11);
         retryButton.setAllCaps(false);
         retryButton.setMinHeight(dp(44));
+        retryButton.setVisibility(View.GONE);
         retryButton.setPadding(dp(18), 0, dp(18), 0);
         retryButton.setOnClickListener(view -> {
             clearLongBufferingFallback();
@@ -867,6 +868,15 @@ public class XoraVlcPlugin extends Plugin {
         );
         statusParams.setMargins(dp(18), dp(12), dp(18), dp(12));
         videoFrame.addView(statusCard, statusParams);
+
+        bufferingSpinner = new ProgressBar(getContext());
+        bufferingSpinner.setIndeterminate(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            bufferingSpinner.setIndeterminateTintList(ColorStateList.valueOf(Color.WHITE));
+        }
+        bufferingSpinner.setVisibility(View.GONE);
+        FrameLayout.LayoutParams spinnerParams = new FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER);
+        videoFrame.addView(bufferingSpinner, spinnerParams);
 
         controls = new LinearLayout(getContext());
         controls.setOrientation(LinearLayout.HORIZONTAL);
@@ -1005,6 +1015,7 @@ public class XoraVlcPlugin extends Plugin {
             if (controls != null) controls.setVisibility(View.GONE);
             if (topBar != null) topBar.setVisibility(View.GONE);
             if (statusCard != null) statusCard.setVisibility(View.GONE);
+            if (bufferingSpinner != null) bufferingSpinner.setVisibility(View.GONE);
             if (offlineBanner != null) offlineBanner.setVisibility(View.GONE);
             if (connectionQualityChip != null) connectionQualityChip.setVisibility(View.GONE);
             playerOverlay.setLayoutParams(new FrameLayout.LayoutParams(
@@ -1480,6 +1491,14 @@ public class XoraVlcPlugin extends Plugin {
             bufferingLongStallNotice = null;
         }
         clearLongBufferingFallback();
+        if (connectionQualityHysteresis != null) {
+            mainHandler.removeCallbacks(connectionQualityHysteresis);
+            connectionQualityHysteresis = null;
+        }
+        if (connectionChipCollapse != null) {
+            mainHandler.removeCallbacks(connectionChipCollapse);
+            connectionChipCollapse = null;
+        }
         bufferingStartedAt = 0L;
     }
 
@@ -1918,10 +1937,17 @@ public class XoraVlcPlugin extends Plugin {
 
         if (statusCard != null) {
             boolean error = isErrorState(next);
-            boolean showCard = next == PlaybackState.CONNECTING
-                || next == PlaybackState.BUFFERING
-                || error;
+            boolean showCard = next == PlaybackState.BUFFERING || error;
             statusCard.setVisibility(showCard ? View.VISIBLE : View.GONE);
+            FrameLayout.LayoutParams statusParams = (FrameLayout.LayoutParams) statusCard.getLayoutParams();
+            statusParams.gravity = next == PlaybackState.BUFFERING
+                ? Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL : Gravity.CENTER;
+            statusParams.setMargins(dp(18), dp(12), dp(18),
+                next == PlaybackState.BUFFERING ? dp(74) : dp(12));
+            statusCard.setLayoutParams(statusParams);
+            if (bufferingSpinner != null) {
+                bufferingSpinner.setVisibility(next == PlaybackState.BUFFERING ? View.VISIBLE : View.GONE);
+            }
             statusIcon.setText(stateIcon(next));
             statusText.setText(stateMessage(next));
             boolean showManualRetry = next == PlaybackState.ERR_REGION
@@ -2067,6 +2093,7 @@ public class XoraVlcPlugin extends Plugin {
         offlineBanner = null;
         connectionQualityChip = null;
         bufferProgressBar = null;
+        bufferingSpinner = null;
         dataSaverButton = null;
         startupBufferActive = false;
         bufferHealthy = true;
