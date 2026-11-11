@@ -6,6 +6,7 @@ type SignalChipProps = {
   expanded: boolean;
   mode: ConnectionQualityMode;
   activityKey?: number;
+  hideUntilControls?: boolean;
   onOpen: () => void;
   onSelectMode: (mode: ConnectionQualityMode) => void;
 };
@@ -46,6 +47,7 @@ export function SignalChip({
   expanded,
   mode,
   activityKey = 0,
+  hideUntilControls = false,
   onOpen,
   onSelectMode,
 }: SignalChipProps) {
@@ -83,7 +85,13 @@ export function SignalChip({
   const isExpanded = expanded || temporarilyExpanded || popoverOpen;
 
   return (
-    <div ref={wrapperRef} className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+4.25rem)] left-[max(12px,calc(env(safe-area-inset-left,0px)+12px))] z-30">
+    <div
+      ref={wrapperRef}
+      className={
+        "pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+4.25rem)] left-[max(12px,calc(env(safe-area-inset-left,0px)+12px))] z-30 " +
+        (hideUntilControls ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : "opacity-100")
+      }
+    >
       <button
         type="button"
         aria-label={"Connection: " + qualityLabel}
@@ -148,7 +156,7 @@ export function BufferOverlay({
   if (!visible && !toast) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20">
+    <div className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-200">
       {visible ? (
         <div className={"absolute inset-0 bg-black/20 transition-opacity duration-200 " + (recovering ? "opacity-0" : "opacity-100")} aria-hidden="true" />
       ) : null}
@@ -169,7 +177,7 @@ export function BufferOverlay({
           role="status"
           aria-live="polite"
           className={
-            "pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+4.25rem)] left-1/2 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-md transition-opacity duration-200 " +
+            "pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] left-1/2 flex max-w-[calc(100%-24px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-md transition-opacity duration-200 " +
             (recovering ? "opacity-0" : "opacity-100")
           }
         >
