@@ -1798,10 +1798,6 @@ public class XoraVlcPlugin extends Plugin {
         streamHeaders.clear();
         streamTransports.clear();
         upstreamStreamUrls.clear();
-        if (localHlsProxy != null) {
-            localHlsProxy.stop();
-            localHlsProxy = null;
-        }
         currentStreamIndex = 0;
         currentChannelId = "";
         currentChannelTitle = "Live TV";
@@ -1811,3 +1807,20 @@ public class XoraVlcPlugin extends Plugin {
         bufferingStallRestarted = false;
         resumeWhenOnline = false;
         playingBeforeAppPause = false;
+        pipRequested = false;
+        pipMode = false;
+        controlsVisible = true;
+        playbackState = PlaybackState.IDLE;
+
+        if (notifyClosed) {
+            if (!emittedIdleState) {
+                JSObject state = new JSObject();
+                state.put("state", PlaybackState.IDLE.name());
+                state.put("channelId", closedChannelId);
+                state.put("message", "");
+                notifyListeners("stateChanged", state);
+            }
+            emitPlaybackState(false, false, false, true);
+        }
+    }
+}
