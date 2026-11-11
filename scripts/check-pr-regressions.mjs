@@ -145,8 +145,10 @@ try {
         total + (key.includes("| prettier/prettier |") ? count : 0),
       0,
     );
+  const baseFormatting = formattingCount(baseLint);
+  const prFormatting = formattingCount(headLint);
   console.log(
-    `Prettier-only formatting diagnostics: base=${formattingCount(baseLint)}, PR=${formattingCount(headLint)} (reported separately)`,
+    `Prettier-only formatting diagnostics: base=${baseFormatting}, PR=${prFormatting}`,
   );
   const lintClean = compareDiagnostics(
     "ESLint non-format rules",
@@ -155,7 +157,11 @@ try {
   );
 
   if (!typeScriptClean || !lintClean) process.exitCode = 1;
-  else console.log("No new TypeScript or non-format ESLint diagnostics were introduced by this PR.");
+  else {
+    console.log(
+      "No new TypeScript or non-format ESLint diagnostics were introduced by this PR.",
+    );
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
