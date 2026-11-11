@@ -148,13 +148,13 @@ export function useConnectionQuality(
   const modeRef = useRef<ConnectionQualityMode>(mode);
   const onModeChangeRef = useRef(options.onModeChange);
   const waitingStartedAtRef = useRef<number | null>(null);
-  const visibleSinceRef = useRef(0);
   const stallsRef = useRef<number[]>([]);
   const candidateQualityRef = useRef<ConnectionQuality>("good");
   const candidateSinceRef = useRef(0);
   const autoSwitchedThisStallRef = useRef(false);
   const waitingTimerRef = useRef<number | null>(null);
   const longStallTimerRef = useRef<number | null>(null);
+  const autoSaverTimerRef = useRef<number | null>(null);
   const recoverTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -198,15 +198,16 @@ export function useConnectionQuality(
     const resetWaitingTimers = () => {
       clearTimer(waitingTimerRef.current);
       clearTimer(longStallTimerRef.current);
+      clearTimer(autoSaverTimerRef.current);
       waitingTimerRef.current = null;
       longStallTimerRef.current = null;
+      autoSaverTimerRef.current = null;
     };
 
     resetWaitingTimers();
     clearTimer(recoverTimerRef.current);
     clearTimer(toastTimerRef.current);
     waitingStartedAtRef.current = null;
-    visibleSinceRef.current = 0;
     stallsRef.current = [];
     candidateSinceRef.current = 0;
     candidateQualityRef.current = "good";
@@ -267,12 +268,10 @@ export function useConnectionQuality(
 
       const now = Date.now();
       waitingStartedAtRef.current = now;
-      visibleSinceRef.current = 0;
       stallsRef.current.push(now);
       resetWaitingTimers();
       waitingTimerRef.current = window.setTimeout(() => {
         if (disposed || waitingStartedAtRef.current === null) return;
-        visibleSinceRef.current = Date.now();
         qualityRef.current = "weak";
         setQuality("weak");
         setPlaybackStatus("stalled");
@@ -280,7 +279,9 @@ export function useConnectionQuality(
       longStallTimerRef.current = window.setTimeout(() => {
         if (disposed || waitingStartedAtRef.current === null) return;
         setPlaybackStatus("longStalled");
-        if (!autoSwitchedThisStallRef.current) {
+        autoSaverTimerRef.current = window.setTimeout(() => {
+          autoSaverTimerRef.current = null;
+          if (disposed || waitingStartedAtRef.current === null || autoSwitchedThisStallRef.current) return;
           autoSwitchedThisStallRef.current = true;
           if (modeRef.current !== "data-saver") {
             chooseQualityMode("data-saver");
@@ -288,7 +289,7 @@ export function useConnectionQuality(
             clearTimer(toastTimerRef.current);
             toastTimerRef.current = window.setTimeout(() => setToast(""), 2_400);
           }
-        }
+        }, 2_000);
       }, 6_000);
     };
 
