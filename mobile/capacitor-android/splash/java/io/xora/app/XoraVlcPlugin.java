@@ -1315,11 +1315,11 @@ public class XoraVlcPlugin extends Plugin {
             try {
                 localHlsProxy.prebufferSession(selectedUrl, progress -> mainHandler.post(() -> {
                     if (bufferPlayerGeneration != playerGeneration
-                        || bufferAttemptGeneration != playbackAttemptGeneration
                         || currentStreamIndex >= streamUrls.size()
                         || !selectedUrl.equals(streamUrls.get(currentStreamIndex))) return;
+                    if (!progress.ready && bufferAttemptGeneration != playbackAttemptGeneration) return;
                     updateBufferProgress(progress);
-                    if (progress.failed) {
+                    if (progress.failed && bufferAttemptGeneration == playbackAttemptGeneration) {
                         startupBufferActive = false;
                         if (progress.error.startsWith("region:")) {
                             if (!tryNextStream()) setState(PlaybackState.ERR_REGION);
@@ -1330,7 +1330,8 @@ public class XoraVlcPlugin extends Plugin {
                         }
                         return;
                     }
-                    if (progress.ready) {
+                    if (progress.ready && startupBufferActive
+                        && bufferAttemptGeneration == playbackAttemptGeneration) {
                         startupBufferActive = false;
                         setBufferProgressVisible(false);
                         startCurrentStream(usePreferredDecoder);
@@ -1718,6 +1719,34 @@ public class XoraVlcPlugin extends Plugin {
             }
         };
         mainHandler.postDelayed(retryRunnable, delay);
+    }
+
+    private void setBufferProgressVisible(boolean visible) {
+        if (bufferProgressText != null) bufferProgressText.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (bufferProgressBar != null) bufferProgressBar.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    private void updateBufferProgress(LocalHlsBuffer.Progress progress) {
+        if (progress == null) return;
+        bufferHealthKnown = progress.ready;
+        bufferHealthy = progress.healthy;
+        if (bufferProgressBar != null) bufferProgressBar.setProgress(progress.percent);
+        if (bufferProgressText != null) {
+            long seconds = Math.max(0L, Math.min(60L, Math.round(progress.bufferedMillis / 1000.0)));
+            bufferProgressText.setText("Downloaded " + seconds + " / 60 seconds  ·  "
+                + progress.downloadedSegments + " segments");
+        }
+        if (bufferHealthBanner != null) {
+            if (!progress.healthy) {
+                bufferHealthBanner.setText("Slow internet connection · buffer replenishing slowly");
+                bufferHealthBanner.setBackground(roundedBackground(0xDD8E482F, dp(9)));
+            } else {
+                bufferHealthBanner.setText("Stream buffer healthy · " + progress.downloadedSegments + " segments cached");
+                bufferHealthBanner.setBackground(roundedBackground(0xDD315847, dp(9)));
+            }
+            bufferHealthBanner.setVisibility(progress.ready && playbackState == PlaybackState.PLAYING
+                ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void setState(PlaybackState next) {
