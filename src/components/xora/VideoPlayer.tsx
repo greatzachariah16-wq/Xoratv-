@@ -119,10 +119,6 @@ export function NativeVideoPlayer({
   const [signalActivityKey, setSignalActivityKey] = useState(0);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
   const updateDataSaverMode = useCallback((mode: ConnectionQualityMode) => {
-    dataSaverController.setMode(
-      mode === "high" ? "off" : mode === "data-saver" ? "300mb_saver" : "auto",
-    );
-
     const video = videoRef.current;
     if (!video || hlsRef.current) return;
 
@@ -156,7 +152,7 @@ export function NativeVideoPlayer({
     video.addEventListener("loadedmetadata", restorePosition, { once: true });
     video.src = nextSource;
     video.load();
-  }, [activeSrc, dataSaverController.setMode, shortsFallbackSrc]);
+  }, [activeSrc, shortsFallbackSrc]);
   const connection = useConnectionQuality(videoRef, hlsRef, {
     sourceKey: activeSrc || "",
     engineRevision: hlsRevision,
