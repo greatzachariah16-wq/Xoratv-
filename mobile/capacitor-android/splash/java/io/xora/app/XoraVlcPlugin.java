@@ -1945,6 +1945,12 @@ public class XoraVlcPlugin extends Plugin {
             }
         } else if (next == PlaybackState.PLAYING) {
             longBufferingVisible = false;
+            connectionQuality = "good";
+            pendingConnectionQuality = "";
+            if (connectionQualityHysteresis != null) {
+                mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = null;
+            }
         }
         updateNativeConnectionChip(next == PlaybackState.PLAYING || next == PlaybackState.BUFFERING);
 
