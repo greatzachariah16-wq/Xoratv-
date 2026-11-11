@@ -255,7 +255,9 @@ export function useConnectionQuality(
         candidateSinceRef.current = 0;
       }
 
-      if (waitingStartedAtRef.current === null && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      if (waitingStartedAtRef.current === null
+        && statusRef.current !== "recovering"
+        && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
         setPlaybackStatus(ahead !== null && ahead < 3 ? "hint" : "playing");
       }
     };
@@ -298,10 +300,16 @@ export function useConnectionQuality(
       resetWaitingTimers();
 
       if (wasWaiting && wasVisible) {
+        qualityRef.current = "good";
+        candidateQualityRef.current = "good";
+        candidateSinceRef.current = 0;
+        setQuality("good");
         setPlaybackStatus("recovering");
         clearTimer(recoverTimerRef.current);
         recoverTimerRef.current = window.setTimeout(() => {
-          if (!disposed) setPlaybackStatus("playing");
+          if (disposed) return;
+          setPlaybackStatus("playing");
+          sampleQuality();
         }, 200);
       } else {
         setPlaybackStatus("playing");
