@@ -398,6 +398,8 @@ final class LocalHlsBuffer {
         ParsedPlaylist parsed = new ParsedPlaylist();
         String[] lines = body.split("\\r?\\n");
         List<String> pendingTags = new ArrayList<>();
+        Map<String, String> persistentTags = new LinkedHashMap<>();
+        Map<String, Long> previousByteRangeEnd = new LinkedHashMap<>();
         double pendingDuration = -1.0;
         String pendingRange = null;
         long sequence = 0L;
@@ -435,6 +437,14 @@ final class LocalHlsBuffer {
                 pendingRange = line.substring(line.indexOf(':') + 1).trim();
                 continue;
             }
+            if (line.startsWith("#EXT-X-KEY:")) {
+                persistentTags.put("KEY", line);
+                continue;
+            }
+            if (line.startsWith("#EXT-X-MAP:")) {
+                persistentTags.put("MAP", line);
+                continue;
+            }
             if (line.startsWith("#")) {
                 if (parsed.segments.isEmpty() && pendingDuration < 0.0
                     && (line.startsWith("#EXT-X-VERSION:")
@@ -450,8 +460,25 @@ final class LocalHlsBuffer {
             String absolute = resolve(baseUrl, line);
             long segmentSequence = (sawSequence ? sequence : 0L) + parsed.segments.size();
             double duration = pendingDuration > 0.0 ? pendingDuration : parsed.targetDuration;
+            String normalizedRange = pendingRange;
+            if (pendingRange != null) {
+                Matcher rangeMatcher = RANGE.matcher(pendingRange);
+                if (!rangeMatcher.matches()) throw new IOException("Unsupported HLS byte range.");
+                long rangeLength = Long.parseLong(rangeMatcher.group(1));
+                Long explicitOffset = rangeMatcher.group(2) == null
+                    ? null : Long.parseLong(rangeMatcher.group(2));
+                Long previousEnd = previousByteRangeEnd.get(absolute);
+                if (explicitOffset == null && previousEnd == null) {
+                    throw new IOException("HLS byte range is missing its continuation offset.");
+                }
+                long rangeOffset = explicitOffset != null ? explicitOffset : previousEnd;
+                normalizedRange = rangeLength + "@" + rangeOffset;
+                previousByteRangeEnd.put(absolute, rangeOffset + rangeLength);
+            }
+            List<String> segmentTags = new ArrayList<>(persistentTags.values());
+            segmentTags.addAll(pendingTags);
             parsed.segments.add(new Segment(segmentSequence, absolute, duration,
-                new ArrayList<>(pendingTags), pendingRange, null, 0L));
+                segmentTags, normalizedRange, null, 0L));
             pendingTags.clear();
             pendingDuration = -1.0;
             pendingRange = null;
