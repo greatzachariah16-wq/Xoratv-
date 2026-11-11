@@ -431,11 +431,11 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
 
     const contentType = response.headers.get("content-type") || "";
     const looksLikeHls =
-      /mpegurl/i.test(contentType) || /\\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
+      /mpegurl/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(candidate.streamUrl);
 
     let ok =
       /mpegurl/i.test(contentType) ||
-      /video\\//i.test(contentType) ||
+      /video\//i.test(contentType) ||
       /octet-stream/i.test(contentType);
 
     if (looksLikeHls) {
