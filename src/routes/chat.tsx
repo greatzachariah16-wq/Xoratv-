@@ -48,6 +48,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const navigate = useNavigate();
 
   const [rawRooms, setRawRooms] = useState<ChatRoomRecord[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
   const [rawDiscoverableRooms, setRawDiscoverableRooms] = useState<ChatRoomRecord[]>([]);
   const [discoverableError, setDiscoverableError] = useState<string | null>(null);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
@@ -84,13 +85,16 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   useEffect(() => {
     if (!user) {
       setRawRooms([]);
+      setRoomsLoading(false);
       return;
     }
+    setRoomsLoading(true);
 
     // Opportunistic prune on mount
     void pruneUserExpiredMessages(user.id);
 
     const unsubscribe = listenUserRooms(user.id, (updatedRooms) => {
+      setRoomsLoading(false);
       setRawRooms(updatedRooms);
       if (initialRoomId && updatedRooms.some((r) => r.id === initialRoomId)) {
         setActiveRoomId(initialRoomId);
@@ -395,6 +399,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     <AppShell wide>
       <div className="mx-auto max-w-6xl pb-8">
         <ChatPage
+          roomsLoading={roomsLoading}
           authLoading={authLoading}
         currentUserId={user?.id || null}
           currentProfile={currentProfileLite}
