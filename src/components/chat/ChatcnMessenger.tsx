@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { FullMessenger, type ChatMessageData, type SidebarConversation, type ChatUser } from "@/components/ui/chat";
+import { type ChatMessageData, type SidebarConversation, type ChatUser } from "@/components/ui/chat";
+import XoraChatLayout from "./XoraChatLayout";
 import "@/components/ui/chat/chatcn.css";
 import "./chatcn-xora.css";
 import type { ChatRoom, ChatMessage, ProfileLite } from "@/components/chat/ChatPage";
@@ -80,18 +81,16 @@ export default function ChatcnMessenger({
   // title strip, or secondary panel wraps the upstream UI.
   return (
     <div className="xora-chat-page h-[100dvh] min-h-[100svh] w-full min-w-0 overflow-hidden">
-      <FullMessenger
+      <XoraChatLayout
         currentUser={currentUser}
         conversations={conversations}
         activeConversationId={activeRoomId || undefined}
         onSelectConversation={(id) => id ? onSelectRoom(id) : onBackToList()}
         messages={chatMessages}
         onSend={onSend}
-        title="Messages"
         subtitle={subtitle}
         onNewMessage={onOpenNewDm}
         onNewGroup={onOpenNewGroup}
-        className="h-full min-h-0 w-full"
       />
     </div>
   );
