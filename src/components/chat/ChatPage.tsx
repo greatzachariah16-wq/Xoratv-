@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./xora-chat-premium.css";
-import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose, CheckCheck, ChevronDown, Coffee, Info, Leaf, Paperclip, Smile, Sun, Volume2, VolumeX, X } from "lucide-react";
+import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose, CheckCheck, ChevronDown, Coffee, Info, Leaf, Paperclip, Smile, Sun, Moon, Volume2, VolumeX, X } from "lucide-react";
 
 export type ChatRoom = { id: string; type: "dm" | "group"; name: string | null; photo_url: string | null; description?: string | null; lastMessage: string | null; lastMessageAt: string | null; memberIds?: Record<string, boolean> };
 export type ChatMessage = { id: string; roomId: string; senderId: string; senderName?: string | null; senderAvatar?: string | null; text: string; created_at: string; type: "text" | "experience"; expiresAt: string };
@@ -68,6 +68,22 @@ export default function ChatPage({
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [roomMenuOpen, setRoomMenuOpen] = useState(false);
+  const [chatTheme, setChatTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    try {
+      const savedTheme = window.localStorage.getItem("xora-chat-theme");
+      if (savedTheme === "dark" || savedTheme === "light") setChatTheme(savedTheme);
+    } catch {
+      // Keep the premium dark default when local storage is unavailable.
+    }
+  }, []);
+  const toggleChatTheme = () => {
+    setChatTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      try { window.localStorage.setItem("xora-chat-theme", next); } catch { /* Theme remains usable for this session. */ }
+      return next;
+    });
+  };
   const [localReactions, setLocalReactions] = useState<Record<string, string[]>>({});
   const lastTap = useRef<{ id: string; at: number }>({ id: "", at: 0 });
   const knownMessages = useRef<Set<string>>(new Set(messages.map((message) => message.id)));
@@ -174,7 +190,7 @@ export default function ChatPage({
   const activeSubtitle = activeRoom?.type === "dm" ? "Direct conversation" : `${activeMembers.length || Object.keys(activeRoom?.memberIds || {}).length} members · Community circle`;
 
   return (
-    <div className="xora-page xora-live-page">
+    <div className="xora-page xora-live-page" data-chat-theme={chatTheme}>
       <header className="brand-header">
         <div className="brand-lockup">
           <span className="xora-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M8 7c2 0 3 1 5 4l3 4 3-4c2-3 3-4 5-4M8 25c2 0 3-1 5-4l3-4 3 4c2 3 3 4 5 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/><circle cx="25" cy="6" r="2" fill="currentColor"/></svg></span>
@@ -193,6 +209,7 @@ export default function ChatPage({
             <div className="section-heading">
               <div><h1>Your people</h1><p className="xora-sidebar-subtitle">Conversations & circles</p></div>
               <div className="xora-action-pair">
+                <button type="button" className="icon-control xora-icon-button" onClick={toggleChatTheme} title={chatTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label={chatTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}><span className="xc-theme-glyph">{chatTheme === "dark" ? <Sun/> : <Moon/>}</span></button>
                 <button className="icon-control xora-icon-button" onClick={onOpenNewDm} title="New message" aria-label="New message"><MessageCircle/></button>
                 <button className="icon-control xora-icon-button xora-create-button" onClick={onOpenNewGroup} title="Create a circle" aria-label="Create a circle"><Plus/></button>
               </div>
@@ -212,9 +229,10 @@ export default function ChatPage({
               {rooms.filter((room) => room.type === "group").slice(0,3).map((room) => {
                 const title = getRoomTitle(room, currentUserId, profileMap);
                 const Icon = roomIcon(room);
-                return <button key={room.id} type="button" className="circle-shortcut" onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}><span className={`circle-art ${room.id === activeRoomId ? "selected" : ""}`}><Icon/></span><span>{title}</span></button>;
+                const memberCount = Object.keys(room.memberIds || {}).length;
+                return <button key={room.id} type="button" className="circle-shortcut" data-active={room.id === activeRoomId} onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}><span className={`circle-art ${room.id === activeRoomId ? "selected" : ""}`}>{room.photo_url ? <img src={room.photo_url} alt=""/> : <Icon/>}</span><span className="circle-meta"><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"}</small></span></button>;
               })}
-              <button type="button" className="circle-shortcut" onClick={onOpenNewGroup} aria-label="Create circle"><span className="circle-art add"><Plus/></span><span>New circle</span></button>
+              <button type="button" className="circle-shortcut circle-create-shortcut" onClick={onOpenNewGroup} aria-label="Create circle"><span className="circle-art add"><Plus/></span><span className="circle-meta"><strong>Create new</strong><small>Start a space</small></span></button>
             </div>
           </section>
 
@@ -232,8 +250,8 @@ export default function ChatPage({
                 const joined = rooms.some((candidate) => candidate.id === room.id);
                 const memberCount = Object.keys(room.memberIds || {}).length;
                 return <article key={room.id} className="xora-discover-card">
-                  <div className="xora-discover-heading">{room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className="circle-art"><Icon/></span>}<div><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"} · Community circle</small></div></div>
-                  <p>{room.description?.trim() || "A welcoming space to meet people and start conversations."}</p>{room.lastMessage && <small className="block mb-3 text-xs text-muted-foreground">Latest: {room.lastMessage}</small>}
+                  <div className="xora-discover-heading">{room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className="circle-art"><Icon/></span>}<div><strong>{title}</strong><small><span>{memberCount} {memberCount === 1 ? "member" : "members"}</span><span className="xora-community-chip">Community</span></small></div></div>
+                  <p>{room.description?.trim() || "A welcoming space to meet people and start conversations."}</p>{room.lastMessage && <div className="xora-discover-latest"><span>LATEST</span><p>{room.lastMessage}</p></div>}
                   <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open" : "Join circle"}</button>
                 </article>;
               }
@@ -253,7 +271,7 @@ export default function ChatPage({
             <header className="conversation-header">
               <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={closeRoom}><ArrowLeft/></button>
               {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
-              <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <>{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members <span>·</span><span className="online-dot"/><span className="online-text">Community circle</span></>}</p></div>
+              <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <><span className="chat-member-count">{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members</span><span className="chat-community-badge">Community circle</span></>}</p></div>
               {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
               <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Conversation menu" aria-label="Conversation menu" aria-expanded={roomMenuOpen} onClick={() => setRoomMenuOpen((open) => !open)}><MoreHorizontal/></button></div>
             {roomMenuOpen && <div className="xc-room-menu" role="menu"><button type="button" role="menuitem" onClick={() => { setRoomMenuOpen(false); onOpenNewDm(); }}>New message</button><button type="button" role="menuitem" onClick={() => { setRoomMenuOpen(false); onOpenNewGroup(); }}>Create a circle</button></div>}
