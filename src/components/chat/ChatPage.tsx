@@ -40,6 +40,15 @@ export function getRoomTitle(room: ChatRoom, currentUserId: string | null, profi
   }
   return room.name || "Xora conversation";
 }
+function circleArtworkFor(name: string): string {
+  const value = name.toLowerCase();
+  if (/(film|cinema|movie|series|anime)/.test(value)) return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=82";
+  if (/(music|song|sound|artist)/.test(value)) return "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=82";
+  if (/(book|learn|study|code|tech)/.test(value)) return "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=900&q=82";
+  if (/(nature|outdoor|travel|earth)/.test(value)) return "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=82";
+  if (/(food|coffee|cook|kitchen)/.test(value)) return "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=82";
+  return "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=82";
+}
 const Avatar = ({ path, name, size = "md" }: { path?: string | null; name: string; size?: "sm" | "md" | "lg" }) => {
   const sizes = { sm: "size-9 text-xs", md: "size-11 text-sm", lg: "size-12 text-sm" };
   const initials = (name || "?").split(" ").map((part) => part[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "?";
@@ -230,7 +239,7 @@ export default function ChatPage({
                 const title = getRoomTitle(room, currentUserId, profileMap);
                 const Icon = roomIcon(room);
                 const memberCount = Object.keys(room.memberIds || {}).length;
-                return <button key={room.id} type="button" className="circle-shortcut" data-active={room.id === activeRoomId} onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}><span className={`circle-art ${room.id === activeRoomId ? "selected" : ""}`}>{room.photo_url ? <img src={room.photo_url} alt=""/> : <Icon/>}</span><span className="circle-meta"><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"}</small></span></button>;
+                return <button key={room.id} type="button" className="circle-shortcut" data-active={room.id === activeRoomId} onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}><span className={`circle-art ${room.id === activeRoomId ? "selected" : ""}`}><img src={room.photo_url || circleArtworkFor(title)} alt="" loading="lazy"/></span><span className="circle-meta"><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"}</small></span></button>;
               })}
               <button type="button" className="circle-shortcut circle-create-shortcut" onClick={onOpenNewGroup} aria-label="Create circle"><span className="circle-art add"><Plus/></span><span className="circle-meta"><strong>Create new</strong><small>Start a space</small></span></button>
             </div>
@@ -250,13 +259,17 @@ export default function ChatPage({
                 const joined = rooms.some((candidate) => candidate.id === room.id);
                 const memberCount = Object.keys(room.memberIds || {}).length;
                 return <article key={room.id} className="xora-discover-card">
-                  <div className="xora-discover-heading">{room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className="circle-art"><Icon/></span>}<div><strong>{title}</strong><small><span>{memberCount} {memberCount === 1 ? "member" : "members"}</span><span className="xora-community-chip">Community</span></small></div></div>
-                  <p>{room.description?.trim() || "A welcoming space to meet people and start conversations."}</p>{room.lastMessage && <div className="xora-discover-latest"><span>LATEST</span><p>{room.lastMessage}</p></div>}
-                  <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open" : "Join circle"}</button>
+                  <div className="xora-discover-cover"><img src={room.photo_url || circleArtworkFor(title)} alt="" loading="lazy"/><span className="xora-cover-shade"/><span className="xora-cover-count">{memberCount.toLocaleString()} {memberCount === 1 ? "member" : "members"}</span><span className="xora-cover-mark"><Icon/></span></div>
+                  <div className="xora-discover-body">
+                    <div className="xora-discover-heading"><span className="xora-discover-avatar"><img src={room.photo_url || circleArtworkFor(title)} alt="" loading="lazy"/></span><div><strong>{title}</strong><small><span className="xora-community-chip">COMMUNITY CIRCLE</span></small></div></div>
+                    <p>{room.description?.trim() || "A welcoming space to meet people and start conversations."}</p>
+                    {room.lastMessage && <div className="xora-discover-latest"><span>RECENTLY SHARED</span><p>{room.lastMessage}</p></div>}
+                    <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open circle" : "Join circle"}</button>
+                  </div>
                 </article>;
               }
               return <button type="button" key={room.id} className="conversation-item" data-active={selected} onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}>
-                {room.type === "dm" ? (other ? liveAvatar(other, "large") : <span className="circle-art"><Users/></span>) : room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className={`circle-art ${room.name?.toLowerCase().includes("nature") ? "sage" : ""}`}><Icon/></span>}
+                {room.type === "dm" ? (other ? liveAvatar(other, "large") : <span className="circle-art"><Users/></span>) : room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className={`circle-art ${room.name?.toLowerCase().includes("nature") ? "sage" : ""}`}><img src={circleArtworkFor(title)} alt="" loading="lazy"/></span>}
                 <span className="conversation-details"><span className="conversation-title"><span>{title}</span>{room.type === "group" && <Users className="h-3 w-3 text-muted-foreground"/>}</span><span className="conversation-preview">{room.lastMessage || (room.type === "group" ? "Your circle is ready for a conversation" : "Say hello and get things started")}</span></span>
                 <span className="conversation-meta"><span>{formatTime(room.lastMessageAt)}</span>{selected ? <CheckCheck className="h-3 w-3"/> : <span className="h-[18px]"/>}</span>
               </button>;
@@ -270,7 +283,7 @@ export default function ChatPage({
           {activeRoom ? <>
             <header className="conversation-header">
               <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={closeRoom}><ArrowLeft/></button>
-              {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
+              {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><img src={circleArtworkFor(activeTitle)} alt="" /></span>}
               <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <><span className="chat-member-count">{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members</span><span className="chat-community-badge">Community circle</span></>}</p></div>
               {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
               <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Conversation menu" aria-label="Conversation menu" aria-expanded={roomMenuOpen} onClick={() => setRoomMenuOpen((open) => !open)}><MoreHorizontal/></button></div>
@@ -316,7 +329,7 @@ export default function ChatPage({
               </form>
               <p className="composer-note"><Heart/>A little kindness goes a long way.</p>
             </div> : <div className="xc-join-bar"><p>Join this circle to take part in the conversation.</p><button type="button" onClick={() => onJoinGroup(activeRoom.id)}>Join circle</button></div>}
-          </> : <div className="xora-empty-pane"><span className="xora-empty-mark"><MessageCircle/></span><p className="xora-eyebrow">YOUR PEOPLE, YOUR SPACE</p><h2>A little closer, every day.</h2><p>Choose a conversation or explore circles to find your people.</p><button type="button" className="xora-primary-button" onClick={() => setListTab("discover")}>Explore communities <ArrowUpRight/></button></div>}
+          </> : <div className="xora-empty-pane"><div className="xora-empty-art" aria-hidden="true"><img className="xora-empty-photo xora-empty-photo-main" src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1000&q=82" alt=""/><img className="xora-empty-photo xora-empty-photo-side" src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=500&q=82" alt=""/><span className="xora-empty-orbit"><MessageCircle/></span></div><p className="xora-eyebrow">XORA COMMUNITY</p><h2>Good conversations start here.</h2><p>Pick up where you left off, or find a circle that feels like yours.</p><button type="button" className="xora-primary-button" onClick={() => setListTab("discover")}>Explore circles <ArrowUpRight/></button></div>}
         </section>
       </main>
       <footer className="page-footer"><span className="footer-brand">Xora<span>TV</span> <span className="ml-2 text-[9px] text-muted-foreground">Life is better, shared.</span></span><span className="footer-right">Made for real connection <Heart className="h-3 w-3 text-clay"/></span></footer>
