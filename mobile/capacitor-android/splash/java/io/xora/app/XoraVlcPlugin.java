@@ -1896,8 +1896,7 @@ public class XoraVlcPlugin extends Plugin {
                     Toast.LENGTH_SHORT
                 ).show();
                 startCurrentStream(true);
-            } catch (IOException error) {
-                Log.w(TAG, "Could not refresh stream quality: " + error.getClass().getSimpleName());
+            } catch (IOException ignored) {
                 setState(PlaybackState.ERR_UNKNOWN);
             }
         }
