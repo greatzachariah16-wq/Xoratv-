@@ -59,6 +59,9 @@ export default function ChatPage({
   authLoading = false, currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
 }: ChatPageProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const [nearLatest, setNearLatest] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, string[]>>({});
@@ -77,7 +80,18 @@ export default function ChatPage({
   });
   const activeOtherId = activeRoom?.type === "dm" ? Object.keys(activeRoom.memberIds || {}).find((id) => id !== currentUserId) : null;
   const activeOther = activeOtherId ? profileMap[activeOtherId] : null;
-  useEffect(() => { if (activeMessages.length) endRef.current?.scrollIntoView({ behavior: "auto" }); }, [activeMessages.length, activeRoomId]);
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (!el || !activeMessages.length) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 110;
+    if (near) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); }
+    else { setUnreadCount((count) => count + 1); setNearLatest(false); }
+  }, [activeMessages.length, activeRoomId]);
+  const handleTranscriptScroll = () => {
+    const el = transcriptRef.current; if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    setNearLatest(near); if (near) setUnreadCount(0);
+  };
   const messageRows = useMemo(() => activeMessages.map((message, index) => {
     const previous = activeMessages[index - 1];
     const next = activeMessages[index + 1];
@@ -231,12 +245,12 @@ export default function ChatPage({
               <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Conversation menu" aria-label="Conversation menu"><MoreHorizontal/></button></div>
             </header>
             {activeRoom.type === "group" && <div className="welcome-banner"><Sun/><div><strong>A little space for your people.</strong><p>Share the everyday, find a little inspiration, and just be yourself.</p></div><Heart className="heart"/></div>}
-            <div className="transcript" ref={endRef} role="log" aria-label="Messages" aria-live="polite">
+            <div className="transcript" ref={transcriptRef} onScroll={handleTranscriptScroll} role="log" aria-label="Messages" aria-live="polite">
               {messageRows.map(({ message, first, last, newDay }) => {
                 const sender = profileMap[message.senderId];
                 const senderName = message.senderName || sender?.display_name || sender?.username || (message.senderId === currentUserId ? currentProfile?.display_name || "You" : "Xora member");
                 const own = message.senderId === currentUserId;
-                const reactions = [...(message.reactions || []), ...(localReactions[message.id] || [])];
+                const reactions = localReactions[message.id] || [];
                 const reactionCounts = [...new Set(reactions)].map((emoji) => [emoji, reactions.filter((value) => value === emoji).length] as const);
                 return <React.Fragment key={message.id}>
                   {newDay && <div className="day-separator"><span>{dayLabel(message.created_at)}</span></div>}
@@ -257,6 +271,7 @@ export default function ChatPage({
               {!activeMessages.length && <div className="empty-state"><MessageCircle/><h3>Say hello</h3><p>Make yourself at home. Share the first little moment.</p></div>}
               <div ref={endRef}/>
             </div>
+            <button type="button" className={`xc-latest-button ${nearLatest ? "" : "visible"}`} aria-label={unreadCount ? `Jump to latest, ${unreadCount} unread messages` : "Jump to latest"} onClick={() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); setNearLatest(true); }}><span>↓</span>{unreadCount > 0 && <b>{unreadCount > 9 ? "9+" : unreadCount}</b>}</button>
             {isActiveMember ? <div className="composer-area">
               <div className={`xc-emoji-tray ${emojiOpen ? "open" : ""}`}><div>{["😂","❤️","🔥","😍","👏","🙏","😮","🎬"].map((emoji) => <button key={emoji} type="button" aria-label={`Insert ${emoji}`} onClick={() => { onInputTextChange(inputText + emoji); setEmojiOpen(false); }}>{emoji}</button>)}</div></div>
               {isExperience && <div className="xora-experience-editor"><label htmlFor="experience-title">Share an experience</label><input id="experience-title" value={experienceTitle} onChange={(event) => onExperienceTitleChange(event.target.value)} placeholder="What are you watching or sharing?"/></div>}
