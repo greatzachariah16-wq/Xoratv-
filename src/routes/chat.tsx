@@ -51,6 +51,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [rawDiscoverableRooms, setRawDiscoverableRooms] = useState<ChatRoomRecord[]>([]);
   const [discoverableError, setDiscoverableError] = useState<string | null>(null);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
+  const [showChatAd, setShowChatAd] = useState(true);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
   const [rawMessages, setRawMessages] = useState<ChatMessageRecord[]>([]);
   const [inputText, setInputText] = useState("");
@@ -125,12 +126,16 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       return;
     }
 
+    if (!rawRooms.some((room) => room.id === activeRoomId)) {
+      setRawMessages([]);
+      return;
+    }
     const unsubscribe = listenMessages(activeRoomId, (msgs) => {
       setRawMessages(msgs);
     });
 
     return () => unsubscribe();
-  }, [activeRoomId]);
+  }, [activeRoomId, rawRooms]);
 
   // Fetch participant profiles for DM rooms
   useEffect(() => {
@@ -200,6 +205,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     type: r.type,
     name: r.name ?? null,
     photo_url: r.photo_url ?? null,
+    description: r.description ?? null,
     lastMessage: r.lastMessage ?? null,
     lastMessageAt: r.lastMessageAt ?? null,
     memberIds: r.memberIds,
@@ -212,6 +218,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       type: r.type,
       name: r.name ?? null,
       photo_url: r.photo_url ?? null,
+      description: r.description ?? null,
       lastMessage: r.lastMessage ?? null,
       lastMessageAt: r.lastMessageAt ?? null,
       memberIds: r.memberIds,
@@ -354,12 +361,19 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       return;
     }
     setJoiningGroupId(roomId);
+    const alreadyJoined = rawRooms.some((room) => room.id === roomId);
+    const directoryRoom = rawDiscoverableRooms.find((room) => room.id === roomId);
+    if (!alreadyJoined && directoryRoom) {
+      const optimisticRoom = { ...directoryRoom, memberIds: { ...(directoryRoom.memberIds || {}), [user.id]: true } };
+      setRawRooms((previous) => previous.some((room) => room.id === roomId) ? previous : [optimisticRoom, ...previous]);
+    }
     try {
       await joinGroupRoom(user.id, roomId);
       setActiveRoomId(roomId);
       toast.success("You joined the community circle!");
       void navigate({ to: "/chat/$roomId", params: { roomId } });
     } catch (err) {
+      if (!alreadyJoined) setRawRooms((previous) => previous.filter((room) => room.id !== roomId));
       toast.error(err instanceof Error ? err.message : "Could not join this circle");
     } finally {
       setJoiningGroupId(null);
@@ -377,9 +391,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   }
 
   return (
-    <AppShell wide>
+    <AppShell immersive>
       <div className="mx-auto max-w-6xl pb-8">
-        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
         <ChatPage
           authLoading={authLoading}
         currentUserId={user?.id || null}
@@ -408,6 +421,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
           onSend={handleSendMessage}
           onSignIn={() => void navigate({ to: "/auth" })}
         />
+        {showChatAd && <div className="xc-ad-wrap"><div className="min-w-0"><XoraInHouseAd placement="chat_banner" variant="compact" /></div><button type="button" className="rounded-full border border-[var(--xc-line)] bg-white px-3 text-xs text-muted-foreground" aria-label="Dismiss chat advertisement" onClick={() => setShowChatAd(false)}>×</button></div>}
 
         <NewDmModal
           open={showDmModal}
