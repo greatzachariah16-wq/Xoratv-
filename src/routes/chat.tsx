@@ -3,7 +3,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
-import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import type { ChatRoom, ChatMessage, ProfileLite } from "@/components/chat/ChatPage";
 import ChatcnMessenger from "@/components/chat/ChatcnMessenger";
 import NewDmModal from "@/components/chat/NewDmModal";
@@ -41,7 +40,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   const [rawRooms, setRawRooms] = useState<ChatRoomRecord[]>([]);
@@ -51,15 +50,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
   const [rawMessages, setRawMessages] = useState<ChatMessageRecord[]>([]);
-  const [inputText, setInputText] = useState("");
-  const [isExperience, setIsExperience] = useState(false);
-  const [experienceTitle, setExperienceTitle] = useState("");
-  const [isSending, setIsSending] = useState(false);
-
-  // Participant profiles cache
   const [profileMap, setProfileMap] = useState<Record<string, ProfileLite>>({});
 
-  // Modals
   const [showDmModal, setShowDmModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [dmTargetUsername, setDmTargetUsername] = useState("");
@@ -67,17 +59,10 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [groupMembersInput, setGroupMembersInput] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
 
-  // Search filter for rooms
-  const [roomFilter, setRoomFilter] = useState("");
-
-  // Sync initialRoomId if prop changes
   useEffect(() => {
-    if (initialRoomId) {
-      setActiveRoomId(initialRoomId);
-    }
+    if (initialRoomId) setActiveRoomId(initialRoomId);
   }, [initialRoomId]);
 
-  // Listen to rooms for authenticated user
   useEffect(() => {
     if (!user) {
       setRawRooms([]);
@@ -85,22 +70,17 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       return;
     }
     setRoomsLoading(true);
-
-    // Opportunistic prune on mount
     void pruneUserExpiredMessages(user.id);
-
     const unsubscribe = listenUserRooms(user.id, (updatedRooms) => {
       setRoomsLoading(false);
       setRawRooms(updatedRooms);
-      if (initialRoomId && updatedRooms.some((r) => r.id === initialRoomId)) {
+      if (initialRoomId && updatedRooms.some((room) => room.id === initialRoomId)) {
         setActiveRoomId(initialRoomId);
       }
     });
-
     return () => unsubscribe();
   }, [user, initialRoomId]);
 
-  // Keep the public circle directory synced for every signed-in account.
   useEffect(() => {
     if (!user) {
       setRawDiscoverableRooms([]);
@@ -111,7 +91,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     const unsubscribe = listenDiscoverableGroups((updatedRooms, error) => {
       if (error) {
         setDiscoverableError(error);
-        return; // Keep the last successful results visible while reporting the refresh failure.
+        return;
       }
       setDiscoverableError(null);
       setRawDiscoverableRooms(updatedRooms);
@@ -119,88 +99,62 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     return () => unsubscribe();
   }, [user]);
 
-  // Listen to messages only after the current user is in the selected room.
   const activeRoomIsMember = rawRooms.some((room) => room.id === activeRoomId);
   useEffect(() => {
-    if (!activeRoomId) {
+    if (!activeRoomId || !activeRoomIsMember) {
       setRawMessages([]);
       return;
     }
-
-    if (!activeRoomIsMember) {
-      setRawMessages([]);
-      return;
-    }
-    const unsubscribe = listenMessages(activeRoomId, (msgs) => {
-      setRawMessages(msgs);
-    });
-
+    const unsubscribe = listenMessages(activeRoomId, setRawMessages);
     return () => unsubscribe();
   }, [activeRoomId, activeRoomIsMember]);
 
-  // Fetch participant profiles for DM rooms
   useEffect(() => {
     if (!user) return;
     const uidsToFetch = new Set<string>();
-
     for (const room of rawRooms) {
       if (room.type === "dm" && room.memberIds) {
         for (const uid of Object.keys(room.memberIds)) {
-          if (uid !== user.id && !profileMap[uid]) {
-            uidsToFetch.add(uid);
-          }
+          if (uid !== user.id && !profileMap[uid]) uidsToFetch.add(uid);
         }
       }
     }
-
-    if (uidsToFetch.size === 0) return;
-
-    void Promise.all(
-      Array.from(uidsToFetch).map(async (uid) => {
-        const p = await getProfile(uid);
-        if (p) {
-          const lite: ProfileLite = {
-            id: p.id,
-            username: p.username,
-            display_name: p.display_name || p.username || "User",
-            avatar_url: p.avatar_url ?? null,
-          };
-          setProfileMap((prev) => ({ ...prev, [uid]: lite }));
-        }
-      }),
-    );
+    if (!uidsToFetch.size) return;
+    void Promise.all(Array.from(uidsToFetch).map(async (uid) => {
+      const p = await getProfile(uid);
+      if (p) setProfileMap((prev) => ({
+        ...prev,
+        [uid]: {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name || p.username || "User",
+          avatar_url: p.avatar_url ?? null,
+        },
+      }));
+    }));
   }, [rawRooms, user, profileMap]);
 
-  // Fetch sender profiles for messages if missing
   useEffect(() => {
-    if (rawMessages.length === 0) return;
+    if (!rawMessages.length) return;
     const missingUids = new Set<string>();
-
     for (const msg of rawMessages) {
-      if (msg.senderId && !profileMap[msg.senderId]) {
-        missingUids.add(msg.senderId);
-      }
+      if (msg.senderId && !profileMap[msg.senderId]) missingUids.add(msg.senderId);
     }
-
-    if (missingUids.size === 0) return;
-
-    void Promise.all(
-      Array.from(missingUids).map(async (uid) => {
-        const p = await getProfile(uid);
-        if (p) {
-          const lite: ProfileLite = {
-            id: p.id,
-            username: p.username,
-            display_name: p.display_name || p.username || "User",
-            avatar_url: p.avatar_url ?? null,
-          };
-          setProfileMap((prev) => ({ ...prev, [uid]: lite }));
-        }
-      }),
-    );
+    if (!missingUids.size) return;
+    void Promise.all(Array.from(missingUids).map(async (uid) => {
+      const p = await getProfile(uid);
+      if (p) setProfileMap((prev) => ({
+        ...prev,
+        [uid]: {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name || p.username || "User",
+          avatar_url: p.avatar_url ?? null,
+        },
+      }));
+    }));
   }, [rawMessages, profileMap]);
 
-  // Transform raw data to UI types
   const rooms: ChatRoom[] = rawRooms.map((r) => ({
     id: r.id,
     type: r.type,
@@ -237,41 +191,12 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     expiresAt: m.expiresAt,
   }));
 
-  const currentProfileLite: ProfileLite | null = profile
-    ? {
-        id: profile.id,
-        username: profile.username,
-        display_name: profile.display_name || profile.username || "User",
-        avatar_url: profile.avatar_url ?? null,
-      }
-    : null;
-
-  async function handleSendMessage(e: React.FormEvent) {
-    e.preventDefault();
-    if (!activeRoomId || !user || (!inputText.trim() && !experienceTitle.trim())) return;
-
-    setIsSending(true);
-    try {
-      let finalContent = inputText.trim();
-      if (isExperience && experienceTitle.trim()) {
-        finalContent = `🎬 Watch Experience: ${experienceTitle.trim()}${finalContent ? `\n\n${finalContent}` : ""}`;
-      }
-
-      await sendMessage(activeRoomId, user.id, finalContent, {
-        type: isExperience ? "experience" : "text",
-        senderName: profile?.display_name || profile?.username || "Cinephile",
-        senderAvatar: profile?.avatar_url || null,
-      });
-
-      setInputText("");
-      setExperienceTitle("");
-      setIsExperience(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send message");
-    } finally {
-      setIsSending(false);
-    }
-  }
+  const currentProfileLite: ProfileLite | null = profile ? {
+    id: profile.id,
+    username: profile.username,
+    display_name: profile.display_name || profile.username || "User",
+    avatar_url: profile.avatar_url ?? null,
+  } : null;
 
   async function handleChatcnSend(text: string) {
     if (!activeRoomId || !user || !text.trim()) return;
@@ -289,34 +214,31 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   async function handleStartDm(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !dmTargetUsername.trim()) return;
-
     setModalBusy(true);
     try {
       const cleanHandle = dmTargetUsername.trim().replace(/^@/, "").toLowerCase();
       const targetUser = await getProfileByUsername(cleanHandle);
-
       if (!targetUser) {
         toast.error(`User @${cleanHandle} was not found on Xora.`);
         return;
       }
-
       if (targetUser.id === user.id) {
         toast.error("You cannot start a direct message with yourself.");
         return;
       }
-
       const roomId = await createDmRoom(user.id, targetUser.id, {
         userA: profile || undefined,
         userB: targetUser,
       });
-
-      const liteTarget: ProfileLite = {
-        id: targetUser.id,
-        username: targetUser.username,
-        display_name: targetUser.display_name || targetUser.username || "User",
-        avatar_url: targetUser.avatar_url ?? null,
-      };
-      setProfileMap((prev) => ({ ...prev, [targetUser.id]: liteTarget }));
+      setProfileMap((prev) => ({
+        ...prev,
+        [targetUser.id]: {
+          id: targetUser.id,
+          username: targetUser.username,
+          display_name: targetUser.display_name || targetUser.username || "User",
+          avatar_url: targetUser.avatar_url ?? null,
+        },
+      }));
       setActiveRoomId(roomId);
       setShowDmModal(false);
       setDmTargetUsername("");
@@ -332,29 +254,25 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !groupName.trim()) return;
-
     setModalBusy(true);
     try {
       const memberUids: string[] = [];
-      const rawHandles = groupMembersInput
-        .split(",")
-        .map((h) => h.trim().replace(/^@/, "").toLowerCase())
-        .filter(Boolean);
-
+      const rawHandles = groupMembersInput.split(",").map((h) => h.trim().replace(/^@/, "").toLowerCase()).filter(Boolean);
       for (const handle of rawHandles) {
         const found = await getProfileByUsername(handle);
         if (found && found.id !== user.id) {
           memberUids.push(found.id);
-          const lite: ProfileLite = {
-            id: found.id,
-            username: found.username,
-            display_name: found.display_name || found.username || "User",
-            avatar_url: found.avatar_url ?? null,
-          };
-          setProfileMap((prev) => ({ ...prev, [found.id]: lite }));
+          setProfileMap((prev) => ({
+            ...prev,
+            [found.id]: {
+              id: found.id,
+              username: found.username,
+              display_name: found.display_name || found.username || "User",
+              avatar_url: found.avatar_url ?? null,
+            },
+          }));
         }
       }
-
       const roomId = await createGroupRoom(user.id, groupName.trim(), memberUids);
       setActiveRoomId(roomId);
       setShowGroupModal(false);
@@ -405,45 +323,40 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   }
 
   return (
-    <AppShell wide>
-      <div className="mx-auto max-w-6xl pb-8">
-        <ChatcnMessenger
-          currentUserId={user?.id || null}
-          currentProfile={currentProfileLite}
-          rooms={rooms}
-          discoverableRooms={discoverableRooms}
-          activeRoomId={activeRoomId}
-          messages={messages}
-          profileMap={profileMap}
-          onSelectRoom={handleSelectRoom}
-          onBackToList={handleBackToList}
-          onSend={handleChatcnSend}
-          onOpenNewDm={() => setShowDmModal(true)}
-          onOpenNewGroup={() => setShowGroupModal(true)}
-          onJoinGroup={handleJoinGroup}
-        />
-        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
-
-        <NewDmModal
-          open={showDmModal}
-          username={dmTargetUsername}
-          busy={modalBusy}
-          onUsernameChange={setDmTargetUsername}
-          onClose={() => setShowDmModal(false)}
-          onSubmit={handleStartDm}
-        />
-
-        <NewGroupModal
-          open={showGroupModal}
-          groupName={groupName}
-          membersInput={groupMembersInput}
-          busy={modalBusy}
-          onGroupNameChange={setGroupName}
-          onMembersInputChange={setGroupMembersInput}
-          onClose={() => setShowGroupModal(false)}
-          onSubmit={handleCreateGroup}
-        />
-      </div>
+    <AppShell immersive hideTopBanner>
+      <ChatcnMessenger
+        currentUserId={user?.id || null}
+        currentProfile={currentProfileLite}
+        rooms={rooms}
+        discoverableRooms={discoverableRooms}
+        activeRoomId={activeRoomId}
+        messages={messages}
+        profileMap={profileMap}
+        onSelectRoom={handleSelectRoom}
+        onBackToList={handleBackToList}
+        onSend={handleChatcnSend}
+        onOpenNewDm={() => setShowDmModal(true)}
+        onOpenNewGroup={() => setShowGroupModal(true)}
+        onJoinGroup={handleJoinGroup}
+      />
+      <NewDmModal
+        open={showDmModal}
+        username={dmTargetUsername}
+        busy={modalBusy}
+        onUsernameChange={setDmTargetUsername}
+        onClose={() => setShowDmModal(false)}
+        onSubmit={handleStartDm}
+      />
+      <NewGroupModal
+        open={showGroupModal}
+        groupName={groupName}
+        membersInput={groupMembersInput}
+        busy={modalBusy}
+        onGroupNameChange={setGroupName}
+        onMembersInputChange={setGroupMembersInput}
+        onClose={() => setShowGroupModal(false)}
+        onSubmit={handleCreateGroup}
+      />
     </AppShell>
   );
 }
