@@ -52,7 +52,6 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [rawDiscoverableRooms, setRawDiscoverableRooms] = useState<ChatRoomRecord[]>([]);
   const [discoverableError, setDiscoverableError] = useState<string | null>(null);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
-  const [showChatAd, setShowChatAd] = useState(true);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
   const [rawMessages, setRawMessages] = useState<ChatMessageRecord[]>([]);
   const [inputText, setInputText] = useState("");
@@ -427,7 +426,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
           onSend={handleSendMessage}
           onSignIn={() => void navigate({ to: "/auth" })}
         />
-        {showChatAd && <div className="xc-ad-wrap"><div className="min-w-0"><XoraInHouseAd placement="chat_banner" variant="compact" /></div><button type="button" className="rounded-full border border-[var(--xc-line)] bg-white px-3 text-xs text-muted-foreground" aria-label="Dismiss chat advertisement" onClick={() => setShowChatAd(false)}>×</button></div>}
+        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
 
         <NewDmModal
           open={showDmModal}
