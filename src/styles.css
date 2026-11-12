@@ -29,8 +29,6 @@ body,
   --color-xora-accent: var(--xora-accent);
   --color-xora-mint: var(--xora-mint);
   --color-xora-mint-ink: var(--xora-mint-ink);
-  --color-signal-good: var(--xora-mint);
-  --color-signal-fair: oklch(0.78 0.15 83);
   --radius-card: 24px;
   --radius-pill: 999px;
   --radius-ad: 20px;
