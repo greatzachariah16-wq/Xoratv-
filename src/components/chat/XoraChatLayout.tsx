@@ -166,12 +166,12 @@ export default function XoraChatLayout({
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[14px] font-semibold">{conversation.title}</span>
+                    <span className="xora-chat-conversation-title truncate text-[14px] font-semibold">{conversation.title}</span>
                     {conversation.lastMessageTime && (
-                      <span className="shrink-0 text-[10px]">{conversation.lastMessageTime}</span>
+                      <span className="xora-chat-conversation-time shrink-0 text-[10px]">{conversation.lastMessageTime}</span>
                     )}
                   </span>
-                  <span className="mt-1 block truncate text-[12px]">{conversation.lastMessage || "Start a conversation"}</span>
+                  <span className="xora-chat-conversation-preview mt-1 block truncate text-[12px]">{conversation.lastMessage || "Start a conversation"}</span>
                 </span>
               </button>
             )) : (
