@@ -2,7 +2,7 @@
 .xora-live-page { --xc-cream:#fcfaf7; --xc-plum:#5f406a; --xc-plum2:#7a5588; --xc-terra:#b8573a; --xc-ink:#2a1f1c; --xc-muted:#8a7d78; --xc-line:#ece3dc; }
 .xora-live-page .brand-header { display:none !important; }
 .xora-live-page { max-width:none; padding:0; min-height:100dvh; background:var(--xc-cream); color:var(--xc-ink); }
-.xora-live-page .chat-shell { height:100dvh; min-height:0; max-height:none; margin:0; border:0; border-radius:0; box-shadow:none; background:var(--xc-cream); }
+.xora-live-page .chat-shell { height:calc(100dvh - 150px - env(safe-area-inset-bottom)); min-height:420px; max-height:none; margin:0; border:0; border-radius:0; box-shadow:none; background:var(--xc-cream); }
 .xora-live-page .chat-sidebar { min-height:0; padding-bottom:calc(88px + env(safe-area-inset-bottom)); background:var(--xc-cream); }
 .xora-live-page .sidebar-top { padding:calc(18px + env(safe-area-inset-top)) 20px 14px; }
 .xora-live-page .chat-tabs { position:relative; gap:4px; padding:4px; border-radius:999px; background:#f1eae4; }
@@ -85,7 +85,7 @@
 .xora-live-page .online-dot { width:8px; height:8px; background:#4b8c68; box-shadow:0 0 0 0 #4b8c684d; animation:xc-online-pulse 2s infinite; }
 @keyframes xc-online-pulse { 70% { box-shadow:0 0 0 6px #4b8c6800; } 100% { box-shadow:0 0 0 0 #4b8c6800; } }
 @media (max-width:700px) {
- .xora-live-page .chat-shell { position:relative; display:flex; width:100%; height:100dvh; }
+ .xora-live-page .chat-shell { position:relative; display:flex; width:100%; height:calc(100dvh - 156px - env(safe-area-inset-bottom)); min-height:360px; }
  .xora-live-page .chat-sidebar { width:100%; overflow-y:auto; padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
  .xora-live-page .chat-shell.mobile-chat { position:fixed; inset:0; z-index:250; width:100vw; height:100dvh; min-height:0; max-height:none; overflow:hidden; background:var(--xc-cream); animation:xc-room-in .34s cubic-bezier(.22,1,.36,1) both; }
  .xora-live-page .chat-shell.mobile-chat .chat-sidebar { display:none; }
