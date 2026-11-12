@@ -135,3 +135,11 @@
 .xora-live-page .chat-tabs .filter-tab[data-active=true] { color:#fff; }
 .xora-live-page .xc-sending-dot { display:inline-block; width:7px; height:7px; margin-left:4px; border-radius:50%; background:currentColor; animation:xc-send-pulse .9s ease-in-out infinite; }
 @keyframes xc-send-pulse { 50% { opacity:.25; transform:scale(.7); } }
+
+/* A selected conversation is an immersive layer on every viewport, not only mobile. */
+.xora-live-page .chat-shell.mobile-chat { position:fixed; inset:0; z-index:250; display:flex; width:100vw; height:100dvh; min-height:0; max-height:none; overflow:hidden; margin:0; border:0; border-radius:0; background:var(--xc-cream); animation:xc-room-in .34s cubic-bezier(.22,1,.36,1) both; }
+.xora-live-page .chat-shell.mobile-chat .chat-sidebar { display:none; }
+.xora-live-page .chat-shell.mobile-chat .conversation-pane { display:flex; width:100%; height:100%; min-height:0; }
+.xora-live-page .chat-shell.mobile-chat .conversation-header { padding-left:max(12px,env(safe-area-inset-left)); padding-right:max(12px,env(safe-area-inset-right)); }
+.xora-live-page .chat-shell.mobile-chat .transcript { padding-bottom:20px; }
+.xora-live-page .chat-shell.mobile-chat .composer-area { padding-bottom:calc(10px + env(safe-area-inset-bottom) + var(--keyboard-inset,0px)); }
