@@ -421,7 +421,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
           onOpenNewDm={() => setShowDmModal(true)}
           onOpenNewGroup={() => setShowGroupModal(true)}
           onJoinGroup={handleJoinGroup}
-        />        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
+        />
+        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
 
         <NewDmModal
           open={showDmModal}
