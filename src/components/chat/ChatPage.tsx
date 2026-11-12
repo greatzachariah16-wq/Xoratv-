@@ -59,6 +59,7 @@ export default function ChatPage({
   authLoading = false, currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
 }: ChatPageProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const [nearLatest, setNearLatest] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -89,6 +90,18 @@ export default function ChatPage({
     if (near) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); }
     else { setUnreadCount((count) => count + 1); setNearLatest(false); }
   }, [activeMessages.length, activeRoomId]);
+  useEffect(() => {
+    const updateKeyboardInset = () => {
+      const viewport = window.visualViewport;
+      const inset = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+      document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
+    };
+    updateKeyboardInset();
+    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
+    window.addEventListener("resize", updateKeyboardInset);
+    return () => { window.visualViewport?.removeEventListener("resize", updateKeyboardInset); window.removeEventListener("resize", updateKeyboardInset); };
+  }, []);
+  useEffect(() => { if (!inputText && composerRef.current) composerRef.current.style.height = "auto"; }, [inputText]);
   const handleTranscriptScroll = () => {
     const el = transcriptRef.current; if (!el) return;
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
@@ -276,7 +289,7 @@ export default function ChatPage({
               {isExperience && <div className="xora-experience-editor"><label htmlFor="experience-title">Share an experience</label><input id="experience-title" value={experienceTitle} onChange={(event) => onExperienceTitleChange(event.target.value)} placeholder="What are you watching or sharing?"/></div>}
               <form className="composer" onSubmit={onSend}>
                 <button type="button" className={`icon-control xora-icon-button ${isExperience ? "xora-toggle-active" : ""}`} aria-label="Share an experience" title="Share an experience" onClick={onToggleExperience}><Clapperboard/></button>
-                <textarea aria-label="Message" rows={1} enterKeyHint="send" placeholder={isExperience ? "Add a note about this experience…" : activeRoom.type === "dm" ? "A little hello…" : "Share a little something…"} value={inputText} onChange={(event) => { onInputTextChange(event.target.value); event.currentTarget.style.height = "auto"; event.currentTarget.style.height = Math.min(event.currentTarget.scrollHeight,120) + "px"; }} onFocus={() => setEmojiOpen(false)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && window.matchMedia("(pointer:fine)").matches) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+                <textarea ref={composerRef} aria-label="Message" rows={1} enterKeyHint="send" placeholder={isExperience ? "Add a note about this experience…" : activeRoom.type === "dm" ? "A little hello…" : "Share a little something…"} value={inputText} onChange={(event) => { onInputTextChange(event.target.value); event.currentTarget.style.height = "auto"; event.currentTarget.style.height = Math.min(event.currentTarget.scrollHeight,120) + "px"; }} onFocus={() => setEmojiOpen(false)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && window.matchMedia("(pointer:fine)").matches) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
                 <button type="button" className="icon-control xora-icon-button" aria-label="Open emoji tray" title="Emoji" onClick={() => setEmojiOpen((open) => !open)}><Smile/></button>
                 <button type="submit" className={`send-control ${inputText.trim() || (isExperience && experienceTitle.trim()) ? "ready" : ""}`} aria-label="Send message" title="Send message" disabled={isSending || (!inputText.trim() && !(isExperience && experienceTitle.trim()))}>{isSending ? <Loader2 className="animate-spin"/> : <Send/>}</button>
               </form>
