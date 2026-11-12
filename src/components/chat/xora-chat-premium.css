@@ -22,7 +22,6 @@
 .xora-live-page .circle-subtitle { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; margin-top:3px; font-size:11px; line-height:1.3; }
 .xora-live-page .member-stack { display:none; }
 .xora-live-page .header-tools { margin:0 0 0 auto; gap:6px; }
-.xora-live-page .header-tools button:first-child { display:none !important; }
 .xora-live-page .header-tools .icon-control { width:44px; height:44px; border-radius:50%; }
 .xora-live-page .welcome-banner { display:none; }
 .xora-live-page .mobile-back { width:44px; min-width:44px; height:44px; display:grid; place-items:center; border-radius:50%; }
