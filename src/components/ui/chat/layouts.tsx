@@ -74,47 +74,30 @@ function ConversationItem({
   isActive: boolean
   onClick: () => void
 }) {
-  const initials = convo.title
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("") || "X"
-
   return (
     <button
-      type="button"
       onClick={onClick}
       className={cn(
-        "xora-chat-conversation-item flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
+        "mx-1 flex w-[calc(100%-8px)] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
         isActive ? "bg-[var(--chat-accent-soft)]" : "hover:bg-[var(--chat-accent-soft)]"
       )}
     >
       <div className="relative shrink-0">
-        {convo.avatar ? (
-          <img
-            src={convo.avatar}
-            alt=""
-            className="xora-chat-avatar-image size-11 rounded-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="xora-chat-avatar-fallback flex size-11 items-center justify-center rounded-full text-[13px] font-bold">
-            {initials}
-          </div>
-        )}
+        <div className="flex size-11 items-center justify-center rounded-full bg-[var(--chat-bubble-incoming)] text-[13px] font-semibold text-[var(--chat-text-secondary)]">
+          {convo.title.charAt(0).toUpperCase()}
+        </div>
         {convo.presence === "online" && (
           <div className="absolute -bottom-0.5 -right-0.5 size-[10px] rounded-full border-2 border-[var(--chat-bg-sidebar)] bg-[var(--chat-green)]" />
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <span className="truncate text-[15px] font-semibold text-[var(--chat-text-primary)]">{convo.title}</span>
           {convo.lastMessageTime && (
-            <span className="shrink-0 text-[11px] text-[var(--chat-text-tertiary)]">{convo.lastMessageTime}</span>
+            <span className="ml-2 shrink-0 text-[11px] text-[var(--chat-text-tertiary)]">{convo.lastMessageTime}</span>
           )}
         </div>
-        <div className="mt-1 flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <span className="truncate text-[13px] text-[var(--chat-text-secondary)]">{convo.lastMessage}</span>
           {(convo.unreadCount ?? 0) > 0 && (
             <span className="ml-2 flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[var(--chat-red)] text-[11px] font-bold text-white">
@@ -142,8 +125,6 @@ interface FullMessengerProps {
   onSend: (text: string) => void
   title?: string
   subtitle?: string
-  onNewMessage?: () => void
-  onNewGroup?: () => void
   className?: string
 }
 
@@ -158,20 +139,10 @@ function FullMessenger({
   onSend,
   title = "Messages",
   subtitle,
-  onNewMessage,
-  onNewGroup,
   className,
 }: FullMessengerProps) {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [createMenuOpen, setCreateMenuOpen] = React.useState(false)
   const activeConvo = conversations.find((c) => c.id === activeConversationId)
   const showingConvo = !!activeConvo
-  const filteredConversations = conversations.filter((conversation) => {
-    const query = searchQuery.trim().toLowerCase()
-    return !query ||
-      conversation.title.toLowerCase().includes(query) ||
-      (conversation.lastMessage || "").toLowerCase().includes(query)
-  })
 
   return (
     <ChatProvider
@@ -181,7 +152,7 @@ function FullMessenger({
       style={{ height: "100%", display: "flex", flexDirection: "column" }}
     >
       <div
-        className={cn("xora-chat-shell flex flex-1 min-h-0 bg-[var(--chat-bg-app)]", className)}
+        className={cn("flex flex-1 min-h-0 bg-[var(--chat-bg-app)]", className)}
         style={{ height: "100%" }}
       >
         {/* Sidebar — hidden on mobile when viewing a conversation */}
@@ -191,89 +162,29 @@ function FullMessenger({
             showingConvo ? "hidden md:flex md:w-80 md:shrink-0" : "flex w-full md:w-80 md:shrink-0"
           )}
         >
-          <div className="xora-chat-sidebar-header flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <span className="block text-[17px] font-semibold tracking-[-0.025em] text-[var(--chat-text-primary)]">{title}</span>
-              <span className="mt-0.5 block text-[11px] text-[var(--chat-text-secondary)]">Your conversations, together</span>
-            </div>
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                className="xora-chat-create-trigger"
-                onClick={() => setCreateMenuOpen((open) => !open)}
-                aria-label="Create a new chat"
-                aria-haspopup="menu"
-                aria-expanded={createMenuOpen}
-              >
-                <Plus className="size-4" />
-                <span>New chat</span>
-              </button>
-              {createMenuOpen && (
-                <div className="xora-chat-create-menu" role="menu" aria-label="New conversation options">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      onNewMessage?.()
-                    }}
-                  >
-                    New private message
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      onNewGroup?.()
-                    }}
-                  >
-                    Create a circle
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[15px] font-semibold text-[var(--chat-text-primary)]">{title}</span>
+            <button className="text-[var(--chat-text-secondary)] hover:text-[var(--chat-text-primary)]">
+              <Plus className="size-5" />
+            </button>
           </div>
           {/* Search */}
-          <label className="xora-chat-search-wrap flex items-center gap-2 rounded-xl">
-            <Search className="size-4 shrink-0" aria-hidden="true" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search conversations or people"
-              aria-label="Search conversations or people"
-            />
-            {searchQuery && (
-              <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="xora-chat-clear-search">
-                <X className="size-4" />
-              </button>
-            )}
-          </label>
+          <div className="px-3 pb-2">
+            <div className="flex items-center gap-2 rounded-[10px] bg-[var(--chat-bg-main)] px-3 py-2 opacity-50">
+              <Search className="size-3.5" />
+              <span className="text-[14px] text-[var(--chat-text-tertiary)]">Search</span>
+            </div>
+          </div>
           {/* Conversation list */}
-          <div className="xora-chat-conversation-list flex-1 overflow-y-auto py-2">
-            {filteredConversations.length > 0 ? filteredConversations.map((c) => (
+          <div className="flex-1 overflow-y-auto py-1">
+            {conversations.map((c) => (
               <ConversationItem
                 key={c.id}
                 convo={c}
                 isActive={c.id === activeConversationId}
                 onClick={() => onSelectConversation(c.id)}
               />
-            )) : (
-              <div className="xora-chat-empty-state">
-                <div className="xora-chat-empty-icon">
-                  <MessageSquare className="size-6" />
-                </div>
-                <strong>{searchQuery ? "No conversations found" : "Your inbox is quiet"}</strong>
-                <p>{searchQuery ? "Try a different name or message." : "Start a private chat or create a community circle."}</p>
-                {!searchQuery && (
-                  <div className="xora-chat-empty-actions">
-                    <button type="button" onClick={onNewMessage}>New message</button>
-                    <button type="button" onClick={onNewGroup}>Create a circle</button>
-                  </div>
-                )}
-              </div>
-            )}
+            ))}
           </div>
         </aside>
 
@@ -298,14 +209,10 @@ function FullMessenger({
                     >
                       <ChevronLeft className="size-5" />
                     </button>
-                    <div className="relative shrink-0">
-                      {activeConvo.avatar ? (
-                        <img src={activeConvo.avatar} alt="" className="xora-chat-avatar-image size-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="xora-chat-avatar-fallback flex size-10 items-center justify-center rounded-full text-sm font-bold">
-                          {activeConvo.title.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("") || "X"}
-                        </div>
-                      )}
+                    <div className="relative">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-[var(--chat-bubble-incoming)] text-sm font-semibold text-[var(--chat-text-primary)]">
+                        {activeConvo.title.charAt(0).toUpperCase()}
+                      </div>
                       {activeConvo.presence === "online" && (
                         <div className="absolute -bottom-0.5 -right-0.5 size-[10px] rounded-full border-2 border-[var(--chat-bg-main)] bg-[var(--chat-green)]" />
                       )}
