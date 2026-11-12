@@ -62,6 +62,8 @@ export default function ChatPage({
   const transcriptRef = useRef<HTMLDivElement>(null);
   const [nearLatest, setNearLatest] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [closingRoom, setClosingRoom] = useState(false);
+  const closeRoom = () => { setClosingRoom(true); window.setTimeout(() => { setClosingRoom(false); onBackToList(); }, 220); };
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, string[]>>({});
@@ -149,7 +151,7 @@ export default function ChatPage({
     const name = profile?.display_name || profile?.username || "Xora member";
     return profile?.avatar_url
       ? <img src={profile.avatar_url} alt={name} className={`avatar ${size}`} />
-      : <span className={`avatar avatar-fallback ${size}`} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
+      : <span className={`avatar avatar-fallback ${size}`} style={{ background: avatarGradient(name), color: "#fff" }} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
   };
   const activeMembers = activeRoom ? Object.keys(activeRoom.memberIds || {}).map((id) => profileMap[id]).filter((profile): profile is ProfileLite => Boolean(profile)) : [];
   const activeTitle = activeRoom ? getRoomTitle(activeRoom, currentUserId, profileMap) : "";
@@ -170,7 +172,7 @@ export default function ChatPage({
         </div>
       </header>
 
-      <main className={`chat-shell ${activeRoomId ? "mobile-chat" : ""}`}>
+      <main className={`chat-shell ${activeRoomId ? "mobile-chat" : ""} ${closingRoom ? "closing-room" : ""}`}>
         <aside className="chat-sidebar" aria-label="Conversations">
           <div className="sidebar-top">
             <div className="section-heading">
@@ -212,7 +214,7 @@ export default function ChatPage({
               const selected = room.id === activeRoomId;
               const Icon = roomIcon(room);
               if (listTab === "discover") {
-                const joined = rooms.some((candidate) => candidate.id === room.id) || Boolean(currentUserId && room.memberIds?.[currentUserId]);
+                const joined = rooms.some((candidate) => candidate.id === room.id);
                 const memberCount = Object.keys(room.memberIds || {}).length;
                 return <article key={room.id} className="xora-discover-card">
                   <div className="xora-discover-heading">{room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className="circle-art"><Icon/></span>}<div><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"} · Community circle</small></div></div>
@@ -229,16 +231,12 @@ export default function ChatPage({
             {!filtered.length && <div className="empty-state"><MessagesSquare/><h3>{listTab === "discover" ? "No public circles yet" : roomFilter ? "No conversations found" : "Every circle begins with a hello."}</h3><p>{listTab === "discover" ? "When someone creates a community circle, it will appear here for everyone to discover and join." : "Start a conversation or create a circle to bring people together."}</p>{listTab !== "discover" && <button type="button" className="xora-text-button" onClick={onOpenNewGroup}>Create a circle</button>}</div>}
           </div>
           <section className="people-section" aria-label="People"><h2>People</h2><div className="flex items-center gap-3 rounded-2xl border border-[var(--xc-line)] bg-white px-3 py-3">{liveAvatar(currentProfile || undefined)}<div className="min-w-0"><strong className="block truncate text-xs">{currentProfile?.display_name || currentProfile?.username || "Your profile"}</strong><small className="block truncate text-[10px] text-muted-foreground">Here for the little things</small></div><span className="online-dot ml-auto" aria-label="Available"/></div></section>
-          <div className="sidebar-bottom">
-            {liveAvatar(currentProfile || undefined)}
-            <div><strong className="font-medium">{currentProfile?.display_name || currentProfile?.username || "Your profile"}</strong><small>Here for the little things</small></div><span className="online-dot" aria-label="Available"/>
-          </div>
         </aside>
 
         <section className="conversation-pane" aria-label={activeTitle || "Conversation"}>
           {activeRoom ? <>
             <header className="conversation-header">
-              <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={onBackToList}><ArrowLeft/></button>
+              <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={closeRoom}><ArrowLeft/></button>
               {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
               <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <>{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members <span>·</span><span className="online-dot"/><span className="online-text">Community circle</span></>}</p></div>
               {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
