@@ -48,6 +48,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const navigate = useNavigate();
 
   const [rawRooms, setRawRooms] = useState<ChatRoomRecord[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
   const [rawDiscoverableRooms, setRawDiscoverableRooms] = useState<ChatRoomRecord[]>([]);
   const [discoverableError, setDiscoverableError] = useState<string | null>(null);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
@@ -83,13 +84,16 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   useEffect(() => {
     if (!user) {
       setRawRooms([]);
+      setRoomsLoading(false);
       return;
     }
+    setRoomsLoading(true);
 
     // Opportunistic prune on mount
     void pruneUserExpiredMessages(user.id);
 
     const unsubscribe = listenUserRooms(user.id, (updatedRooms) => {
+      setRoomsLoading(false);
       setRawRooms(updatedRooms);
       if (initialRoomId && updatedRooms.some((r) => r.id === initialRoomId)) {
         setActiveRoomId(initialRoomId);
@@ -118,19 +122,24 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     return () => unsubscribe();
   }, [user]);
 
-  // Listen to messages for active room
+  // Listen to messages only after the current user is in the selected room.
+  const activeRoomIsMember = rawRooms.some((room) => room.id === activeRoomId);
   useEffect(() => {
     if (!activeRoomId) {
       setRawMessages([]);
       return;
     }
 
+    if (!activeRoomIsMember) {
+      setRawMessages([]);
+      return;
+    }
     const unsubscribe = listenMessages(activeRoomId, (msgs) => {
       setRawMessages(msgs);
     });
 
     return () => unsubscribe();
-  }, [activeRoomId]);
+  }, [activeRoomId, activeRoomIsMember]);
 
   // Fetch participant profiles for DM rooms
   useEffect(() => {
@@ -200,6 +209,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     type: r.type,
     name: r.name ?? null,
     photo_url: r.photo_url ?? null,
+    description: r.description ?? null,
     lastMessage: r.lastMessage ?? null,
     lastMessageAt: r.lastMessageAt ?? null,
     memberIds: r.memberIds,
@@ -212,6 +222,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       type: r.type,
       name: r.name ?? null,
       photo_url: r.photo_url ?? null,
+      description: r.description ?? null,
       lastMessage: r.lastMessage ?? null,
       lastMessageAt: r.lastMessageAt ?? null,
       memberIds: r.memberIds,
@@ -354,12 +365,19 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       return;
     }
     setJoiningGroupId(roomId);
+    const alreadyJoined = rawRooms.some((room) => room.id === roomId);
+    const directoryRoom = rawDiscoverableRooms.find((room) => room.id === roomId);
+    if (!alreadyJoined && directoryRoom) {
+      const optimisticRoom = { ...directoryRoom, memberIds: { ...(directoryRoom.memberIds || {}), [user.id]: true } };
+      setRawRooms((previous) => previous.some((room) => room.id === roomId) ? previous : [optimisticRoom, ...previous]);
+    }
     try {
       await joinGroupRoom(user.id, roomId);
       setActiveRoomId(roomId);
       toast.success("You joined the community circle!");
       void navigate({ to: "/chat/$roomId", params: { roomId } });
     } catch (err) {
+      if (!alreadyJoined) setRawRooms((previous) => previous.filter((room) => room.id !== roomId));
       toast.error(err instanceof Error ? err.message : "Could not join this circle");
     } finally {
       setJoiningGroupId(null);
@@ -379,8 +397,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <AppShell wide>
       <div className="mx-auto max-w-6xl pb-8">
-        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
         <ChatPage
+          roomsLoading={roomsLoading}
           authLoading={authLoading}
         currentUserId={user?.id || null}
           currentProfile={currentProfileLite}
@@ -408,6 +426,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
           onSend={handleSendMessage}
           onSignIn={() => void navigate({ to: "/auth" })}
         />
+        <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
 
         <NewDmModal
           open={showDmModal}

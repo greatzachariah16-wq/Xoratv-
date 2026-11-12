@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import "./xora-chat-premium.css";
 import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose, CheckCheck, ChevronDown, Coffee, Info, Leaf, Paperclip, Smile, Sun, Volume2, VolumeX, X } from "lucide-react";
 
-export type ChatRoom = { id: string; type: "dm" | "group"; name: string | null; photo_url: string | null; lastMessage: string | null; lastMessageAt: string | null; memberIds?: Record<string, boolean> };
+export type ChatRoom = { id: string; type: "dm" | "group"; name: string | null; photo_url: string | null; description?: string | null; lastMessage: string | null; lastMessageAt: string | null; memberIds?: Record<string, boolean> };
 export type ChatMessage = { id: string; roomId: string; senderId: string; senderName?: string | null; senderAvatar?: string | null; text: string; created_at: string; type: "text" | "experience"; expiresAt: string };
 export type ProfileLite = { id: string; username: string; display_name: string; avatar_url: string | null };
 
@@ -18,6 +19,18 @@ export function formatTime(iso: string | null | undefined): string {
 function messageTime(iso: string) {
   const date = new Date(iso);
   return isNaN(date.getTime()) ? "" : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+function dayKey(iso: string) { const d = new Date(iso); return isNaN(d.getTime()) ? "invalid" : d.toDateString(); }
+function dayLabel(iso: string) {
+  const d = new Date(iso); const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((start - target) / 86400000);
+  return diff === 0 ? "Today" : diff === 1 ? "Yesterday" : d.toLocaleDateString([], { day: "numeric", month: "short", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+}
+function avatarGradient(name: string) {
+  let hash = 0; for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  return `linear-gradient(135deg,hsl(${hash} 48% 65%),hsl(${(hash + 42) % 360} 42% 43%))`;
 }
 export function getRoomTitle(room: ChatRoom, currentUserId: string | null, profileMap: Record<string, ProfileLite>): string {
   if (room.type === "group" && room.name) return room.name;
@@ -40,14 +53,28 @@ const EmptyState = ({ icon: Icon, title, description, action }: { icon: React.El
 );
 
 export interface ChatPageProps {
-  authLoading?: boolean; currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; discoverableRooms: ChatRoom[]; discoverableError?: string | null; joiningGroupId: string | null; onJoinGroup: (roomId: string) => void; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
+  roomsLoading?: boolean; authLoading?: boolean; currentUserId: string | null; currentProfile: ProfileLite | null; rooms: ChatRoom[]; discoverableRooms: ChatRoom[]; discoverableError?: string | null; joiningGroupId: string | null; onJoinGroup: (roomId: string) => void; activeRoomId: string | null; messages: ChatMessage[]; profileMap: Record<string, ProfileLite>; isSending: boolean; roomFilter: string; onRoomFilterChange: (v: string) => void; onSelectRoom: (roomId: string) => void; onBackToList: () => void; onOpenNewDm: () => void; onOpenNewGroup: () => void; inputText: string; onInputTextChange: (v: string) => void; isExperience: boolean; onToggleExperience: () => void; experienceTitle: string; onExperienceTitleChange: (v: string) => void; onSend: (e: React.FormEvent) => void; onSignIn: () => void;
 }
 export default function ChatPage({
-  authLoading = false, currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
+  roomsLoading = false, authLoading = false, currentUserId, currentProfile, rooms, discoverableRooms, discoverableError, joiningGroupId, onJoinGroup, activeRoomId, messages, profileMap, isSending, roomFilter, onRoomFilterChange, onSelectRoom, onBackToList, onOpenNewDm, onOpenNewGroup, inputText, onInputTextChange, isExperience, onToggleExperience, experienceTitle, onExperienceTitleChange, onSend, onSignIn,
 }: ChatPageProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const [nearLatest, setNearLatest] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [closingRoom, setClosingRoom] = useState(false);
+  const closeRoom = () => { setClosingRoom(true); window.setTimeout(() => { setClosingRoom(false); onBackToList(); }, 220); };
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
-  const activeRoom = rooms.find((room) => room.id === activeRoomId) || null;
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [roomMenuOpen, setRoomMenuOpen] = useState(false);
+  const [localReactions, setLocalReactions] = useState<Record<string, string[]>>({});
+  const lastTap = useRef<{ id: string; at: number }>({ id: "", at: 0 });
+  const knownMessages = useRef<Set<string>>(new Set(messages.map((message) => message.id)));
+  const freshMessages = useRef<Set<string>>(new Set());
+  messages.forEach((message) => { if (!knownMessages.current.has(message.id)) { knownMessages.current.add(message.id); freshMessages.current.add(message.id); } });
+  const activeRoom = rooms.find((room) => room.id === activeRoomId) || discoverableRooms.find((room) => room.id === activeRoomId) || null;
+  const isActiveMember = Boolean(activeRoom && rooms.some((room) => room.id === activeRoom.id));
   const activeMessages = messages.filter((message) => message.roomId === activeRoomId);
   const filtered = (listTab === "discover" ? discoverableRooms : rooms).filter((room) => {
     if (listTab === "groups" && room.type !== "group") return false;
@@ -57,7 +84,47 @@ export default function ChatPage({
   });
   const activeOtherId = activeRoom?.type === "dm" ? Object.keys(activeRoom.memberIds || {}).find((id) => id !== currentUserId) : null;
   const activeOther = activeOtherId ? profileMap[activeOtherId] : null;
-  useEffect(() => { if (activeMessages.length) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activeMessages.length, activeRoomId]);
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (!el || !activeMessages.length) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 110;
+    if (near) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); }
+    else { setUnreadCount((count) => count + 1); setNearLatest(false); }
+  }, [activeMessages.length, activeRoomId]);
+  useEffect(() => { if (isSending) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [isSending]);
+  useEffect(() => {
+    const updateKeyboardInset = () => {
+      const viewport = window.visualViewport;
+      const inset = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+      document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
+    };
+    updateKeyboardInset();
+    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
+    window.addEventListener("resize", updateKeyboardInset);
+    return () => { window.visualViewport?.removeEventListener("resize", updateKeyboardInset); window.removeEventListener("resize", updateKeyboardInset); };
+  }, []);
+  useEffect(() => { if (!inputText && composerRef.current) composerRef.current.style.height = "auto"; }, [inputText]);
+  const handleTranscriptScroll = () => {
+    const el = transcriptRef.current; if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    setNearLatest(near); if (near) setUnreadCount(0);
+  };
+  const messageRows = useMemo(() => activeMessages.map((message, index) => {
+    const previous = activeMessages[index - 1];
+    const next = activeMessages[index + 1];
+    const samePrevious = Boolean(previous && previous.senderId === message.senderId && dayKey(previous.created_at) === dayKey(message.created_at) && new Date(message.created_at).getTime() - new Date(previous.created_at).getTime() <= 5 * 60 * 1000);
+    const sameNext = Boolean(next && next.senderId === message.senderId && dayKey(next.created_at) === dayKey(message.created_at) && new Date(next.created_at).getTime() - new Date(message.created_at).getTime() <= 5 * 60 * 1000);
+    const newDay = !previous || dayKey(previous.created_at) !== dayKey(message.created_at);
+    return { message, first: !samePrevious, last: !sameNext, newDay, index };
+  }), [activeMessages]);
+  const reactToMessage = (id: string) => {
+    const now = Date.now();
+    if (lastTap.current.id === id && now - lastTap.current.at < 320) {
+      setLocalReactions((previous) => ({ ...previous, [id]: previous[id]?.includes("❤️") ? previous[id] : [...(previous[id] || []), "❤️"] }));
+      if (typeof navigator !== "undefined") navigator.vibrate?.(12);
+    }
+    lastTap.current = { id, at: now };
+  };
 
   if (!currentUserId && authLoading) return (
     <div className="xora-page grid min-h-[55vh] place-items-center">
@@ -99,12 +166,12 @@ export default function ChatPage({
     const name = profile?.display_name || profile?.username || "Xora member";
     return profile?.avatar_url
       ? <img src={profile.avatar_url} alt={name} className={`avatar ${size}`} />
-      : <span className={`avatar avatar-fallback ${size}`} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
+      : <span className={`avatar avatar-fallback ${size}`} style={{ background: avatarGradient(name), color: "#fff" }} aria-label={name}>{name.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>;
   };
   const activeMembers = activeRoom ? Object.keys(activeRoom.memberIds || {}).map((id) => profileMap[id]).filter((profile): profile is ProfileLite => Boolean(profile)) : [];
   const activeTitle = activeRoom ? getRoomTitle(activeRoom, currentUserId, profileMap) : "";
   const ActiveRoomIcon = activeRoom ? roomIcon(activeRoom) : Sun;
-  const activeSubtitle = activeRoom?.type === "dm" ? "Here for a good conversation" : activeMembers.length ? `${activeMembers.length} ${activeMembers.length === 1 ? "member" : "members"} · A little closer, every day` : "Community circle · A little closer, every day";
+  const activeSubtitle = activeRoom?.type === "dm" ? "Direct conversation" : `${activeMembers.length || Object.keys(activeRoom?.memberIds || {}).length} members · Community circle`;
 
   return (
     <div className="xora-page xora-live-page">
@@ -120,7 +187,7 @@ export default function ChatPage({
         </div>
       </header>
 
-      <main className={`chat-shell ${activeRoomId ? "mobile-chat" : ""}`}>
+      <main className={`chat-shell ${activeRoomId ? "mobile-chat" : ""} ${closingRoom ? "closing-room" : ""}`}>
         <aside className="chat-sidebar" aria-label="Conversations">
           <div className="sidebar-top">
             <div className="section-heading">
@@ -134,7 +201,7 @@ export default function ChatPage({
               <Search/><input value={roomFilter} onChange={(event) => onRoomFilterChange(event.target.value)} placeholder="Find a person or a circle" aria-label="Search conversations"/>
               {roomFilter && <button type="button" className="xora-clear-search" aria-label="Clear search" onClick={() => onRoomFilterChange("")}><X/></button>}
             </label>
-            <nav className="chat-tabs" aria-label="Conversation filters">
+            <nav className="chat-tabs" data-selected={listTab} aria-label="Conversation filters">
               {tabOptions.map((tab) => <button key={tab.id} type="button" className="filter-tab" data-active={listTab === tab.id} aria-pressed={listTab === tab.id} onClick={() => setListTab(tab.id)}>{tab.label}{tab.id === "all" && rooms.some((room) => room.lastMessage) && <span className="tab-count">{rooms.length}</span>}</button>)}
             </nav>
           </div>
@@ -166,8 +233,8 @@ export default function ChatPage({
                 const memberCount = Object.keys(room.memberIds || {}).length;
                 return <article key={room.id} className="xora-discover-card">
                   <div className="xora-discover-heading">{room.photo_url ? <img className="avatar large" src={room.photo_url} alt={title}/> : <span className="circle-art"><Icon/></span>}<div><strong>{title}</strong><small>{memberCount} {memberCount === 1 ? "member" : "members"} · Community circle</small></div></div>
-                  <p>{room.lastMessage || "A place to meet people and start conversations."}</p>
-                  <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open circle" : "Join circle"}</button>
+                  <p>{room.description?.trim() || "A welcoming space to meet people and start conversations."}</p>{room.lastMessage && <small className="block mb-3 text-xs text-muted-foreground">Latest: {room.lastMessage}</small>}
+                  <button type="button" className="xora-join-button" onClick={() => joined ? onSelectRoom(room.id) : onJoinGroup(room.id)} disabled={joiningGroupId === room.id}>{joiningGroupId === room.id ? <Loader2 className="animate-spin"/> : joined ? <MessageCircle/> : <Plus/>}{joiningGroupId === room.id ? "Joining…" : joined ? "Open" : "Join circle"}</button>
                 </article>;
               }
               return <button type="button" key={room.id} className="conversation-item" data-active={selected} onClick={() => onSelectRoom(room.id)} aria-label={`Open ${title}`}>
@@ -176,51 +243,61 @@ export default function ChatPage({
                 <span className="conversation-meta"><span>{formatTime(room.lastMessageAt)}</span>{selected ? <CheckCheck className="h-3 w-3"/> : <span className="h-[18px]"/>}</span>
               </button>;
             })}
-            {!filtered.length && <div className="empty-state"><MessagesSquare/><h3>{listTab === "discover" ? "No public circles yet" : roomFilter ? "No conversations found" : "Every circle begins with a hello."}</h3><p>{listTab === "discover" ? "When someone creates a community circle, it will appear here for everyone to discover and join." : "Start a conversation or create a circle to bring people together."}</p>{listTab !== "discover" && <button type="button" className="xora-text-button" onClick={onOpenNewGroup}>Create a circle</button>}</div>}
+            {roomsLoading && !filtered.length ? <div className="xc-skeleton-list" aria-label="Loading conversations">{Array.from({ length: 4 }).map((_, index) => <div className="xc-skeleton-card" key={index}><i/><span><b/><small/></span></div>)}</div> : !filtered.length && <div className="empty-state"><MessagesSquare/><h3>{listTab === "discover" ? "No public circles yet" : roomFilter ? "No conversations found" : "Every circle begins with a hello."}</h3><p>{listTab === "discover" ? "When someone creates a community circle, it will appear here for everyone to discover and join." : "Start a conversation or create a circle to bring people together."}</p>{listTab !== "discover" && <button type="button" className="xora-text-button" onClick={onOpenNewGroup}>Create a circle</button>}</div>}
           </div>
-          <div className="sidebar-bottom">
-            {liveAvatar(currentProfile || undefined)}
-            <div><strong className="font-medium">{currentProfile?.display_name || currentProfile?.username || "Your profile"}</strong><small>Here for the little things</small></div><span className="online-dot" aria-label="Available"/>
-          </div>
+          <section className="people-section" aria-label="People"><h2>People</h2><div className="flex items-center gap-3 rounded-2xl border border-[var(--xc-line)] bg-white px-3 py-3">{liveAvatar(currentProfile || undefined)}<div className="min-w-0"><strong className="block truncate text-xs">{currentProfile?.display_name || currentProfile?.username || "Your profile"}</strong><small className="block truncate text-[10px] text-muted-foreground">Here for the little things</small></div><span className="online-dot ml-auto" aria-label="Available"/></div></section>
         </aside>
 
         <section className="conversation-pane" aria-label={activeTitle || "Conversation"}>
           {activeRoom ? <>
             <header className="conversation-header">
-              <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={onBackToList}><ArrowLeft/></button>
+              <button type="button" className="icon-control mobile-back" aria-label="Back to conversations" onClick={closeRoom}><ArrowLeft/></button>
               {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
               <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <>{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members <span>·</span><span className="online-dot"/><span className="online-text">Community circle</span></>}</p></div>
               {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
-              <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Create a circle" aria-label="Create a circle" onClick={onOpenNewGroup}><Plus/></button><button type="button" className="icon-control xora-icon-button" title="New message" aria-label="New message" onClick={onOpenNewDm}><MoreHorizontal/></button></div>
+              <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Conversation menu" aria-label="Conversation menu" aria-expanded={roomMenuOpen} onClick={() => setRoomMenuOpen((open) => !open)}><MoreHorizontal/></button></div>
+            {roomMenuOpen && <div className="xc-room-menu" role="menu"><button type="button" role="menuitem" onClick={() => { setRoomMenuOpen(false); onOpenNewDm(); }}>New message</button><button type="button" role="menuitem" onClick={() => { setRoomMenuOpen(false); onOpenNewGroup(); }}>Create a circle</button></div>}
             </header>
             {activeRoom.type === "group" && <div className="welcome-banner"><Sun/><div><strong>A little space for your people.</strong><p>Share the everyday, find a little inspiration, and just be yourself.</p></div><Heart className="heart"/></div>}
-            <div className="transcript" ref={endRef} role="log" aria-label="Messages" aria-live="polite">
-              <div className="day-separator">Your conversation</div>
-              {activeMessages.map((message) => {
+            <div className="transcript" ref={transcriptRef} onScroll={handleTranscriptScroll} role="log" aria-label="Messages" aria-live="polite">
+              {messageRows.map(({ message, first, last, newDay }) => {
                 const sender = profileMap[message.senderId];
                 const senderName = message.senderName || sender?.display_name || sender?.username || (message.senderId === currentUserId ? currentProfile?.display_name || "You" : "Xora member");
                 const own = message.senderId === currentUserId;
-                return <article key={message.id} className={`chat-message ${own ? "own" : ""}`}>
-                  {sender ? liveAvatar(sender) : <span className="avatar avatar-fallback">{senderName.split(/\s+/).map((part) => part[0]).slice(0,2).join("").toUpperCase()}</span>}
-                  <div className="message-body">
-                    {!own && activeRoom.type === "group" && <div className="sender-name">{senderName}</div>}
-                    <div className="message-bubble">{message.type === "experience" && <div className="xora-experience-label"><Clapperboard/> Shared Xora experience</div>}<p>{message.text}</p><span className="message-time">{new Date(message.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}{own && <CheckCheck/>}</span></div>
-                  </div>
-                </article>;
+                const reactions = localReactions[message.id] || [];
+                const reactionCounts = [...new Set(reactions)].map((emoji) => [emoji, reactions.filter((value) => value === emoji).length] as const);
+                return <React.Fragment key={message.id}>
+                  {newDay && <div className="day-separator"><span>{dayLabel(message.created_at)}</span></div>}
+                  <article className={`chat-message ${own ? "own" : ""} ${first ? "group-start" : "group-middle"} ${last ? "group-end" : ""} ${freshMessages.current.has(message.id) ? "message-new" : ""}`}>
+                    {!own && (sender?.avatar_url || message.senderAvatar ? <img className="avatar" src={sender?.avatar_url || message.senderAvatar || undefined} alt="" /> : <span className="avatar avatar-fallback" style={{ background: avatarGradient(senderName), color: "#fff" }}>{senderName.slice(0,1).toUpperCase()}</span>)}
+                    <div className="message-body">
+                      {!own && activeRoom.type === "group" && first && <div className="sender-name">{senderName}</div>}
+                      <div className="message-bubble" role="button" tabIndex={0} aria-label="Double tap to react with a heart" onClick={() => reactToMessage(message.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); reactToMessage(message.id); } }}>
+                        {message.type === "experience" && <div className="xora-experience-label"><Clapperboard/> Shared Xora experience</div>}
+                        <p>{message.text}</p>
+                        <span className="message-time">{messageTime(message.created_at)}{own && <CheckCheck aria-label="Sent" />}</span>
+                      </div>
+                      {reactionCounts.length > 0 && <div className="xc-reaction-row">{reactionCounts.map(([emoji, count]) => <span className="xc-reaction" key={emoji}>{emoji}{count > 1 ? ` ${count}` : ""}</span>)}</div>}
+                    </div>
+                  </article>
+                </React.Fragment>;
               })}
-              {!activeMessages.length && <div className="empty-state"><MessageCircle/><h3>Every circle begins with a hello.</h3><p>Make yourself at home. Share the first little moment.</p></div>}
+              {!activeMessages.length && !isSending && <div className="empty-state"><MessageCircle/><h3>Say hello</h3><p>Make yourself at home. Share the first little moment.</p></div>}
+              {isSending && inputText.trim() && <article className="chat-message own message-new"><div className="message-body"><div className="message-bubble"><p>{inputText}</p><span className="message-time">Sending <i className="xc-sending-dot"/></span></div></div></article>}
               <div ref={endRef}/>
             </div>
-            <div className="composer-area">
+            <button type="button" className={`xc-latest-button ${nearLatest ? "" : "visible"}`} aria-label={unreadCount ? `Jump to latest, ${unreadCount} unread messages` : "Jump to latest"} onClick={() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); setNearLatest(true); }}><span>↓</span>{unreadCount > 0 && <b>{unreadCount > 9 ? "9+" : unreadCount}</b>}</button>
+            {isActiveMember ? <div className="composer-area">
+              <div className={`xc-emoji-tray ${emojiOpen ? "open" : ""}`}><div>{["😂","❤️","🔥","😍","👏","🙏","😮","🎬"].map((emoji) => <button key={emoji} type="button" aria-label={`Insert ${emoji}`} onClick={() => { onInputTextChange(inputText + emoji); setEmojiOpen(false); }}>{emoji}</button>)}</div></div>
               {isExperience && <div className="xora-experience-editor"><label htmlFor="experience-title">Share an experience</label><input id="experience-title" value={experienceTitle} onChange={(event) => onExperienceTitleChange(event.target.value)} placeholder="What are you watching or sharing?"/></div>}
               <form className="composer" onSubmit={onSend}>
                 <button type="button" className={`icon-control xora-icon-button ${isExperience ? "xora-toggle-active" : ""}`} aria-label="Share an experience" title="Share an experience" onClick={onToggleExperience}><Clapperboard/></button>
-                <input aria-label="Message" enterKeyHint="send" placeholder={isExperience ? "Add a note about this experience…" : activeRoom.type === "dm" ? "A little hello…" : "Share a little something…"} value={inputText} onChange={(event) => onInputTextChange(event.target.value)}/>
-                <button type="button" className="icon-control xora-icon-button" aria-label="Add a kind emoji" title="Add a kind emoji" onClick={() => onInputTextChange(inputText + " 🤍")}><Smile/></button>
-                <button type="submit" className="send-control" aria-label="Send message" title="Send message" disabled={isSending || (!inputText.trim() && !(isExperience && experienceTitle.trim()))}>{isSending ? <Loader2 className="animate-spin"/> : <Send/>}</button>
+                <textarea ref={composerRef} aria-label="Message" rows={1} enterKeyHint="send" placeholder={isExperience ? "Add a note about this experience…" : activeRoom.type === "dm" ? "A little hello…" : "Share a little something…"} value={inputText} onChange={(event) => { onInputTextChange(event.target.value); event.currentTarget.style.height = "auto"; event.currentTarget.style.height = Math.min(event.currentTarget.scrollHeight,120) + "px"; }} onFocus={() => setEmojiOpen(false)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && window.matchMedia("(pointer:fine)").matches) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+                <button type="button" className="icon-control xora-icon-button" aria-label="Open emoji tray" title="Emoji" onClick={() => setEmojiOpen((open) => !open)}><Smile/></button>
+                <button type="submit" className={`send-control ${inputText.trim() || (isExperience && experienceTitle.trim()) ? "ready" : ""}`} aria-label="Send message" title="Send message" disabled={isSending || (!inputText.trim() && !(isExperience && experienceTitle.trim()))}>{isSending ? <Loader2 className="animate-spin"/> : <Send/>}</button>
               </form>
               <p className="composer-note"><Heart/>A little kindness goes a long way.</p>
-            </div>
+            </div> : <div className="xc-join-bar"><p>Join this circle to take part in the conversation.</p><button type="button" onClick={() => onJoinGroup(activeRoom.id)}>Join circle</button></div>}
           </> : <div className="xora-empty-pane"><span className="xora-empty-mark"><MessageCircle/></span><p className="xora-eyebrow">YOUR PEOPLE, YOUR SPACE</p><h2>A little closer, every day.</h2><p>Choose a conversation or explore circles to find your people.</p><button type="button" className="xora-primary-button" onClick={() => setListTab("discover")}>Explore communities <ArrowUpRight/></button></div>}
         </section>
       </main>

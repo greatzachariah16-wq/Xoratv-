@@ -42,6 +42,7 @@ async function members(roomId: string) {
 function safeRoom(row: Row, memberList: string[], last?: Row | null) {
   return {
     id: row.id, type: row.room_type, name: row.name ?? null, photo_url: row.photo_url ?? null,
+    description: typeof row.description === "string" ? row.description : null,
     created_by: row.created_by, created_at: row.created_at, updated_at: row.updated_at,
     memberIds: Object.fromEntries(memberList.map((id) => [id, true])),
     lastMessage: last?.message_text ?? null, lastMessageAt: last?.created_at ?? null,

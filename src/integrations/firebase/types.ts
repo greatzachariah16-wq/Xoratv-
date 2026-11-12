@@ -157,6 +157,7 @@ export interface ChatRoomRecord {
   type: "dm" | "group";
   name?: string | null;
   photo_url?: string | null;
+  description?: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
