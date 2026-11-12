@@ -69,7 +69,7 @@ export default function ChatcnMessenger({
   // Render Chatcn's own messenger directly. No Xora card, border, toolbar,
   // title strip, or secondary panel wraps the upstream UI.
   return (
-    <div className="h-[calc(100dvh-7.5rem)] min-h-[420px] w-full min-w-0 overflow-hidden">
+    <div className="h-[100dvh] min-h-[100svh] w-full min-w-0 overflow-hidden">
       <FullMessenger
         currentUser={currentUser}
         conversations={conversations}
