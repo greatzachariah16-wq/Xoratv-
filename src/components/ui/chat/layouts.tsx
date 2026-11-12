@@ -76,7 +76,7 @@ function ConversationItem({
 }) {
   const initials = convo.title
     .trim()
-    .split(/\\s+/)
+    .split(/\s+/)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "X"
@@ -303,7 +303,7 @@ function FullMessenger({
                         <img src={activeConvo.avatar} alt="" className="xora-chat-avatar-image size-10 rounded-full object-cover" />
                       ) : (
                         <div className="xora-chat-avatar-fallback flex size-10 items-center justify-center rounded-full text-sm font-bold">
-                          {activeConvo.title.trim().split(/\\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("") || "X"}
+                          {activeConvo.title.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("") || "X"}
                         </div>
                       )}
                       {activeConvo.presence === "online" && (
