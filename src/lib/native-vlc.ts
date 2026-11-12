@@ -47,7 +47,6 @@ type NativeVlcPlugin = {
     url: string;
     title?: string;
     channelId?: string;
-    qualityMode?: "auto" | "data-saver" | "high";
     fallbackUrl1?: string;
     fallbackUrl2?: string;
     candidates?: NativeVlcCandidate[];
@@ -114,7 +113,6 @@ export async function openNativeVlc(options: {
   url: string;
   title?: string;
   channelId?: string;
-  qualityMode?: "auto" | "data-saver" | "high";
   candidates?: NativeVlcCandidate[];
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
@@ -133,7 +131,6 @@ export async function openNativeVlc(options: {
     ...options,
     url: absoluteUrl.toString(),
     candidates: options.candidates,
-    qualityMode: options.qualityMode,
     proxyFallbackUrl: options.proxyFallbackUrl,
     fallbackUrl1: options.fallbackUrl1,
     fallbackUrl2: options.fallbackUrl2,
