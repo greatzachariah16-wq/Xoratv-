@@ -67,6 +67,7 @@ export default function ChatPage({
   const closeRoom = () => { setClosingRoom(true); window.setTimeout(() => { setClosingRoom(false); onBackToList(); }, 220); };
   const [listTab, setListTab] = useState<"all" | "groups" | "directs" | "discover">("all");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [roomMenuOpen, setRoomMenuOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, string[]>>({});
   const lastTap = useRef<{ id: string; at: number }>({ id: "", at: 0 });
   const knownMessages = useRef<Set<string>>(new Set(messages.map((message) => message.id)));
@@ -90,6 +91,7 @@ export default function ChatPage({
     if (near) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); }
     else { setUnreadCount((count) => count + 1); setNearLatest(false); }
   }, [activeMessages.length, activeRoomId]);
+  useEffect(() => { if (isSending) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [isSending]);
   useEffect(() => {
     const updateKeyboardInset = () => {
       const viewport = window.visualViewport;
@@ -253,7 +255,8 @@ export default function ChatPage({
               {activeRoom.type === "dm" && activeOther ? liveAvatar(activeOther, "large") : activeRoom.photo_url ? <img className="avatar large" src={activeRoom.photo_url} alt={activeTitle}/> : <span className="circle-art"><ActiveRoomIcon/></span>}
               <div className="min-w-0"><h2>{activeTitle}</h2><p className="circle-subtitle">{activeRoom.type === "dm" ? <><span className="online-dot"/><span className="online-text">Direct conversation</span></> : <>{activeMembers.length || Object.keys(activeRoom.memberIds || {}).length} members <span>·</span><span className="online-dot"/><span className="online-text">Community circle</span></>}</p></div>
               {activeRoom.type === "group" && activeMembers.length > 0 && <div className="member-stack" aria-label="Circle members">{activeMembers.slice(0,4).map((profile) => <React.Fragment key={profile.id}>{liveAvatar(profile, "small")}</React.Fragment>)}{activeMembers.length > 4 && <span className="member-more">+{activeMembers.length - 4}</span>}</div>}
-              <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Conversation menu" aria-label="Conversation menu"><MoreHorizontal/></button></div>
+              <div className="header-tools"><button type="button" className="icon-control xora-icon-button" title="Conversation menu" aria-label="Conversation menu" aria-expanded={roomMenuOpen} onClick={() => setRoomMenuOpen((open) => !open)}><MoreHorizontal/></button></div>
+            {roomMenuOpen && <div className="xc-room-menu" role="menu"><button type="button" role="menuitem" onClick={() => { setRoomMenuOpen(false); onOpenNewDm(); }}>New message</button><button type="button" role="menuitem" onClick={() => { setRoomMenuOpen(false); onOpenNewGroup(); }}>Create a circle</button></div>}
             </header>
             {activeRoom.type === "group" && <div className="welcome-banner"><Sun/><div><strong>A little space for your people.</strong><p>Share the everyday, find a little inspiration, and just be yourself.</p></div><Heart className="heart"/></div>}
             <div className="transcript" ref={transcriptRef} onScroll={handleTranscriptScroll} role="log" aria-label="Messages" aria-live="polite">
