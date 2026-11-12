@@ -125,3 +125,13 @@
 @media (max-width:700px) {
  .xora-live-page .xc-latest-button { bottom:calc(88px + env(safe-area-inset-bottom)); }
 }
+
+.xora-live-page .chat-tabs { position:relative; }
+.xora-live-page .chat-tabs::before { content:""; position:absolute; z-index:0; top:4px; bottom:4px; left:4px; width:calc((100% - 8px)/4); border-radius:999px; background:linear-gradient(135deg,var(--xc-plum2),var(--xc-plum)); box-shadow:0 4px 12px #5f406a26; transform:translateX(0); transition:transform .28s cubic-bezier(.22,1,.36,1); }
+.xora-live-page .chat-tabs[data-selected="groups"]::before { transform:translateX(100%); }
+.xora-live-page .chat-tabs[data-selected="directs"]::before { transform:translateX(200%); }
+.xora-live-page .chat-tabs[data-selected="discover"]::before { transform:translateX(300%); }
+.xora-live-page .chat-tabs .filter-tab { background:transparent!important; color:var(--xc-muted); }
+.xora-live-page .chat-tabs .filter-tab[data-active=true] { color:#fff; }
+.xora-live-page .xc-sending-dot { display:inline-block; width:7px; height:7px; margin-left:4px; border-radius:50%; background:currentColor; animation:xc-send-pulse .9s ease-in-out infinite; }
+@keyframes xc-send-pulse { 50% { opacity:.25; transform:scale(.7); } }
