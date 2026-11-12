@@ -4,11 +4,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { AppShell } from "@/components/xora/AppShell";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
-import ChatPage, {
-  type ChatRoom,
-  type ChatMessage,
-  type ProfileLite,
-} from "@/components/chat/ChatPage";
+import type { ChatRoom, ChatMessage, ProfileLite } from "@/components/chat/ChatPage";
+import ChatcnMessenger from "@/components/chat/ChatcnMessenger";
 import NewDmModal from "@/components/chat/NewDmModal";
 import NewGroupModal from "@/components/chat/NewGroupModal";
 import {
@@ -276,6 +273,19 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     }
   }
 
+  async function handleChatcnSend(text: string) {
+    if (!activeRoomId || !user || !text.trim()) return;
+    try {
+      await sendMessage(activeRoomId, user.id, text.trim(), {
+        type: "text",
+        senderName: profile?.display_name || profile?.username || "Xora member",
+        senderAvatar: profile?.avatar_url || null,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send message");
+    }
+  }
+
   async function handleStartDm(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !dmTargetUsername.trim()) return;
@@ -397,34 +407,20 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   return (
     <AppShell wide>
       <div className="mx-auto max-w-6xl pb-8">
-        <ChatPage
-          roomsLoading={roomsLoading}
-          authLoading={authLoading}
-        currentUserId={user?.id || null}
+        <ChatcnMessenger
+          currentUserId={user?.id || null}
           currentProfile={currentProfileLite}
           rooms={rooms}
           discoverableRooms={discoverableRooms}
-          discoverableError={discoverableError}
-          joiningGroupId={joiningGroupId}
-          onJoinGroup={handleJoinGroup}
           activeRoomId={activeRoomId}
           messages={messages}
           profileMap={profileMap}
-          isSending={isSending}
-          roomFilter={roomFilter}
-          onRoomFilterChange={setRoomFilter}
           onSelectRoom={handleSelectRoom}
           onBackToList={handleBackToList}
+          onSend={handleChatcnSend}
           onOpenNewDm={() => setShowDmModal(true)}
           onOpenNewGroup={() => setShowGroupModal(true)}
-          inputText={inputText}
-          onInputTextChange={setInputText}
-          isExperience={isExperience}
-          onToggleExperience={() => setIsExperience((v) => !v)}
-          experienceTitle={experienceTitle}
-          onExperienceTitleChange={setExperienceTitle}
-          onSend={handleSendMessage}
-          onSignIn={() => void navigate({ to: "/auth" })}
+          onJoinGroup={handleJoinGroup}
         />
         <XoraInHouseAd placement="chat_banner" variant="compact" className="mb-4" />
 
