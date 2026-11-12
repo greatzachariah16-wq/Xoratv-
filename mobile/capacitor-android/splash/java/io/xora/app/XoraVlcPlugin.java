@@ -1879,6 +1879,14 @@ public class XoraVlcPlugin extends Plugin {
                 // Recreate local HLS sessions so Data saver/High can select a
                 // matching variant from the provider's master playlist.
                 if (localHlsProxy != null && !upstreamStreamUrls.isEmpty()) {
+                    // Stop VLC before its loopback HLS session and cached files are replaced.
+                    if (mediaPlayer != null) {
+                        try {
+                            mediaPlayer.stop();
+                        } catch (RuntimeException ignored) {
+                            // The previous stream may already have stopped while buffering.
+                        }
+                    }
                     refreshLocalPlaybackSessions();
                 }
                 Toast.makeText(
