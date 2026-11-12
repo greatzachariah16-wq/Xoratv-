@@ -241,8 +241,8 @@ function FullMessenger({
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search messages or people"
-              aria-label="Search messages or people"
+              placeholder="Search conversations or people"
+              aria-label="Search conversations or people"
             />
             {searchQuery && (
               <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="xora-chat-clear-search">
