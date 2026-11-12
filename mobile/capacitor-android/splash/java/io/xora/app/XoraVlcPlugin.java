@@ -9,6 +9,7 @@ import android.content.res.Configuration;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -475,7 +476,6 @@ public class XoraVlcPlugin extends Plugin {
         String fallbackUrl2 = call.getString("fallbackUrl2");
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
-        String requestedQualityMode = call.getString("qualityMode");
 
         if (!isSecureUrl(url)) {
             call.reject("A secure stream URL is required.");
@@ -485,14 +485,6 @@ public class XoraVlcPlugin extends Plugin {
         getActivity().runOnUiThread(() -> {
             try {
                 closePlayerInternal(false);
-                boolean hasNativeQualityPreference = getContext()
-                    .getSharedPreferences("xora_player_preferences", Context.MODE_PRIVATE)
-                    .contains("quality_mode");
-                if (!hasNativeQualityPreference && ("auto".equals(requestedQualityMode)
-                    || "data-saver".equals(requestedQualityMode)
-                    || "high".equals(requestedQualityMode))) {
-                    saveNativeQualityMode(requestedQualityMode);
-                }
                 configureStreamCandidates(call, url, fallbackUrl1, fallbackUrl2);
 
                 currentChannelId = requestedChannelId == null
@@ -800,7 +792,9 @@ public class XoraVlcPlugin extends Plugin {
         connectionQualityChip.setSingleLine(true);
         connectionQualityChip.setMinHeight(dp(44));
         connectionQualityChip.setPadding(dp(13), 0, dp(13), 0);
-        connectionQualityChip.setBackground(roundedBackground(0xB9000000, dp(22)));
+        connectionQualityChip.setBackground(new InsetDrawable(
+            roundedBackground(0xB9000000, dp(18)), 0, dp(8), 0, dp(8)
+        ));
         connectionQualityChip.setContentDescription("Connection: Smooth");
         connectionQualityChip.setFocusable(true);
         connectionQualityChip.setClickable(true);
@@ -853,6 +847,8 @@ public class XoraVlcPlugin extends Plugin {
         dataSaverButton.setAllCaps(false);
         dataSaverButton.setMinHeight(dp(44));
         dataSaverButton.setPadding(dp(18), 0, dp(18), 0);
+        dataSaverButton.setTextColor(0xFFF4E9DE);
+        dataSaverButton.setBackground(roundedBackground(0x443D302B, dp(22)));
         dataSaverButton.setVisibility(View.GONE);
         dataSaverButton.setOnClickListener(view -> setNativeQualityMode("data-saver", true));
         statusCard.addView(dataSaverButton);
@@ -864,6 +860,8 @@ public class XoraVlcPlugin extends Plugin {
         retryButton.setMinHeight(dp(44));
         retryButton.setVisibility(View.GONE);
         retryButton.setPadding(dp(18), 0, dp(18), 0);
+        retryButton.setTextColor(Color.WHITE);
+        retryButton.setBackground(roundedBackground(0xFFB85F45, dp(22)));
         retryButton.setOnClickListener(view -> {
             clearLongBufferingFallback();
             retryCurrentStream();
@@ -1376,7 +1374,7 @@ public class XoraVlcPlugin extends Plugin {
                         setBufferProgressVisible(false);
                         startCurrentStream(usePreferredDecoder);
                     }
-                }));
+                }), getNativeQualityMode());
             } catch (IOException error) {
                 startupBufferActive = false;
                 setState(PlaybackState.ERR_UNKNOWN);
@@ -1703,9 +1701,7 @@ public class XoraVlcPlugin extends Plugin {
             if (!isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
                 || playbackState != PlaybackState.BUFFERING || userPaused) return;
             if ("data-saver".equals(getNativeQualityMode())) return;
-            saveNativeQualityMode("data-saver");
-            Toast.makeText(getContext(), "Switched to Data saver", Toast.LENGTH_SHORT).show();
-            startCurrentStream(true);
+            setNativeQualityMode("data-saver", true);
         };
         mainHandler.postDelayed(bufferingDataSaverFallback, 8000L);
 
@@ -1879,7 +1875,23 @@ public class XoraVlcPlugin extends Plugin {
         boolean changed = !mode.equals(getNativeQualityMode());
         saveNativeQualityMode(mode);
         if (changed && restart && !streamUrls.isEmpty() && !userPaused) {
-            startCurrentStream(true);
+            try {
+                // Recreate local HLS sessions so Data saver/High can select a
+                // matching variant from the provider's master playlist.
+                if (localHlsProxy != null && !upstreamStreamUrls.isEmpty()) {
+                    refreshLocalPlaybackSessions();
+                }
+                Toast.makeText(
+                    getContext(),
+                    "Preparing " + ("data-saver".equals(mode) ? "Data saver"
+                        : "high".equals(mode) ? "High quality" : "Auto") + " playback",
+                    Toast.LENGTH_SHORT
+                ).show();
+                startCurrentStream(true);
+            } catch (IOException error) {
+                Log.w(TAG, "Could not refresh stream quality: " + error.getClass().getSimpleName());
+                setState(PlaybackState.ERR_UNKNOWN);
+            }
         }
     }
 
@@ -1899,15 +1911,10 @@ public class XoraVlcPlugin extends Plugin {
         menu.show();
     }
 
-    private boolean shouldHideChipWithControls() {
-        if (mode == PlayerMode.FULLSCREEN || pipMode) return true;
-        return videoFrame != null && videoFrame.getWidth() > videoFrame.getHeight();
-    }
-
     private void updateNativeConnectionChip(boolean expanded) {
         if (connectionQualityChip == null) return;
         boolean active = playbackState == PlaybackState.PLAYING || playbackState == PlaybackState.BUFFERING;
-        if (!active || pipMode || (shouldHideChipWithControls() && !controlsVisible)) {
+        if (!active || pipMode) {
             connectionQualityChip.setVisibility(View.GONE);
             return;
         }
