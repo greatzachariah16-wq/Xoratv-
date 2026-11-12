@@ -151,3 +151,17 @@
 .xora-live-page .xc-room-menu { position:absolute; z-index:15; top:calc(72px + env(safe-area-inset-top)); right:12px; width:190px; padding:6px; border:1px solid var(--xc-line); border-radius:16px; background:#fff; box-shadow:0 12px 34px #2a1f1c20; animation:xc-message-pop .2s ease-out both; }
 .xora-live-page .xc-room-menu button { display:block; width:100%; min-height:44px; padding:0 12px; border-radius:10px; text-align:left; font-size:13px; color:var(--xc-ink); }
 .xora-live-page .xc-room-menu button:hover { background:#f4eef4; }
+
+.xora-live-page .xora-icon-button { min-width:44px; min-height:44px; }
+.xora-live-page .xora-text-button { min-height:44px; padding:0 8px; }
+.xora-live-page .xora-clear-search { min-width:44px; min-height:44px; }
+.xora-live-page .xc-skeleton-list { display:grid; gap:8px; padding:4px 0 18px; }
+.xora-live-page .xc-skeleton-card { display:flex; align-items:center; gap:12px; min-height:76px; padding:12px; border:1px solid var(--xc-line); border-radius:16px; background:#fff; }
+.xora-live-page .xc-skeleton-card i { width:44px; height:44px; flex:none; border-radius:50%; background:linear-gradient(100deg,#eee7e2 25%,#faf7f4 45%,#eee7e2 65%); background-size:220% 100%; animation:xc-shimmer 1.2s ease-in-out infinite; }
+.xora-live-page .xc-skeleton-card span { display:grid; flex:1; gap:8px; }
+.xora-live-page .xc-skeleton-card b,.xora-live-page .xc-skeleton-card small { display:block; height:9px; border-radius:99px; background:linear-gradient(100deg,#eee7e2 25%,#faf7f4 45%,#eee7e2 65%); background-size:220% 100%; animation:xc-shimmer 1.2s ease-in-out infinite; }
+.xora-live-page .xc-skeleton-card b { width:56%; }
+.xora-live-page .xc-skeleton-card small { width:78%; }
+@keyframes xc-shimmer { to { background-position-x:-220%; } }
+.xora-live-page .message-bubble[role="button"] { cursor:pointer; }
+.xora-live-page .message-bubble[role="button"]:focus-visible { outline:2px solid var(--xc-terra); outline-offset:3px; }
