@@ -119,14 +119,15 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     return () => unsubscribe();
   }, [user]);
 
-  // Listen to messages for active room
+  // Listen to messages only after the current user is in the selected room.
+  const activeRoomIsMember = rawRooms.some((room) => room.id === activeRoomId);
   useEffect(() => {
     if (!activeRoomId) {
       setRawMessages([]);
       return;
     }
 
-    if (!rawRooms.some((room) => room.id === activeRoomId)) {
+    if (!activeRoomIsMember) {
       setRawMessages([]);
       return;
     }
@@ -135,7 +136,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     });
 
     return () => unsubscribe();
-  }, [activeRoomId, rawRooms]);
+  }, [activeRoomId, activeRoomIsMember]);
 
   // Fetch participant profiles for DM rooms
   useEffect(() => {
@@ -391,7 +392,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   }
 
   return (
-    <AppShell immersive>
+    <AppShell wide>
       <div className="mx-auto max-w-6xl pb-8">
         <ChatPage
           authLoading={authLoading}
