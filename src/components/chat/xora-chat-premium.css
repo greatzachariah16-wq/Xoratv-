@@ -143,3 +143,7 @@
 .xora-live-page .chat-shell.mobile-chat .conversation-header { padding-left:max(12px,env(safe-area-inset-left)); padding-right:max(12px,env(safe-area-inset-right)); }
 .xora-live-page .chat-shell.mobile-chat .transcript { padding-bottom:20px; }
 .xora-live-page .chat-shell.mobile-chat .composer-area { padding-bottom:calc(10px + env(safe-area-inset-bottom) + var(--keyboard-inset,0px)); }
+
+.xora-live-page .chat-shell.mobile-chat .mobile-back { display:grid; width:44px; min-width:44px; height:44px; place-items:center; border-radius:50%; }
+.xora-live-page .chat-shell.mobile-chat .conversation-header .header-tools { flex:none; margin-left:auto; }
+.xora-live-page .chat-shell.mobile-chat .conversation-header .header-tools button { width:44px; height:44px; }
