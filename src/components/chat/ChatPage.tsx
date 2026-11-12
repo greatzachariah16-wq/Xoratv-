@@ -186,7 +186,7 @@ export default function ChatPage({
               <Search/><input value={roomFilter} onChange={(event) => onRoomFilterChange(event.target.value)} placeholder="Find a person or a circle" aria-label="Search conversations"/>
               {roomFilter && <button type="button" className="xora-clear-search" aria-label="Clear search" onClick={() => onRoomFilterChange("")}><X/></button>}
             </label>
-            <nav className="chat-tabs" aria-label="Conversation filters">
+            <nav className="chat-tabs" data-selected={listTab} aria-label="Conversation filters">
               {tabOptions.map((tab) => <button key={tab.id} type="button" className="filter-tab" data-active={listTab === tab.id} aria-pressed={listTab === tab.id} onClick={() => setListTab(tab.id)}>{tab.label}{tab.id === "all" && rooms.some((room) => room.lastMessage) && <span className="tab-count">{rooms.length}</span>}</button>)}
             </nav>
           </div>
@@ -266,7 +266,8 @@ export default function ChatPage({
                   </article>
                 </React.Fragment>;
               })}
-              {!activeMessages.length && <div className="empty-state"><MessageCircle/><h3>Say hello</h3><p>Make yourself at home. Share the first little moment.</p></div>}
+              {!activeMessages.length && !isSending && <div className="empty-state"><MessageCircle/><h3>Say hello</h3><p>Make yourself at home. Share the first little moment.</p></div>}
+              {isSending && inputText.trim() && <article className="chat-message own message-new"><div className="message-body"><div className="message-bubble"><p>{inputText}</p><span className="message-time">Sending <i className="xc-sending-dot"/></span></div></div></article>}
               <div ref={endRef}/>
             </div>
             <button type="button" className={`xc-latest-button ${nearLatest ? "" : "visible"}`} aria-label={unreadCount ? `Jump to latest, ${unreadCount} unread messages` : "Jump to latest"} onClick={() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); setUnreadCount(0); setNearLatest(true); }}><span>↓</span>{unreadCount > 0 && <b>{unreadCount > 9 ? "9+" : unreadCount}</b>}</button>
