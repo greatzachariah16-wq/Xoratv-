@@ -77,8 +77,8 @@ export default function ChatcnMessenger({
     ? `${Object.keys(activeRoom.memberIds || {}).length} members · Xora community`
     : "Private conversation";
 
-  // Render Chatcn's own messenger directly. No Xora card, border, toolbar,
-  // title strip, or secondary panel wraps the upstream UI.
+  // Keep Chatcn's original message, composer and theme primitives intact.
+  // Xora-specific inbox navigation and actions live in the adapter layout.
   return (
     <div className="xora-chat-page h-[100dvh] min-h-[100svh] w-full min-w-0 overflow-hidden">
       <XoraChatLayout
