@@ -1,0 +1,128 @@
+/* Full-screen mobile Chat: a continuous cream-clay surface with a clearly visible sculpted perimeter. */
+@media (max-width: 767px) {
+  .xora-chat-page {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    min-height: 100svh;
+    margin-inline: calc(50% - 50vw);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 0;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.96) 0%, rgba(255,255,255,0) 34%),
+      linear-gradient(145deg, #D8C2B2 0%, #F1E4D9 48%, #D4BBAA 100%);
+  }
+
+  .xora-chat-page .xora-chat-shell {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(135deg, #FFFEFC 0%, #FBF5EF 38%, #F4E9DF 72%, #EBD9CB 100%);
+    box-shadow:
+      inset 0 4px 0 rgba(255,255,255,.98),
+      inset 0 12px 18px rgba(255,255,255,.42),
+      inset 0 -10px 18px rgba(104,65,42,.22),
+      inset 8px 0 16px rgba(255,255,255,.38),
+      inset -9px 0 18px rgba(91,55,35,.20),
+      inset 0 0 0 2px rgba(125,83,57,.18),
+      inset 0 0 0 5px rgba(255,255,255,.44);
+  }
+
+  .xora-chat-page .xora-chat-shell::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    z-index: 5;
+    border: 1px solid rgba(255,255,255,.74);
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,.92),
+      inset 0 -3px 7px rgba(111,72,48,.13),
+      0 1px 0 rgba(255,255,255,.62);
+    pointer-events: none;
+  }
+
+  .xora-chat-page .xora-chat-shell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    border: 1px solid rgba(112,77,55,.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.98),
+      inset 0 -2px 4px rgba(102,67,46,.18),
+      inset 2px 0 4px rgba(255,255,255,.28),
+      inset -2px 0 5px rgba(105,69,48,.15);
+    pointer-events: none;
+  }
+
+  .xora-chat-page .xora-chat-shell > aside,
+  .xora-chat-page .xora-chat-shell > main {
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .xora-chat-page .xora-chat-sidebar {
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .xora-chat-page .xora-chat-sidebar-header,
+  .xora-chat-page .xora-chat-shell > main > header {
+    background: transparent;
+  }
+
+  .xora-chat-page .xora-chat-conversation-list {
+    overscroll-behavior: contain;
+  }
+}
+
+
+/* A body-portal menu must stay menu-sized; never inherit the full-screen page canvas. */
+.xora-chat-page.xora-chat-create-portal {
+  position: fixed !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: max-content !important;
+  max-width: calc(100vw - 16px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.xora-chat-create-portal .xora-chat-create-menu {
+  width: 205px;
+  max-width: calc(100vw - 16px);
+  border: 1px solid rgba(112, 77, 55, .18);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #FFFEFC 0%, #F7EEE6 100%);
+  box-shadow: 0 4px 8px rgba(53,31,20,.12), 0 16px 30px rgba(53,31,20,.20), 0 34px 52px -22px rgba(53,31,20,.36), inset 0 1px 0 rgba(255,255,255,.98);
+}
+.xora-chat-create-portal .xora-chat-create-menu button {
+  min-height: 44px;
+  border-radius: 11px;
+}

@@ -1713,3 +1713,117 @@
   left: auto !important;
   margin: 0 !important;
 }
+
+
+/* Consistent action sizing and a restrained warm-ivory sheen across Chat controls. */
+.xora-chat-page .xora-chat-modal-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.xora-chat-page .xora-chat-modal-actions button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  min-width: 0;
+  min-height: 44px;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  padding: 0 16px;
+  border: 1px solid rgba(120, 78, 54, .18);
+  border-radius: 13px;
+  background: linear-gradient(180deg, #FFFEFC 0%, #F4E9E0 100%);
+  color: #704A37;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  box-shadow: 0 2px 3px rgba(70, 43, 27, .08), 0 7px 13px rgba(70, 43, 27, .10), inset 0 1px 0 rgba(255,255,255,.96);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+.xora-chat-page .xora-chat-modal-actions button:last-child {
+  border-color: rgba(153, 66, 38, .36);
+  background: linear-gradient(135deg, #CF805D 0%, #B5502E 58%, #9E4528 100%);
+  color: #FFFCF8;
+  box-shadow: 0 3px 5px rgba(82, 35, 20, .16), 0 9px 16px rgba(82, 35, 20, .20), inset 0 1px 0 rgba(255,255,255,.38);
+}
+.xora-chat-page .xora-chat-modal-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .52;
+  filter: saturate(.72);
+}
+.xora-chat-page .xora-chat-modal-actions button:not(:disabled):active {
+  transform: translateY(1px) scale(.985);
+}
+.xora-chat-page .xora-chat-modal-actions button::after,
+.xora-chat-page .xora-chat-empty-actions button::after,
+.xora-chat-page .xora-chat-create-trigger::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: -35%;
+  bottom: -35%;
+  left: -70%;
+  width: 42%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 0%, rgba(255,255,255,.08) 32%, rgba(255,255,255,.56) 50%, rgba(255,255,255,.08) 68%, transparent 100%);
+  transform: skewX(-18deg) translateX(-150%);
+  opacity: .0;
+}
+.xora-chat-page .xora-chat-modal-actions button > *,
+.xora-chat-page .xora-chat-empty-actions button > *,
+.xora-chat-page .xora-chat-create-trigger > * {
+  position: relative;
+  z-index: 1;
+}
+.xora-chat-page .xora-chat-modal-actions button:not(:disabled):hover::after,
+.xora-chat-page .xora-chat-empty-actions button:hover::after,
+.xora-chat-page .xora-chat-create-trigger:hover::after {
+  animation: xora-chat-warm-sheen 850ms ease-out both;
+}
+.xora-chat-page .xora-chat-empty-actions button {
+  position: relative;
+  isolation: isolate;
+  min-width: 118px;
+  min-height: 40px;
+  overflow: hidden;
+  padding: 0 15px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #FFFEFC 0%, #F3E7DD 100%);
+  box-shadow: 0 2px 3px rgba(70,43,27,.08), 0 7px 13px rgba(70,43,27,.10), inset 0 1px 0 rgba(255,255,255,.96);
+}
+.xora-chat-page .xora-chat-empty-actions button:first-child {
+  border-color: rgba(153,66,38,.36);
+  background: linear-gradient(135deg, #CF805D 0%, #B5502E 58%, #9E4528 100%);
+  color: #FFFCF8;
+  box-shadow: 0 3px 5px rgba(82,35,20,.16), 0 9px 16px rgba(82,35,20,.20), inset 0 1px 0 rgba(255,255,255,.38);
+}
+@keyframes xora-chat-warm-sheen {
+  0% { opacity: 0; transform: skewX(-18deg) translateX(-150%); }
+  18% { opacity: .85; }
+  100% { opacity: 0; transform: skewX(-18deg) translateX(430%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-chat-page .xora-chat-modal-actions button::after,
+  .xora-chat-page .xora-chat-empty-actions button::after,
+  .xora-chat-page .xora-chat-create-trigger::after { animation: none !important; }
+}
+
+
+/* Keep the mobile Chat surface clean: remove the long horizontal divider rules. */
+@media (max-width: 767px) {
+  .xora-chat-page .xora-chat-conversation-item {
+    border-bottom-color: transparent !important;
+    border-bottom-width: 0 !important;
+  }
+  .xora-chat-page .xora-chat-shell > main > header {
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+  .xora-chat-page .xora-chat-sidebar-header {
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+}
