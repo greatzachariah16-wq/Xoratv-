@@ -1265,6 +1265,7 @@ function ChatComposer({
   const [files, setFiles] = React.useState<FilePreviewItem[]>([])
   const [isDragging, setIsDragging] = React.useState(false)
   const [showAttachMenu, setShowAttachMenu] = React.useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
   const [attachMenuClosing, setAttachMenuClosing] = React.useState(false)
   const attachMenuCloseTimer = React.useRef<number | null>(null)
   const closeAttachMenu = React.useCallback(() => {
@@ -1310,6 +1311,20 @@ function ChatComposer({
     }
   }, [showAttachMenu])
   const hasContent = value.trim().length > 0 || files.length > 0
+  const insertEmoji = React.useCallback((emoji: string) => {
+    const textarea = textareaRef.current
+    const start = textarea?.selectionStart ?? value.length
+    const end = textarea?.selectionEnd ?? value.length
+    const next = value.slice(0, start) + emoji + value.slice(end)
+    setValue(next)
+    window.setTimeout(() => {
+      if (!textarea) return
+      textarea.focus()
+      const cursor = start + emoji.length
+      textarea.setSelectionRange(cursor, cursor)
+      resize()
+    }, 0)
+  }, [value, textareaRef, resize])
 
   const addFiles = React.useCallback((newFiles: FileList | File[]) => {
     const arr = Array.from(newFiles)
@@ -1472,7 +1487,7 @@ function ChatComposer({
                     Photo or video
                   </button>
                   <button
-                    onClick={() => closeAttachMenu()}
+                    onClick={() => { closeAttachMenu(); setShowEmojiPicker(true) }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <Smile className="size-4" />

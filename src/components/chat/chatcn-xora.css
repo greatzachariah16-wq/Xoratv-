@@ -1827,3 +1827,58 @@
     box-shadow: none !important;
   }
 }
+
+
+/* Compact inbox density: keep more conversations visible without sacrificing tap targets. */
+@media (max-width: 767px) {
+  .xora-chat-page .xora-chat-sidebar-header {
+    padding: 12px 15px 9px;
+  }
+  .xora-chat-page .xora-chat-brandline {
+    margin-bottom: 10px;
+  }
+  .xora-chat-page .xora-chat-sidebar-header h1 {
+    font-size: 23px;
+  }
+  .xora-chat-page .xora-chat-search-wrap {
+    min-height: 40px;
+    margin: 2px 14px 8px;
+  }
+  .xora-chat-page .xora-chat-filter-row {
+    gap: 6px;
+    padding: 0 14px 9px;
+  }
+  .xora-chat-page .xora-chat-filter-row button {
+    min-height: 28px;
+    padding-inline: 9px;
+  }
+  .xora-chat-page .xora-chat-list-heading {
+    padding: 0 16px 5px;
+  }
+  .xora-chat-page .xora-chat-conversation-list {
+    padding: 0 8px max(8px, env(safe-area-inset-bottom));
+  }
+  .xora-chat-page .xora-chat-conversation-item {
+    min-height: 62px;
+    margin: 1px 0;
+    padding: 6px 8px;
+    gap: 10px;
+    border-radius: 13px;
+  }
+  .xora-chat-page .xora-chat-avatar-wrap,
+  .xora-chat-page .xora-chat-avatar-image,
+  .xora-chat-page .xora-chat-avatar-fallback {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+  .xora-chat-page .xora-chat-conversation-title {
+    font-size: 12px;
+  }
+  .xora-chat-page .xora-chat-preview-row {
+    margin-top: 3px;
+  }
+  .xora-chat-page .xora-chat-conversation-preview {
+    font-size: 10px;
+  }
+}

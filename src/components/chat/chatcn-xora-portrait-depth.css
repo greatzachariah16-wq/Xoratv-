@@ -44,7 +44,7 @@
       inset 0 0 0 5px rgba(255,255,255,.44);
   }
 
-  .xora-chat-page .xora-chat-shell::before {
+  .xora-chat-page .xora-chat-shell::before {\n    display: none;
     content: "";
     position: absolute;
     inset: 7px;
@@ -57,7 +57,7 @@
     pointer-events: none;
   }
 
-  .xora-chat-page .xora-chat-shell::after {
+  .xora-chat-page .xora-chat-shell::after {\n    display: none;
     content: "";
     position: absolute;
     inset: 0;
