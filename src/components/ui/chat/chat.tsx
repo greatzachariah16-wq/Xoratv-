@@ -484,6 +484,22 @@ function ChatMessage({
   const { currentUser } = useChatContext()
   const radiusClass = getBubbleRadius(isOutgoing, position)
   const [lightboxImage, setLightboxImage] = React.useState<string | null>(null)
+  const [lightboxClosing, setLightboxClosing] = React.useState(false)
+  const lightboxCloseTimer = React.useRef<number | null>(null)
+  const openLightbox = (url: string) => {
+    if (lightboxCloseTimer.current !== null) window.clearTimeout(lightboxCloseTimer.current)
+    setLightboxClosing(false)
+    setLightboxImage(url)
+  }
+  const closeLightbox = () => {
+    setLightboxClosing(true)
+    if (lightboxCloseTimer.current !== null) window.clearTimeout(lightboxCloseTimer.current)
+    lightboxCloseTimer.current = window.setTimeout(() => {
+      setLightboxImage(null)
+      setLightboxClosing(false)
+      lightboxCloseTimer.current = null
+    }, 180)
+  }
 
   return (
     <div
@@ -555,7 +571,7 @@ function ChatMessage({
                 {message.images.map((img, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setLightboxImage(img.url)}
+                    onClick={() => openLightbox(img.url)}
                     className="cursor-pointer rounded-lg overflow-hidden"
                     aria-label="View image"
                   >
@@ -676,17 +692,17 @@ function ChatMessage({
       {/* Image lightbox */}
       {lightboxImage && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setLightboxImage(null)}
+          className={`xora-chat-floating-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm ${lightboxClosing ? "is-closing" : ""}`}
+          onClick={closeLightbox}
         >
           <button
-            onClick={() => setLightboxImage(null)}
+            onClick={closeLightbox}
             className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             aria-label="Close lightbox"
           >
             <X className="size-5" />
           </button>
-          <div className="xora-chat-float-wrap xora-chat-float-wrap--media">
+          <div className={`xora-chat-float-wrap xora-chat-float-wrap--media ${lightboxClosing ? "is-closing" : ""}`}>
             <img
               src={lightboxImage}
               alt=""
