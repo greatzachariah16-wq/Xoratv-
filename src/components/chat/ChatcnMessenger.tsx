@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Compass, MessageCircle, Plus, Users, Lock, Search, Sparkles, Loader2 } from "lucide-react";
+import { Compass, MessageCircle, Plus, Users, Lock, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { type ChatMessageData, type SidebarConversation, type ChatUser } from "@/components/ui/chat";
 import XoraChatLayout from "./XoraChatLayout";
@@ -147,15 +147,14 @@ export default function ChatcnMessenger({
       ) : (
         <section className="xora-community-discover-view">
           <div className="xora-community-discover-heading">
-            <div className="xora-community-heading-mark"><Sparkles className="size-6" /></div>
-            <p className="xora-community-eyebrow">THE PUBLIC SIDE OF XORATV</p>
+            <p className="xora-community-eyebrow">XORATV COMMUNITY</p>
             <h1>Find your people.</h1>
             <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
             <div className="xora-community-privacy-note"><Lock className="size-4" /><span>Your private messages are separate. Only members of a circle can see its conversation.</span></div>
           </div>
 
           <div className="xora-community-directory-head">
-            <div><h2>Explore public circles</h2><p>Choose a space and jump into the conversation.</p></div>
+            <div><h2>Explore public circles</h2><p>Find a space that feels like yours.</p></div>
             <button type="button" className="xora-community-create" onClick={onOpenNewGroup}><Plus className="size-4" /> Create circle</button>
           </div>
 
