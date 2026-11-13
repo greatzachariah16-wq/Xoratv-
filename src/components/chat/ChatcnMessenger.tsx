@@ -22,6 +22,7 @@ type Props = {
   onSend: (text: string) => void;
   onOpenNewDm: () => void;
   onOpenNewGroup: () => void;
+  onBackToPrevious: () => void;
   onJoinGroup: (id: string) => void;
 };
 
@@ -37,6 +38,7 @@ export default function ChatcnMessenger({
   onSend,
   onOpenNewDm,
   onOpenNewGroup,
+  onBackToPrevious,
 }: Props) {
   const currentUser: ChatUser = {
     id: currentUserId || "guest",
@@ -92,6 +94,7 @@ export default function ChatcnMessenger({
         subtitle={subtitle}
         onNewMessage={onOpenNewDm}
         onNewGroup={onOpenNewGroup}
+        onBackToPrevious={onBackToPrevious}
       />
     </div>
   );
