@@ -1332,3 +1332,95 @@
     margin-top: 11px;
   }
 }
+
+
+/* Shared popup elevation: warm, layered and deliberately lifted above the chat canvas. */
+.xora-chat-page {
+  --shadow-float:
+    0 2px 4px rgba(90, 40, 20, 0.10),
+    0 12px 24px rgba(90, 40, 20, 0.14),
+    0 32px 64px -8px rgba(90, 40, 20, 0.22),
+    0 64px 120px -16px rgba(90, 40, 20, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  --shadow-float-sm:
+    0 1px 3px rgba(90, 40, 20, 0.10),
+    0 7px 14px rgba(90, 40, 20, 0.14),
+    0 19px 38px -5px rgba(90, 40, 20, 0.22),
+    0 38px 72px -10px rgba(90, 40, 20, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+}
+
+.xora-chat-floating-overlay {
+  animation: xora-popup-overlay-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.xora-chat-floating-modal {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-float) !important;
+  transform-origin: center center;
+  animation: xora-popup-float-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity, box-shadow;
+}
+
+.xora-chat-floating-modal.is-closing {
+  animation: xora-popup-float-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+.xora-chat-floating-overlay.is-closing {
+  animation: xora-popup-overlay-out 180ms ease-in both;
+  pointer-events: none;
+}
+
+.xora-chat-page .xora-chat-create-menu {
+  box-shadow: var(--shadow-float-sm) !important;
+  transform-origin: top right;
+  animation: xora-popup-float-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity, box-shadow;
+}
+
+@keyframes xora-popup-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+    box-shadow: 0 2px 4px rgba(90, 40, 20, 0.07), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: var(--shadow-float);
+  }
+}
+
+@keyframes xora-popup-float-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: var(--shadow-float);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+    box-shadow: 0 2px 4px rgba(90, 40, 20, 0.07), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+}
+
+@keyframes xora-popup-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes xora-popup-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xora-chat-floating-overlay,
+  .xora-chat-floating-modal,
+  .xora-chat-floating-modal.is-closing,
+  .xora-chat-page .xora-chat-create-menu {
+    animation-duration: 0.01ms !important;
+  }
+}
