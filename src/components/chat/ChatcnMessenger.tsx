@@ -50,7 +50,11 @@ export default function ChatcnMessenger({
 }: Props) {
   const [section, setSection] = useState<"messages" | "discover">(rooms.length ? "messages" : "discover");
   const [communityQuery, setCommunityQuery] = useState("");
-  const [joiningId, setJoiningId] = useState<string | null>(null);\n\n  useEffect(() => {\n    if (rooms.length > 0) setSection("messages");\n  }, [rooms.length]);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (rooms.length > 0) setSection("messages");
+  }, [rooms.length]);
 
   const currentUser: ChatUser = {
     id: currentUserId || "guest",
