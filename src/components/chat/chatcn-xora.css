@@ -1439,3 +1439,10 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+
+/* Let the New chat menu's deep shadow escape its header and sidebar containers. */
+.xora-chat-page .xora-chat-shell,
+.xora-chat-page .xora-chat-sidebar {
+  overflow: visible !important;
+}
