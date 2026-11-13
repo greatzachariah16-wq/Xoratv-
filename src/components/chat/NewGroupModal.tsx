@@ -97,7 +97,7 @@ export default function NewGroupModal({
             </p>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="xora-chat-modal-actions flex items-center gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}

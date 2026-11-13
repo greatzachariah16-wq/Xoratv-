@@ -150,7 +150,7 @@ export default function XoraChatLayout({
                 </button>
                 {createMenuOpen && createMenuPosition && typeof document !== "undefined" && createPortal(
                   <div
-                    className={`xora-chat-page float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm ${createMenuClosing ? "is-closing" : ""}`}
+                    className={`xora-chat-page xora-chat-create-portal float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm ${createMenuClosing ? "is-closing" : ""}`}
                     style={{
                       position: "fixed",
                       top: createMenuPosition.top,
