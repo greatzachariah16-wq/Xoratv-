@@ -1407,7 +1407,8 @@ function ChatComposer({
                     <Smile className="size-4" />
                     Emoji
                   </button>
-                  </div>,
+                  </div>
+                </div>,
                 document.body
               )}
             </div>
