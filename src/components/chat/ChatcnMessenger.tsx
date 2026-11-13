@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Compass, MessageCircle, Plus, Users, Lock, Search, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { type ChatMessageData, type SidebarConversation, type ChatUser } from "@/components/ui/chat";
@@ -50,7 +50,7 @@ export default function ChatcnMessenger({
 }: Props) {
   const [section, setSection] = useState<"messages" | "discover">(rooms.length ? "messages" : "discover");
   const [communityQuery, setCommunityQuery] = useState("");
-  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [joiningId, setJoiningId] = useState<string | null>(null);\n\n  useEffect(() => {\n    if (rooms.length > 0) setSection("messages");\n  }, [rooms.length]);
 
   const currentUser: ChatUser = {
     id: currentUserId || "guest",
