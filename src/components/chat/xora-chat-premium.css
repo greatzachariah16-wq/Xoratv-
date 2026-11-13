@@ -13,8 +13,8 @@
   --xc-purple-soft: rgba(162, 123, 199, .14);
   --xc-terracotta: #c98268;
   --xc-green: #71c59b;
-  --xc-shadow: 0 22px 70px rgba(0,0,0,.32);
-  --xc-card-shadow: 0 10px 28px rgba(0,0,0,.18);
+  --xc-shadow: 0 38px 90px -18px rgba(0,0,0,.88), 0 18px 38px -12px rgba(0,0,0,.72), 0 5px 12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+  --xc-card-shadow: 0 22px 48px -14px rgba(0,0,0,.78), 0 8px 18px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.055);
   --xc-radius-card: 22px;
   --xc-radius-control: 15px;
   --xc-radius-bubble: 20px;
@@ -41,8 +41,8 @@
   --xc-purple-soft: rgba(97, 59, 128, .09);
   --xc-terracotta: #b96f58;
   --xc-green: #3d8c67;
-  --xc-shadow: 0 20px 60px rgba(49, 34, 54, .09);
-  --xc-card-shadow: 0 8px 26px rgba(49, 34, 54, .055);
+  --xc-shadow: 0 34px 76px -16px rgba(37,24,43,.34), 0 16px 34px -10px rgba(37,24,43,.24), 0 4px 10px rgba(37,24,43,.16), inset 0 1px 0 rgba(255,255,255,.9);
+  --xc-card-shadow: 0 18px 42px -12px rgba(37,24,43,.22), 0 7px 16px rgba(37,24,43,.12), inset 0 1px 0 rgba(255,255,255,.8);
   color-scheme: light;
 }
 .xora-live-page * { box-sizing: border-box; }
@@ -1354,4 +1354,59 @@
     transition-duration: .01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Deep-elevation popup system: prioritize the cast shadow and physical lift. */
+.xora-elevation-overlay {
+  background: rgba(5, 4, 8, .76) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(.82);
+  backdrop-filter: blur(9px) saturate(.82);
+}
+.xora-elevation-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(150deg, rgba(39,36,46,.99), rgba(17,16,22,.995) 58%, rgba(11,10,15,.995)) !important;
+  box-shadow:
+    0 58px 110px -22px rgba(0,0,0,.98),
+    0 32px 62px -18px rgba(0,0,0,.94),
+    0 14px 28px -9px rgba(0,0,0,.82),
+    0 4px 10px rgba(0,0,0,.7),
+    inset 0 1px 0 rgba(255,255,255,.13),
+    inset 0 -1px 0 rgba(0,0,0,.55) !important;
+  transform: translateY(-3px);
+  animation: xc-elevation-enter .28s cubic-bezier(.16,1,.3,1) both;
+}
+.xora-elevation-panel::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto;
+  height: 42%;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.075), transparent);
+}
+.xora-elevation-panel::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 34px rgba(190,160,220,.045);
+}
+.xora-live-page .xc-room-menu {
+  border-color: rgba(255,255,255,.16);
+  background: linear-gradient(150deg, #24212b, #111017 72%);
+  box-shadow: 0 42px 76px -14px rgba(0,0,0,.98), 0 18px 34px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.11);
+  animation: xc-elevation-enter .2s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes xc-elevation-enter {
+  from { opacity: 0; transform: translateY(10px) scale(.975); }
+  to { opacity: 1; transform: translateY(-3px) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-elevation-panel { animation: none; transform: none; }
 }
