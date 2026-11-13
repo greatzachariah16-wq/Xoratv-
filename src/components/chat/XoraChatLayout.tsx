@@ -131,7 +131,7 @@ export default function XoraChatLayout({
                 </button>
                 {createMenuOpen && createMenuPosition && typeof document !== "undefined" && createPortal(
                   <div
-                    className="xora-chat-float-wrap xora-chat-float-wrap--sm"
+                    className="xora-chat-page xora-chat-float-wrap xora-chat-float-wrap--sm"
                     style={{
                       position: "fixed",
                       top: createMenuPosition.top,
