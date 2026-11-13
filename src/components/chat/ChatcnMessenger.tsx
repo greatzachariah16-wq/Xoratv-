@@ -31,6 +31,8 @@ type Props = {
   onJoinGroup: (id: string) => void | Promise<void>;
 };
 
+const communityArtTones = ["tone-teal", "tone-pink", "tone-lilac", "tone-sky"] as const;
+
 export default function ChatcnMessenger({
   currentUserId,
   currentProfile,
@@ -121,11 +123,11 @@ export default function ChatcnMessenger({
   return (
     <div className="xora-chat-page xora-community-app h-[100dvh] min-h-[100svh] w-full min-w-0 overflow-hidden">
       <nav className="xora-community-switcher" aria-label="Chat spaces">
-        <button type="button" className={section === "messages" ? "is-active" : ""} aria-pressed={section === "messages"} onClick={() => changeSection("messages")}>
-          <MessageCircle className="size-4" /> Messages <span className="xora-community-switch-count">{conversations.length}</span>
+        <button type="button" className={section === "messages" ? "is-active shadow-hard-sm" : ""} aria-pressed={section === "messages"} onClick={() => changeSection("messages")}>
+          <MessageCircle className="size-4" /> Messages
         </button>
-        <button type="button" className={section === "discover" ? "is-active" : ""} aria-pressed={section === "discover"} onClick={() => changeSection("discover")}>
-          <Compass className="size-4" /> Discover <span className="xora-community-switch-count">{discoverableRooms.length}</span>
+        <button type="button" className={section === "discover" ? "is-active shadow-hard-sm" : ""} aria-pressed={section === "discover"} onClick={() => changeSection("discover")}>
+          <Compass className="size-4" /> Discover
         </button>
       </nav>
 
@@ -146,17 +148,17 @@ export default function ChatcnMessenger({
         </div>
       ) : (
         <section className="xora-community-discover-view">
-          <header className="xora-community-discover-heading">
+          <header className="xora-community-discover-heading shadow-hard">
             <h1>Find your people.</h1>
             <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
           </header>
 
           <div className="xora-community-directory-head">
             <div><h2>Explore public circles</h2><p>Find a space that feels like yours.</p></div>
-            <button type="button" className="xora-community-create pressable" onClick={onOpenNewGroup}><Plus className="size-4" /> Create circle</button>
+            <button type="button" className="xora-community-create pressable shadow-hard-sm" onClick={onOpenNewGroup}><Plus className="size-4" /> Create circle</button>
           </div>
 
-          <label className="xora-community-search pressable">
+          <label className="xora-community-search pressable shadow-hard-sm">
             <span className="sr-only">Search public circles</span>
             <Search className="size-4" aria-hidden="true" />
             <input value={communityQuery} onChange={(event) => setCommunityQuery(event.target.value)} placeholder="Search circles..." />
@@ -168,19 +170,19 @@ export default function ChatcnMessenger({
           </div>
 
           <div className="xora-community-directory-list">
-            {communities.length ? communities.map((room) => {
+            {communities.length ? communities.map((room, index) => {
               const memberCount = Object.keys(room.memberIds || {}).length;
               return (
-                <article className="xora-community-tile" key={room.id}>
-                  <div className="xora-community-tile-art">
+                <article className="xora-community-tile shadow-hard-sm" key={room.id}>
+                  <div className={`xora-community-tile-art ${communityArtTones[index % communityArtTones.length]}`}>
                     {room.photo_url ? <img src={room.photo_url} alt="" loading="lazy" /> : <Users className="size-6" aria-hidden="true" />}
                   </div>
                   <div className="xora-community-tile-copy">
                     <h3>{room.name || "Xora community circle"}</h3>
                     <p>{room.description || "A place to meet people and share what you love."}</p>
-                    <span>{memberCount} {memberCount === 1 ? "member" : "members"} · Public</span>
+                    <span className="xora-community-member-pill">{memberCount} {memberCount === 1 ? "member" : "members"} · Public</span>
                   </div>
-                  <button type="button" className="xora-community-join" disabled={joiningId === room.id || Boolean(joiningId)} onClick={() => void joinCommunity(room.id)}>
+                  <button type="button" className="xora-community-join pressable" disabled={joiningId === room.id || Boolean(joiningId)} onClick={() => void joinCommunity(room.id)}>
                     {joiningId === room.id ? <Loader2 className="size-4 animate-spin" /> : null}
                     {joiningId === room.id ? "Joining" : "Join"}
                   </button>
@@ -191,10 +193,20 @@ export default function ChatcnMessenger({
                 <div><Compass className="size-7" aria-hidden="true" /></div>
                 <h3>{discoverableError ? "The directory is taking a breather" : communityQuery.trim() ? `No circles match “${communityQuery.trim()}”.` : "Your first circle is waiting."}</h3>
                 <p>{discoverableError ? "We couldn't load public circles right now. The directory will retry automatically." : communityQuery.trim() ? "Create one and invite people." : "Create a circle and invite your people. Public circles will also appear here when available."}</p>
-                {!communityQuery.trim() && !discoverableError && <button type="button" onClick={onOpenNewGroup}><Plus className="size-4" /> Create the first circle</button>}
               </div>
             )}
           </div>
+
+          <aside className="xora-community-start-card">
+            <div className="xora-community-start-copy">
+              <h3>Start your own</h3>
+              <p>Bring your people together in a circle of your own.</p>
+            </div>
+            <button type="button" className="xora-community-start-button pressable" onClick={onOpenNewGroup}>
+              <Plus className="size-4" /> Create circle
+            </button>
+          </aside>
+
           {discoverableError && <p className="xora-community-directory-error" role="status">Community directory connection issue. Retrying automatically.</p>}
         </section>
       )}
