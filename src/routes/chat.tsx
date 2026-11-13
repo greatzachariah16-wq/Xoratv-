@@ -323,7 +323,8 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   }
 
   function handleInboxBack() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
+    const historyIndex = typeof window !== "undefined" ? window.history.state?.__TSR_index : undefined;
+    if (typeof historyIndex === "number" && historyIndex > 0) {
       window.history.back();
       return;
     }
