@@ -46,6 +46,25 @@ export default function XoraChatLayout({
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [createMenuClosing, setCreateMenuClosing] = useState(false);
+  const createMenuCloseTimer = useRef<number | null>(null);
+  const closeCreateMenu = () => {
+    setCreateMenuClosing(true);
+    if (createMenuCloseTimer.current !== null) window.clearTimeout(createMenuCloseTimer.current);
+    createMenuCloseTimer.current = window.setTimeout(() => {
+      setCreateMenuOpen(false);
+      setCreateMenuClosing(false);
+      createMenuCloseTimer.current = null;
+    }, 180);
+  };
+  const toggleCreateMenu = () => {
+    if (createMenuOpen) closeCreateMenu();
+    else {
+      if (createMenuCloseTimer.current !== null) window.clearTimeout(createMenuCloseTimer.current);
+      setCreateMenuClosing(false);
+      setCreateMenuOpen(true);
+    }
+  };
   const createTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [createMenuPosition, setCreateMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -121,7 +140,7 @@ export default function XoraChatLayout({
                   type="button"
                   ref={createTriggerRef}
                   className="xora-chat-create-trigger"
-                  onClick={() => setCreateMenuOpen((open) => !open)}
+                  onClick={toggleCreateMenu}
                   aria-label="Create a new chat"
                   aria-haspopup="menu"
                   aria-expanded={createMenuOpen}
@@ -131,7 +150,7 @@ export default function XoraChatLayout({
                 </button>
                 {createMenuOpen && createMenuPosition && typeof document !== "undefined" && createPortal(
                   <div
-                    className="xora-chat-page xora-chat-float-wrap xora-chat-float-wrap--sm"
+                    className={`xora-chat-page xora-chat-float-wrap xora-chat-float-wrap--sm ${createMenuClosing ? "is-closing" : ""}`}
                     style={{
                       position: "fixed",
                       top: createMenuPosition.top,
@@ -141,10 +160,10 @@ export default function XoraChatLayout({
                     }}
                   >
                     <div className="xora-chat-create-menu xora-chat-float-surface" role="menu" aria-label="New conversation options">
-                      <button type="button" role="menuitem" onClick={() => { setCreateMenuOpen(false); onNewMessage(); }}>
+                      <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); onNewMessage(); }}>
                         <MessageCircle className="size-4" /> Private message
                       </button>
-                      <button type="button" role="menuitem" onClick={() => { setCreateMenuOpen(false); onNewGroup(); }}>
+                      <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); onNewGroup(); }}>
                         <Users className="size-4" /> Create a circle
                       </button>
                     </div>
