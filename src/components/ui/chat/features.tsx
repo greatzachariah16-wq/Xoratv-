@@ -42,6 +42,13 @@ function ChatForwardDialog({
 }: ChatForwardDialogProps) {
   const [query, setQuery] = React.useState("")
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
+  const [isClosing, setIsClosing] = React.useState(false)
+  const closeTimer = React.useRef<number | null>(null)
+  const closeDialog = () => {
+    setIsClosing(true)
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(onCancel, 180)
+  }
 
   const filtered = conversations.filter((c) =>
     c.title.toLowerCase().includes(query.toLowerCase())
@@ -57,13 +64,13 @@ function ChatForwardDialog({
   }
 
   return typeof document !== "undefined" ? createPortal(
-    <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-black/50", className)}>
-      <div className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--large">
+    <div className={cn(`xora-chat-floating-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${isClosing ? "is-closing" : ""}`, className)}>
+      <div className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--large ${isClosing ? "is-closing" : ""}`}>
         <div className="xora-chat-float-surface w-full max-w-sm overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--chat-border)] px-4 py-3">
           <span className="text-[14px] font-semibold text-[var(--chat-text-primary)]">Forward message</span>
-          <button onClick={onCancel} className="text-[var(--chat-text-tertiary)] hover:text-[var(--chat-text-primary)]">
+          <button onClick={closeDialog} className="text-[var(--chat-text-tertiary)] hover:text-[var(--chat-text-primary)]">
             <X className="size-4" />
           </button>
         </div>
@@ -110,11 +117,11 @@ function ChatForwardDialog({
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-2 border-t border-[var(--chat-border)] px-4 py-3">
-          <button onClick={onCancel} className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--chat-text-secondary)] hover:bg-[var(--chat-accent-soft)]">
+          <button onClick={closeDialog} className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--chat-text-secondary)] hover:bg-[var(--chat-accent-soft)]">
             Cancel
           </button>
           <button
-            onClick={() => onForward(Array.from(selected))}
+            onClick={() => { onForward(Array.from(selected)); closeDialog(); }}
             disabled={selected.size === 0}
             className="rounded-lg bg-[var(--chat-accent)] px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-40"
           >
@@ -422,6 +429,13 @@ interface ChatSearchProps {
 function ChatSearch({ onSearch, onSelect, onClose, className }: ChatSearchProps) {
   const [query, setQuery] = React.useState("")
   const [results, setResults] = React.useState<SearchResult[]>([])
+  const [isClosing, setIsClosing] = React.useState(false)
+  const closeTimer = React.useRef<number | null>(null)
+  const closeDialog = React.useCallback(() => {
+    setIsClosing(true)
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(onClose, 180)
+  }, [onClose])
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
@@ -438,14 +452,14 @@ function ChatSearch({ onSearch, onSelect, onClose, className }: ChatSearchProps)
   }, [query, onSearch])
 
   React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") closeDialog() }
     document.addEventListener("keydown", handler)
     return () => document.removeEventListener("keydown", handler)
-  }, [onClose])
+  }, [closeDialog])
 
   return typeof document !== "undefined" ? createPortal(
-    <div className={cn("fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50", className)}>
-      <div className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--wide">
+    <div className={cn(`xora-chat-floating-overlay fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 ${isClosing ? "is-closing" : ""}`, className)}>
+      <div className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--wide ${isClosing ? "is-closing" : ""}`}>
         <div className="xora-chat-float-surface w-full max-w-lg overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Search input */}
         <div className="flex items-center gap-3 border-b border-[var(--chat-border)] px-4 py-3">
@@ -466,7 +480,7 @@ function ChatSearch({ onSearch, onSelect, onClose, className }: ChatSearchProps)
           {results.map((r) => (
             <button
               key={r.messageId}
-              onClick={() => { onSelect(r); onClose() }}
+              onClick={() => { onSelect(r); closeDialog() }}
               className="flex w-full flex-col gap-0.5 border-b border-[var(--chat-border)] px-4 py-2.5 text-left transition-colors hover:bg-[var(--chat-accent-soft)]"
             >
               <div className="flex items-center gap-2">
