@@ -1446,6 +1446,34 @@ function ChatComposer({
         </div>
       )}
 
+      {showEmojiPicker && (
+        <div
+          className="absolute bottom-full left-3 z-[10060] mb-3 w-[min( min( calc(100vw - 24px), 360px), 360px)] rounded-2xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-3 shadow-[var(--chat-shadow-toolbar)]"
+          role="dialog"
+          aria-label="Choose an emoji"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--chat-text-primary)]">Choose an emoji</span>
+            <button type="button" onClick={() => setShowEmojiPicker(false)} className="flex size-7 items-center justify-center rounded-full text-[var(--chat-text-tertiary)] hover:bg-[var(--chat-accent-soft)]" aria-label="Close emoji picker">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-8 gap-1">
+            {["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😍","🥰","😘","😋","😎","🤩","🥳","😭","😢","😮","😱","🤔","🙄","😴","🤗","🤭","🫡","🤝","🙏","👏","👍","👎","❤️","🧡","💛","💚","💙","💜","🖤","💔","🔥","✨","🎉","🎊","💯","💪","🌹","🌸","☀️","🌙","⭐","🎬","🎵","🍿","⚽","🏆","🐱","🐶","🌍","🚀"].map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => { insertEmoji(emoji); setShowEmojiPicker(false); }}
+                className="flex aspect-square items-center justify-center rounded-lg text-[22px] transition-colors hover:bg-[var(--chat-accent-soft)] active:scale-95"
+                aria-label={`Insert ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Composer body — frosted glass */}
       <div className="border-t border-[var(--chat-border)] bg-[var(--chat-bg-composer)] px-3 py-2 backdrop-blur-[20px] backdrop-saturate-[180%]">
         <div className="mx-auto max-w-3xl">
