@@ -1402,7 +1402,7 @@
   left: -12%;
   right: -12%;
   top: 35%;
-  bottom: -35%;
+  bottom: clamp(-120px, -25%, -60px);
   z-index: 0;
   border-radius: inherit;
   background:
@@ -1452,7 +1452,7 @@
   left: -10%;
   right: -10%;
   top: 35%;
-  bottom: -28%;
+  bottom: clamp(-72px, -28%, -40px);
   background:
     radial-gradient(60% 50% at 30% 60%, rgba(var(--shadow-tint), 0.32), transparent 70%),
     radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, 0.28), transparent 70%);
