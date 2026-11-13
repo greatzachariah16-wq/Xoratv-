@@ -123,7 +123,7 @@ function QuickReactionPicker({
 }) {
   return (
     <div
-      className="chat-toolbar-enter flex items-center gap-0.5 rounded-[10px] border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-1 shadow-[var(--chat-shadow-toolbar)]"
+      className="chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface flex items-center gap-0.5 rounded-[10px] border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-1 shadow-[var(--chat-shadow-toolbar)]"
       onMouseLeave={onClose}
     >
       {QUICK_REACTIONS.map((emoji) => (
@@ -255,7 +255,6 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
             <div
               className={cn(
                 "chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
-                isOutgoing ? "right-0" : "left-0"
               )}
               onMouseLeave={() => setShowMore(false)}
             >
