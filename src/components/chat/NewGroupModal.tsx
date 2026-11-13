@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { X, Loader2, Users } from "lucide-react";
 
 export interface NewGroupModalProps {
@@ -22,11 +22,29 @@ export default function NewGroupModal({
   onClose,
   onSubmit,
 }: NewGroupModalProps) {
-  if (!open) return null;
+  const [isMounted, setIsMounted] = useState(open);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true);
+      setIsClosing(false);
+      return;
+    }
+    if (!isMounted) return;
+    setIsClosing(true);
+    const timeout = window.setTimeout(() => {
+      setIsMounted(false);
+      setIsClosing(false);
+    }, 200);
+    return () => window.clearTimeout(timeout);
+  }, [open, isMounted]);
+
+  if (!isMounted) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-surface border border-border shadow-card overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className={`xora-chat-floating-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm ${isClosing ? "is-closing" : ""}`}>
+      <div className={`xora-chat-floating-modal w-full max-w-md rounded-2xl bg-surface border border-border shadow-card overflow-hidden ${isClosing ? "is-closing" : ""}`}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-display text-lg text-foreground flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
