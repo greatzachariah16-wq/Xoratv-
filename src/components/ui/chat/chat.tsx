@@ -1267,7 +1267,7 @@ function ChatComposer({
   const [showAttachMenu, setShowAttachMenu] = React.useState(false)
   const [attachMenuClosing, setAttachMenuClosing] = React.useState(false)
   const attachMenuCloseTimer = React.useRef<number | null>(null)
-  const closeAttachMenu = () => {
+  const closeAttachMenu = React.useCallback(() => {
     setAttachMenuClosing(true)
     if (attachMenuCloseTimer.current !== null) window.clearTimeout(attachMenuCloseTimer.current)
     attachMenuCloseTimer.current = window.setTimeout(() => {
@@ -1275,15 +1275,15 @@ function ChatComposer({
       setAttachMenuClosing(false)
       attachMenuCloseTimer.current = null
     }, 180)
-  }
-  const toggleAttachMenu = () => {
+  }, [])
+  const toggleAttachMenu = React.useCallback(() => {
     if (showAttachMenu) closeAttachMenu()
     else {
       if (attachMenuCloseTimer.current !== null) window.clearTimeout(attachMenuCloseTimer.current)
       setAttachMenuClosing(false)
       setShowAttachMenu(true)
     }
-  }
+  }, [showAttachMenu, closeAttachMenu])
   const attachTriggerRef = React.useRef<HTMLButtonElement>(null)
   const [attachMenuPosition, setAttachMenuPosition] = React.useState<{ bottom: number; left: number } | null>(null)
   const { textareaRef, resize } = useAutoResize({ maxRows: 6 })
@@ -1376,7 +1376,7 @@ function ChatComposer({
         closeAttachMenu()
       }
     },
-    [addFiles]
+    [addFiles, closeAttachMenu]
   )
 
   // Drag-and-drop handlers (on the composer container)
@@ -1397,7 +1397,7 @@ function ChatComposer({
         closeAttachMenu()
       }
     },
-    [addFiles]
+    [addFiles, closeAttachMenu]
   )
 
   return (
