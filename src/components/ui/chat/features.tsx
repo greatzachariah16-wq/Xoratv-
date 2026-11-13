@@ -65,7 +65,7 @@ function ChatForwardDialog({
 
   return typeof document !== "undefined" ? createPortal(
     <div className={cn(`xora-chat-floating-overlay xora-elevation-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 ${isClosing ? "is-closing" : ""}`, className)}>
-      <div className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--large ${isClosing ? "is-closing" : ""}`}>
+      <div className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--large xora-elevation-wrap ${isClosing ? "is-closing" : ""}`}>
         <div className="float-surface xora-chat-float-surface xora-elevation-panel w-full max-w-sm overflow-hidden border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--chat-border)] px-4 py-3">
@@ -458,9 +458,9 @@ function ChatSearch({ onSearch, onSelect, onClose, className }: ChatSearchProps)
   }, [closeDialog])
 
   return typeof document !== "undefined" ? createPortal(
-    <div className={cn(`xora-chat-floating-overlay fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 ${isClosing ? "is-closing" : ""}`, className)}>
-      <div className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--wide ${isClosing ? "is-closing" : ""}`}>
-        <div className="float-surface xora-chat-float-surface w-full max-w-lg overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
+    <div className={cn(`xora-chat-floating-overlay xora-elevation-overlay fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 ${isClosing ? "is-closing" : ""}`, className)}>
+      <div className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--wide xora-elevation-wrap ${isClosing ? "is-closing" : ""}`}>
+        <div className="float-surface xora-chat-float-surface xora-elevation-panel w-full max-w-lg overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Search input */}
         <div className="flex items-center gap-3 border-b border-[var(--chat-border)] px-4 py-3">
           <Search className="size-4 text-[var(--chat-text-tertiary)]" />
