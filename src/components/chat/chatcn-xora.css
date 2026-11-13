@@ -1634,3 +1634,33 @@
 .xora-chat-page .xora-chat-sidebar {
   overflow: visible !important;
 }
+
+
+/* Body-portaled Chatcn popouts keep their chat palette after leaving the shell. */
+.xora-chat-float-wrap--wide {
+  width: min(100%, 32rem);
+}
+
+.xora-chat-float-wrap--media {
+  width: max-content;
+  max-width: 90vw;
+}
+
+.xora-chat-chatcn-popup {
+  --chat-bg-sidebar: #F8F2EC;
+  --chat-border-strong: rgba(75, 49, 34, 0.12);
+  --chat-accent-soft: rgba(181, 80, 46, 0.10);
+  --chat-text-secondary: #77665B;
+  --chat-text-primary: #30231D;
+  --chat-red: #C94942;
+  --chat-shadow-toolbar: var(--shadow-float-sm);
+}
+
+.xora-chat-chatcn-popup-surface {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+}
