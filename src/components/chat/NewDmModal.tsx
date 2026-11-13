@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2, MessageCircle } from "lucide-react";
 
 export interface NewDmModalProps {
@@ -18,15 +19,39 @@ export default function NewDmModal({
   onClose,
   onSubmit,
 }: NewDmModalProps) {
-  if (!open) return null;
+  const [isMounted, setIsMounted] = useState(open);
+  const [isClosing, setIsClosing] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-surface border border-border shadow-card overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+  useEffect(() => {
+    if (typeof document !== "undefined") setPortalTarget(document.body);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true);
+      setIsClosing(false);
+      return;
+    }
+    if (!isMounted) return;
+    setIsClosing(true);
+    const timeout = window.setTimeout(() => {
+      setIsMounted(false);
+      setIsClosing(false);
+    }, 200);
+    return () => window.clearTimeout(timeout);
+  }, [open, isMounted]);
+
+  if (!isMounted || !portalTarget) return null;
+
+  return createPortal(
+    <div className={`xora-chat-floating-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm ${isClosing ? "is-closing" : ""}`}>
+      <div className={`float-wrap xora-chat-float-wrap xora-chat-float-wrap--large ${isClosing ? "is-closing" : ""}`}>
+      <div className={`xora-chat-floating-modal float-surface xora-chat-float-surface w-full max-w-md rounded-2xl bg-surface border border-border shadow-card overflow-hidden`}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-display text-lg text-foreground flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-primary" />
-            New Direct Message
+            New chat
           </h3>
           <button
             onClick={onClose}
@@ -79,6 +104,8 @@ export default function NewDmModal({
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </div>,
+    portalTarget,
   );
 }

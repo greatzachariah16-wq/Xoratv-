@@ -123,7 +123,7 @@ function QuickReactionPicker({
 }) {
   return (
     <div
-      className="chat-toolbar-enter flex items-center gap-0.5 rounded-[10px] border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-1 shadow-[var(--chat-shadow-toolbar)]"
+      className="chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface flex items-center gap-0.5 rounded-[10px] border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-1 shadow-[var(--chat-shadow-toolbar)]"
       onMouseLeave={onClose}
     >
       {QUICK_REACTIONS.map((emoji) => (
@@ -154,6 +154,70 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
   const { onReply, onReactionAdd, onEdit, onDelete, onPin } = useChatContext()
   const [showReactions, setShowReactions] = React.useState(false)
   const [showMore, setShowMore] = React.useState(false)
+  const [reactionClosing, setReactionClosing] = React.useState(false)
+  const [moreClosing, setMoreClosing] = React.useState(false)
+  const reactionCloseTimer = React.useRef<number | null>(null)
+  const moreCloseTimer = React.useRef<number | null>(null)
+  const closeReactions = () => {
+    setReactionClosing(true)
+    if (reactionCloseTimer.current !== null) window.clearTimeout(reactionCloseTimer.current)
+    reactionCloseTimer.current = window.setTimeout(() => {
+      setShowReactions(false)
+      setReactionClosing(false)
+      reactionCloseTimer.current = null
+    }, 180)
+  }
+  const closeMore = () => {
+    setMoreClosing(true)
+    if (moreCloseTimer.current !== null) window.clearTimeout(moreCloseTimer.current)
+    moreCloseTimer.current = window.setTimeout(() => {
+      setShowMore(false)
+      setMoreClosing(false)
+      moreCloseTimer.current = null
+    }, 180)
+  }
+  const reactionTriggerRef = React.useRef<HTMLButtonElement>(null)
+  const moreTriggerRef = React.useRef<HTMLButtonElement>(null)
+  const [reactionPosition, setReactionPosition] = React.useState<{ top: number; left: number } | null>(null)
+  const [morePosition, setMorePosition] = React.useState<{ top: number; left: number } | null>(null)
+
+  React.useEffect(() => {
+    if (!showReactions) { setReactionPosition(null); return }
+    const update = () => {
+      const rect = reactionTriggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setReactionPosition({
+        top: Math.max(8, rect.top - 54),
+        left: Math.max(8, Math.min(window.innerWidth - 214, rect.left + rect.width / 2 - 107)),
+      })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [showReactions])
+
+  React.useEffect(() => {
+    if (!showMore) { setMorePosition(null); return }
+    const update = () => {
+      const rect = moreTriggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMorePosition({
+        top: Math.min(window.innerHeight - 150, rect.bottom + 6),
+        left: Math.max(8, Math.min(window.innerWidth - 168, isOutgoing ? rect.right - 160 : rect.left)),
+      })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [showMore, isOutgoing])
 
   return (
     <div
@@ -174,46 +238,67 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
       {/* React — opens quick picker */}
       <div className="relative">
         <button
-          onClick={() => setShowReactions(!showReactions)}
+          ref={reactionTriggerRef}
+          onClick={() => {
+            if (showReactions) closeReactions()
+            else {
+              if (reactionCloseTimer.current !== null) window.clearTimeout(reactionCloseTimer.current)
+              setReactionClosing(false)
+              setShowReactions(true)
+            }
+          }}
           className="flex size-7 items-center justify-center rounded-md text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
           aria-label="Add reaction"
         >
           <SmilePlus className="size-3.5" />
         </button>
-        {showReactions && (
-          <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
+        {showReactions && reactionPosition && typeof document !== "undefined" && createPortal(
+          <div
+            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm xora-chat-float-wrap--r10 ${reactionClosing ? "is-closing" : ""}`}
+            style={{ position: "fixed", top: reactionPosition.top, left: reactionPosition.left, zIndex: 10050, width: "max-content" }}
+          >
             <QuickReactionPicker
-              onSelect={(emoji) =>
-                onReactionAdd?.(message.id, emoji)
-              }
-              onClose={() => setShowReactions(false)}
+              onSelect={(emoji) => onReactionAdd?.(message.id, emoji)}
+              onClose={closeReactions}
             />
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
       {/* More — dropdown */}
       <div className="relative">
         <button
-          onClick={() => setShowMore(!showMore)}
+          ref={moreTriggerRef}
+          onClick={() => {
+            if (showMore) closeMore()
+            else {
+              if (moreCloseTimer.current !== null) window.clearTimeout(moreCloseTimer.current)
+              setMoreClosing(false)
+              setShowMore(true)
+            }
+          }}
           className="flex size-7 items-center justify-center rounded-md text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
           aria-label="More actions"
         >
           <MoreHorizontal className="size-3.5" />
         </button>
-        {showMore && (
+        {showMore && morePosition && typeof document !== "undefined" && createPortal(
           <div
-            className={cn(
-              "chat-toolbar-enter absolute top-full z-20 mt-1 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
-              isOutgoing ? "right-0" : "left-0"
-            )}
-            onMouseLeave={() => setShowMore(false)}
+            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm xora-chat-float-wrap--r8 ${moreClosing ? "is-closing" : ""}`}
+            style={{ position: "fixed", top: morePosition.top, left: morePosition.left, zIndex: 10050, width: "max-content" }}
           >
+            <div
+              className={cn(
+                "chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface relative z-10 mt-0 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
+              )}
+              onMouseLeave={closeMore}
+            >
             {isOutgoing && (
               <button
                 onClick={() => {
                   onEdit?.(message)
-                  setShowMore(false)
+                  closeMore()
                 }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
               >
@@ -224,7 +309,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
             <button
               onClick={() => {
                 onPin?.(message.id)
-                setShowMore(false)
+                closeMore()
               }}
               className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
             >
@@ -235,7 +320,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
               <button
                 onClick={() => {
                   onDelete?.(message.id)
-                  setShowMore(false)
+                  closeMore()
                 }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-[var(--chat-red)] transition-colors hover:bg-red-500/10"
               >
@@ -243,7 +328,9 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
                 Delete
               </button>
             )}
-          </div>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
@@ -397,6 +484,22 @@ function ChatMessage({
   const { currentUser } = useChatContext()
   const radiusClass = getBubbleRadius(isOutgoing, position)
   const [lightboxImage, setLightboxImage] = React.useState<string | null>(null)
+  const [lightboxClosing, setLightboxClosing] = React.useState(false)
+  const lightboxCloseTimer = React.useRef<number | null>(null)
+  const openLightbox = (url: string) => {
+    if (lightboxCloseTimer.current !== null) window.clearTimeout(lightboxCloseTimer.current)
+    setLightboxClosing(false)
+    setLightboxImage(url)
+  }
+  const closeLightbox = () => {
+    setLightboxClosing(true)
+    if (lightboxCloseTimer.current !== null) window.clearTimeout(lightboxCloseTimer.current)
+    lightboxCloseTimer.current = window.setTimeout(() => {
+      setLightboxImage(null)
+      setLightboxClosing(false)
+      lightboxCloseTimer.current = null
+    }, 180)
+  }
 
   return (
     <div
@@ -468,7 +571,7 @@ function ChatMessage({
                 {message.images.map((img, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setLightboxImage(img.url)}
+                    onClick={() => openLightbox(img.url)}
                     className="cursor-pointer rounded-lg overflow-hidden"
                     aria-label="View image"
                   >
@@ -589,22 +692,24 @@ function ChatMessage({
       {/* Image lightbox */}
       {lightboxImage && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setLightboxImage(null)}
+          className={`xora-chat-floating-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm ${lightboxClosing ? "is-closing" : ""}`}
+          onClick={closeLightbox}
         >
           <button
-            onClick={() => setLightboxImage(null)}
+            onClick={closeLightbox}
             className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             aria-label="Close lightbox"
           >
             <X className="size-5" />
           </button>
-          <img
-            src={lightboxImage}
-            alt=""
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className={`float-wrap xora-chat-float-wrap xora-chat-float-wrap--media ${lightboxClosing ? "is-closing" : ""}`}>
+            <img
+              src={lightboxImage}
+              alt=""
+              className="float-surface xora-chat-float-surface max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>,
         document.body
       )}
@@ -1160,11 +1265,50 @@ function ChatComposer({
   const [files, setFiles] = React.useState<FilePreviewItem[]>([])
   const [isDragging, setIsDragging] = React.useState(false)
   const [showAttachMenu, setShowAttachMenu] = React.useState(false)
+  const [attachMenuClosing, setAttachMenuClosing] = React.useState(false)
+  const attachMenuCloseTimer = React.useRef<number | null>(null)
+  const closeAttachMenu = React.useCallback(() => {
+    setAttachMenuClosing(true)
+    if (attachMenuCloseTimer.current !== null) window.clearTimeout(attachMenuCloseTimer.current)
+    attachMenuCloseTimer.current = window.setTimeout(() => {
+      setShowAttachMenu(false)
+      setAttachMenuClosing(false)
+      attachMenuCloseTimer.current = null
+    }, 180)
+  }, [])
+  const toggleAttachMenu = React.useCallback(() => {
+    if (showAttachMenu) closeAttachMenu()
+    else {
+      if (attachMenuCloseTimer.current !== null) window.clearTimeout(attachMenuCloseTimer.current)
+      setAttachMenuClosing(false)
+      setShowAttachMenu(true)
+    }
+  }, [showAttachMenu, closeAttachMenu])
+  const attachTriggerRef = React.useRef<HTMLButtonElement>(null)
+  const [attachMenuPosition, setAttachMenuPosition] = React.useState<{ bottom: number; left: number } | null>(null)
   const { textareaRef, resize } = useAutoResize({ maxRows: 6 })
   const { handleKeyDown: handleTypingKeyDown, stopTyping } =
     useTypingIndicator({ onTypingChange: onTyping })
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const imageInputRef = React.useRef<HTMLInputElement>(null)
+  React.useEffect(() => {
+    if (!showAttachMenu) { setAttachMenuPosition(null); return }
+    const update = () => {
+      const rect = attachTriggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setAttachMenuPosition({
+        bottom: Math.max(8, window.innerHeight - rect.top + 8),
+        left: Math.max(8, Math.min(window.innerWidth - 190, rect.left)),
+      })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [showAttachMenu])
   const hasContent = value.trim().length > 0 || files.length > 0
 
   const addFiles = React.useCallback((newFiles: FileList | File[]) => {
@@ -1229,10 +1373,10 @@ function ChatComposer({
       }
       if (imageFiles.length > 0) {
         addFiles(imageFiles)
-        setShowAttachMenu(false)
+        closeAttachMenu()
       }
     },
-    [addFiles]
+    [addFiles, closeAttachMenu]
   )
 
   // Drag-and-drop handlers (on the composer container)
@@ -1250,10 +1394,10 @@ function ChatComposer({
       setIsDragging(false)
       if (e.dataTransfer.files.length > 0) {
         addFiles(e.dataTransfer.files)
-        setShowAttachMenu(false)
+        closeAttachMenu()
       }
     },
-    [addFiles]
+    [addFiles, closeAttachMenu]
   )
 
   return (
@@ -1295,7 +1439,8 @@ function ChatComposer({
             {/* + button with attachment popout */}
             <div className="relative">
               <button
-                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                ref={attachTriggerRef}
+                onClick={toggleAttachMenu}
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full border border-[var(--chat-border)] bg-[var(--chat-bg-sidebar)] text-[var(--chat-text-tertiary)] transition-all hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-secondary)]",
                   showAttachMenu && "rotate-45 bg-[var(--chat-accent-soft)] text-[var(--chat-accent)]"
@@ -1306,30 +1451,36 @@ function ChatComposer({
               </button>
 
               {/* Popout menu */}
-              {showAttachMenu && (
-                <div className="chat-toolbar-enter absolute bottom-full left-0 mb-2 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
+              {showAttachMenu && attachMenuPosition && typeof document !== "undefined" && createPortal(
+                <div
+                  className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm xora-chat-float-wrap--r12 ${attachMenuClosing ? "is-closing" : ""}`}
+                  style={{ position: "fixed", bottom: attachMenuPosition.bottom, left: attachMenuPosition.left, zIndex: 10050, width: "max-content" }}
+                >
+                  <div className="chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface relative z-10 mt-0 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
                   <button
-                    onClick={() => { fileInputRef.current?.click(); setShowAttachMenu(false) }}
+                    onClick={() => { fileInputRef.current?.click(); closeAttachMenu() }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <Paperclip className="size-4" />
                     Attach file
                   </button>
                   <button
-                    onClick={() => { imageInputRef.current?.click(); setShowAttachMenu(false) }}
+                    onClick={() => { imageInputRef.current?.click(); closeAttachMenu() }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <ImageIcon className="size-4" />
                     Photo or video
                   </button>
                   <button
-                    onClick={() => setShowAttachMenu(false)}
+                    onClick={() => closeAttachMenu()}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <Smile className="size-4" />
                     Emoji
                   </button>
-                </div>
+                  </div>
+                </div>,
+                document.body
               )}
             </div>
 

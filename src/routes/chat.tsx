@@ -322,6 +322,15 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     void navigate({ to: "/chat" });
   }
 
+  function handleInboxBack() {
+    const historyIndex = typeof window !== "undefined" ? window.history.state?.__TSR_index : undefined;
+    if (typeof historyIndex === "number" && historyIndex > 0) {
+      window.history.back();
+      return;
+    }
+    void navigate({ to: "/" });
+  }
+
   return (
     <AppShell immersive hideTopBanner>
       <ChatcnMessenger
@@ -337,6 +346,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
         onSend={handleChatcnSend}
         onOpenNewDm={() => setShowDmModal(true)}
         onOpenNewGroup={() => setShowGroupModal(true)}
+        onBackToPrevious={handleInboxBack}
         onJoinGroup={handleJoinGroup}
       />
       <NewDmModal

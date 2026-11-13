@@ -1,11 +1,16 @@
+import { useRouterState } from "@tanstack/react-router";
 import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  const isChatRoute = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/chat"),
+  });
+
   return (
     <Sonner
-      className="toaster group"
+      className={`toaster group ${isChatRoute ? "xora-chat-toast" : ""}`}
       toastOptions={{
         classNames: {
           toast:

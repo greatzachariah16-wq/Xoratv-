@@ -1,0 +1,140 @@
+/* Global Xora chat depth pass — every visible surface participates in the same warm elevation system. */
+.xora-chat-page {
+  --xora-ink: #30231D;
+  --xora-clay: #B5502E;
+  --xora-cream: #FFFCF8;
+  --xora-depth-1: 0 1px 2px rgba(61, 35, 22, .10), 0 3px 6px rgba(61, 35, 22, .08), inset 0 1px 0 rgba(255,255,255,.78);
+  --xora-depth-2: 0 2px 3px rgba(61, 35, 22, .11), 0 7px 13px rgba(61, 35, 22, .12), 0 17px 25px -14px rgba(61, 35, 22, .28), inset 0 1px 0 rgba(255,255,255,.86);
+  --xora-depth-3: 0 3px 5px rgba(61, 35, 22, .13), 0 12px 22px rgba(61, 35, 22, .15), 0 28px 42px -17px rgba(61, 35, 22, .34), inset 0 1px 0 rgba(255,255,255,.92);
+  --xora-depth-inset: inset 0 2px 5px rgba(67, 42, 27, .10), inset 0 1px 0 rgba(67, 42, 27, .04);
+  color: var(--xora-ink);
+}
+
+/* Main planes and section boundaries: layered ambient depth, not flat blocks. */
+.xora-chat-page .xora-chat-shell,
+.xora-chat-page .xora-chat-sidebar,
+.xora-chat-page .xora-chat-main,
+.xora-chat-page .xora-chat-sidebar-header,
+.xora-chat-page .xora-chat-thread-header,
+.xora-chat-page .chat-composer,
+.xora-chat-page .chat-messages,
+.xora-chat-page .xora-chat-sidebar-footer {
+  box-shadow: var(--xora-depth-1), 0 14px 30px -26px rgba(57, 34, 22, .32);
+}
+
+.xora-chat-page .xora-chat-sidebar {
+  background: linear-gradient(150deg, #F4E8DE 0%, #F8F1EA 52%, #EFE1D6 100%);
+}
+.xora-chat-page .xora-chat-main {
+  background: radial-gradient(ellipse at 50% 0%, rgba(221,174,148,.18), transparent 48%), #FFFCF8;
+}
+
+/* Every raised control, tile, message surface and popup gets a tactile shadow stack. */
+.xora-chat-page button,
+.xora-chat-page [role="button"],
+.xora-chat-page [role="menu"],
+.xora-chat-page [role="dialog"],
+.xora-chat-page .chat-bubble,
+.xora-chat-page .xora-chat-conversation-item,
+.xora-chat-page .xora-chat-empty-icon,
+.xora-chat-page .xora-chat-desktop-icon,
+.xora-chat-page .xora-chat-footer-spark,
+.xora-chat-page .xora-chat-avatar-image,
+.xora-chat-page .xora-chat-avatar-fallback,
+.xora-chat-page .xora-chat-brandmark,
+.xora-chat-page .xora-chat-online-dot {
+  box-shadow: var(--xora-depth-2);
+  transition: box-shadow 180ms ease, transform 180ms ease, filter 180ms ease;
+}
+
+.xora-chat-page button:hover,
+.xora-chat-page [role="button"]:hover,
+.xora-chat-page .xora-chat-conversation-item:hover,
+.xora-chat-page .xora-chat-conversation-item.is-active {
+  box-shadow: var(--xora-depth-3);
+}
+
+.xora-chat-page button:active,
+.xora-chat-page [role="button"]:active {
+  transform: translateY(1px) scale(.985);
+  box-shadow: var(--xora-depth-inset), 0 1px 2px rgba(61,35,22,.12);
+}
+
+/* Recessed controls still have depth around their inner edge. */
+.xora-chat-page input,
+.xora-chat-page textarea,
+.xora-chat-page select,
+.xora-chat-page .xora-chat-search-wrap {
+  border-color: rgba(105, 69, 48, .15);
+  box-shadow: var(--xora-depth-inset), 0 2px 5px rgba(61,35,22,.06), inset 0 1px 0 rgba(255,255,255,.88);
+}
+.xora-chat-page input:focus,
+.xora-chat-page textarea:focus,
+.xora-chat-page select:focus,
+.xora-chat-page .xora-chat-search-wrap:focus-within {
+  box-shadow: 0 0 0 3px rgba(181,80,46,.10), var(--xora-depth-inset), 0 8px 16px rgba(61,35,22,.11);
+}
+
+/* Avatar rims, badges and small visual details are not left flat. */
+.xora-chat-page img,
+.xora-chat-page .xora-chat-avatar-wrap {
+  filter: drop-shadow(0 3px 4px rgba(61,35,22,.10));
+}
+.xora-chat-page svg {
+  filter: drop-shadow(0 1px 1px rgba(61,35,22,.13));
+}
+.xora-chat-page h1,
+.xora-chat-page h2,
+.xora-chat-page h3,
+.xora-chat-page strong,
+.xora-chat-page .xora-chat-conversation-title {
+  text-shadow: 0 1px 0 rgba(255,255,255,.64), 0 2px 5px rgba(73,46,30,.08);
+}
+
+/* Messages and the complete composer assembly share the same elevation language. */
+.xora-chat-page .chat-bubble {
+  border: 1px solid rgba(103, 69, 49, .08);
+  border-radius: 19px;
+}
+.xora-chat-page .chat-composer {
+  background: linear-gradient(180deg, rgba(255,252,248,.98), #F5EAE1);
+  box-shadow: 0 -2px 5px rgba(61,35,22,.05), 0 -10px 22px rgba(61,35,22,.10), inset 0 1px 0 #FFFFFF;
+}
+.xora-chat-page .chat-composer button,
+.xora-chat-page .chat-composer [role="button"] {
+  box-shadow: var(--xora-depth-2);
+}
+.xora-chat-page .chat-composer button[aria-label*="Send"],
+.xora-chat-page .chat-composer button[type="submit"] {
+  background: linear-gradient(145deg, #C66A45, #A7472A);
+  color: #FFF9F3;
+  box-shadow: 0 2px 3px rgba(82,35,20,.20), 0 8px 14px rgba(82,35,20,.22), 0 20px 30px -12px rgba(82,35,20,.42), inset 0 1px 0 rgba(255,255,255,.30);
+}
+.xora-chat-page .chat-composer button[aria-label*="Attach"],
+.xora-chat-page .chat-composer button[aria-label*="Emoji"],
+.xora-chat-page .chat-composer button[title*="Attach"],
+.xora-chat-page .chat-composer button[title*="Emoji"] {
+  background: linear-gradient(145deg, #FFFCF8, #F1E3D9);
+  color: #A64B2D;
+}
+.xora-chat-page .xora-chat-create-menu,
+.xora-chat-page [role="menu"],
+.xora-chat-page [role="dialog"] {
+  background: linear-gradient(145deg, #FFFEFC, #F6EAE0);
+  border: 1px solid rgba(105,69,48,.14);
+  box-shadow: var(--xora-depth-3);
+}
+
+@media (max-width: 767px) {
+  .xora-chat-page .xora-chat-sidebar,
+  .xora-chat-page .xora-chat-main {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.68), 0 10px 26px -20px rgba(57,34,22,.30);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-chat-page button,
+  .xora-chat-page [role="button"],
+  .xora-chat-page .xora-chat-conversation-item {
+    transition: none;
+  }
+}
