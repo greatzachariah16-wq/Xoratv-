@@ -1648,8 +1648,13 @@
 
 .xora-chat-chatcn-popup {
   --chat-bg-sidebar: #F8F2EC;
+  --chat-bg-main: #FFFCF8;
+  --chat-border: rgba(75, 49, 34, 0.08);
   --chat-border-strong: rgba(75, 49, 34, 0.12);
+  --chat-accent: #B5502E;
   --chat-accent-soft: rgba(181, 80, 46, 0.10);
+  --chat-bubble-incoming: #F2E9E1;
+  --chat-text-tertiary: #A18F83;
   --chat-text-secondary: #77665B;
   --chat-text-primary: #30231D;
   --chat-red: #C94942;
