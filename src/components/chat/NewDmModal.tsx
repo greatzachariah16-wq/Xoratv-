@@ -26,7 +26,7 @@ export default function NewDmModal({
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-display text-lg text-foreground flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-primary" />
-            New Direct Message
+            New chat
           </h3>
           <button
             onClick={onClose}
