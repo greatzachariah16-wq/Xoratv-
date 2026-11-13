@@ -134,13 +134,13 @@ export default function XoraChatLayout({
 
           {conversations.length > 0 && <div className="xora-chat-filter-row" role="group" aria-label="Filter conversations">
             <button type="button" className={filter === "all" ? "is-selected" : ""} aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
-              All <span>{conversations.length}</span>
+              All {conversations.length > 0 && <span>{conversations.length}</span>}
             </button>
             <button type="button" className={filter === "private" ? "is-selected" : ""} aria-pressed={filter === "private"} onClick={() => setFilter("private")}>
-              Private <span>{privateCount}</span>
+              Private {privateCount > 0 && <span>{privateCount}</span>}
             </button>
             <button type="button" className={filter === "circles" ? "is-selected" : ""} aria-pressed={filter === "circles"} onClick={() => setFilter("circles")}>
-              Circles <span>{circleCount}</span>
+              Circles {circleCount > 0 && <span>{circleCount}</span>}
             </button>
           </div>}
 
