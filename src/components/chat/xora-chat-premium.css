@@ -131,10 +131,10 @@
 .xora-live-page .xora-create-button {
   border-color: transparent;
   color: #fff;
-  background: linear-gradient(145deg, #9e79bf, #69418d);
-  box-shadow: 0 6px 17px rgba(113,66,154,.28);
+  background: linear-gradient(145deg, #c98268, #9f5d48);
+  box-shadow: 0 6px 17px rgba(159,93,72,.30);
 }
-.xora-live-page .xora-create-button:hover { color: #fff; background: linear-gradient(145deg, #ad88cc, #77499d); }
+.xora-live-page .xora-create-button:hover { color: #fff; background: linear-gradient(145deg, #d79a82, #a9654f); }
 .xora-live-page .search-field {
   display: flex;
   height: 49px;
@@ -198,8 +198,8 @@
   width: calc((100% - 8px)/4);
   content: "";
   border-radius: 10px;
-  background: linear-gradient(135deg, #9b73bd, #684086);
-  box-shadow: 0 4px 12px rgba(105,64,135,.22);
+  background: linear-gradient(135deg, #c98268, #9f5d48);
+  box-shadow: 0 4px 12px rgba(159,93,72,.24);
   transform: translateX(0);
   transition: transform .28s cubic-bezier(.22,1,.36,1);
 }
@@ -652,8 +652,8 @@
   border: 1px solid rgba(255,255,255,.11);
   border-radius: var(--xc-radius-bubble) var(--xc-radius-bubble) 6px var(--xc-radius-bubble);
   color: #fff;
-  background: linear-gradient(145deg, #916db4 0%, #67408c 100%);
-  box-shadow: 0 8px 20px rgba(87,49,119,.23), inset 0 1px 0 rgba(255,255,255,.13);
+  background: linear-gradient(145deg, #c98268 0%, #9f5d48 100%);
+  box-shadow: 0 8px 20px rgba(120,65,48,.28), inset 0 1px 0 rgba(255,255,255,.13);
 }
 .xora-live-page .chat-message:not(.own):not(.group-start) .message-bubble { border-top-left-radius: 7px; }
 .xora-live-page .chat-message.own:not(.group-start) .message-bubble { border-top-right-radius: 7px; }
@@ -691,7 +691,7 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 7px;
-  color: #dec5f4;
+  color: #e4b6a4;
   font-size: 9px;
   font-weight: 750;
   letter-spacing: .06em;
@@ -806,8 +806,8 @@
 }
 .xora-live-page .send-control.ready {
   color: #fff;
-  background: linear-gradient(145deg, #a17bc4, #68408c);
-  box-shadow: 0 6px 17px rgba(104,64,140,.28);
+  background: linear-gradient(145deg, #c98268, #9f5d48);
+  box-shadow: 0 6px 17px rgba(159,93,72,.30);
 }
 .xora-live-page .send-control:disabled { opacity: .58; }
 .xora-live-page .send-control svg { width: 17px; height: 17px; }
@@ -861,10 +861,10 @@
   border: 0;
   border-radius: 13px;
   color: #fff;
-  background: linear-gradient(145deg, #9871bb, #68408c);
+  background: linear-gradient(145deg, #c98268, #9f5d48);
   font-size: 11px;
   font-weight: 720;
-  box-shadow: 0 6px 16px rgba(104,64,140,.22);
+  box-shadow: 0 6px 16px rgba(159,93,72,.24);
 }
 .xora-live-page .xora-discover-card {
   overflow: hidden;
@@ -1050,7 +1050,7 @@
   border: 1px solid rgba(255,255,255,.2);
   border-radius: 17px;
   color: #fff;
-  background: linear-gradient(145deg, #a17bc3, #68408d);
+  background: linear-gradient(145deg, #c98268, #9f5d48);
   box-shadow: 0 8px 20px rgba(0,0,0,.26);
 }
 .xora-live-page .xora-empty-orbit svg { width: 21px; height: 21px; }
@@ -1087,10 +1087,10 @@
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 14px;
   color: #fff;
-  background: linear-gradient(145deg, #9c76bf, #68408d);
+  background: linear-gradient(145deg, #c98268, #9f5d48);
   font-size: 11px;
   font-weight: 730;
-  box-shadow: 0 8px 20px rgba(104,64,140,.24);
+  box-shadow: 0 8px 20px rgba(159,93,72,.26);
 }
 .xora-live-page .xora-primary-button svg { width: 16px; height: 16px; }
 .xora-live-page .xc-room-menu {
@@ -1357,6 +1357,11 @@
 }
 
 /* Deep-elevation popup system: prioritize the cast shadow and physical lift. */
+.xora-elevation-wrap {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 38px 28px rgba(0,0,0,.92)) drop-shadow(0 14px 16px rgba(0,0,0,.72));
+}
 .xora-elevation-overlay {
   background: rgba(5, 4, 8, .76) !important;
   -webkit-backdrop-filter: blur(9px) saturate(.82);
