@@ -150,8 +150,7 @@
   font-size: 11px;
 }
 
-.xora-community-create,
-.xora-community-no-results button {
+.xora-community-create {
   display: inline-flex;
   min-height: 44px;
   flex: 0 0 auto;
@@ -332,7 +331,16 @@
 
 .xora-community-no-results h3 { margin: 0; color: var(--color-ink); font-size: 15px; font-weight: 750; }
 .xora-community-no-results p { max-width: 340px; margin: 6px 0 13px; color: var(--color-ink-soft); font-size: 11px; line-height: 1.55; }
-.xora-community-no-results button { min-height: 44px; }
+.xora-community-no-results button {
+  min-height: 44px;
+  padding: 0 17px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 750;
+}
 .xora-community-directory-error { flex: 0 0 auto; margin: 0; color: #7a3523; font-size: 11px; text-align: center; }
 
 @media (max-width: 640px) {
