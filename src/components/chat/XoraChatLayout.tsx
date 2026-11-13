@@ -160,10 +160,10 @@ export default function XoraChatLayout({
                     }}
                   >
                     <div className="xora-chat-create-menu xora-chat-float-surface" role="menu" aria-label="New conversation options">
-                      <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); onNewMessage(); }}>
+                      <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); window.setTimeout(onNewMessage, 180); }}>
                         <MessageCircle className="size-4" /> Private message
                       </button>
-                      <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); onNewGroup(); }}>
+                      <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); window.setTimeout(onNewGroup, 180); }}>
                         <Users className="size-4" /> Create a circle
                       </button>
                     </div>
