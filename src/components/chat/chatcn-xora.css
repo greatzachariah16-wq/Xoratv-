@@ -1338,8 +1338,11 @@
 /* Xora animated floating surfaces: one warm shadow system for chat popups. */
 :root {
   --shadow-tint: 90, 40, 20;
-  --float-distance: 8px;
-  --shadow-drift: 14px;
+  --backdrop-color: rgba(35, 18, 10, 0.60);
+  --glow-alpha-1: 0.70;
+  --glow-alpha-2: 0.55;
+  --float-distance: 12px;
+  --shadow-drift: 6px;
   --glow-speed: 7s;
   --glow-opacity-start: 0.70;
   --glow-opacity: 1;
@@ -1348,18 +1351,22 @@
   --float-entrance-duration: 520ms;
   --float-close-duration: 180ms;
   --shadow-float-lg:
-    0 2px 4px rgba(var(--shadow-tint), 0.10),
-    0 12px 24px rgba(var(--shadow-tint), 0.14),
-    0 32px 64px -8px rgba(var(--shadow-tint), 0.22),
-    0 64px 120px -16px rgba(var(--shadow-tint), 0.30);
+    0 4px 8px rgba(var(--shadow-tint), 0.18),
+    0 18px 36px rgba(var(--shadow-tint), 0.28),
+    0 48px 96px -12px rgba(var(--shadow-tint), 0.42),
+    0 96px 180px -24px rgba(var(--shadow-tint), 0.55);
   --shadow-float-sm:
-    0 1px 2px rgba(var(--shadow-tint), 0.08),
-    0 7px 14px rgba(var(--shadow-tint), 0.11),
-    0 19px 38px -5px rgba(var(--shadow-tint), 0.17),
-    0 38px 72px -10px rgba(var(--shadow-tint), 0.23);
+    0 2.4px 4.8px rgba(var(--shadow-tint), 0.153),
+    0 10.8px 21.6px rgba(var(--shadow-tint), 0.238),
+    0 28.8px 57.6px -7.2px rgba(var(--shadow-tint), 0.357),
+    0 57.6px 108px -14.4px rgba(var(--shadow-tint), 0.4675);
 }
 
-.xora-chat-floating-overlay {
+.xora-chat-floating-overlay,
+.xora-chat-floating-overlay.xora-elevation-overlay {
+  background: var(--backdrop-color) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
   animation: xora-popup-overlay-in 180ms ease-out both;
 }
 
@@ -1390,24 +1397,26 @@
   inset: 0;
   z-index: 0;
   border-radius: inherit;
+  background: transparent;
+  border: 0;
   box-shadow: var(--shadow-float-lg);
   opacity: 0;
-  transform: translateY(-20px) scale(0.85);
+  transform: translateY(-20px);
   animation:
     xora-shadow-in var(--float-entrance-duration) cubic-bezier(0.16, 1, 0.3, 1) both,
     xora-shadow-breathe var(--float-loop-speed) ease-in-out var(--float-entrance-duration) infinite;
 }
 
 .xora-chat-float-wrap::after {
-  left: -12%;
-  right: -12%;
+  left: -18%;
+  right: -18%;
   top: 35%;
-  bottom: clamp(-120px, -25%, -60px);
+  bottom: -60%;
   z-index: 0;
   border-radius: inherit;
   background:
-    radial-gradient(60% 50% at 30% 60%, rgba(var(--shadow-tint), 0.45), transparent 70%),
-    radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, 0.38), transparent 70%);
+    radial-gradient(60% 50% at 30% 60%, rgba(var(--shadow-tint), var(--glow-alpha-1)), transparent 70%),
+    radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, var(--glow-alpha-2)), transparent 70%);
   opacity: 0;
   transform: translate3d(0, -10px, 0) scale(0.82);
   animation:
@@ -1418,8 +1427,15 @@
 .xora-chat-float-surface {
   position: relative;
   z-index: 1;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
   animation: xora-surface-levitate var(--float-loop-speed) ease-in-out var(--float-entrance-duration) infinite;
+}
+
+.xora-chat-float-wrap > .xora-chat-float-surface:not(img) {
+  background: #FCFAF6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 0 rgba(181, 82, 45, 0.12) !important;
 }
 
 .xora-chat-float-wrap:not(.is-closing),
@@ -1434,11 +1450,8 @@
 }
 
 .xora-chat-float-wrap--sm {
-  --float-distance: 4px;
-  --shadow-drift: 7px;
-  --glow-opacity-start: 0.40;
-  --glow-opacity: 0.68;
-  --glow-opacity-end: 0.52;
+  --float-distance: 6px;
+  --shadow-drift: 3.6px;
   border-radius: 16px;
   display: block;
   width: max-content;
@@ -1448,15 +1461,13 @@
   box-shadow: var(--shadow-float-sm);
 }
 
-.xora-chat-float-wrap--sm::after {
-  left: -10%;
-  right: -10%;
-  top: 35%;
-  bottom: clamp(-72px, -28%, -40px);
-  background:
-    radial-gradient(60% 50% at 30% 60%, rgba(var(--shadow-tint), 0.32), transparent 70%),
-    radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, 0.28), transparent 70%);
-}
+/* Match the shadow silhouette to each popup's existing card radius. */
+.xora-chat-float-wrap--r24 { border-radius: 24px; }
+.xora-chat-float-wrap--r12 { border-radius: 12px; }
+.xora-chat-float-wrap--r10 { border-radius: 10px; }
+.xora-chat-float-wrap--r8 { border-radius: 8px; }
+
+
 
 /* The menu is now rendered at document.body, outside all scrolling/clipping parents. */
 .xora-chat-create-menu {
@@ -1464,7 +1475,9 @@
   top: auto !important;
   right: auto !important;
   z-index: 1 !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 0 rgba(181, 82, 45, 0.12) !important;
 }
 
 /* Keep the backdrop separate so the warm glow remains visible above its dim layer. */
@@ -1513,13 +1526,13 @@
 }
 
 @keyframes xora-shadow-in {
-  from { opacity: 0; transform: translateY(-20px) scale(0.85); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes xora-shadow-breathe {
-  0%, 100% { opacity: 1; transform: translateY(0) scale(1); }
-  50% { opacity: 0.75; transform: translateY(var(--shadow-drift)) scale(1.04); }
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.8; transform: translateY(var(--shadow-drift)); }
 }
 
 @keyframes xora-glow-in {
@@ -1534,8 +1547,8 @@
 }
 
 @keyframes xora-shadow-out {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(-10px) scale(0.85); }
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-10px); }
 }
 
 @keyframes xora-glow-out {
@@ -1673,6 +1686,7 @@
 .xora-chat-float-wrap--media {
   width: max-content;
   max-width: 90vw;
+  border-radius: 8px;
 }
 
 .xora-chat-chatcn-popup {
