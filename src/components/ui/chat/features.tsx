@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import {
   X,
@@ -55,9 +56,10 @@ function ChatForwardDialog({
     })
   }
 
-  return (
+  return typeof document !== "undefined" ? createPortal(
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-black/50", className)}>
-      <div className="w-full max-w-sm overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
+      <div className="xora-chat-float-wrap xora-chat-float-wrap--large">
+        <div className="xora-chat-float-surface w-full max-w-sm overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--chat-border)] px-4 py-3">
           <span className="text-[14px] font-semibold text-[var(--chat-text-primary)]">Forward message</span>
@@ -119,9 +121,11 @@ function ChatForwardDialog({
             Forward{selected.size > 0 ? ` (${selected.size})` : ""}
           </button>
         </div>
+        </div>
       </div>
-    </div>
-  )
+    </div>,
+    document.body,
+  ) : null
 }
 
 // ─── ChatEditComposer (inline edit mode) ──────────────────────────────────────
@@ -439,9 +443,10 @@ function ChatSearch({ onSearch, onSelect, onClose, className }: ChatSearchProps)
     return () => document.removeEventListener("keydown", handler)
   }, [onClose])
 
-  return (
+  return typeof document !== "undefined" ? createPortal(
     <div className={cn("fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50", className)}>
-      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
+      <div className="xora-chat-float-wrap xora-chat-float-wrap--wide">
+        <div className="xora-chat-float-surface w-full max-w-lg overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Search input */}
         <div className="flex items-center gap-3 border-b border-[var(--chat-border)] px-4 py-3">
           <Search className="size-4 text-[var(--chat-text-tertiary)]" />
@@ -482,9 +487,11 @@ function ChatSearch({ onSearch, onSelect, onClose, className }: ChatSearchProps)
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
-  )
+    </div>,
+    document.body,
+  ) : null
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
