@@ -1448,7 +1448,7 @@ function ChatComposer({
 
       {showEmojiPicker && (
         <div
-          className="absolute bottom-full left-3 z-[10060] mb-3 w-[min( min( calc(100vw - 24px), 360px), 360px)] rounded-2xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-3 shadow-[var(--chat-shadow-toolbar)]"
+          className="absolute bottom-full left-3 z-[10060] mb-3 w-[min(360px,calc(100vw-24px))] rounded-2xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-3 shadow-[var(--chat-shadow-toolbar)]"
           role="dialog"
           aria-label="Choose an emoji"
         >
