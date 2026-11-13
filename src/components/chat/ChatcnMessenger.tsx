@@ -5,6 +5,7 @@ import { type ChatMessageData, type SidebarConversation, type ChatUser } from "@
 import XoraChatLayout from "./XoraChatLayout";
 import "@/components/ui/chat/chatcn.css";
 import "./chatcn-xora.css";
+import "./chatcn-xora-depth.css";
 import type { ChatRoom, ChatMessage, ProfileLite } from "@/components/chat/ChatPage";
 import { getRoomTitle } from "@/components/chat/ChatPage";
 
