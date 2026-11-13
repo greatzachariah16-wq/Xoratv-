@@ -1335,6 +1335,8 @@
 
 
 /* Shared popup elevation: warm, layered and deliberately lifted above the chat canvas. */
+:root,
+.xora-chat-floating-overlay,
 .xora-chat-page {
   --shadow-float:
     0 2px 4px rgba(90, 40, 20, 0.10),
@@ -1376,7 +1378,7 @@
 .xora-chat-page .xora-chat-create-menu {
   box-shadow: var(--shadow-float-sm) !important;
   transform-origin: top right;
-  animation: xora-popup-float-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: xora-popup-float-in-sm 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   will-change: transform, opacity, box-shadow;
 }
 
@@ -1390,6 +1392,19 @@
     opacity: 1;
     transform: translateY(0) scale(1);
     box-shadow: var(--shadow-float);
+  }
+}
+
+@keyframes xora-popup-float-in-sm {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+    box-shadow: 0 1px 3px rgba(90, 40, 20, 0.06), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: var(--shadow-float-sm);
   }
 }
 
