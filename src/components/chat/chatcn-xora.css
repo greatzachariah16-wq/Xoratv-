@@ -1590,6 +1590,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .xora-chat-floating-overlay {
+    animation: xora-popup-overlay-in 100ms ease-out both;
+  }
+
+  .xora-chat-floating-overlay.is-closing {
+    animation: xora-popup-overlay-out 100ms ease-out both;
+  }
+
   .xora-chat-float-wrap,
   .xora-chat-float-wrap::before,
   .xora-chat-float-wrap::after,
@@ -1605,12 +1613,14 @@
     transform: none;
   }
 
-  .xora-chat-float-wrap::before {
+  .xora-chat-float-wrap::before,
+  .xora-chat-toast [data-sonner-toast]::before {
     opacity: 1;
     transform: none;
   }
 
-  .xora-chat-float-wrap::after {
+  .xora-chat-float-wrap::after,
+  .xora-chat-toast [data-sonner-toast]::after {
     opacity: var(--glow-opacity-start);
     transform: none;
   }
