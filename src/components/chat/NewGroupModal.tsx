@@ -50,7 +50,7 @@ export default function NewGroupModal({
 
   return createPortal(
     <div className={`xora-chat-floating-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm ${isClosing ? "is-closing" : ""}`}>
-<div className={`xora-chat-float-wrap xora-chat-float-wrap--large ${isClosing ? "is-closing" : ""}`}>
+      <div className={`xora-chat-float-wrap xora-chat-float-wrap--large ${isClosing ? "is-closing" : ""}`}>
       <div className={`xora-chat-floating-modal xora-chat-float-surface w-full max-w-md rounded-2xl bg-surface border border-border shadow-card overflow-hidden`}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-display text-lg text-foreground flex items-center gap-2">
