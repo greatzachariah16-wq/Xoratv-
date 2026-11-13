@@ -1231,3 +1231,104 @@
     transition: none;
   }
 }
+
+
+/* Targeted Messages-screen fixes: keep the existing visual system unchanged. */
+.xora-chat-page .xora-chat-inbox-back {
+  display: inline-grid;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
+  place-items: center;
+  margin-right: 2px;
+  border: 1px solid rgba(104, 69, 48, 0.16);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #FFFEFC, #F5ECE3);
+  color: #B5502E;
+  box-shadow: 0 2px 4px rgba(61, 38, 25, 0.07), 0 5px 9px rgba(61, 38, 25, 0.08), inset 0 1px 0 #FFFFFF;
+}
+
+.xora-chat-page .xora-chat-inbox-back:active {
+  transform: translateY(1px);
+}
+
+.xora-chat-page .xora-chat-search-wrap {
+  margin-top: 11px;
+  color: #6F5246;
+}
+
+.xora-chat-page .xora-chat-search-wrap input,
+.xora-chat-page .xora-chat-search-wrap input:hover,
+.xora-chat-page .xora-chat-search-wrap input:focus,
+.xora-chat-page .xora-chat-search-wrap input:focus-visible {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.xora-chat-page .xora-chat-search-wrap input::placeholder {
+  color: #6F5246;
+  opacity: 1;
+}
+
+.xora-chat-page .xora-chat-sidebar-header p,
+.xora-chat-page .xora-chat-list-heading,
+.xora-chat-page .xora-chat-list-heading span:last-child,
+.xora-chat-page .xora-chat-empty-state p {
+  color: #6F5246;
+}
+
+.xora-chat-page .xora-chat-list-heading {
+  font-size: 12px;
+  letter-spacing: 0.13em;
+}
+
+.xora-chat-page .xora-chat-list-heading span:last-child {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.xora-chat-page .xora-chat-conversation-list.is-empty {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
+}
+
+.xora-chat-page .xora-chat-conversation-list.is-empty .xora-chat-empty-state {
+  width: 100%;
+  min-height: 100%;
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 24px 24px;
+}
+
+.xora-chat-page .xora-chat-empty-state p {
+  color: #6F5246;
+  font-size: 12px;
+}
+
+.xora-chat-page .xora-chat-empty-orbit.orbit-one {
+  inset: 0;
+}
+
+.xora-chat-page .xora-chat-empty-orbit.orbit-two {
+  inset: 8px;
+  transform: rotate(-28deg) scaleX(1.12);
+}
+
+.xora-chat-page .xora-chat-empty-orbit {
+  border-width: 1.25px;
+  border-color: rgba(181, 80, 46, 0.24);
+}
+
+@media (max-width: 767px) {
+  .xora-chat-page .xora-chat-search-wrap {
+    margin-top: 11px;
+  }
+}
