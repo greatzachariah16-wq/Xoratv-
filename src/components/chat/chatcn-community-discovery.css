@@ -1,11 +1,15 @@
 @theme {
-  --color-paper: #faf4ee;
+  --color-paper: #fbf3e6;
   --color-card: #fffdfa;
   --color-ink: #2b1d18;
   --color-ink-soft: #6b5a52;
-  --color-clay: #b4532f;
-  --color-sand: #ecd2c2;
-  --radius-card: 1.25rem;
+  --color-sun: #ffd45e;
+  --color-orange: #ff6b3d;
+  --color-teal: #2ec4b6;
+  --color-pink: #ff8fab;
+  --color-lilac: #b8a1ff;
+  --color-sky: #6ec6ff;
+  --radius-card: 20px;
   --shadow-hard: 4px 4px 0 0 var(--color-ink);
   --shadow-hard-sm: 2px 2px 0 0 var(--color-ink);
 }
@@ -53,38 +57,26 @@
   padding: 0 18px;
   border: 1.5px solid transparent;
   border-radius: 999px;
-  background: transparent;
-  color: var(--color-ink-soft);
+  background: var(--color-card);
+  color: var(--color-ink);
   font-size: 13px;
   font-weight: 700;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
 .xora-community-switcher button.is-active {
   border-color: var(--color-ink);
-  background: var(--color-card);
-  color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  box-shadow: var(--shadow-hard-sm);
 }
 
 .xora-community-switcher button:focus-visible,
 .xora-community-create:focus-visible,
 .xora-community-join:focus-visible,
-.xora-community-no-results button:focus-visible {
-  outline: 3px solid var(--color-clay);
+.xora-community-start-button:focus-visible {
+  outline: 3px solid var(--color-teal);
   outline-offset: 3px;
-}
-
-.xora-community-switch-count {
-  display: inline-grid;
-  min-width: 21px;
-  height: 21px;
-  place-items: center;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--color-sand);
-  color: var(--color-ink);
-  font-size: 10px;
-  font-weight: 750;
 }
 
 .xora-community-messages-pane { min-height: 0; flex: 1 1 auto; overflow: hidden; }
@@ -95,7 +87,9 @@
   flex: 1 1 auto;
   flex-direction: column;
   gap: 14px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
   background: var(--color-paper);
 }
@@ -105,8 +99,9 @@
   width: 100%;
   padding: 20px;
   border: 1.5px solid var(--color-ink);
-  border-radius: var(--radius-card);
-  background: var(--color-card);
+  border-radius: 20px;
+  background: var(--color-sun);
+  color: var(--color-ink);
   box-shadow: var(--shadow-hard);
 }
 
@@ -122,7 +117,7 @@
 .xora-community-intro {
   max-width: 560px;
   margin: 9px 0 0;
-  color: var(--color-ink-soft);
+  color: var(--color-ink);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -160,10 +155,11 @@
   padding: 0 17px;
   border: 1.5px solid var(--color-ink);
   border-radius: 999px;
-  background: var(--color-clay);
-  color: #fff;
+  background: var(--color-orange);
+  color: var(--color-ink);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 800;
+  opacity: 1;
   box-shadow: var(--shadow-hard-sm);
 }
 
@@ -179,11 +175,11 @@
   border-radius: 999px;
   background: var(--color-card);
   box-shadow: var(--shadow-hard-sm);
-  color: var(--color-ink-soft);
+  color: var(--color-ink);
 }
 
 .xora-community-search:focus-within {
-  outline: 3px solid var(--color-clay);
+  outline: 3px solid var(--color-teal);
   outline-offset: 3px;
 }
 
@@ -199,7 +195,7 @@
   box-shadow: none !important;
 }
 
-.xora-community-search input::placeholder { color: #6b5a52; opacity: 1; }
+.xora-community-search input::placeholder { color: var(--color-ink-soft); opacity: 1; }
 
 .xora-community-privacy-note {
   display: flex;
@@ -217,13 +213,11 @@
 .xora-community-directory-list {
   display: grid;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   align-content: start;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
   gap: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 2px 5px 10px 1px;
+  padding: 2px 5px 6px 1px;
 }
 
 .xora-community-tile {
@@ -234,7 +228,7 @@
   gap: 12px;
   padding: 12px;
   border: 1.5px solid var(--color-ink);
-  border-radius: var(--radius-card);
+  border-radius: 20px;
   background: var(--color-card);
   box-shadow: var(--shadow-hard-sm);
 }
@@ -248,9 +242,13 @@
   overflow: hidden;
   border: 1.5px solid var(--color-ink);
   border-radius: 14px;
-  background: var(--color-sand);
   color: var(--color-ink);
 }
+
+.xora-community-tile-art.tone-teal { background: var(--color-teal); }
+.xora-community-tile-art.tone-pink { background: var(--color-pink); }
+.xora-community-tile-art.tone-lilac { background: var(--color-lilac); }
+.xora-community-tile-art.tone-sky { background: var(--color-sky); }
 
 .xora-community-tile-art img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -279,29 +277,40 @@
   -webkit-line-clamp: 2;
 }
 
-.xora-community-tile-copy > span {
-  display: block;
-  color: var(--color-ink-soft);
+.xora-community-member-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 8px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-card);
+  color: var(--color-ink);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .xora-community-join {
   display: inline-flex;
   min-width: 62px;
+  height: 36px;
   min-height: 36px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   padding: 0 12px;
   border: 1.5px solid var(--color-ink);
   border-radius: 999px;
-  background: transparent;
+  background: var(--color-teal);
   color: var(--color-ink);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 800;
+  box-shadow: none;
 }
 
+.xora-community-join:active { box-shadow: none; }
 .xora-community-join:disabled { opacity: .65; }
 
 .xora-community-no-results {
@@ -312,8 +321,8 @@
   justify-content: center;
   grid-column: 1 / -1;
   padding: 22px;
-  border: 1.5px dashed var(--color-ink-soft);
-  border-radius: var(--radius-card);
+  border: 1.5px dashed var(--color-ink);
+  border-radius: 20px;
   text-align: center;
 }
 
@@ -325,22 +334,46 @@
   margin-bottom: 11px;
   border: 1.5px solid var(--color-ink);
   border-radius: 14px;
-  background: var(--color-sand);
+  background: var(--color-lilac);
   color: var(--color-ink);
 }
 
 .xora-community-no-results h3 { margin: 0; color: var(--color-ink); font-size: 15px; font-weight: 750; }
-.xora-community-no-results p { max-width: 340px; margin: 6px 0 13px; color: var(--color-ink-soft); font-size: 11px; line-height: 1.55; }
-.xora-community-no-results button {
-  min-height: 44px;
-  padding: 0 17px;
+.xora-community-no-results p { max-width: 340px; margin: 6px 0 0; color: var(--color-ink-soft); font-size: 11px; line-height: 1.55; }
+
+.xora-community-start-card {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px dashed var(--color-ink);
+  border-radius: 20px;
+  background: var(--color-pink);
+  color: var(--color-ink);
+}
+
+.xora-community-start-copy { min-width: 0; }
+.xora-community-start-copy h3 { margin: 0; color: var(--color-ink); font-size: 14px; font-weight: 800; }
+.xora-community-start-copy p { margin: 4px 0 0; color: var(--color-ink); font-size: 11px; line-height: 1.45; }
+
+.xora-community-start-button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 13px;
   border: 1.5px solid var(--color-ink);
   border-radius: 999px;
-  background: transparent;
+  background: var(--color-card);
   color: var(--color-ink);
-  font-size: 12px;
-  font-weight: 750;
+  font-size: 11px;
+  font-weight: 800;
 }
+
 .xora-community-directory-error { flex: 0 0 auto; margin: 0; color: #7a3523; font-size: 11px; text-align: center; }
 
 @media (max-width: 640px) {
@@ -355,6 +388,8 @@
   .xora-community-tile { gap: 9px; padding: 10px; }
   .xora-community-tile-copy h3 { font-size: 12px; }
   .xora-community-tile-copy p { font-size: 10px; }
+  .xora-community-start-card { align-items: flex-start; }
+  .xora-community-start-button { min-height: 40px; padding: 0 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
