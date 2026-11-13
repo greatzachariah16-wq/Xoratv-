@@ -154,6 +154,48 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
   const { onReply, onReactionAdd, onEdit, onDelete, onPin } = useChatContext()
   const [showReactions, setShowReactions] = React.useState(false)
   const [showMore, setShowMore] = React.useState(false)
+  const reactionTriggerRef = React.useRef<HTMLButtonElement>(null)
+  const moreTriggerRef = React.useRef<HTMLButtonElement>(null)
+  const [reactionPosition, setReactionPosition] = React.useState<{ top: number; left: number } | null>(null)
+  const [morePosition, setMorePosition] = React.useState<{ top: number; left: number } | null>(null)
+
+  React.useEffect(() => {
+    if (!showReactions) { setReactionPosition(null); return }
+    const update = () => {
+      const rect = reactionTriggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setReactionPosition({
+        top: Math.max(8, rect.top - 54),
+        left: Math.max(8, Math.min(window.innerWidth - 214, rect.left + rect.width / 2 - 107)),
+      })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [showReactions])
+
+  React.useEffect(() => {
+    if (!showMore) { setMorePosition(null); return }
+    const update = () => {
+      const rect = moreTriggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMorePosition({
+        top: Math.min(window.innerHeight - 150, rect.bottom + 6),
+        left: Math.max(8, Math.min(window.innerWidth - 168, isOutgoing ? rect.right - 160 : rect.left)),
+      })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [showMore, isOutgoing])
 
   return (
     <div
@@ -174,41 +216,49 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
       {/* React — opens quick picker */}
       <div className="relative">
         <button
+          ref={reactionTriggerRef}
           onClick={() => setShowReactions(!showReactions)}
           className="flex size-7 items-center justify-center rounded-md text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
           aria-label="Add reaction"
         >
           <SmilePlus className="size-3.5" />
         </button>
-        {showReactions && (
-          <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
+        {showReactions && reactionPosition && typeof document !== "undefined" && createPortal(
+          <div
+            className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm"
+            style={{ position: "fixed", top: reactionPosition.top, left: reactionPosition.left, zIndex: 10050, width: "max-content" }}
+          >
             <QuickReactionPicker
-              onSelect={(emoji) =>
-                onReactionAdd?.(message.id, emoji)
-              }
+              onSelect={(emoji) => onReactionAdd?.(message.id, emoji)}
               onClose={() => setShowReactions(false)}
             />
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
       {/* More — dropdown */}
       <div className="relative">
         <button
+          ref={moreTriggerRef}
           onClick={() => setShowMore(!showMore)}
           className="flex size-7 items-center justify-center rounded-md text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
           aria-label="More actions"
         >
           <MoreHorizontal className="size-3.5" />
         </button>
-        {showMore && (
+        {showMore && morePosition && typeof document !== "undefined" && createPortal(
           <div
-            className={cn(
-              "chat-toolbar-enter absolute top-full z-20 mt-1 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
-              isOutgoing ? "right-0" : "left-0"
-            )}
-            onMouseLeave={() => setShowMore(false)}
+            className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm"
+            style={{ position: "fixed", top: morePosition.top, left: morePosition.left, zIndex: 10050, width: "max-content" }}
           >
+            <div
+              className={cn(
+                "chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
+                isOutgoing ? "right-0" : "left-0"
+              )}
+              onMouseLeave={() => setShowMore(false)}
+            >
             {isOutgoing && (
               <button
                 onClick={() => {
@@ -243,7 +293,9 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
                 Delete
               </button>
             )}
-          </div>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
@@ -599,12 +651,14 @@ function ChatMessage({
           >
             <X className="size-5" />
           </button>
-          <img
-            src={lightboxImage}
-            alt=""
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="xora-chat-float-wrap xora-chat-float-wrap--media">
+            <img
+              src={lightboxImage}
+              alt=""
+              className="xora-chat-float-surface max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>,
         document.body
       )}
@@ -1160,11 +1214,31 @@ function ChatComposer({
   const [files, setFiles] = React.useState<FilePreviewItem[]>([])
   const [isDragging, setIsDragging] = React.useState(false)
   const [showAttachMenu, setShowAttachMenu] = React.useState(false)
+  const attachTriggerRef = React.useRef<HTMLButtonElement>(null)
+  const [attachMenuPosition, setAttachMenuPosition] = React.useState<{ bottom: number; left: number } | null>(null)
   const { textareaRef, resize } = useAutoResize({ maxRows: 6 })
   const { handleKeyDown: handleTypingKeyDown, stopTyping } =
     useTypingIndicator({ onTypingChange: onTyping })
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const imageInputRef = React.useRef<HTMLInputElement>(null)
+  React.useEffect(() => {
+    if (!showAttachMenu) { setAttachMenuPosition(null); return }
+    const update = () => {
+      const rect = attachTriggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setAttachMenuPosition({
+        bottom: Math.max(8, window.innerHeight - rect.top + 8),
+        left: Math.max(8, Math.min(window.innerWidth - 190, rect.left)),
+      })
+    }
+    update()
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
+    return () => {
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
+    }
+  }, [showAttachMenu])
   const hasContent = value.trim().length > 0 || files.length > 0
 
   const addFiles = React.useCallback((newFiles: FileList | File[]) => {
@@ -1295,6 +1369,7 @@ function ChatComposer({
             {/* + button with attachment popout */}
             <div className="relative">
               <button
+                ref={attachTriggerRef}
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full border border-[var(--chat-border)] bg-[var(--chat-bg-sidebar)] text-[var(--chat-text-tertiary)] transition-all hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-secondary)]",
@@ -1306,8 +1381,12 @@ function ChatComposer({
               </button>
 
               {/* Popout menu */}
-              {showAttachMenu && (
-                <div className="chat-toolbar-enter absolute bottom-full left-0 mb-2 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
+              {showAttachMenu && attachMenuPosition && typeof document !== "undefined" && createPortal(
+                <div
+                  className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm"
+                  style={{ position: "fixed", bottom: attachMenuPosition.bottom, left: attachMenuPosition.left, zIndex: 10050, width: "max-content" }}
+                >
+                  <div className="chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
                   <button
                     onClick={() => { fileInputRef.current?.click(); setShowAttachMenu(false) }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
@@ -1329,7 +1408,8 @@ function ChatComposer({
                     <Smile className="size-4" />
                     Emoji
                   </button>
-                </div>
+                  </div>,
+                document.body
               )}
             </div>
 
