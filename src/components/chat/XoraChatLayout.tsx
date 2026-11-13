@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ChatComposer,
   ChatHeader,
@@ -45,6 +46,8 @@ export default function XoraChatLayout({
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const createTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [createMenuPosition, setCreateMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [filter, setFilter] = useState<InboxFilter>("all");
   const activeConversation = conversations.find((item) => item.id === activeConversationId);
 
@@ -62,6 +65,29 @@ export default function XoraChatLayout({
 
   const privateCount = conversations.filter((item) => !item.isGroup).length;
   const circleCount = conversations.filter((item) => item.isGroup).length;
+
+  useEffect(() => {
+    if (!createMenuOpen) {
+      setCreateMenuPosition(null);
+      return;
+    }
+    const updatePosition = () => {
+      const trigger = createTriggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setCreateMenuPosition({
+        top: rect.bottom + 9,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [createMenuOpen]);
 
   return (
     <ChatProvider
@@ -93,6 +119,7 @@ export default function XoraChatLayout({
               <div className="relative shrink-0">
                 <button
                   type="button"
+                  ref={createTriggerRef}
                   className="xora-chat-create-trigger"
                   onClick={() => setCreateMenuOpen((open) => !open)}
                   aria-label="Create a new chat"
@@ -102,15 +129,27 @@ export default function XoraChatLayout({
                   <Plus className="size-4" />
                   <span>New chat</span>
                 </button>
-                {createMenuOpen && (
-                  <div className="xora-chat-create-menu" role="menu" aria-label="New conversation options">
-                    <button type="button" role="menuitem" onClick={() => { setCreateMenuOpen(false); onNewMessage(); }}>
-                      <MessageCircle className="size-4" /> Private message
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => { setCreateMenuOpen(false); onNewGroup(); }}>
-                      <Users className="size-4" /> Create a circle
-                    </button>
-                  </div>
+                {createMenuOpen && createMenuPosition && typeof document !== "undefined" && createPortal(
+                  <div
+                    className="xora-chat-float-wrap xora-chat-float-wrap--sm"
+                    style={{
+                      position: "fixed",
+                      top: createMenuPosition.top,
+                      right: createMenuPosition.right,
+                      zIndex: 70,
+                      width: "max-content",
+                    }}
+                  >
+                    <div className="xora-chat-create-menu xora-chat-float-surface" role="menu" aria-label="New conversation options">
+                      <button type="button" role="menuitem" onClick={() => { setCreateMenuOpen(false); onNewMessage(); }}>
+                        <MessageCircle className="size-4" /> Private message
+                      </button>
+                      <button type="button" role="menuitem" onClick={() => { setCreateMenuOpen(false); onNewGroup(); }}>
+                        <Users className="size-4" /> Create a circle
+                      </button>
+                    </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>
