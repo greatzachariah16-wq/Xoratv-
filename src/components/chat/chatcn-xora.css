@@ -1408,9 +1408,11 @@
   background:
     radial-gradient(60% 50% at 30% 60%, rgba(var(--shadow-tint), 0.45), transparent 70%),
     radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, 0.38), transparent 70%);
-  opacity: var(--glow-opacity);
-  transform: translate3d(-4%, 0, 0) scale(1);
-  animation: xora-glow-flow var(--glow-speed) ease-in-out infinite alternate;
+  opacity: 0;
+  transform: translate3d(0, -10px, 0) scale(0.82);
+  animation:
+    xora-glow-in var(--float-entrance-duration) cubic-bezier(0.16, 1, 0.3, 1) both,
+    xora-glow-flow var(--glow-speed) ease-in-out var(--float-entrance-duration) infinite alternate;
 }
 
 .xora-chat-float-surface {
@@ -1520,6 +1522,11 @@
   50% { opacity: 0.75; transform: translateY(var(--shadow-drift)) scale(1.04); }
 }
 
+@keyframes xora-glow-in {
+  from { opacity: 0; transform: translate3d(0, -10px, 0) scale(0.82); }
+  to { opacity: var(--glow-opacity-start); transform: translate3d(0, 0, 0) scale(1); }
+}
+
 @keyframes xora-glow-flow {
   0% { opacity: var(--glow-opacity-start); transform: translate3d(-4%, 0, 0) scale(1); }
   50% { opacity: var(--glow-opacity); transform: translate3d(4%, 6%, 0) scale(1.1); }
@@ -1588,7 +1595,11 @@
   background:
     radial-gradient(60% 50% at 30% 60%, rgba(var(--shadow-tint), 0.32), transparent 70%),
     radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, 0.28), transparent 70%);
-  animation: xora-glow-flow var(--glow-speed) ease-in-out infinite alternate;
+  opacity: 0;
+  transform: translate3d(0, -8px, 0) scale(0.86);
+  animation:
+    xora-glow-in var(--float-entrance-duration) cubic-bezier(0.16, 1, 0.3, 1) both,
+    xora-glow-flow var(--glow-speed) ease-in-out var(--float-entrance-duration) infinite alternate;
 }
 
 .xora-chat-toast [data-sonner-toast][data-removed="true"]::before,
