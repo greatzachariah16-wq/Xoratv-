@@ -56,8 +56,8 @@ function ChatForwardDialog({
   }
 
   return (
-    <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-black/50", className)}>
-      <div className="w-full max-w-sm overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
+    <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-black/70 xora-elevation-overlay", className)}>
+      <div className="w-full max-w-sm overflow-hidden xora-elevation-panel border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] shadow-[var(--chat-shadow-lg)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--chat-border)] px-4 py-3">
           <span className="text-[14px] font-semibold text-[var(--chat-text-primary)]">Forward message</span>
