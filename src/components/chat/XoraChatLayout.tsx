@@ -10,7 +10,7 @@ import {
   type ChatUser,
   type SidebarConversation,
 } from "@/components/ui/chat";
-import { ArrowUpRight, ChevronRight, MessageCircle, MessageSquare, Plus, Search, Users, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChevronRight, MessageCircle, MessageSquare, Plus, Search, Users, X } from "lucide-react";
 
 type Props = {
   currentUser: ChatUser;
@@ -22,6 +22,7 @@ type Props = {
   onSend: (text: string) => void;
   onNewMessage: () => void;
   onNewGroup: () => void;
+  onBackToPrevious: () => void;
 };
 
 type InboxFilter = "all" | "private" | "circles";
@@ -40,6 +41,7 @@ export default function XoraChatLayout({
   onSend,
   onNewMessage,
   onNewGroup,
+  onBackToPrevious,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
@@ -77,6 +79,9 @@ export default function XoraChatLayout({
         >
           <div className="xora-chat-sidebar-header">
             <div className="xora-chat-brandline">
+              <button type="button" className="xora-chat-inbox-back" onClick={onBackToPrevious} aria-label="Go back">
+                <ArrowLeft className="size-4" />
+              </button>
               <span className="xora-chat-brandmark">X</span>
               <span>XORATV <i /> MESSAGES</span>
             </div>
@@ -111,7 +116,7 @@ export default function XoraChatLayout({
             </div>
           </div>
 
-          <label className="xora-chat-search-wrap flex items-center gap-2">
+          {conversations.length > 0 && <label className="xora-chat-search-wrap flex items-center gap-2">
             <Search className="size-4 shrink-0" aria-hidden="true" />
             <input
               type="search"
@@ -125,9 +130,9 @@ export default function XoraChatLayout({
                 <X className="size-4" />
               </button>
             )}
-          </label>
+          </label>}
 
-          <div className="xora-chat-filter-row" role="group" aria-label="Filter conversations">
+          {conversations.length > 0 && <div className="xora-chat-filter-row" role="group" aria-label="Filter conversations">
             <button type="button" className={filter === "all" ? "is-selected" : ""} aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
               All <span>{conversations.length}</span>
             </button>
@@ -137,14 +142,14 @@ export default function XoraChatLayout({
             <button type="button" className={filter === "circles" ? "is-selected" : ""} aria-pressed={filter === "circles"} onClick={() => setFilter("circles")}>
               Circles <span>{circleCount}</span>
             </button>
-          </div>
+          </div>}
 
-          <div className="xora-chat-list-heading">
+          {conversations.length > 0 && <div className="xora-chat-list-heading">
             <span>{filter === "circles" ? "YOUR CIRCLES" : filter === "private" ? "PRIVATE CHATS" : "RECENT CONVERSATIONS"}</span>
             <span>{filteredConversations.length} {filteredConversations.length === 1 ? "chat" : "chats"}</span>
-          </div>
+          </div>}
 
-          <div className="xora-chat-conversation-list min-h-0 flex-1 overflow-y-auto">
+          <div className={`xora-chat-conversation-list min-h-0 flex-1 overflow-y-auto ${conversations.length === 0 ? "is-empty" : ""}`}>
             {filteredConversations.length > 0 ? filteredConversations.map((conversation) => (
               <button
                 key={conversation.id}
@@ -188,17 +193,12 @@ export default function XoraChatLayout({
                 <p>{searchQuery ? "Try another name or search for a different message." : "Bring your people together. Start a conversation or create a circle."}</p>
                 {!searchQuery && (
                   <div className="xora-chat-empty-actions">
-                    <button type="button" onClick={onNewMessage}><MessageCircle className="size-4" /> New message</button>
+                    <button type="button" onClick={onNewMessage}><MessageCircle className="size-4" /> New chat</button>
                     <button type="button" onClick={onNewGroup}><Users className="size-4" /> Create circle</button>
                   </div>
                 )}
               </div>
             )}
-          </div>
-          <div className="xora-chat-sidebar-footer">
-            <span className="xora-chat-footer-spark"><MessageCircle className="size-4" /></span>
-            <span><strong>Good conversations live here.</strong><small>Made for your Xora community</small></span>
-            <ArrowUpRight className="size-4" />
           </div>
         </aside>
 
