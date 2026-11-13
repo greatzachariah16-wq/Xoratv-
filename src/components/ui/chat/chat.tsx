@@ -123,7 +123,7 @@ function QuickReactionPicker({
 }) {
   return (
     <div
-      className="chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface flex items-center gap-0.5 rounded-[10px] border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-1 shadow-[var(--chat-shadow-toolbar)]"
+      className="chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface flex items-center gap-0.5 rounded-[10px] border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] p-1 shadow-[var(--chat-shadow-toolbar)]"
       onMouseLeave={onClose}
     >
       {QUICK_REACTIONS.map((emoji) => (
@@ -254,7 +254,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
         </button>
         {showReactions && reactionPosition && typeof document !== "undefined" && createPortal(
           <div
-            className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm ${reactionClosing ? "is-closing" : ""}`}
+            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap float-wrap xora-chat-float-wrap--sm ${reactionClosing ? "is-closing" : ""}`}
             style={{ position: "fixed", top: reactionPosition.top, left: reactionPosition.left, zIndex: 10050, width: "max-content" }}
           >
             <QuickReactionPicker
@@ -285,12 +285,12 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
         </button>
         {showMore && morePosition && typeof document !== "undefined" && createPortal(
           <div
-            className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm ${moreClosing ? "is-closing" : ""}`}
+            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap float-wrap xora-chat-float-wrap--sm ${moreClosing ? "is-closing" : ""}`}
             style={{ position: "fixed", top: morePosition.top, left: morePosition.left, zIndex: 10050, width: "max-content" }}
           >
             <div
               className={cn(
-                "chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
+                "chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface relative z-10 mt-0 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
               )}
               onMouseLeave={closeMore}
             >
@@ -702,11 +702,11 @@ function ChatMessage({
           >
             <X className="size-5" />
           </button>
-          <div className={`xora-chat-float-wrap xora-chat-float-wrap--media ${lightboxClosing ? "is-closing" : ""}`}>
+          <div className={`float-wrap xora-chat-float-wrap float-wrap xora-chat-float-wrap--media ${lightboxClosing ? "is-closing" : ""}`}>
             <img
               src={lightboxImage}
               alt=""
-              className="xora-chat-float-surface max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+              className="float-surface xora-chat-float-surface max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
@@ -1453,10 +1453,10 @@ function ChatComposer({
               {/* Popout menu */}
               {showAttachMenu && attachMenuPosition && typeof document !== "undefined" && createPortal(
                 <div
-                  className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm ${attachMenuClosing ? "is-closing" : ""}`}
+                  className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap float-wrap xora-chat-float-wrap--sm ${attachMenuClosing ? "is-closing" : ""}`}
                   style={{ position: "fixed", bottom: attachMenuPosition.bottom, left: attachMenuPosition.left, zIndex: 10050, width: "max-content" }}
                 >
-                  <div className="chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
+                  <div className="chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface relative z-10 mt-0 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
                   <button
                     onClick={() => { fileInputRef.current?.click(); closeAttachMenu() }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
