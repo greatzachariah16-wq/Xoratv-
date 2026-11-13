@@ -1547,6 +1547,14 @@
 }
 
 /* Chat toasts use the same small warm shadow/glow treatment while on /chat. */
+.xora-chat-toast {
+  --float-distance: 4px;
+  --shadow-drift: 7px;
+  --glow-opacity-start: 0.40;
+  --glow-opacity: 0.68;
+  --glow-opacity-end: 0.52;
+}
+
 .xora-chat-toast [data-sonner-toast] {
   position: relative;
   isolation: isolate;
