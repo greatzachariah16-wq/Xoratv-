@@ -150,7 +150,7 @@ export default function XoraChatLayout({
                 </button>
                 {createMenuOpen && createMenuPosition && typeof document !== "undefined" && createPortal(
                   <div
-                    className={`xora-chat-page xora-chat-float-wrap xora-chat-float-wrap--sm ${createMenuClosing ? "is-closing" : ""}`}
+                    className={`xora-chat-page float-wrap xora-chat-float-wrap float-wrap xora-chat-float-wrap--sm ${createMenuClosing ? "is-closing" : ""}`}
                     style={{
                       position: "fixed",
                       top: createMenuPosition.top,
@@ -159,7 +159,7 @@ export default function XoraChatLayout({
                       width: "max-content",
                     }}
                   >
-                    <div className="xora-chat-create-menu xora-chat-float-surface" role="menu" aria-label="New conversation options">
+                    <div className="xora-chat-create-menu float-surface xora-chat-float-surface" role="menu" aria-label="New conversation options">
                       <button type="button" role="menuitem" onClick={() => { closeCreateMenu(); window.setTimeout(onNewMessage, 180); }}>
                         <MessageCircle className="size-4" /> Private message
                       </button>
