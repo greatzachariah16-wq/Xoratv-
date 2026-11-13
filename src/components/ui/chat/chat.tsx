@@ -154,6 +154,28 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
   const { onReply, onReactionAdd, onEdit, onDelete, onPin } = useChatContext()
   const [showReactions, setShowReactions] = React.useState(false)
   const [showMore, setShowMore] = React.useState(false)
+  const [reactionClosing, setReactionClosing] = React.useState(false)
+  const [moreClosing, setMoreClosing] = React.useState(false)
+  const reactionCloseTimer = React.useRef<number | null>(null)
+  const moreCloseTimer = React.useRef<number | null>(null)
+  const closeReactions = () => {
+    setReactionClosing(true)
+    if (reactionCloseTimer.current !== null) window.clearTimeout(reactionCloseTimer.current)
+    reactionCloseTimer.current = window.setTimeout(() => {
+      setShowReactions(false)
+      setReactionClosing(false)
+      reactionCloseTimer.current = null
+    }, 180)
+  }
+  const closeMore = () => {
+    setMoreClosing(true)
+    if (moreCloseTimer.current !== null) window.clearTimeout(moreCloseTimer.current)
+    moreCloseTimer.current = window.setTimeout(() => {
+      setShowMore(false)
+      setMoreClosing(false)
+      moreCloseTimer.current = null
+    }, 180)
+  }
   const reactionTriggerRef = React.useRef<HTMLButtonElement>(null)
   const moreTriggerRef = React.useRef<HTMLButtonElement>(null)
   const [reactionPosition, setReactionPosition] = React.useState<{ top: number; left: number } | null>(null)
@@ -217,7 +239,14 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
       <div className="relative">
         <button
           ref={reactionTriggerRef}
-          onClick={() => setShowReactions(!showReactions)}
+          onClick={() => {
+            if (showReactions) closeReactions()
+            else {
+              if (reactionCloseTimer.current !== null) window.clearTimeout(reactionCloseTimer.current)
+              setReactionClosing(false)
+              setShowReactions(true)
+            }
+          }}
           className="flex size-7 items-center justify-center rounded-md text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
           aria-label="Add reaction"
         >
@@ -225,12 +254,12 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
         </button>
         {showReactions && reactionPosition && typeof document !== "undefined" && createPortal(
           <div
-            className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm"
+            className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm ${reactionClosing ? "is-closing" : ""}`}
             style={{ position: "fixed", top: reactionPosition.top, left: reactionPosition.left, zIndex: 10050, width: "max-content" }}
           >
             <QuickReactionPicker
               onSelect={(emoji) => onReactionAdd?.(message.id, emoji)}
-              onClose={() => setShowReactions(false)}
+              onClose={closeReactions}
             />
           </div>,
           document.body
@@ -241,7 +270,14 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
       <div className="relative">
         <button
           ref={moreTriggerRef}
-          onClick={() => setShowMore(!showMore)}
+          onClick={() => {
+            if (showMore) closeMore()
+            else {
+              if (moreCloseTimer.current !== null) window.clearTimeout(moreCloseTimer.current)
+              setMoreClosing(false)
+              setShowMore(true)
+            }
+          }}
           className="flex size-7 items-center justify-center rounded-md text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
           aria-label="More actions"
         >
@@ -249,20 +285,20 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
         </button>
         {showMore && morePosition && typeof document !== "undefined" && createPortal(
           <div
-            className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm"
+            className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm ${moreClosing ? "is-closing" : ""}`}
             style={{ position: "fixed", top: morePosition.top, left: morePosition.left, zIndex: 10050, width: "max-content" }}
           >
             <div
               className={cn(
                 "chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-40 overflow-hidden rounded-lg border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]",
               )}
-              onMouseLeave={() => setShowMore(false)}
+              onMouseLeave={closeMore}
             >
             {isOutgoing && (
               <button
                 onClick={() => {
                   onEdit?.(message)
-                  setShowMore(false)
+                  closeMore()
                 }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
               >
@@ -273,7 +309,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
             <button
               onClick={() => {
                 onPin?.(message.id)
-                setShowMore(false)
+                closeMore()
               }}
               className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
             >
@@ -284,7 +320,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
               <button
                 onClick={() => {
                   onDelete?.(message.id)
-                  setShowMore(false)
+                  closeMore()
                 }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-[var(--chat-red)] transition-colors hover:bg-red-500/10"
               >
