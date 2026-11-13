@@ -1436,6 +1436,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     inset 0 -2px 0 rgba(181, 82, 45, 0.12) !important;
+  animation: xora-surface-levitate var(--float-loop-speed) ease-in-out var(--float-entrance-duration) infinite;
 }
 
 .xora-chat-float-wrap:not(.is-closing),
