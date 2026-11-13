@@ -146,45 +146,52 @@ export default function ChatcnMessenger({
         </div>
       ) : (
         <section className="xora-community-discover-view">
-          <div className="xora-community-discover-heading">
-            <p className="xora-community-eyebrow">XORATV COMMUNITY</p>
+          <header className="xora-community-discover-heading">
             <h1>Find your people.</h1>
             <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
-            <div className="xora-community-privacy-note"><Lock className="size-4" /><span>Your private messages are separate. Only members of a circle can see its conversation.</span></div>
-          </div>
+          </header>
 
           <div className="xora-community-directory-head">
             <div><h2>Explore public circles</h2><p>Find a space that feels like yours.</p></div>
-            <button type="button" className="xora-community-create" onClick={onOpenNewGroup}><Plus className="size-4" /> Create circle</button>
+            <button type="button" className="xora-community-create pressable" onClick={onOpenNewGroup}><Plus className="size-4" /> Create circle</button>
           </div>
 
-          <label className="xora-community-search">
-            <Search className="size-4" />
-            <input value={communityQuery} onChange={(event) => setCommunityQuery(event.target.value)} placeholder="Search films, music, learning..." aria-label="Search public circles" />
+          <label className="xora-community-search pressable">
+            <span className="sr-only">Search public circles</span>
+            <Search className="size-4" aria-hidden="true" />
+            <input value={communityQuery} onChange={(event) => setCommunityQuery(event.target.value)} placeholder="Search circles..." />
           </label>
 
+          <div className="xora-community-privacy-note">
+            <Lock className="size-4" aria-hidden="true" />
+            <span>Your private messages are separate. Only members of a circle can see its conversation.</span>
+          </div>
+
           <div className="xora-community-directory-list">
-            {communities.length ? communities.map((room) => (
-              <article className="xora-community-tile" key={room.id}>
-                <div className="xora-community-tile-art">
-                  {room.photo_url ? <img src={room.photo_url} alt="" loading="lazy" /> : <Users className="size-7" />}
-                </div>
-                <div className="xora-community-tile-copy">
-                  <h3>{room.name || "Xora community circle"}</h3>
-                  <p>{room.description || "A place to meet people and share what you love."}</p>
-                  <span><Users className="size-3" /> {Object.keys(room.memberIds || {}).length} members <i>·</i> Public</span>
-                </div>
-                <button type="button" className="xora-community-join" disabled={joiningId === room.id || Boolean(joiningId)} onClick={() => void joinCommunity(room.id)}>
-                  {joiningId === room.id ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                  {joiningId === room.id ? "Joining" : "Join"}
-                </button>
-              </article>
-            )) : (
+            {communities.length ? communities.map((room) => {
+              const memberCount = Object.keys(room.memberIds || {}).length;
+              return (
+                <article className="xora-community-tile" key={room.id}>
+                  <div className="xora-community-tile-art">
+                    {room.photo_url ? <img src={room.photo_url} alt="" loading="lazy" /> : <Users className="size-6" aria-hidden="true" />}
+                  </div>
+                  <div className="xora-community-tile-copy">
+                    <h3>{room.name || "Xora community circle"}</h3>
+                    <p>{room.description || "A place to meet people and share what you love."}</p>
+                    <span>{memberCount} {memberCount === 1 ? "member" : "members"} · Public</span>
+                  </div>
+                  <button type="button" className="xora-community-join" disabled={joiningId === room.id || Boolean(joiningId)} onClick={() => void joinCommunity(room.id)}>
+                    {joiningId === room.id ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {joiningId === room.id ? "Joining" : "Join"}
+                  </button>
+                </article>
+              );
+            }) : (
               <div className="xora-community-no-results">
-                <div><Compass className="size-7" /></div>
-                <h3>{discoverableError ? "The directory is taking a breather" : communityQuery ? "No circles found" : "Your first circle is waiting"}</h3>
-                <p>{discoverableError ? "We couldn't load public circles right now. The directory will retry automatically." : communityQuery ? "Try another search, or browse all public circles." : "Create a circle and invite your people. Public circles will also appear here when available."}</p>
-                {!communityQuery && !discoverableError && <button type="button" onClick={onOpenNewGroup}><Plus className="size-4" /> Create the first circle</button>}
+                <div><Compass className="size-7" aria-hidden="true" /></div>
+                <h3>{discoverableError ? "The directory is taking a breather" : communityQuery.trim() ? `No circles match “${communityQuery.trim()}”.` : "Your first circle is waiting."}</h3>
+                <p>{discoverableError ? "We couldn't load public circles right now. The directory will retry automatically." : communityQuery.trim() ? "Create one and invite people." : "Create a circle and invite your people. Public circles will also appear here when available."}</p>
+                {!communityQuery.trim() && !discoverableError && <button type="button" onClick={onOpenNewGroup}><Plus className="size-4" /> Create the first circle</button>}
               </div>
             )}
           </div>
