@@ -1249,6 +1249,25 @@ function ChatComposer({
   const [files, setFiles] = React.useState<FilePreviewItem[]>([])
   const [isDragging, setIsDragging] = React.useState(false)
   const [showAttachMenu, setShowAttachMenu] = React.useState(false)
+  const [attachMenuClosing, setAttachMenuClosing] = React.useState(false)
+  const attachMenuCloseTimer = React.useRef<number | null>(null)
+  const closeAttachMenu = () => {
+    setAttachMenuClosing(true)
+    if (attachMenuCloseTimer.current !== null) window.clearTimeout(attachMenuCloseTimer.current)
+    attachMenuCloseTimer.current = window.setTimeout(() => {
+      setShowAttachMenu(false)
+      setAttachMenuClosing(false)
+      attachMenuCloseTimer.current = null
+    }, 180)
+  }
+  const toggleAttachMenu = () => {
+    if (showAttachMenu) closeAttachMenu()
+    else {
+      if (attachMenuCloseTimer.current !== null) window.clearTimeout(attachMenuCloseTimer.current)
+      setAttachMenuClosing(false)
+      setShowAttachMenu(true)
+    }
+  }
   const attachTriggerRef = React.useRef<HTMLButtonElement>(null)
   const [attachMenuPosition, setAttachMenuPosition] = React.useState<{ bottom: number; left: number } | null>(null)
   const { textareaRef, resize } = useAutoResize({ maxRows: 6 })
@@ -1338,7 +1357,7 @@ function ChatComposer({
       }
       if (imageFiles.length > 0) {
         addFiles(imageFiles)
-        setShowAttachMenu(false)
+        closeAttachMenu()
       }
     },
     [addFiles]
@@ -1359,7 +1378,7 @@ function ChatComposer({
       setIsDragging(false)
       if (e.dataTransfer.files.length > 0) {
         addFiles(e.dataTransfer.files)
-        setShowAttachMenu(false)
+        closeAttachMenu()
       }
     },
     [addFiles]
@@ -1405,7 +1424,7 @@ function ChatComposer({
             <div className="relative">
               <button
                 ref={attachTriggerRef}
-                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                onClick={toggleAttachMenu}
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full border border-[var(--chat-border)] bg-[var(--chat-bg-sidebar)] text-[var(--chat-text-tertiary)] transition-all hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-secondary)]",
                   showAttachMenu && "rotate-45 bg-[var(--chat-accent-soft)] text-[var(--chat-accent)]"
@@ -1418,26 +1437,26 @@ function ChatComposer({
               {/* Popout menu */}
               {showAttachMenu && attachMenuPosition && typeof document !== "undefined" && createPortal(
                 <div
-                  className="xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm"
+                  className={`xora-chat-chatcn-popup xora-chat-float-wrap xora-chat-float-wrap--sm ${attachMenuClosing ? "is-closing" : ""}`}
                   style={{ position: "fixed", bottom: attachMenuPosition.bottom, left: attachMenuPosition.left, zIndex: 10050, width: "max-content" }}
                 >
                   <div className="chat-toolbar-enter xora-chat-chatcn-popup-surface xora-chat-float-surface relative z-10 mt-0 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
                   <button
-                    onClick={() => { fileInputRef.current?.click(); setShowAttachMenu(false) }}
+                    onClick={() => { fileInputRef.current?.click(); closeAttachMenu() }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <Paperclip className="size-4" />
                     Attach file
                   </button>
                   <button
-                    onClick={() => { imageInputRef.current?.click(); setShowAttachMenu(false) }}
+                    onClick={() => { imageInputRef.current?.click(); closeAttachMenu() }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <ImageIcon className="size-4" />
                     Photo or video
                   </button>
                   <button
-                    onClick={() => setShowAttachMenu(false)}
+                    onClick={() => closeAttachMenu()}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--chat-text-secondary)] transition-colors hover:bg-[var(--chat-accent-soft)] hover:text-[var(--chat-text-primary)]"
                   >
                     <Smile className="size-4" />
