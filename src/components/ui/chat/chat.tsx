@@ -254,7 +254,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
         </button>
         {showReactions && reactionPosition && typeof document !== "undefined" && createPortal(
           <div
-            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm ${reactionClosing ? "is-closing" : ""}`}
+            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm xora-chat-float-wrap--r10 ${reactionClosing ? "is-closing" : ""}`}
             style={{ position: "fixed", top: reactionPosition.top, left: reactionPosition.left, zIndex: 10050, width: "max-content" }}
           >
             <QuickReactionPicker
@@ -285,7 +285,7 @@ function ChatMessageActions({ message, isOutgoing }: ChatMessageActionsProps) {
         </button>
         {showMore && morePosition && typeof document !== "undefined" && createPortal(
           <div
-            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm ${moreClosing ? "is-closing" : ""}`}
+            className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm xora-chat-float-wrap--r8 ${moreClosing ? "is-closing" : ""}`}
             style={{ position: "fixed", top: morePosition.top, left: morePosition.left, zIndex: 10050, width: "max-content" }}
           >
             <div
@@ -1453,7 +1453,7 @@ function ChatComposer({
               {/* Popout menu */}
               {showAttachMenu && attachMenuPosition && typeof document !== "undefined" && createPortal(
                 <div
-                  className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm ${attachMenuClosing ? "is-closing" : ""}`}
+                  className={`xora-chat-chatcn-popup float-wrap xora-chat-float-wrap xora-chat-float-wrap--sm xora-chat-float-wrap--r12 ${attachMenuClosing ? "is-closing" : ""}`}
                   style={{ position: "fixed", bottom: attachMenuPosition.bottom, left: attachMenuPosition.left, zIndex: 10050, width: "max-content" }}
                 >
                   <div className="chat-toolbar-enter xora-chat-chatcn-popup-surface float-surface xora-chat-float-surface relative z-10 mt-0 w-44 overflow-hidden rounded-xl border border-[var(--chat-border-strong)] bg-[var(--chat-bg-sidebar)] py-1 shadow-[var(--chat-shadow-toolbar)]">
