@@ -66,7 +66,7 @@ export const Route = createFileRoute("/api/profile")({
         const avatar_url = typeof body.avatar_url === "string" ? body.avatar_url.trim() : "";
         const location = typeof body.location === "string" ? body.location.trim() : "";
         const website = typeof body.website === "string" ? body.website.trim() : "";
-        if (display_name.length < 2 || display_name.length > 40) return json({ ok: false, error: "Display name must be 2–40 characters." }, 400);
+        if (!display_name || display_name.length > 60) return json({ ok: false, error: "Display name must be 1–60 characters." }, 400);
         if (!/^[a-z0-9_]{3,20}$/.test(username)) return json({ ok: false, error: "Handle must be 3–20 lowercase letters, numbers or underscores." }, 400);
         if (bio.length > 600 || location.length > 80 || website.length > 200) return json({ ok: false, error: "One or more profile fields are too long." }, 400);
         let avatar: URL;
