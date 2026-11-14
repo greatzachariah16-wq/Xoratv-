@@ -95,9 +95,9 @@ function ProfilePage() {
 
           <div className="relative px-3 pb-1 sm:px-5 sm:pb-2">
             <div className="-mt-9 grid min-w-0 grid-cols-[84px_minmax(0,1fr)] items-end gap-x-3 gap-y-2">
-              <div className="relative size-[68px] rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
-                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={62} />
-                {isMe ? <span className="brand-surface absolute bottom-0 right-0 grid size-6 place-items-center rounded-full border-2 border-white" title="Your profile"><Camera className="size-3" /></span> : null}
+              <div className="relative h-[104px] w-[84px] overflow-hidden rounded-xl border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
+                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={84} className="xora-profile-avatar !h-full !w-full !rounded-lg" />
+                {isMe ? <span className="brand-surface absolute bottom-1 right-1 grid size-6 place-items-center rounded-md border-2 border-white" title="Your profile"><Camera className="size-3" /></span> : null}
               </div>
               <div className="min-w-0 pb-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
