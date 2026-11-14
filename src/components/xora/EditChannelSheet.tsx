@@ -130,8 +130,8 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-[28px] border-(--color-hairline) bg-(--color-surface-solid) p-5 text-(--color-text-strong) sm:mx-auto sm:max-w-xl sm:rounded-[28px]">
         <SheetHeader className="pr-10 text-left">
-          <SheetTitle className="font-display text-xl">Edit your channel</SheetTitle>
-          <SheetDescription>Update how viewers discover and recognise your X Channel.</SheetDescription>
+          <SheetTitle className="font-display text-xl text-(--color-text-strong)">Edit your channel</SheetTitle>
+          <SheetDescription className="text-(--color-text-muted)">Update how viewers discover and recognise your X Channel.</SheetDescription>
         </SheetHeader>
         <form onSubmit={submit} className="mt-6 space-y-5">
           <div className="grid grid-cols-2 gap-3">
@@ -143,7 +143,7 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
           </Field>
           <Field label="Handle" error={errors.handle}>
             <div className="flex h-12 items-center rounded-xl border border-border bg-background px-3">
-              <span className="text-sm text-muted-foreground">@</span>
+              <span className="text-sm text-(--color-text-muted)">@</span>
               <input value={draft.handle} onChange={(event) => update("handle", event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} minLength={3} maxLength={20} className="h-full min-w-0 flex-1 bg-transparent pl-1 text-sm outline-none" autoCapitalize="none" autoComplete="off" spellCheck={false}/>
             </div>
           </Field>
