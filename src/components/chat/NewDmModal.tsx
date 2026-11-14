@@ -6,7 +6,7 @@ export interface NewDmModalProps {
   open: boolean;
   username: string;
   busy: boolean;
-  resolvedUser?: { id: string; username: string; display_name: string; avatar_url?: string | null } | null;
+  resolvedUser?: { id: string; username: string; display_name: string; avatar_url?: string | null } | null;\n  suggestions?: { id: string; username: string; display_name: string; avatar_url?: string | null }[];\n  suggestionsLoading?: boolean;\n  onSelectSuggestion?: (user: { id: string; username: string; display_name: string; avatar_url?: string | null }) => void;
   onUsernameChange: (v: string) => void;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -83,8 +83,29 @@ export default function NewDmModal({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Enter their username with or without @. We’ll show you the matching profile first.
+              Type @ to browse usernames, or keep typing to narrow the list.
             </p>
+            {!resolvedUser && (suggestionsLoading || suggestions.length > 0) ? (
+              <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+                {suggestionsLoading ? (
+                  <div className="px-3 py-3 text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="size-3.5 animate-spin" /> Finding XoraTV usernames…</div>
+                ) : suggestions.map((person) => (
+                  <button
+                    key={person.id}
+                    type="button"
+                    onClick={() => onSelectSuggestion?.(person)}
+                    disabled={busy}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:bg-surface-2 disabled:opacity-50"
+                  >
+                    {person.avatar_url ? <img src={person.avatar_url} alt="" className="size-9 shrink-0 rounded-full object-cover" /> : <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#EEDACD] text-[#9B482C]"><UserRound className="size-4" /></span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-foreground">{person.display_name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">@{person.username}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {resolvedUser ? (
