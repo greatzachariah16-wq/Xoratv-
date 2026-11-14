@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   HelpCircle,
   ClipboardPaste,
-  Sparkles,
+  ClipboardCheck,
   RefreshCw,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -289,7 +289,7 @@ export function AdminLoginGate({
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-foreground">
                   <div className="flex items-center justify-between font-semibold text-primary">
                     <span className="flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5" /> Valid Input Format
+                      <ClipboardCheck className="h-3.5 w-3.5" /> Valid Input Format
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground">

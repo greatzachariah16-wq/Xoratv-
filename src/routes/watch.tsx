@@ -12,7 +12,6 @@ import {
   Minimize2,
   Play,
   RotateCw,
-  Sparkles,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ExternalLink, Loader2, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, RotateCcw, Film, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -210,7 +210,7 @@ export function XserisController() {
               }
               className="h-11 rounded-full bg-success px-5 text-success-foreground shadow-card hover:bg-success/90"
             >
-              {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
+              {busy ? <Loader2 className="animate-spin" /> : <Film />}
               1-Click Publish All Discovered Movies
             </Button>
           </div>

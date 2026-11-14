@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  Sparkles, PenLine, LogOut, MapPin, CalendarDays, UserRound,
+  PenLine, LogOut, MapPin, CalendarDays, UserRound,
   Settings2, ArrowUpRight, PlayCircle, ShieldCheck, CircleUserRound,
-  ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle,
+  ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle, Clapperboard,
 } from "lucide-react";
 import { profilePostsQuery, profileQuery } from "@/lib/api";
 import { compactNumber } from "@/lib/format";
@@ -251,7 +251,7 @@ function ProfilePage() {
         </div>
 
         {!user ? <section className="soft-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3.5"><div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-border/70 bg-surface text-primary shadow-sm"><Sparkles className="size-5" /></div><div><h2 className="font-display text-base font-semibold">Make XoraTV yours</h2><p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">Create a profile to follow creators and share what you love with the community.</p></div></div>
+          <div className="flex items-start gap-3.5"><div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-border/70 bg-surface text-primary shadow-sm"><UserRound className="size-5" /></div><div><h2 className="font-display text-base font-semibold">Make XoraTV yours</h2><p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">Create a profile to follow creators and share what you love with the community.</p></div></div>
           <div className="flex shrink-0 gap-2"><Link to="/auth" className="brand-surface press inline-flex h-11 items-center justify-center rounded-full px-4 text-[13px] font-semibold">Sign up</Link><Link to="/auth" className="soft-pill press inline-flex h-11 items-center justify-center rounded-full px-4 text-[13px] font-semibold">Log in</Link></div>
         </section> : null}
 
@@ -270,7 +270,7 @@ function ProfilePage() {
               </div>
               <div className="space-y-3 p-0">
                 {postsPending || isPending ? <FeedSkeleton count={2} /> : publishedPosts.length ? publishedPosts.map((post) => <PostCard key={post.id} post={post} />) : <div className="flex flex-col items-center px-4 py-2 text-center">
-                  {isMe ? <><div className="relative mb-1.5 grid size-12 place-items-center rounded-2xl peach-tile text-clay before:absolute before:-inset-2 before:-z-10 before:rounded-[22px] before:border before:border-clay/10"><Sparkles className="size-6" /></div><h3 className="font-display text-[18px] font-bold text-ink">Your story starts here</h3><p className="mt-1 max-w-[270px] text-[14px] leading-5 text-muted">Your first post will appear here.</p><Link to="/create" className="brand-surface press mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4" /> Share your first post</Link></> : <div className="py-4"><h3 className="font-display text-[18px] font-bold text-ink">No posts yet</h3><p className="mt-1 text-[14px] text-muted">This member hasn’t shared anything publicly yet.</p></div>}
+                  {isMe ? <><div className="relative mb-1.5 grid size-12 place-items-center rounded-2xl peach-tile text-clay before:absolute before:-inset-2 before:-z-10 before:rounded-[22px] before:border before:border-clay/10"><PlayCircle className="size-6" /></div><h3 className="font-display text-[18px] font-bold text-ink">Your story starts here</h3><p className="mt-1 max-w-[270px] text-[14px] leading-5 text-muted">Your first post will appear here.</p><Link to="/create" className="brand-surface press mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4" /> Share your first post</Link></> : <div className="py-4"><h3 className="font-display text-[18px] font-bold text-ink">No posts yet</h3><p className="mt-1 text-[14px] text-muted">This member hasn’t shared anything publicly yet.</p></div>}
                 </div>}
               </div>
             </> : <div className="p-4 sm:p-5">
@@ -286,7 +286,7 @@ function ProfilePage() {
 
           <aside className="space-y-3">
             {isMe ? <section className="soft-card flex min-h-[72px] items-center gap-3 px-3.5 py-3">
-              <div className="peach-tile grid size-10 shrink-0 place-items-center rounded-2xl text-clay"><Sparkles className="size-5" /></div>
+              <div className="peach-tile grid size-10 shrink-0 place-items-center rounded-2xl text-clay"><Clapperboard className="size-5" /></div>
               <h2 className="min-w-0 flex-1 text-[16px] font-bold text-ink">Your space</h2>
               <Link to="/creator-studio" className="soft-pill press inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-3 text-[12px] font-semibold text-clay focus-visible:ring-2 focus-visible:ring-clay/40">Open X Channel <ChevronRight className="size-4" /></Link>
             </section> : null}

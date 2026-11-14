@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Gift, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Gift, Loader2, RefreshCw } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { commerceFetch } from "@/lib/commerce";
 
@@ -187,7 +187,7 @@ function SpecialPrizes() {
         </div>:null}
       </section> : <section className="space-y-3">
         {loading && !prizes.length ? <div className="flex items-center justify-center gap-2 rounded-2xl border border-border p-8 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin"/>Loading special prizes…</div> : null}
-        {!loading && !prizes.length && !error ? <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center"><Sparkles className="mx-auto size-8 text-primary"/><h2 className="mt-3 font-semibold">No special prizes available right now</h2><p className="mt-1 text-sm text-muted-foreground">Please check back later.</p></div> : null}
+        {!loading && !prizes.length && !error ? <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center"><Gift className="mx-auto size-8 text-primary"/><h2 className="mt-3 font-semibold">No special prizes available right now</h2><p className="mt-1 text-sm text-muted-foreground">Please check back later.</p></div> : null}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {prizes.map((prize) => <article key={prize.id} className="group flex h-full flex-col overflow-hidden rounded-[26px] border border-primary/15 bg-surface shadow-card transition-shadow hover:shadow-lg">
           <div className="relative flex min-h-36 items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary sm:min-h-44">

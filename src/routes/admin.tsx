@@ -16,7 +16,6 @@ import {
   Tv,
   Compass,
   ArrowUpRight,
-  Sparkles,
   Layers,
   ChevronRight,
   Zap,

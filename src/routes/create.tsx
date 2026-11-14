@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, Lock, CheckCircle2, Gift, Sparkles } from "lucide-react";
+import { Upload, Lock, CheckCircle2, Gift } from "lucide-react";
 
 import {
   uploadToCloudinary,
@@ -338,7 +338,7 @@ function CreatePage() {
                       <option value="">Select an active Special Prize</option>
                       {specialPrizes.map(prize => <option key={prize.id} value={prize.id}>{prize.title}</option>)}
                     </select>
-                    {specialPrizes.length === 0 ? <p className="text-[11px] text-muted-foreground">No active Special Prizes are available right now.</p> : <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Sparkles className="size-3.5 text-primary"/> You can turn this off for any video before publishing.</p>}
+                    {specialPrizes.length === 0 ? <p className="text-[11px] text-muted-foreground">No active Special Prizes are available right now.</p> : <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Gift className="size-3.5 text-primary"/> You can turn this off for any video before publishing.</p>}
                   </div>
                 ) : null}
               </section>

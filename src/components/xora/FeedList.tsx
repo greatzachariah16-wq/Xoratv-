@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Users, Compass, Loader2 } from "lucide-react";
+import { Users, Compass, Loader2 } from "lucide-react";
 import { feedInfiniteQuery, type FeedType } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
@@ -137,7 +137,7 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         <ErrorState message={(error as Error).message} onRetry={() => void refetch()} />
       ) : !allPosts.length ? (
         <EmptyState
-          icon={mode === "following" ? Users : Sparkles}
+          icon={mode === "following" ? Users : Compass}
           title={mode === "following" ? "No posts from subscribed creators" : "Nothing here yet"}
           description={
             mode === "following"
