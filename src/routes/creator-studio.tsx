@@ -96,7 +96,7 @@ function XChannel(){
   const creatorClicksForPrize=(prizeId:string)=>Number(specialPrizeAnalytics.offerBreakdown?.find((item: { prizeId?: string; clicks?: number })=>item.prizeId===prizeId)?.clicks||0);
   const creatorInfo=dashboard?.creator;
   const displayName=optimisticChannel?.displayName||profile?.display_name||creatorInfo?.displayName||user?.displayName||"Xora Creator";
-  const publicBio=creatorInfo?.channelBio||"Creator on XoraTV";
+  const publicBio=optimisticChannel?.bio||profile?.bio||creatorInfo?.channelBio||"Creator on XoraTV";
   const publicFeaturedTitle=creatorInfo?.featuredTitle||"Your channel. Your stories.";
   const publicFeaturedDescription=creatorInfo?.featuredDescription||"Make your best work the first thing people discover on XoraTV.";
   const username=optimisticChannel?.handle||profile?.username||creatorInfo?.username||user?.email?.split("@")[0]||"creator";
@@ -514,7 +514,7 @@ function XChannel(){
   };
 
   return <AppShell wide>
-    <div className="xora-channel-page space-y-5" data-compact={compactVisible}>
+    <div className="xora-channel-page space-y-5 pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+24px)]" data-compact={compactVisible}>
       <header className="xora-channel-hero">
         <div className="xora-channel-cover" style={coverUrl?{backgroundImage:'linear-gradient(180deg,rgba(38,23,17,.05),rgba(38,23,17,.4)),url("'+coverUrl+'")'}:undefined}>
           <span className="xora-channel-pill"><Radio className="size-3"/>X CHANNEL</span>
