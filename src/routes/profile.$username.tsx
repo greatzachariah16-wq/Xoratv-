@@ -90,82 +90,152 @@ function ProfilePage() {
     <AppShell wide>
       <main className="xora-profile-page page-bg mx-auto max-w-6xl space-y-3 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-3 sm:space-y-4 sm:pt-5">
         {/* Cinematic member cover */}
-        <section className="xora-profile-hero relative isolate overflow-hidden rounded-[22px] border border-[rgba(120,60,30,0.10)] bg-[#fdf8f4] shadow-[0_6px_24px_-8px_rgba(120,60,30,0.14)]">
-          <div className="h-[80px] bg-gradient-to-r from-[#f5d7c7] via-[#f1c8b5] to-[#f8e5d9]" />
+        <section className="xora-profile-hero">
+          <div className="xora-profile-cover" aria-hidden="true" />
 
-          <div className="relative px-3 pb-1 sm:px-5 sm:pb-2">
-            <div className="-mt-9 grid min-w-0 grid-cols-[84px_minmax(0,1fr)] items-end gap-x-3 gap-y-2">
-              <div className="relative h-[104px] w-[84px] shrink-0 overflow-hidden rounded-[16px] border-[3px] border-white bg-white shadow-[0_4px_14px_-4px_rgba(120,60,30,.35)]">
-                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={84} className="xora-profile-avatar !h-full !w-full !rounded-[13px]" />
-                {isMe ? <span className="brand-surface absolute bottom-1 right-1 grid size-6 place-items-center rounded-md border-2 border-white" title="Your profile"><Camera className="size-3" /></span> : null}
-              </div>
-              <div className="min-w-0 pb-1">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
-                  <h1 className="break-words font-display text-[28px] font-extrabold leading-7 tracking-tight">{profile?.display_name || username}</h1>
-                </div>
-                <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate text-[13px] font-medium text-muted-foreground">@{profile?.username || username}</p>
-                  {isMe ? <span className="inset-field inline-flex h-5 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold text-clay"><BadgeCheck className="size-3.5" />Your profile</span> : null}
-                </div>
-                {profile?.bio ? <div className="mt-1 max-w-2xl space-y-0 text-[14px] leading-4 text-ink"><p className="line-clamp-2 whitespace-pre-wrap">{profileBioSections(profile.bio).about || profileBioSections(profile.bio).creating}</p></div> : <p className="mt-1 max-w-xl line-clamp-2 text-[14px] leading-4 text-muted">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
-                <div className="mt-1 flex flex-nowrap gap-x-3 overflow-hidden whitespace-nowrap text-[13px] leading-4 text-muted">
-                  {profile?.location ? <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" />{profile.location}</span> : null}
-                  {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
-                </div>
-              </div>
-
-              <div className="col-span-2 flex h-11 min-w-0 flex-nowrap items-center justify-end gap-1.5">
+          <div className="xora-profile-inner">
+            <div className="xora-profile-identity">
+              <div className="xora-profile-photo-frame">
+                <UserAvatar
+                  path={profile?.avatar_url}
+                  name={profile?.display_name}
+                  size={84}
+                  className="xora-profile-avatar !rounded-xl"
+                />
                 {isMe ? (
-                  <>
-                    <Link to="/edit-profile" className="soft-pill press inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PenLine className="size-4 shrink-0" /><span className="whitespace-nowrap">Edit profile</span></Link>
-                    <Link to="/creator-studio" className="brand-surface press inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4 shrink-0" /><span className="whitespace-nowrap">X Channel</span></Link>
-                    <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="soft-pill press inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground focus-visible:ring-2 focus-visible:ring-clay/40 disabled:opacity-60" aria-label="Sign out" title={signingOut ? "Signing out…" : "Sign out"}><LogOut className="size-4" /></button>
-                  </>
-                ) : profile ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!user) {
-                          void navigate({ to: "/auth" });
-                          return;
-                        }
-                        window.location.assign(`/chat?to=${encodeURIComponent(profile.username || username)}`);
-                      }}
-                      className="xora-profile-message press inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition"
-                    >
-                      <MessageCircle className="size-4" /> Message
-                    </button>
-                    <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user} title={!user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "xora-profile-secondary" : "xora-profile-primary")}>
-                      <Users className="size-4" /> {subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
-                    </button>
-                  </>
+                  <span className="xora-profile-camera" title="Your profile">
+                    <Camera className="size-3.5" />
+                  </span>
                 ) : null}
               </div>
+
+              <div className="xora-profile-copy">
+                <h1 className="xora-profile-name">{profile?.display_name || username}</h1>
+                <div className="xora-profile-handle-row">
+                  <p className="xora-profile-handle">@{profile?.username || username}</p>
+                  {isMe ? (
+                    <span className="xora-profile-owner-label">
+                      <BadgeCheck className="size-3.5" />
+                      Your profile
+                    </span>
+                  ) : null}
+                </div>
+
+                {profile?.bio ? (
+                  <p className="xora-profile-bio">
+                    {profileBioSections(profile.bio).about || profileBioSections(profile.bio).creating}
+                  </p>
+                ) : (
+                  <p className="xora-profile-bio">
+                    {isMe
+                      ? "Add a little introduction so the XoraTV community can get to know you."
+                      : "A member of the XoraTV community."}
+                  </p>
+                )}
+
+                <div className="xora-profile-meta">
+                  {profile?.location ? (
+                    <span><MapPin className="size-3.5" />{profile.location}</span>
+                  ) : null}
+                  {joinedDate ? (
+                    <span><CalendarDays className="size-3.5" />Joined {joinedDate}</span>
+                  ) : null}
+                </div>
+
+                <dl className="xora-profile-stats">
+                  {[
+                    ["Posts", publishedPosts.length],
+                    ["Subscribers", profile?.subscriber_count ?? 0],
+                    ["Following", profile?.following_count ?? 0],
+                  ].map(([label, value]) => (
+                    <div className="xora-profile-stat" key={String(label)}>
+                      <dt>{String(label)}</dt>
+                      <dd>{compactNumber(Number(value))}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
             </div>
 
-            <div className="mt-2 grid gap-2">
-              <dl className="inset-field grid h-14 grid-cols-3 overflow-hidden rounded-xl border-0 shadow-none">
-                {[
-                  ["Posts", publishedPosts.length],
-                  ["Subscribers", profile?.subscriber_count ?? 0],
-                  ["Following", profile?.following_count ?? 0],
-                ].map(([label, value], index) => {
-                  return <div key={String(label)} className={cn("flex flex-col justify-center px-2 py-1 text-center", index < 2 && "border-r border-[rgba(120,60,30,.1)]")}>
-                    <dd className="font-display text-lg font-bold leading-5 tabular-nums text-ink">{compactNumber(Number(value))}</dd>
-                    <dt className="mt-0.5 text-[11px] font-medium text-muted">{String(label)}</dt>
-                  </div>;
-                })}
-              </dl>
-            {/* Real-data tabs only: no fabricated watch history or playlists */}
-            <div className="mt-0 flex h-10 items-center gap-1 rounded-xl bg-[#f5ede6] p-1">
-              <button type="button" onClick={() => setActiveTab("posts")} className={cn("press inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition focus-visible:ring-2 focus-visible:ring-clay/40", activeTab === "posts" ? "soft-pill text-clay" : "text-muted")}>
-                Posts <span className="inset-field rounded-full px-1.5 py-0.5 text-[11px] tabular-nums">{publishedPosts.length}</span>
+            <div className="xora-profile-actions">
+              {isMe ? (
+                <>
+                  <Link to="/edit-profile" className="xora-profile-action xora-profile-action--soft">
+                    <PenLine className="size-4" />
+                    <span>Edit profile</span>
+                  </Link>
+                  <Link to="/creator-studio" className="xora-profile-action xora-profile-action--primary">
+                    <PlayCircle className="size-4" />
+                    <span>X Channel</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => void handleSignOut()}
+                    disabled={signingOut}
+                    className="xora-profile-action xora-profile-action--icon"
+                    aria-label="Sign out"
+                    title={signingOut ? "Signing out…" : "Sign out"}
+                  >
+                    <LogOut className="size-4" />
+                  </button>
+                </>
+              ) : profile ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user) {
+                        void navigate({ to: "/auth" });
+                        return;
+                      }
+                      window.location.assign(`/chat?to=${encodeURIComponent(profile.username || username)}`);
+                    }}
+                    className="xora-profile-action xora-profile-action--soft"
+                  >
+                    <MessageCircle className="size-4" /> Message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => subscriptions.toggle(profile.id)}
+                    disabled={subscriptions.pending || !user}
+                    title={!user ? "Sign in to subscribe" : undefined}
+                    className={cn(
+                      "xora-profile-action",
+                      subscriptions.isSubscribed(profile.id)
+                        ? "xora-profile-action--soft"
+                        : "xora-profile-action--primary",
+                    )}
+                  >
+                    <Users className="size-4" />
+                    {subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            <div className="xora-profile-tabs" role="tablist" aria-label="Profile sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "posts"}
+                aria-controls="profile-tab-content"
+                id="profile-tab-posts"
+                onClick={() => setActiveTab("posts")}
+                className={cn("xora-profile-tab", activeTab === "posts" && "is-active")}
+              >
+                Posts <span>{publishedPosts.length}</span>
               </button>
-              <button type="button" onClick={() => setActiveTab("about")} className={cn("press inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition focus-visible:ring-2 focus-visible:ring-clay/40", activeTab === "about" ? "soft-pill text-clay" : "text-muted")}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "about"}
+                aria-controls="profile-tab-content"
+                id="profile-tab-about"
+                onClick={() => setActiveTab("about")}
+                className={cn("xora-profile-tab", activeTab === "about" && "is-active")}
+              >
                 About
               </button>
-            </div>
             </div>
           </div>
         </section>
@@ -176,7 +246,13 @@ function ProfilePage() {
         </section> : null}
 
         <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <section className="soft-card min-w-0 overflow-hidden">
+          <section
+            id="profile-tab-content"
+            role="tabpanel"
+            aria-labelledby={activeTab === "posts" ? "profile-tab-posts" : "profile-tab-about"}
+            tabIndex={0}
+            className="soft-card min-w-0 overflow-hidden"
+          >
             {activeTab === "posts" ? <>
               <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-2">
                 <div className="min-w-0"><h2 className="font-display text-[18px] font-bold tracking-tight text-ink">{isMe ? "Your posts" : `Posts by ${profile?.display_name || username}`}</h2><p className="mt-0.5 truncate text-[13px] text-muted">The latest things shared with the community</p></div>
