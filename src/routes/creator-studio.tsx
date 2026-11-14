@@ -93,7 +93,7 @@ function ChannelPage(){
   const creatorClicksForPrize=(prizeId:string)=>Number(specialPrizeAnalytics.offerBreakdown?.find((item: { prizeId?: string; clicks?: number })=>item.prizeId===prizeId)?.clicks||0);
   const creatorInfo=dashboard?.creator;
   const displayName=optimisticChannel?.displayName||profile?.display_name||creatorInfo?.displayName||user?.displayName||"Xora Creator";
-  const publicBio=optimisticChannel?.bio||profile?.bio||creatorInfo?.channelBio||"Creator on XoraTV";
+  const publicBio=optimisticChannel?optimisticChannel.bio:(channelBio||profile?.bio||creatorInfo?.channelBio||"Creator on XoraTV");
   const publicFeaturedTitle=creatorInfo?.featuredTitle||"Your channel. Your stories.";
   const publicFeaturedDescription=creatorInfo?.featuredDescription||"Make your best work the first thing people discover on XoraTV.";
   const username=optimisticChannel?.handle||profile?.username||creatorInfo?.username||user?.email?.split("@")[0]||"creator";
