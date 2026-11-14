@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { z } from "zod";
 import { ImagePlus, Loader2, Save, UserRound } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -44,6 +44,12 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<ImageField | null>(null);
   const [serverError, setServerError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setDraft({ displayName: channel.displayName, handle: channel.handle, bio: channel.bio, avatarUrl: channel.avatarUrl, bannerUrl: channel.bannerUrl });
+    setServerError("");
+  }, [open, channel.displayName, channel.handle, channel.bio, channel.avatarUrl, channel.bannerUrl]);
 
   const errors = useMemo<ChannelErrors>(() => {
     const parsed = channelSchema.safeParse(draft);
