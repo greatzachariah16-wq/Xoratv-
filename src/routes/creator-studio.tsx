@@ -467,7 +467,7 @@ function XChannel(){
 
   const activeTabIndex=Math.max(0,publicTabs.findIndex(([key])=>key===section));
   const shareChannel=async()=>{
-    const url=window.location.href;
+    const url=window.location.origin+"/channel/"+encodeURIComponent(username);
     const payload={title:displayName+" on XoraTV",text:"Discover "+displayName+" on XoraTV.",url};
     if(typeof navigator!=="undefined" && navigator.share){try{await navigator.share(payload);return;}catch(error){if(error instanceof Error && error.name==="AbortError")return;}}
     try{await navigator.clipboard.writeText(url);}catch{window.prompt("Copy your X Channel link",url);}
