@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  UserRound, PenLine, LogOut, MapPin, CalendarDays, UserRound,
+  PenLine, LogOut, MapPin, CalendarDays, UserRound,
   Settings2, ArrowUpRight, PlayCircle, ShieldCheck, CircleUserRound,
   ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle, Clapperboard,
 } from "lucide-react";
