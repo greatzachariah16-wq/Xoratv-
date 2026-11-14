@@ -143,7 +143,7 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
           </Field>
           <Field label="Bio" error={errors.bio}>
             <textarea value={draft.bio} onChange={(event) => update("bio", event.target.value)} maxLength={160} rows={3} className="channel-edit-input min-h-24 resize-none py-3" />
-            <p className="mt-1 text-right text-xs text-muted-foreground">{draft.bio.length}/160</p>
+            <p className="mt-1 text-right text-xs text-(--color-text-muted)">{draft.bio.length}/160</p>
           </Field>
           {serverError ? <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{serverError}</p> : null}
           <SheetFooter className="flex-col-reverse gap-2 border-t border-(--color-hairline) pt-4 sm:flex-row">
