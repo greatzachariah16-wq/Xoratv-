@@ -1,6 +1,9 @@
+import { useEffect, useMemo, useRef } from "react";
 import { BadgeCheck, Bell, PenLine, Radio, Settings2, Share2, Users } from "lucide-react";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import type { Channel } from "@/components/xora/EditChannelSheet";
+import { CompactBar } from "@/components/xora/CompactBar";
+import { useInView } from "@/hooks/useInView";
 
 export type ChannelHeaderProps = {
   channel: Channel;
@@ -11,6 +14,14 @@ export type ChannelHeaderProps = {
 };
 
 export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare }: ChannelHeaderProps) {
+  const nameRowRef = useRef<HTMLElement>(null!);
+  const observerOptions = useMemo<IntersectionObserverInit>(() => ({ threshold: 0, rootMargin: "-56px 0px 0px 0px" }), []);
+  const nameRowInView = useInView(nameRowRef, observerOptions);
+  const compactVisible = !nameRowInView;
+  useEffect(() => {
+    document.documentElement.dataset.channelCompact = String(compactVisible);
+    return () => { delete document.documentElement.dataset.channelCompact; };
+  }, [compactVisible]);
   const followers = Number(channel.followerCount || 0);
   const followerLabel = followers === 0 ? "New channel" : new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followers) + " followers";
 
@@ -26,7 +37,7 @@ export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare 
             {channel.verified ? <span className="xora-channel-verified" aria-label="Verified channel"><BadgeCheck className="size-4"/></span> : null}
           </div>
           <div className="xora-channel-copy">
-            <div className="xora-channel-name-row"><h1 className="xora-channel-name">{channel.displayName}</h1></div>
+            <div ref={nameRowRef} className="xora-channel-name-row"><h1 className="xora-channel-name">{channel.displayName}</h1></div>
             <p className="xora-channel-handle">@{channel.handle}</p>
             <p className="xora-channel-followers">{followerLabel}</p>
           </div>
@@ -54,5 +65,6 @@ export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare 
         </div>
       </div>
     </header>
+    <CompactBar channel={channel} visible={compactVisible} onEdit={onEdit}/>
   );
 }
