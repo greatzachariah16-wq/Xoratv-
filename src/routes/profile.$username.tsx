@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   Sparkles, PenLine, LogOut, MapPin, CalendarDays, UserRound,
-  Settings2, ArrowUpRight, PlayCircle, ShieldCheck, Grid2X2, CircleUserRound,
+  Settings2, ArrowUpRight, PlayCircle, ShieldCheck, CircleUserRound,
   ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle,
 } from "lucide-react";
 import { profilePostsQuery, profileQuery } from "@/lib/api";
@@ -148,11 +148,10 @@ function ProfilePage() {
               </div>
               <dl className="inset-field grid h-16 grid-cols-3 overflow-hidden rounded-2xl border-0 shadow-none">
                 {[
-                  ["Posts", publishedPosts.length, Grid2X2],
-                  ["Subscribers", profile?.subscriber_count ?? 0, Users],
-                  ["Following", profile?.following_count ?? 0, Heart],
-                ].map(([label, value, Icon], index) => {
-                  const StatIcon = Icon as typeof Grid2X2;
+                  ["Posts", publishedPosts.length],
+                  ["Subscribers", profile?.subscriber_count ?? 0],
+                  ["Following", profile?.following_count ?? 0],
+                ].map(([label, value], index) => {
                   return <div key={String(label)} className={cn("flex flex-col justify-center px-2 py-1 text-center", index < 2 && "border-r border-[rgba(120,60,30,.1)]")}>
                     <dd className="font-display text-xl font-bold leading-6 tabular-nums text-ink">{compactNumber(Number(value))}</dd>
                     <dt className="mt-0.5 text-[12px] font-medium text-muted">{String(label)}</dt>
