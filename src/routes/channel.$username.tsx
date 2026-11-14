@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, BookOpen, CalendarDays, Clapperboard, FileText, Info, PenLine, Share2, Upload, Users } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -97,7 +97,7 @@ function PublicChannelPage() {
     catch { window.prompt("Copy this channel link", url); }
   };
 
-  const handleSwipe = (event: React.TouchEvent<HTMLDivElement>) => {
+  const handleSwipe = (event: TouchEvent<HTMLDivElement>) => {
     const start = touchStartX.current;
     touchStartX.current = null;
     if (start === null || event.target?.closest?.("button,a,input,video")) return;
