@@ -166,6 +166,7 @@ function ProfilePage() {
                 About
               </button>
             </div>
+            </div>
           </div>
         </section>
 
