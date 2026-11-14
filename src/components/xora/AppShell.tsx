@@ -436,10 +436,11 @@ export function AppShell({
           type="button"
           aria-label="More navigation"
           aria-expanded={mobileMenuOpen}
+          aria-current={pathname.startsWith("/creator-studio") ? "page" : undefined}
           onClick={() => setMobileMenuOpen((open) => !open)}
           className={cn(
             "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
-            mobileMenuOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            mobileMenuOpen || pathname.startsWith("/creator-studio") ? "text-primary" : "text-muted-foreground hover:text-foreground",
           )}
         >
           <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", mobileMenuOpen && "bg-primary/12")}>
