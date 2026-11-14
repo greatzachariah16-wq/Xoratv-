@@ -1788,13 +1788,13 @@ section[aria-label="X-Series live channels"] {
 .xora-profile-page .xora-profile-hero { border-radius:26px; }
 .xora-profile-page .xora-profile-hero .UserAvatar,
 .xora-profile-page .xora-profile-hero img { border-radius:9999px; }
-.xora-profile-page :where(a,button) { transition:transform 150ms ease, box-shadow 150ms ease; }
+.xora-profile-page :where(a,button) { min-height:44px; transition:transform 150ms ease, box-shadow 150ms ease; }
 .xora-profile-page :where(a,button):active { transform:scale(.98); }
 .xora-profile-page :where(a,button):focus-visible { outline:2px solid rgb(181 83 47/.4); outline-offset:2px; }
 @media (max-width:380px) {
   .xora-profile-page .xora-profile-hero > div:nth-child(2) > div:first-child { gap:6px; }
   .xora-profile-page .xora-profile-hero > div:nth-child(2) > div:first-child > div:last-child { gap:5px; }
-  .xora-profile-page .xora-profile-hero > div:nth-child(2) > div:first-child > div:last-child a { padding-inline:9px; font-size:11px; }
+  .xora-profile-page .xora-profile-hero > div:nth-child(2) > div:first-child > div:last-child a { padding-inline:9px; font-size:12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .xora-profile-page :where(a,button) { transition:none; }
