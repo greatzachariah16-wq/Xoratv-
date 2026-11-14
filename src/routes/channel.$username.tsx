@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BadgeCheck, Bell, BookOpen, CalendarDays, Clapperboard, FileText, Info, Share2, Upload, Users } from "lucide-react";
+import { BadgeCheck, BookOpen, CalendarDays, Clapperboard, FileText, Info, Share2, Upload, Users } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
