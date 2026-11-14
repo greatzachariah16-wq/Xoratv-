@@ -387,7 +387,7 @@ export function AppShell({
       <main id="main" className={immersive ? "min-h-screen w-full" : "lg:pl-[248px] xl:pr-[320px]"}>
         <div
           className={cn(
-            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : "mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] pt-18 lg:px-8 lg:pb-14 lg:pt-8",
+            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-14" : "pt-18"),
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
