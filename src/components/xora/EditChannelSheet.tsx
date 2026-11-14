@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { z } from "zod";
 import { ImagePlus, Loader2, Save, UserRound } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -119,7 +119,7 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-[28px] border-border bg-surface p-5 text-foreground sm:mx-auto sm:max-w-xl sm:rounded-[28px]">
+      <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-[28px] border-(--color-hairline) bg-(--color-surface-solid) p-5 text-(--color-text-strong) sm:mx-auto sm:max-w-xl sm:rounded-[28px]">
         <SheetHeader className="pr-10 text-left">
           <SheetTitle className="font-display text-xl">Edit your channel</SheetTitle>
           <SheetDescription>Update how viewers discover and recognise your X Channel.</SheetDescription>
@@ -155,11 +155,11 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return <label className="block text-sm font-semibold">{label}{children}{error ? <span role="alert" className="mt-1 block text-xs font-medium text-destructive">{error}</span> : null}</label>;
 }
 
-function ImagePicker({ label, value, fallback, busy, onChange }: { label: string; value: string; fallback: React.ReactNode; busy: boolean; onChange(event: ChangeEvent<HTMLInputElement>): void }) {
+function ImagePicker({ label, value, fallback, busy, onChange }: { label: string; value: string; fallback: ReactNode; busy: boolean; onChange(event: ChangeEvent<HTMLInputElement>): void }) {
   return <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border bg-background p-3 text-center text-xs font-semibold text-muted-foreground">
     {value ? <img src={value} alt="" className="size-12 rounded-xl object-cover"/> : <span className="grid size-12 place-items-center rounded-xl bg-secondary text-primary">{fallback}</span>}
     <span className="inline-flex items-center gap-1.5">{busy ? <Loader2 className="size-3.5 animate-spin"/> : <ImagePlus className="size-3.5"/>}{busy ? "Uploading…" : label}</span>
