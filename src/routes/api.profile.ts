@@ -60,28 +60,26 @@ export const Route = createFileRoute("/api/profile")({
         if (!user) return json({ ok: false, error: "Please sign in again to edit your profile." }, 401);
         let body: Row;
         try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request body." }, 400); }
-        const display_name = typeof body.display_name === "string" ? body.display_name.trim() : "";
+        const display_name = typeof body.display_name === "string" ? body.display_name.trim() : "";\n        const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
         const bio = typeof body.bio === "string" ? body.bio.trim() : "";
         const avatar_url = typeof body.avatar_url === "string" ? body.avatar_url.trim() : "";
         const location = typeof body.location === "string" ? body.location.trim() : "";
         const website = typeof body.website === "string" ? body.website.trim() : "";
-        if (!display_name || display_name.length > 60) return json({ ok: false, error: "Display name must be 1–60 characters." }, 400);
+        if (display_name.length < 2 || display_name.length > 40) return json({ ok: false, error: "Display name must be 2–40 characters." }, 400);\n        if (!/^[a-z0-9_]{3,20}$/.test(username)) return json({ ok: false, error: "Handle must be 3–20 lowercase letters, numbers or underscores." }, 400);
         if (bio.length > 600 || location.length > 80 || website.length > 200) return json({ ok: false, error: "One or more profile fields are too long." }, 400);
         let avatar: URL;
-        try { avatar = new URL(avatar_url); } catch { return json({ ok: false, error: "Choose one of the available XoraTV avatar styles." }, 400); }
-        if (avatar.protocol !== "https:" || avatar.hostname !== "api.dicebear.com" ||
-            !/^\/9\.x\/(adventurer|avataaars|bottts|lorelei|micah|notionists)\/svg$/.test(avatar.pathname) ||
-            !avatar.searchParams.has("seed")) {
-          return json({ ok: false, error: "Choose one of the available XoraTV avatar styles." }, 400);
-        }
+        try { avatar = new URL(avatar_url); } catch { return json({ ok: false, error: "Upload a valid channel image." }, 400); }
+        if (avatar.protocol !== "https:") return json({ ok: false, error: "Channel images must use HTTPS." }, 400);
+        const duplicate = await db(`xora_profiles?username=eq.${encodeURIComponent(username)}&id=neq.${encodeURIComponent(user.id)}&select=id`);
+        if (duplicate.length) return json({ ok: false, error: "That handle is already in use." }, 409);
         if (website && !/^https?:\/\//i.test(website)) return json({ ok: false, error: "Website must start with https:// or http://." }, 400);
         const rows = await db(`xora_profiles?id=eq.${encodeURIComponent(user.id)}&select=*`);
         if (!rows[0]) return json({ ok: false, error: "Your profile could not be found." }, 404);
         const updated = await db(`xora_profiles?id=eq.${encodeURIComponent(user.id)}&select=*`, {
           method: "PATCH", headers: { Prefer: "return=representation" },
-          body: JSON.stringify({ display_name, avatar_url, bio, location: location || null, website: website || null }),
+          body: JSON.stringify({ username, display_name, avatar_url, bio, location: location || null, website: website || null }),
         });
-        const profile = updated[0] || { ...rows[0], display_name, avatar_url, bio, location: location || null, website: website || null };
+        const profile = updated[0] || { ...rows[0], username, display_name, avatar_url, bio, location: location || null, website: website || null };
         return json({ ok: true, profile: publicProfile(profile, user.email) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Could not save your profile." }, 503);
