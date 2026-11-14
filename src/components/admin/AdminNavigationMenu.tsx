@@ -18,7 +18,6 @@ import {
   ArrowRight,
   ExternalLink,
   ChevronRight,
-  Sparkles,
   Banknote,
   DollarSign,
   Gift,
