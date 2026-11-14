@@ -2,6 +2,15 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* Shared warm-gloss chat tokens. Added without changing the conversation surface. */
+@theme {
+  --color-ink: #2a1a14;
+  --color-muted: #7d695f;
+  --color-clay: #b5532f;
+  --color-clay-deep: #8f3a1d;
+}
+
+
 html,
 body,
 #root {
