@@ -11,7 +11,7 @@ import {
   type ChatUser,
   type SidebarConversation,
 } from "@/components/ui/chat";
-import { ArrowLeft, ArrowUpRight, ChevronRight, MessageCircle, MessageSquare, Plus, Search, Users, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChevronRight, MessageCircle, MessageSquare, Search, SquarePen, Users, X } from "lucide-react";
 
 type Props = {
   currentUser: ChatUser;
@@ -139,14 +139,13 @@ export default function XoraChatLayout({
                 <button
                   type="button"
                   ref={createTriggerRef}
-                  className="xora-chat-create-trigger"
+                  className="xora-chat-create-trigger xora-chat-compose-trigger"
                   onClick={toggleCreateMenu}
-                  aria-label="Create a new chat"
+                  aria-label="New message" title="New message"
                   aria-haspopup="menu"
                   aria-expanded={createMenuOpen}
                 >
-                  <Plus className="size-4" />
-                  <span>New chat</span>
+                  <SquarePen className="size-[18px]" aria-hidden="true" />
                 </button>
                 {createMenuOpen && createMenuPosition && typeof document !== "undefined" && createPortal(
                   <div

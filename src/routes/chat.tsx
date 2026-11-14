@@ -60,6 +60,14 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [modalBusy, setModalBusy] = useState(false);
 
   useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("to");
+    if (!target) return;
+    setDmTargetUsername(target.replace(/^@/, ""));
+    setShowDmModal(true);
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
+  useEffect(() => {
     if (initialRoomId) setActiveRoomId(initialRoomId);
   }, [initialRoomId]);
 

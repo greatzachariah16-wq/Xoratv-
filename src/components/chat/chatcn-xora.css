@@ -1882,3 +1882,59 @@
     font-size: 10px;
   }
 }
+
+
+/* Private inbox compose control: compact, soft, and consistent with chat surfaces. */
+.xora-chat-page .xora-chat-compose-trigger {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border-radius: 15px;
+  box-shadow: 0 3px 10px rgba(181, 80, 46, 0.16), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.xora-chat-page .xora-chat-compose-trigger:active {
+  box-shadow: 0 1px 4px rgba(181, 80, 46, 0.14);
+}
+
+
+/* Compact member profiles share the Messages warm-clay visual system. */
+.xora-profile-page {
+  color: #30231D;
+}
+.xora-profile-page .xora-profile-hero,
+.xora-profile-page > .grid > section,
+.xora-profile-page > .grid > aside > section {
+  border-color: rgba(75, 49, 34, 0.10);
+  background-color: #FFFCF8;
+  box-shadow: 0 8px 24px rgba(63, 39, 26, 0.065), 0 1px 3px rgba(63, 39, 26, 0.035);
+}
+.xora-profile-page .xora-profile-message {
+  border: 1px solid rgba(181, 80, 46, 0.18);
+  background: #F4E7DE;
+  color: #9B482C;
+  box-shadow: 0 3px 10px rgba(63, 39, 26, 0.07);
+}
+.xora-profile-page .xora-profile-message:hover {
+  background: #EEDBCF;
+}
+.xora-profile-page .xora-profile-primary {
+  background: linear-gradient(135deg, #C46A45 0%, #A7472A 100%);
+  color: #FFFFFF;
+  box-shadow: 0 5px 13px rgba(165, 71, 42, 0.20);
+}
+.xora-profile-page .xora-profile-secondary {
+  border: 1px solid rgba(75, 49, 34, 0.13);
+  background: #F3ECE5;
+  color: #5D493D;
+  box-shadow: 0 2px 7px rgba(63, 39, 26, 0.045);
+}
+@media (max-width: 640px) {
+  .xora-profile-page .xora-profile-hero {
+    border-radius: 21px;
+  }
+  .xora-profile-page .xora-profile-hero > div:first-child {
+    height: 112px;
+  }
+}
