@@ -93,7 +93,7 @@ function ProfilePage() {
         <section className="xora-profile-hero soft-card relative isolate overflow-hidden">
           <div className="h-[72px] bg-gradient-to-r from-[#f5d7c7] via-[#f1c8b5] to-[#f8e5d9]" />
 
-          <div className="relative px-3 pb-3 sm:px-5 sm:pb-4">
+          <div className="relative px-3 pb-2 sm:px-5 sm:pb-3">
             <div className="-mt-10 flex min-w-0 flex-col gap-0.5">
               <div className="relative h-10">
                 <div className="absolute left-0 top-0 size-20 rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
@@ -131,17 +131,17 @@ function ProfilePage() {
               </div>
             </div>
 
-            <div className="mt-2 grid gap-2">
+            <div className="mt-1 grid gap-1">
               <div className="min-w-0">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
-                  <h1 className="break-words font-display text-[28px] font-extrabold leading-tight tracking-tight">{profile?.display_name || username}</h1>
+                  <h1 className="break-words font-display text-[28px] font-extrabold leading-7 tracking-tight">{profile?.display_name || username}</h1>
                 </div>
-                <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <p className="truncate text-[13px] font-medium text-muted-foreground">@{profile?.username || username}</p>
                   {isMe ? <span className="inset-field inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] font-semibold text-clay"><BadgeCheck className="size-3.5" />Your profile</span> : null}
                 </div>
-                {profile?.bio ? <div className="mt-1.5 max-w-2xl space-y-0 text-[14px] leading-5 text-ink"><p className="line-clamp-2 whitespace-pre-wrap">{profileBioSections(profile.bio).about || profileBioSections(profile.bio).creating}</p></div> : <p className="mt-1.5 max-w-xl line-clamp-2 text-[14px] leading-5 text-muted">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
-                <div className="mt-1.5 flex flex-nowrap gap-x-3 overflow-hidden whitespace-nowrap text-[13px] text-muted">
+                {profile?.bio ? <div className="mt-1 max-w-2xl space-y-0 text-[14px] leading-4 text-ink"><p className="line-clamp-2 whitespace-pre-wrap">{profileBioSections(profile.bio).about || profileBioSections(profile.bio).creating}</p></div> : <p className="mt-1 max-w-xl line-clamp-2 text-[14px] leading-4 text-muted">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
+                <div className="mt-1 flex flex-nowrap gap-x-3 overflow-hidden whitespace-nowrap text-[13px] text-muted">
                   {profile?.location ? <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" />{profile.location}</span> : null}
                   {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
                 </div>
@@ -161,7 +161,7 @@ function ProfilePage() {
             </div>
 
             {/* Real-data tabs only: no fabricated watch history or playlists */}
-            <div className="mt-2 flex h-11 items-center gap-1 rounded-full bg-[#f5ede6] p-1">
+            <div className="mt-1 flex h-11 items-center gap-1 rounded-full bg-[#f5ede6] p-1">
               <button type="button" onClick={() => setActiveTab("posts")} className={cn("press inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[13px] font-semibold transition focus-visible:ring-2 focus-visible:ring-clay/40", activeTab === "posts" ? "soft-pill text-clay" : "text-muted")}>
                 Posts <span className="inset-field rounded-full px-1.5 py-0.5 text-[11px] tabular-nums">{publishedPosts.length}</span>
               </button>
@@ -180,11 +180,11 @@ function ProfilePage() {
         <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
           <section className="soft-card min-w-0 overflow-hidden">
             {activeTab === "posts" ? <>
-              <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+              <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-2">
                 <div className="min-w-0"><h2 className="font-display text-[18px] font-bold tracking-tight text-ink">{isMe ? "Your posts" : `Posts by ${profile?.display_name || username}`}</h2><p className="mt-0.5 truncate text-[13px] text-muted">The latest things shared with the community</p></div>
                 {isMe && publishedPosts.length > 0 ? <Link to="/create" className="soft-pill press inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40">Create post <ArrowUpRight className="size-3.5" /></Link> : null}
               </div>
-              <div className="space-y-3 p-2 pt-0">
+              <div className="space-y-3 p-0">
                 {postsPending || isPending ? <FeedSkeleton count={2} /> : publishedPosts.length ? publishedPosts.map((post) => <PostCard key={post.id} post={post} />) : <div className="flex flex-col items-center px-4 py-2 text-center">
                   {isMe ? <><div className="relative mb-1.5 grid size-12 place-items-center rounded-2xl peach-tile text-clay before:absolute before:-inset-2 before:-z-10 before:rounded-[22px] before:border before:border-clay/10"><Sparkles className="size-6" /></div><h3 className="font-display text-[18px] font-bold text-ink">Your story starts here</h3><p className="mt-1 max-w-[270px] text-[14px] leading-5 text-muted">Your first post will appear here.</p><Link to="/create" className="brand-surface press mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4" /> Share your first post</Link></> : <div className="py-4"><h3 className="font-display text-[18px] font-bold text-ink">No posts yet</h3><p className="mt-1 text-[14px] text-muted">This member hasn’t shared anything publicly yet.</p></div>}
                 </div>}
