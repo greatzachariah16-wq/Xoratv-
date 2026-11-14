@@ -149,8 +149,8 @@ function ProfilePage() {
                     ["Following", profile?.following_count ?? 0],
                   ].map(([label, value]) => (
                     <div className="xora-profile-stat" key={String(label)}>
-                      <dd>{compactNumber(Number(value))}</dd>
                       <dt>{String(label)}</dt>
+                      <dd>{compactNumber(Number(value))}</dd>
                     </div>
                   ))}
                 </dl>
@@ -218,6 +218,8 @@ function ProfilePage() {
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "posts"}
+                aria-controls="profile-tab-content"
+                id="profile-tab-posts"
                 onClick={() => setActiveTab("posts")}
                 className={cn("xora-profile-tab", activeTab === "posts" && "is-active")}
               >
@@ -227,6 +229,8 @@ function ProfilePage() {
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "about"}
+                aria-controls="profile-tab-content"
+                id="profile-tab-about"
                 onClick={() => setActiveTab("about")}
                 className={cn("xora-profile-tab", activeTab === "about" && "is-active")}
               >
@@ -242,7 +246,13 @@ function ProfilePage() {
         </section> : null}
 
         <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <section className="soft-card min-w-0 overflow-hidden">
+          <section
+            id="profile-tab-content"
+            role="tabpanel"
+            aria-labelledby={activeTab === "posts" ? "profile-tab-posts" : "profile-tab-about"}
+            tabIndex={0}
+            className="soft-card min-w-0 overflow-hidden"
+          >
             {activeTab === "posts" ? <>
               <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-2">
                 <div className="min-w-0"><h2 className="font-display text-[18px] font-bold tracking-tight text-ink">{isMe ? "Your posts" : `Posts by ${profile?.display_name || username}`}</h2><p className="mt-0.5 truncate text-[13px] text-muted">The latest things shared with the community</p></div>
