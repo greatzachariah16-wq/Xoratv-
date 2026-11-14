@@ -55,7 +55,7 @@ body,
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--channel-accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-foreground: var(--channel-accent-contrast);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
