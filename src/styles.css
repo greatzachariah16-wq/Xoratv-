@@ -2472,7 +2472,7 @@ section[aria-label="X-Series live channels"] {
 .xora-channel-stats strong { color:var(--channel-text-strong); font-size:15px; font-weight:750; font-variant-numeric:tabular-nums; }
 .xora-channel-stats small { color:var(--channel-text-muted); font-size:11px; }
 .xora-channel-tabs { position:sticky; top:var(--header-h); z-index:55; display:flex; width:100%; min-width:0; height:var(--tabs-h); align-items:stretch; border-top:1px solid var(--channel-hairline); border-bottom:1px solid var(--channel-hairline); background:var(--channel-surface); }
-.xora-channel-page[data-compact="true"] .xora-channel-tabs { top:calc(var(--header-h) + var(--compact-h)); }
+html[data-channel-compact="true"] .xora-channel-tabs { top:calc(var(--header-h) + var(--compact-h)); }
 .xora-channel-tab { position:relative; z-index:1; display:flex; min-width:0; min-height:44px; height:var(--tabs-h); flex:1 1 0; align-items:center; justify-content:center; padding:0 6px; border:0; color:var(--channel-text-muted); background:transparent; font-size:12px; font-weight:700; white-space:nowrap; transition:color 180ms cubic-bezier(.2,.8,.2,1); }
 .xora-channel-tab[aria-selected="true"] { color:var(--channel-accent); }
 .xora-channel-tab-indicator { position:absolute; bottom:0; left:0; width:calc(100% / var(--tab-count,4)); height:3px; border-radius:999px 999px 0 0; background:var(--channel-accent); transform:translateX(calc(var(--tab-index,0)*100%)); transition:transform 220ms cubic-bezier(.2,.8,.2,1); pointer-events:none; }
