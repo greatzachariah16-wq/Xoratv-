@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BookOpen, Check, ChevronDown, Gift, Landmark, Loader2,
-  Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users, ImagePlus,
+  BadgeCheck, Bell, BookOpen, Check, ChevronDown, Clapperboard, FileText, Gift, Info, Landmark, Loader2,
+  Menu, PenLine, Plus, Radio, Settings2, Share2, Trash2, Upload, Users, ImagePlus,
   X, AlertTriangle, Copy, MousePointerClick,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -12,7 +12,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
 import { profilePostsQuery } from "@/lib/api";
 import { CourseCreatorForm } from "@/components/xora/CourseCreatorForm";
-import { XoraLoading } from "@/components/xora/Skeletons";
 
 export const Route = createFileRoute("/creator-studio")({ component: XChannel });
 
@@ -41,6 +40,9 @@ function XChannel(){
   const [section,setSection]=useState<Section>(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("createCourse")==="1"?"manage":"shorts");
   const [showCourseCreator,setShowCourseCreator]=useState(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("createCourse")==="1");
   const [menuOpen,setMenuOpen]=useState(false);
+  const [compactVisible,setCompactVisible]=useState(false);
+  const coverRef=useRef<HTMLDivElement|null>(null);
+  const touchStartX=useRef<number|null>(null);
   const [registered,setRegistered]=useState(false);
   const [terms,setTerms]=useState(false);
   const [busy,setBusy]=useState(false);
@@ -83,7 +85,7 @@ function XChannel(){
   // authentication finishes after the first render.
   const dashboard=data?.dashboard;
   const specialPrizeAnalytics=dashboard?.specialPrizeAnalytics||{};
-  const creatorClicksForPrize=(prizeId:string)=>Number(specialPrizeAnalytics.offerBreakdown?.find((item:any)=>item.prizeId===prizeId)?.clicks||0);
+  const creatorClicksForPrize=(prizeId:string)=>Number(specialPrizeAnalytics.offerBreakdown?.find((item: { prizeId?: string; clicks?: number })=>item.prizeId===prizeId)?.clicks||0);
   const creatorInfo=dashboard?.creator;
   const displayName=creatorInfo?.displayName||profile?.display_name||user?.displayName||"Xora Creator";
   const publicBio=creatorInfo?.channelBio||"Creator on XoraTV";
@@ -97,10 +99,16 @@ function XChannel(){
   const publishedCourses=courses.filter((c:any)=>c.status==="published");
   const shorts=dashboard?.shorts||[];
   const textPosts=profilePosts.filter((post:any)=>post.kind==="text" && post.status==="published").sort((a:any,b:any)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+  const isOwner=Boolean(user && (creatorInfo || registered));
+  const followerCount=Number(dashboard?.stats?.followers||0);
+  const followerLabel=followerCount===0?"New channel":new Intl.NumberFormat(undefined,{notation:"compact",maximumFractionDigits:1}).format(followerCount)+" followers";
+  const coverUrl=String(dashboard?.creator?.coverImageUrl||dashboard?.creator?.featuredImageUrl||"");
 
   useEffect(()=>{ if(!creatorInfo)return; setChannelBio(creatorInfo.channelBio||""); setFeaturedTitle(creatorInfo.featuredTitle||"Your channel. Your stories."); setFeaturedDescription(creatorInfo.featuredDescription||"Make your best work the first thing people discover on XoraTV."); setShowCourses(creatorInfo.showCourses!==false); setShowCommunity(creatorInfo.showCommunity!==false); },[creatorInfo]);
   useEffect(()=>{const payout=dashboard?.payout;if(!payout)return;setAccountName(String(payout.accountName||""));setAccountNumber(String(payout.accountNumber||""));setBankName(String(payout.bankName||""));},[dashboard?.payout]);
   useEffect(()=>{ if(section==="earnings"||section==="referrals") void refetch(); },[section,refetch]);
+  useEffect(()=>{document.documentElement.classList.add("xora-channel-route");return ()=>document.documentElement.classList.remove("xora-channel-route");},[]);
+  useEffect(()=>{const target=coverRef.current;if(!target||typeof IntersectionObserver==="undefined")return;const observer=new IntersectionObserver(([entry])=>setCompactVisible(!entry.isIntersecting),{threshold:0,rootMargin:"-56px 0px 0px 0px"});observer.observe(target);return ()=>observer.disconnect();},[creatorInfo]);
 
   if(!user)return <AppShell wide><div className="mx-auto max-w-3xl rounded-[30px] border border-border bg-surface p-10 text-center shadow-card"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><Radio className="size-7"/></div><h1 className="mt-5 font-display text-3xl font-semibold">X Channel</h1><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">Sign in to create and manage your XoraTV creator channel.</p><Link to="/auth" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Sign in</Link></div></AppShell>;
 
@@ -235,7 +243,7 @@ function XChannel(){
     finally{setPayoutRequestBusy("");}
   }
 
-  if(isPending)return <AppShell wide><XoraLoading title="Loading your X Channel" subtitle="Preparing your creator studio, videos and earnings." /></AppShell>;
+  if(isPending)return <AppShell wide><div className="xora-channel-page space-y-4" aria-busy="true" aria-label="Loading channel"><section className="xora-channel-hero"><div className="xora-channel-cover xora-channel-skeleton"/><div className="xora-channel-identity"><div className="xora-channel-avatar-skeleton"/><div className="min-w-0 flex-1 space-y-3"><div className="xora-channel-skeleton h-7 w-2/3 rounded-xl"/><div className="xora-channel-skeleton h-4 w-1/3 rounded-lg"/><div className="xora-channel-skeleton h-4 w-1/2 rounded-lg"/></div></div><div className="xora-channel-tabs-skeleton"><span/><span/><span/><span/></div></section><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{[1,2,3].map(i=><div key={i} className="overflow-hidden rounded-2xl border border-border bg-surface p-2"><div className="xora-channel-skeleton aspect-[9/16] rounded-xl"/><div className="xora-channel-skeleton mt-3 h-4 w-3/4 rounded-lg"/><div className="xora-channel-skeleton mt-2 h-3 w-1/2 rounded-lg"/></div>)}</div></div></AppShell>;
 
   if(!creatorInfo&&!registered)return <AppShell wide>
     <div className="mx-auto max-w-5xl grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
@@ -267,10 +275,10 @@ function XChannel(){
   const manageTabs:[Section,string][]=[["manage","Overview"],["analytics","Analytics"],["earnings","Earnings"],["referrals","Referrals"],["payout","Payout details"],["customize","Customize"]];
 
   function PublicContent(){
-    if(section==="shorts")return shorts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Shorts</p><h2 className="mt-1 font-display text-2xl font-semibold">Published Shorts</h2><p className="mt-1 text-xs text-muted-foreground">Shorts published by this X Channel.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shorts.map((post:any)=><article key={post.id} className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-card"><div className="aspect-[9/16] max-h-[420px] bg-black"><video src={post.stream_url||post.media_path||""} poster={post.poster_path||undefined} controls playsInline preload="metadata" className="size-full object-contain"/></div>{post.special_prize_id&&post.special_prize_link_token?<a href={`/s/${encodeURIComponent(post.special_prize_link_token)}?postId=${encodeURIComponent(post.id)}`} className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2.5 text-xs font-semibold text-primary"><Gift className="size-3.5"/>Get your special prize</a>:null}<div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{post.title||"Untitled Short"}</p><p className="mt-1 text-[11px] text-muted-foreground">{post.views_count||0} views</p></div><button onClick={()=>setDeleteTarget({...post,_type:"short"})} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-destructive/20 px-2.5 py-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10" aria-label="Delete Short"><Trash2 className="size-3.5"/>Delete</button></div></article>)}</div></section>:<EmptyContent icon={<Radio/>} title="Your Shorts" text="Your published Shorts will appear here as your channel grows." action="Open Shorts" href="/shorts"/>;
-    if(section==="community")return textPosts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Posts</p><h2 className="mt-1 font-display text-2xl font-semibold">Thoughts & updates</h2><p className="mt-1 text-xs text-muted-foreground">Text posts published by this creator.</p></div><div className="space-y-3">{textPosts.map((post:any)=><article key={post.id} className="rounded-[22px] border border-border bg-surface p-5 shadow-card"><div className="flex items-center gap-3"><UserAvatar path={avatar} name={displayName} size={38}/><div><p className="text-sm font-semibold">{displayName}</p><p className="text-[10px] text-muted-foreground">{new Date(post.created_at||Date.now()).toLocaleDateString()}</p></div></div>{post.title?<h3 className="mt-4 text-base font-semibold">{post.title}</h3>:null}{post.poster_path?<img src={post.poster_path} alt={post.title||"Creator post"} loading="lazy" className="mt-4 aspect-[4/3] w-full rounded-2xl object-cover"/>:null}<p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-foreground/85">{post.caption||" "}</p><div className="mt-4 flex items-center gap-4 text-[10px] text-muted-foreground"><span>{post.likes_count||0} likes</span><span>{post.comments_count||0} comments</span></div></article>)}</div></section>:<EmptyContent icon={<PenLine/>} title="Your posts" text="Share thoughts, announcements and updates directly from your X Channel." action="Create post" href="/create"/>;
-    if(section==="about")return <section className="rounded-2xl border border-border bg-surface p-6 shadow-card"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">About this channel</p><h2 className="mt-2 font-display text-xl font-semibold">{displayName}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{publicBio||"Welcome to my XoraTV channel."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Stat label="Subscribers" value={String((dashboard?.creator as any)?.subscriber_count||0)}/><Stat label="Courses" value={String(publishedCourses.length)}/><Stat label="Joined" value="XoraTV"/></div></section>;
-    if(section==="courses" && showCourses)return <CourseShelf courses={publishedCourses}/>;
+    if(section==="shorts")return shorts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Shorts</p><h2 className="mt-1 font-display text-2xl font-semibold">Published Shorts</h2><p className="mt-1 text-xs text-muted-foreground">Shorts published by this X Channel.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shorts.map((post:any)=><article key={post.id} className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-card"><div className="aspect-[9/16] max-h-[420px] bg-black"><video src={post.stream_url||post.media_path||""} poster={post.poster_path||undefined} controls playsInline preload="metadata" className="size-full object-contain"/></div>{post.special_prize_id&&post.special_prize_link_token?<a href={`/s/${encodeURIComponent(post.special_prize_link_token)}?postId=${encodeURIComponent(post.id)}`} className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2.5 text-xs font-semibold text-primary"><Gift className="size-3.5"/>Get your special prize</a>:null}<div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{post.title||"Untitled Short"}</p><p className="mt-1 text-[11px] text-muted-foreground">{post.views_count||0} views</p></div><button onClick={()=>setDeleteTarget({...post,_type:"short"})} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-destructive/20 px-2.5 py-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10" aria-label="Delete Short"><Trash2 className="size-3.5"/>Delete</button></div></article>)}</div></section>:<section className="xora-channel-empty"><div className="xora-channel-empty-icon"><Clapperboard className="size-6"/></div><h2>{isOwner?"Share your first Short":"No Shorts yet"}</h2><p>{isOwner?"Upload a video and start building your audience.":"Check back soon."}</p>{isOwner?<Link to="/create" className="xora-channel-empty-action"><Upload className="size-4"/>Upload Short</Link>:null}</section>;
+    if(section==="community")return textPosts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Posts</p><h2 className="mt-1 font-display text-2xl font-semibold">Thoughts & updates</h2><p className="mt-1 text-xs text-muted-foreground">Text posts published by this creator.</p></div><div className="space-y-3">{textPosts.map((post:any)=><article key={post.id} className="rounded-[22px] border border-border bg-surface p-5 shadow-card"><div className="flex items-center gap-3"><UserAvatar path={avatar} name={displayName} size={38}/><div><p className="text-sm font-semibold">{displayName}</p><p className="text-[10px] text-muted-foreground">{new Date(post.created_at||Date.now()).toLocaleDateString()}</p></div></div>{post.title?<h3 className="mt-4 text-base font-semibold">{post.title}</h3>:null}{post.poster_path?<img src={post.poster_path} alt={post.title||"Creator post"} loading="lazy" className="mt-4 aspect-[4/3] w-full rounded-2xl object-cover"/>:null}<p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-foreground/85">{post.caption||" "}</p><div className="mt-4 flex items-center gap-4 text-[10px] text-muted-foreground"><span>{post.likes_count||0} likes</span><span>{post.comments_count||0} comments</span></div></article>)}</div></section>:<section className="xora-channel-empty"><div className="xora-channel-empty-icon"><FileText className="size-6"/></div><h2>{isOwner?"Share your first post":"No posts yet"}</h2><p>{isOwner?"Share an update with the people who follow your channel.":"Check back soon."}</p>{isOwner?<Link to="/create" className="xora-channel-empty-action"><PenLine className="size-4"/>Create post</Link>:null}</section>;
+    if(section==="about")return <section className="rounded-2xl border border-border bg-surface p-6 shadow-card"><div className="mb-3 flex items-center gap-2 text-primary"><Info className="size-4"/><p className="text-xs font-semibold uppercase tracking-[.16em]">About this channel</p></div><h2 className="mt-2 font-display text-xl font-semibold">{displayName}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{publicBio||"Welcome to my XoraTV channel."}</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><Stat label="Subscribers" value={String((dashboard?.creator as any)?.subscriber_count||0)}/><Stat label="Courses" value={String(publishedCourses.length)}/><Stat label="Joined" value="XoraTV"/></div></section>;
+    if(section==="courses" && showCourses)return <CourseShelf courses={publishedCourses} isOwner={isOwner}/>;
     return <div className="space-y-8">
       <section className="grid gap-4 lg:grid-cols-[1.65fr_.75fr]">
         <article className="group relative aspect-video w-full overflow-hidden rounded-[26px] bg-ink text-white shadow-lift">
@@ -457,46 +465,52 @@ function XChannel(){
     </div>;
   }
 
+  const activeTabIndex=Math.max(0,publicTabs.findIndex(([key])=>key===section));
+  const shareChannel=async()=>{
+    const url=window.location.origin+"/channel/"+encodeURIComponent(username);
+    const payload={title:displayName+" on XoraTV",text:"Discover "+displayName+" on XoraTV.",url};
+    if(typeof navigator!=="undefined" && navigator.share){try{await navigator.share(payload);return;}catch(error){if(error instanceof Error && error.name==="AbortError")return;}}
+    try{await navigator.clipboard.writeText(url);}catch{window.prompt("Copy your X Channel link",url);}
+  };
+  const handleChannelSwipe=(event:any)=>{
+    const start=touchStartX.current;touchStartX.current=null;if(start===null||!publicTabs.some(([key])=>key===section))return;
+    if(event.target?.closest?.("button,a,input,video"))return;
+    const delta=event.changedTouches[0].clientX-start;if(Math.abs(delta)<55)return;
+    const next=Math.min(publicTabs.length-1,Math.max(0,activeTabIndex+(delta<0?1:-1)));
+    if(next!==activeTabIndex)setSection(publicTabs[next][0]);
+  };
+
   return <AppShell wide>
-    <div className="space-y-6">
-      <header className="overflow-hidden rounded-[28px] border border-border bg-surface shadow-card">
-        <div className="relative min-h-[280px] overflow-hidden bg-ink sm:min-h-[330px]">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/55 via-ink to-foreground"/>
-          <div className="absolute -right-24 -top-28 size-[360px] rounded-full bg-primary/25 blur-3xl"/>
-          <div className="absolute -bottom-28 left-1/3 size-[300px] rounded-full bg-white/10 blur-3xl"/>
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-ink/80 to-transparent"/>
-          <div className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.2em] text-white/70 backdrop-blur-md sm:left-7 sm:top-7">
-            <Radio className="size-3.5"/> X Channel
-          </div>
+    <div className="xora-channel-page space-y-5" data-compact={compactVisible}>
+      <header className="xora-channel-hero">
+        <div ref={coverRef} className="xora-channel-cover" style={coverUrl?{backgroundImage:'linear-gradient(180deg,rgba(38,23,17,.05),rgba(38,23,17,.4)),url("'+coverUrl+'")'}:undefined}>
+          <span className="xora-channel-pill"><Radio className="size-3"/>X CHANNEL</span>
         </div>
-        <div className="relative px-5 pb-6 sm:px-8 sm:pb-8">
-          <div className="-mt-14 flex flex-col gap-5 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex min-w-0 items-end gap-4">
-              <div className="rounded-[22px] bg-surface p-1.5 shadow-lift">
-                <UserAvatar path={avatar} name={displayName} size={88}/>
-              </div>
-              <div className="min-w-0 pb-1.5">
-                <h1 className="truncate font-display text-2xl font-semibold tracking-tight sm:text-3xl">{displayName}</h1>
-                <p className="mt-1 text-xs text-muted-foreground">@{username} <span className="mx-1.5">·</span> {Number(dashboard?.stats?.followers||0).toLocaleString()} followers</p>
-              </div>
+        <div className="xora-channel-card">
+          <div className="xora-channel-identity">
+            <div className="xora-channel-avatar-wrap">
+              <UserAvatar path={avatar} name={displayName} size={88} className="!rounded-full"/>
+              {dashboard?.creator?.verified?<span className="xora-channel-verified" aria-label="Verified channel"><BadgeCheck className="size-4"/></span>:null}
             </div>
-            <div className="flex gap-2">
-              <button onClick={()=>setMenuOpen(v=>!v)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-3.5 text-xs font-semibold transition hover:bg-secondary"><Settings2 className="size-4"/> Manage</button>
-              <button className="inline-flex h-10 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm">Subscribe</button>
-            </div>
+            <div className="xora-channel-copy"><h1 className="xora-channel-name">{displayName}</h1><p className="xora-channel-handle">@{username}</p><p className="xora-channel-followers">{followerLabel}</p></div>
           </div>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-muted-foreground">{profile?.bio||"Stories, ideas and original videos from XoraTV."}</p>
-          <nav className="mt-6 -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 hide-scrollbar">
-            {publicTabs.map(([key,label])=><button key={key} onClick={()=>setSection(key)} className={`relative whitespace-nowrap px-3.5 py-2.5 text-xs font-semibold transition ${section===key?"text-foreground":"text-muted-foreground hover:text-foreground"}`}>
-              {label}{section===key?<span className="absolute inset-x-2 -bottom-1 h-0.5 rounded-full bg-primary"/>:null}
-            </button>)}
-          </nav>
+          <div className="xora-channel-actions">
+            {isOwner?<><button type="button" onClick={()=>setMenuOpen(true)} className="xora-channel-primary"><PenLine className="size-4"/>Edit channel</button><button type="button" onClick={()=>void shareChannel()} className="xora-channel-icon-button" aria-label="Share channel" title="Share channel"><Share2 className="size-4"/></button></>:<><button type="button" className="xora-channel-primary"><Users className="size-4"/>Subscribe</button><button type="button" className="xora-channel-icon-button" aria-label="Channel notifications"><Bell className="size-4"/></button></>}
+          </div>
+          <p className="xora-channel-bio">{publicBio||"Stories, ideas and original videos from XoraTV."}</p>
+          <div className="xora-channel-stats"><span><strong>{followerCount===0?"—":new Intl.NumberFormat(undefined,{notation:"compact",maximumFractionDigits:1}).format(followerCount)}</strong><small>{followerCount===0?"New channel":"Followers"}</small></span><span><strong>{publishedCourses.length}</strong><small>Courses</small></span><span><strong>{shorts.length}</strong><small>Shorts</small></span></div>
         </div>
       </header>
-
+      <nav className="xora-channel-tabs" role="tablist" aria-label="Channel sections">
+        {publicTabs.map(([key,label])=><button type="button" key={key} id={"xora-channel-tab-"+key} role="tab" aria-selected={section===key} aria-controls="xora-channel-tabpanel" onClick={()=>setSection(key)} className="xora-channel-tab">{label}</button>)}
+        <span className="xora-channel-tab-indicator" aria-hidden="true" style={{width:(100/publicTabs.length)+"%",transform:"translateX("+(activeTabIndex*100)+"%)"}}/>
+      </nav>
+      <div className={"xora-channel-compact "+(compactVisible?"is-visible":"")} aria-hidden={!compactVisible}><UserAvatar path={avatar} name={displayName} size={34} className="!rounded-full"/><span className="xora-channel-compact-name">{displayName}</span><button type="button" onClick={()=>isOwner?setMenuOpen(true):undefined}>{isOwner?"Edit channel":"Subscribe"}</button></div>
       {menuOpen?<div className="fixed inset-0 z-[80] grid place-items-center bg-foreground/35 p-4 backdrop-blur-sm" onClick={()=>setMenuOpen(false)}><section role="dialog" aria-modal="true" aria-labelledby="creator-manage-title" className="w-full max-w-lg rounded-[28px] border border-border bg-surface p-5 shadow-2xl sm:p-6" onClick={event=>event.stopPropagation()}><div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Settings2 className="size-5"/></span><div className="min-w-0 flex-1"><h2 id="creator-manage-title" className="font-display text-xl font-semibold">Manage your X Channel</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Choose a workspace to continue.</p></div><button type="button" onClick={()=>setMenuOpen(false)} aria-label="Close management menu" className="rounded-lg p-2 hover:bg-secondary"><X className="size-4"/></button></div><div className="mt-5 grid gap-2 sm:grid-cols-2">{manageTabs.map(([key,label])=><button type="button" key={key} onClick={()=>{setSection(key);setMenuOpen(false)}} className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3.5 text-left text-sm font-semibold transition hover:border-primary/30 hover:bg-primary/5">{label}<span className="text-primary">→</span></button>)}</div></section></div>:null}
 
-      {section==="manage"||section==="analytics"||section==="earnings"||section==="referrals"||section==="payout"||section==="customize"?<ManageContent/>:<PublicContent/>}
+      <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={0} className="xora-channel-panel" onTouchStart={event=>{touchStartX.current=event.changedTouches[0].clientX;}} onTouchEnd={handleChannelSwipe}>
+        {section==="manage"||section==="analytics"||section==="earnings"||section==="referrals"||section==="payout"||section==="customize"?<ManageContent/>:<PublicContent/>}
+      </div>
 
       {deleteTarget?<div className="fixed inset-0 z-[90] grid place-items-center bg-foreground/30 p-4 backdrop-blur-sm"><div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl"><div className="flex items-start gap-3"><div className="grid size-9 place-items-center rounded-xl bg-destructive/10 text-destructive"><AlertTriangle className="size-4"/></div><div><h2 className="font-display text-lg font-semibold">Delete “{deleteTarget.title||"Untitled Short"}”?</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{deleteTarget._type==="short"?"This removes the Short from your channel and deletes its stored video.":"This removes the course from your channel catalogue."}</p></div><button onClick={()=>setDeleteTarget(null)} className="ml-auto rounded-lg p-1.5 hover:bg-secondary"><X className="size-4"/></button></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setDeleteTarget(null)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Cancel</button><button onClick={()=>void (deleteTarget._type==="short"?deleteShort():deleteCourse())} disabled={deleteBusy} className="inline-flex items-center gap-2 rounded-lg bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground">{deleteBusy?<Loader2 className="size-3.5 animate-spin"/>:<Trash2 className="size-3.5"/>}Delete</button></div></div></div>:null}
     </div>
@@ -508,4 +522,4 @@ function Metric({label,value}:{label:string;value:any}){return <div className="r
 function Stat({label,value}:{label:string;value:string}){return <div className="rounded-xl border border-border bg-background p-3"><p className="text-[10px] text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>}
 function EmptyContent({icon,title,text,action,href}:{icon:any;title:string;text:string;action:string;href:string}){return <section className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center shadow-card"><div className="mx-auto grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">{icon}</div><h2 className="mt-4 font-display text-xl font-semibold">{title}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted-foreground">{text}</p><Link to={href as any} className="mt-5 inline-flex rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">{action}</Link></section>}
 function Action({icon,title,text,href,onClick}:{icon:any;title:string;text:string;href?:string;onClick?:()=>void}){const body=<><div className="text-primary">{icon}</div><p className="mt-3 text-sm font-semibold">{title}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{text}</p></>;return href?<Link to={href as any} className="rounded-2xl border border-border bg-surface p-4 shadow-sm hover:bg-secondary">{body}</Link>:<button onClick={onClick} className="rounded-2xl border border-border bg-surface p-4 text-left shadow-sm hover:bg-secondary">{body}</button>}
-function CourseShelf({courses}:{courses:any[]}){return courses.length?<div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{courses.map(c=><div key={c.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm"><div className="relative aspect-video overflow-hidden rounded-xl bg-secondary text-primary">{c.thumbnailUrl?<img src={c.thumbnailUrl} alt={"Thumbnail for "+c.title} loading="lazy" className="size-full object-cover"/>:<div className="grid size-full place-items-center"><BookOpen className="size-6"/></div>}</div><p className="mt-3 truncate text-sm font-semibold">{c.title}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{Number(c.unlockPoints||Math.ceil(Number(c.price||0)/0.1)).toLocaleString()} XP · Unlock through CPA-earned Xora Points.</p></div>)}</div>:<div className="mt-3 rounded-2xl border border-dashed border-border bg-surface p-7 text-center text-xs text-muted-foreground">No published courses yet.</div>}
+function CourseShelf({courses,isOwner=true}:{courses:any[];isOwner?:boolean}){return courses.length?<div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{courses.map(c=><div key={c.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm"><div className="relative aspect-video overflow-hidden rounded-xl bg-secondary text-primary">{c.thumbnailUrl?<img src={c.thumbnailUrl} alt={"Thumbnail for "+c.title} loading="lazy" className="size-full object-cover"/>:<div className="grid size-full place-items-center"><BookOpen className="size-6"/></div>}</div><p className="mt-3 truncate text-sm font-semibold">{c.title}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{Number(c.unlockPoints||Math.ceil(Number(c.price||0)/0.1)).toLocaleString()} XP · Unlock through CPA-earned Xora Points.</p></div>)}</div>:<section className="xora-channel-empty"><div className="xora-channel-empty-icon"><BookOpen className="size-6"/></div><h2>No courses yet</h2><p>{isOwner?"Create a course and share what you know with your audience.":"Check back soon."}</p>{isOwner?<a href="/creator-studio?createCourse=1" className="xora-channel-empty-action"><BookOpen className="size-4"/>Create course</a>:null}</section>}
