@@ -45,7 +45,15 @@ export const Route = createFileRoute("/api/profile")({
     GET: async ({ request }) => {
       try {
         const url = new URL(request.url);
-        const username = (url.searchParams.get("username") || "").trim().toLowerCase();
+        const searchParam = url.searchParams.get("search");
+        if (searchParam !== null) {
+          const search = searchParam.trim().replace(/^@/, "").toLowerCase();
+          const pattern = search ? `${search}*` : "*";
+          const rows = await db(`xora_profiles?username=ilike.${encodeURIComponent(pattern)}&select=id,username,display_name,avatar_url,created_at&order=username.asc&limit=8`);
+          return json({ ok: true, profiles: rows.map((profile: Row) => publicProfile(profile)) });
+        }
+
+        const username = (url.searchParams.get("username") || "").trim().replace(/^@/, "").toLowerCase();
         if (!username) return json({ ok: false, error: "Username is required." }, 400);
         const rows = await db(`xora_profiles?username=eq.${encodeURIComponent(username)}&select=*`);
         if (!rows[0]) return json({ ok: false, error: "Profile not found." }, 404);
