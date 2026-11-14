@@ -17,7 +17,7 @@ import {
   joinGroupRoom,
   pruneUserExpiredMessages,
 } from "@/integrations/firebase/chat";
-import { getProfileByUsername, getProfile } from "@/integrations/firebase/rtdb";
+import { getProfileByUsername, getProfile, searchProfilesByUsername } from "@/integrations/firebase/rtdb";
 import type { ChatRoomRecord, ChatMessageRecord } from "@/integrations/firebase/types";
 
 export const Route = createFileRoute("/chat")({
@@ -55,10 +55,49 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [showDmModal, setShowDmModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [dmTargetUsername, setDmTargetUsername] = useState("");
-  const [dmResolvedUser, setDmResolvedUser] = useState<ProfileLite | null>(null);
+  const [dmResolvedUser, setDmResolvedUser] = useState<ProfileLite | null>(null);\n  const [dmSuggestions, setDmSuggestions] = useState<ProfileLite[]>([]);\n  const [dmSuggestionsLoading, setDmSuggestionsLoading] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupMembersInput, setGroupMembersInput] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
+
+  useEffect(() => {
+    const raw = dmTargetUsername.trim();
+    const shouldSuggest = showDmModal && !dmResolvedUser && (raw.startsWith("@") || raw.length > 0);
+    if (!shouldSuggest) {
+      setDmSuggestions([]);
+      setDmSuggestionsLoading(false);
+      return;
+    }
+
+    const query = raw.replace(/^@/, "").trim();
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      setDmSuggestionsLoading(true);
+      void searchProfilesByUsername(query)
+        .then((profiles) => {
+          if (cancelled) return;
+          setDmSuggestions(profiles
+            .filter((item) => item.id !== user?.id)
+            .map((item) => ({
+              id: item.id,
+              username: item.username,
+              display_name: item.display_name || item.username || "Xora member",
+              avatar_url: item.avatar_url ?? null,
+            })));
+        })
+        .catch(() => {
+          if (!cancelled) setDmSuggestions([]);
+        })
+        .finally(() => {
+          if (!cancelled) setDmSuggestionsLoading(false);
+        });
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [dmTargetUsername, dmResolvedUser, showDmModal, user?.id]);
 
   useEffect(() => {
     const target = new URLSearchParams(window.location.search).get("to");
@@ -385,7 +424,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
         busy={modalBusy}
         resolvedUser={dmResolvedUser}
         onUsernameChange={(value) => { setDmTargetUsername(value); setDmResolvedUser(null); }}
-        onClose={() => { setShowDmModal(false); setDmTargetUsername(""); setDmResolvedUser(null); }}
+        onClose={() => { setShowDmModal(false); setDmTargetUsername(""); setDmResolvedUser(null); setDmSuggestions([]); }}
         onSubmit={handleStartDm}
       />
       <NewGroupModal
