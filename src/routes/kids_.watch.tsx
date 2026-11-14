@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Film, Play, Sparkles } from "lucide-react";
+import { ArrowLeft, Film, Play } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Button } from "@/components/ui/button";
 
@@ -72,7 +72,7 @@ function KidsCartoonWatchPage() {
             <ArrowLeft className="mr-2 size-4" /> Back to cartoons
           </Button>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-            <Sparkles className="size-3" /> Xora Kids Cinema
+            <Film className="size-3" /> Xora Kids Cinema
           </span>
         </div>
 
