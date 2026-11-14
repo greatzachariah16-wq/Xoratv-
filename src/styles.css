@@ -2479,6 +2479,33 @@ section[aria-label="X-Series live channels"] {
   color: var(--channel-ink);
   scroll-padding-top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + var(--tabs-h, 52px) + 12px);
 }
+/* Portal-based sheets and app chrome use the same route-scoped Chat tokens. */
+html.xora-channel-route {
+  --channel-surface: #FAF6EF;
+  --channel-surface-solid: #FFFDFA;
+  --channel-surface-raised: #F5EFE7;
+  --channel-text-strong: #2A1F1A;
+  --channel-text-muted: #716158;
+  --channel-hairline: rgba(62, 43, 31, .12);
+  --channel-accent: #B5502E;
+  --channel-accent-contrast: #FFFFFF;
+  --color-primary: #B5502E;
+  --color-primary-foreground: #FFFFFF;
+  --color-surface: #FAF6EF;
+  --color-surface-solid: #FFFDFA;
+  --color-surface-raised: #F5EFE7;
+  --color-text-strong: #2A1F1A;
+  --color-text-muted: #716158;
+  --color-hairline: rgba(62, 43, 31, .12);
+  --color-accent: #B5502E;
+  --color-accent-contrast: #FFFFFF;
+  --primary: #B5502E;
+  --primary-foreground: #FFFFFF;
+  --background: #FAF6EF;
+  --foreground: #2A1F1A;
+  --border: rgba(62, 43, 31, .12);
+  --muted-foreground: #716158;
+}
 html.xora-channel-route body {
   background: #FAF6EF;
   color: #2A1F1A;
