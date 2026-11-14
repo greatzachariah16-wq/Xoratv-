@@ -43,9 +43,12 @@ function NotificationsPage() {
 
   return (
     <AppShell>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Notifications</h1>
+      <div className="xora-alerts-heading">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Alerts</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Likes, comments, follows and important updates.</p>
+      </div>
 
-      <div className="mt-5 space-y-2">
+      <div className="mt-5 space-y-3">
         {!user ? (
           <EmptyState
             icon={Bell}
@@ -78,12 +81,12 @@ function NotificationsPage() {
             return (
               <div
                 key={item.id}
-                className={`flex items-start gap-3 rounded-2xl border p-3.5 transition-colors ${
-                  isSupport ? "border-primary/30 bg-primary/5" : "border-border bg-surface"
+                className={`xora-alert-row flex items-start gap-3 rounded-2xl border border-border/70 p-3.5 transition-colors shadow-[0_5px_18px_rgba(42,31,26,0.07)] ${
+                  isSupport ? "bg-[linear-gradient(145deg,rgba(181,80,46,0.075),rgba(255,253,250,0.98)_62%)]" : "bg-[#FFFDFA]"
                 }`}
               >
                 {isSupport ? (
-                  <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground font-bold shadow-sm">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground font-bold shadow-[0_3px_10px_rgba(42,31,26,0.08)]">
                     <ShieldCheck className="size-5" />
                   </div>
                 ) : (
@@ -105,7 +108,7 @@ function NotificationsPage() {
                     </span>
                   </p>
                   {item.message ? (
-                    <p className="mt-1 text-xs text-foreground/90 font-medium line-clamp-2 bg-background/50 p-2 rounded-xl border border-border/50">
+                    <p className="mt-1 text-xs text-foreground/90 font-medium line-clamp-2 bg-background/60 p-2.5 rounded-xl border border-border/40 shadow-[inset_0_1px_2px_rgba(42,31,26,0.035)]">
                       {item.message}
                     </p>
                   ) : null}
