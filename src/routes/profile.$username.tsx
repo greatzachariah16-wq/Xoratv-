@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Sparkles, PenLine, LogOut, MapPin, CalendarDays, Film, UserRound,
   Settings2, ArrowUpRight, PlayCircle, ShieldCheck, Grid2X2, CircleUserRound,
-  Clapperboard, ChevronRight, Users, Heart, Camera, BadgeCheck,
+  Clapperboard, ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle,
 } from "lucide-react";
 import { profilePostsQuery, profileQuery } from "@/lib/api";
 import { compactNumber } from "@/lib/format";
@@ -89,10 +89,10 @@ function ProfilePage() {
 
   return (
     <AppShell wide>
-      <main className="mx-auto max-w-6xl space-y-5 pb-10 pt-4 sm:space-y-6 sm:pt-7">
+      <main className="xora-profile-page mx-auto max-w-6xl space-y-4 pb-8 pt-3 sm:space-y-5 sm:pt-5">
         {/* Cinematic member cover */}
-        <section className="relative isolate overflow-hidden rounded-[28px] border border-border bg-surface shadow-card sm:rounded-[32px]">
-          <div className="relative h-40 overflow-hidden sm:h-56 lg:h-64">
+        <section className="xora-profile-hero relative isolate overflow-hidden rounded-[24px] border border-border bg-surface shadow-card sm:rounded-[28px]">
+          <div className="relative h-28 overflow-hidden sm:h-36 lg:h-40">
             <div className="absolute inset-0 bg-gradient-to-br from-clay/50 via-accent to-sage/35" />
             <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(ellipse at 16% 12%, hsl(var(--primary) / .15), transparent 38%), radial-gradient(ellipse at 82% 22%, hsl(var(--clay) / .35), transparent 34%), linear-gradient(125deg, transparent 30%, hsl(var(--surface) / .38) 100%)" }} />
             <div className="absolute -right-10 -top-24 size-72 rounded-full border border-primary/15 sm:size-96" />
@@ -109,10 +109,10 @@ function ProfilePage() {
           </div>
 
           <div className="relative px-4 pb-5 sm:px-7 sm:pb-7 lg:px-9">
-            <div className="-mt-12 flex flex-wrap items-end justify-between gap-4 sm:-mt-[68px]">
-              <div className="relative shrink-0 rounded-[27px] border-[5px] border-surface bg-surface shadow-lift sm:rounded-[32px] sm:border-[6px]">
-                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={112} />
-                {isMe ? <span className="absolute bottom-1 right-1 grid size-7 place-items-center rounded-full border-2 border-surface bg-primary text-primary-foreground shadow-card" title="Your profile"><Camera className="size-3.5" /></span> : null}
+            <div className="-mt-9 flex flex-wrap items-end justify-between gap-3 sm:-mt-12">
+              <div className="relative shrink-0 rounded-[22px] border-4 border-surface bg-surface shadow-lift sm:rounded-[26px] sm:border-[5px]">
+                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={88} />
+                {isMe ? <span className="absolute bottom-0 right-0 grid size-6 place-items-center rounded-full border-2 border-surface bg-primary text-primary-foreground shadow-card" title="Your profile"><Camera className="size-3.5" /></span> : null}
               </div>
               <div className="flex flex-wrap items-center gap-2 pb-1">
                 {isMe ? (
@@ -122,22 +122,37 @@ function ProfilePage() {
                     <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="press inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface/75 px-3.5 py-2.5 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-xl transition hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm" aria-label="Sign out" title="Sign out"><LogOut className="size-4" />{signingOut ? "Signing out…" : "Sign out"}</button>
                   </>
                 ) : profile ? (
-                  <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user || isMe} title={isMe ? "This is your profile" : !user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-card transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "border border-border bg-surface text-foreground" : "bg-primary text-primary-foreground hover:opacity-90")}>
-                    <Users className="size-4" /> {isMe ? "Your profile" : subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user) {
+                          void navigate({ to: "/auth" });
+                          return;
+                        }
+                        window.location.assign(`/chat?to=${encodeURIComponent(profile.username || username)}`);
+                      }}
+                      className="xora-profile-message press inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+                    >
+                      <MessageCircle className="size-4" /> Message
+                    </button>
+                    <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user} title={!user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "xora-profile-secondary" : "xora-profile-primary")}>
+                      <Users className="size-4" /> {subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
+                    </button>
+                  </>
                 ) : null}
               </div>
             </div>
 
-            <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:items-end">
+            <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h1 className="break-words font-display text-[27px] font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl">{profile?.display_name || username}</h1>
                   {isMe ? <span className="inline-flex items-center gap-1 rounded-full bg-sage/15 px-2.5 py-1 text-[10px] font-semibold text-sage"><BadgeCheck className="size-3.5" /> Your profile</span> : null}
                 </div>
                 <p className="mt-1.5 text-sm font-medium text-muted-foreground">@{profile?.username || username}</p>
-                {profile?.bio ? <div className="mt-4 max-w-2xl space-y-2 text-sm leading-7 text-foreground/85 sm:text-[15px]">{profileBioSections(profile.bio).about ? <p className="whitespace-pre-wrap">{profileBioSections(profile.bio).about}</p> : null}{profileBioSections(profile.bio).creating ? <p className="whitespace-pre-wrap"><span className="font-semibold text-muted-foreground">Creating · </span>{profileBioSections(profile.bio).creating}</p> : null}</div> : <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
-                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                {profile?.bio ? <div className="mt-2.5 max-w-2xl space-y-1.5 text-sm leading-6 text-foreground/85">{profileBioSections(profile.bio).about ? <p className="whitespace-pre-wrap">{profileBioSections(profile.bio).about}</p> : null}{profileBioSections(profile.bio).creating ? <p className="whitespace-pre-wrap"><span className="font-semibold text-muted-foreground">Creating · </span>{profileBioSections(profile.bio).creating}</p> : null}</div> : <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
                   {profile?.location ? <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" />{profile.location}</span> : null}
                   {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
                 </div>
@@ -158,7 +173,7 @@ function ProfilePage() {
             </div>
 
             {/* Real-data tabs only: no fabricated watch history or playlists */}
-            <div className="mt-7 flex items-center gap-1 overflow-x-auto border-t border-border/80 pt-3">
+            <div className="mt-5 flex items-center gap-1 overflow-x-auto border-t border-border/80 pt-2.5">
               <button type="button" onClick={() => setActiveTab("posts")} className={cn("relative inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition", activeTab === "posts" ? "bg-accent/70 text-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground")}>
                 <Clapperboard className="size-4" /> Posts <span className="rounded-full bg-surface/80 px-1.5 py-0.5 text-[10px] tabular-nums">{publishedPosts.length}</span>
                 {activeTab === "posts" ? <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-primary" /> : null}
@@ -176,7 +191,7 @@ function ProfilePage() {
           <div className="flex shrink-0 gap-2"><Link to="/auth" className="press inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Sign up</Link><Link to="/auth" className="press inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold hover:bg-secondary">Log in</Link></div>
         </section> : null}
 
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <section className="min-w-0 overflow-hidden rounded-[26px] border border-border bg-surface/90 shadow-card backdrop-blur-xl sm:rounded-[30px]">
             {activeTab === "posts" ? <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-7 sm:py-5">
