@@ -141,7 +141,7 @@ function ProfilePage() {
                   {isMe ? <span className="inset-field inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] font-semibold text-clay"><BadgeCheck className="size-3.5" />Your profile</span> : null}
                 </div>
                 {profile?.bio ? <div className="mt-1.5 max-w-2xl space-y-0 text-[14px] leading-5 text-ink"><p className="line-clamp-2 whitespace-pre-wrap">{profileBioSections(profile.bio).about || profileBioSections(profile.bio).creating}</p></div> : <p className="mt-1.5 max-w-xl line-clamp-2 text-[14px] leading-5 text-muted">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
-                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
+                <div className="mt-1.5 flex flex-nowrap gap-x-3 overflow-hidden whitespace-nowrap text-[13px] text-muted">
                   {profile?.location ? <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" />{profile.location}</span> : null}
                   {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
                 </div>
@@ -185,9 +185,9 @@ function ProfilePage() {
                 <div className="min-w-0"><h2 className="font-display text-[18px] font-bold tracking-tight text-ink">{isMe ? "Your posts" : `Posts by ${profile?.display_name || username}`}</h2><p className="mt-0.5 truncate text-[13px] text-muted">The latest things shared with the community</p></div>
                 {isMe && publishedPosts.length > 0 ? <Link to="/create" className="soft-pill press inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40">Create post <ArrowUpRight className="size-3.5" /></Link> : null}
               </div>
-              <div className="space-y-3 p-3 pt-1">
-                {postsPending || isPending ? <FeedSkeleton count={2} /> : publishedPosts.length ? publishedPosts.map((post) => <PostCard key={post.id} post={post} />) : <div className="flex flex-col items-center px-4 py-6 text-center">
-                  {isMe ? <><div className="relative mb-3 grid size-12 place-items-center rounded-2xl peach-tile text-clay before:absolute before:-inset-2 before:-z-10 before:rounded-[22px] before:border before:border-clay/10"><Sparkles className="size-6" /></div><h3 className="font-display text-[18px] font-bold text-ink">Your story starts here</h3><p className="mt-1.5 max-w-[270px] text-[14px] leading-5 text-muted">When you publish your first video or post, it will appear here for the community.</p><Link to="/create" className="brand-surface press mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4" /> Share your first post</Link></> : <div className="py-4"><h3 className="font-display text-[18px] font-bold text-ink">No posts yet</h3><p className="mt-1 text-[14px] text-muted">This member hasn’t shared anything publicly yet.</p></div>}
+              <div className="space-y-3 p-2 pt-0">
+                {postsPending || isPending ? <FeedSkeleton count={2} /> : publishedPosts.length ? publishedPosts.map((post) => <PostCard key={post.id} post={post} />) : <div className="flex flex-col items-center px-4 py-2 text-center">
+                  {isMe ? <><div className="relative mb-1.5 grid size-12 place-items-center rounded-2xl peach-tile text-clay before:absolute before:-inset-2 before:-z-10 before:rounded-[22px] before:border before:border-clay/10"><Sparkles className="size-6" /></div><h3 className="font-display text-[18px] font-bold text-ink">Your story starts here</h3><p className="mt-1 max-w-[270px] text-[14px] leading-5 text-muted">Your first post will appear here.</p><Link to="/create" className="brand-surface press mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4" /> Share your first post</Link></> : <div className="py-4"><h3 className="font-display text-[18px] font-bold text-ink">No posts yet</h3><p className="mt-1 text-[14px] text-muted">This member hasn’t shared anything publicly yet.</p></div>}
                 </div>}
               </div>
             </> : <div className="p-5 sm:p-7">
@@ -207,8 +207,8 @@ function ProfilePage() {
               <h2 className="min-w-0 flex-1 text-[16px] font-bold text-ink">Your space</h2>
               <Link to="/creator-studio" className="soft-pill press inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-3 text-[12px] font-semibold text-clay focus-visible:ring-2 focus-visible:ring-clay/40">Open X Channel <ChevronRight className="size-4" /></Link>
             </section> : null}
-            {isMe ? <section className="soft-card overflow-hidden px-4 py-3">
-              <p className="pb-1.5 text-[12px] font-semibold uppercase tracking-wide text-muted">Account</p>
+            {isMe ? <section className="soft-card overflow-hidden px-4 py-2">
+              <p className="pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted">Account</p>
               <Link to="/settings" className="press flex h-[60px] items-center gap-3 rounded-xl focus-visible:ring-2 focus-visible:ring-clay/40">
                 <div className="peach-tile grid size-10 shrink-0 place-items-center rounded-2xl text-clay"><Settings2 className="size-[18px]" /></div><div className="min-w-0 flex-1"><p className="text-[16px] font-semibold text-ink">Profile & preferences</p><p className="truncate text-[13px] text-muted">Personalise your account</p></div><ChevronRight className="size-4 text-muted" />
               </Link>
