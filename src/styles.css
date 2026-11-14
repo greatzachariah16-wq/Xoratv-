@@ -2210,3 +2210,124 @@ section[aria-label="X-Series live channels"] {
   .xora-profile-photo-frame { width: 70px; height: 54px; }
   .xora-profile-name { font-size: 18px; }
 }
+
+
+/* Profile full-bleed phone layout: prioritize screen width over card height. */
+@media (max-width: 639px) {
+  .xora-profile-page {
+    width: 100%;
+    max-width: none;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .xora-profile-page .xora-profile-hero {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .xora-profile-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "identity identity"
+      "actions tabs";
+    align-items: center;
+    column-gap: 7px;
+    row-gap: 6px;
+    padding: 0 10px 8px;
+  }
+  .xora-profile-cover { height: 18px; }
+  .xora-profile-identity {
+    grid-area: identity;
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    margin-top: -10px;
+  }
+  .xora-profile-photo-frame {
+    width: 72px;
+    height: 54px;
+    padding: 2px;
+    border-radius: 9px;
+  }
+  .xora-profile-photo-frame .xora-profile-avatar { border-radius: 6px !important; }
+  .xora-profile-photo-frame .xora-profile-avatar img { border-radius: 5px !important; }
+  .xora-profile-copy { min-width: 0; }
+  .xora-profile-name { font-size: clamp(17px, 5vw, 21px); }
+  .xora-profile-handle-row { margin-top: 1px; gap: 5px; }
+  .xora-profile-handle { font-size: 10px; line-height: 13px; }
+  .xora-profile-owner-label { padding: 1px 5px; font-size: 8px; line-height: 12px; }
+  .xora-profile-bio { margin-top: 2px; font-size: 10px; line-height: 1.2; -webkit-line-clamp: 1; }
+  .xora-profile-meta { margin-top: 2px; gap: 7px; font-size: 8px; line-height: 11px; }
+  .xora-profile-meta svg { width: 11px; height: 11px; }
+  .xora-profile-stats { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 3px; }
+  .xora-profile-stat { gap: 3px; }
+  .xora-profile-stat dd { font-size: 10px; line-height: 12px; }
+  .xora-profile-stat dt { font-size: 8px; line-height: 11px; }
+  .xora-profile-actions {
+    grid-area: actions;
+    justify-content: flex-start;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+    padding: 5px 0 0;
+    border-top: 1px solid rgba(120, 60, 30, .10);
+  }
+  .xora-profile-page .xora-profile-actions :where(a, button) {
+    min-width: 0;
+    min-height: 32px;
+    height: 32px;
+    gap: 4px;
+    padding: 0 7px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+  .xora-profile-page .xora-profile-actions .xora-profile-action--icon {
+    width: 32px;
+    min-width: 32px;
+  }
+  .xora-profile-tabs {
+    grid-area: tabs;
+    display: flex;
+    justify-self: end;
+    gap: 3px;
+    margin: 0;
+    padding: 3px;
+    border-radius: 8px;
+  }
+  .xora-profile-page .xora-profile-tabs .xora-profile-tab {
+    min-width: 48px;
+    min-height: 30px;
+    height: 30px;
+    gap: 3px;
+    padding: 0 6px;
+    border-radius: 6px;
+    font-size: 9px;
+  }
+  .xora-profile-tab > span {
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    font-size: 8px;
+  }
+}
+@media (max-width: 360px) {
+  .xora-profile-inner { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; padding-inline: 8px; }
+  .xora-profile-identity { grid-template-columns: 64px minmax(0, 1fr); gap: 7px; }
+  .xora-profile-photo-frame { width: 64px; height: 48px; }
+  .xora-profile-name { font-size: 17px; }
+  .xora-profile-page .xora-profile-actions :where(a, button) { padding-inline: 5px; font-size: 8px; }
+  .xora-profile-page .xora-profile-tabs .xora-profile-tab { min-width: 43px; padding-inline: 4px; }
+}
+@media (max-width: 330px) {
+  .xora-profile-inner {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "identity" "actions" "tabs";
+  }
+  .xora-profile-tabs { justify-self: stretch; }
+  .xora-profile-page .xora-profile-tabs .xora-profile-tab { flex: 1; }
+}
