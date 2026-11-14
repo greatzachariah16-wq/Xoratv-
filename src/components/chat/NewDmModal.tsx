@@ -75,17 +75,16 @@ export default function NewDmModal({
           <div className="space-y-2">
             <div className="space-y-1"><label className="text-sm font-semibold text-foreground">Who would you like to message?</label><p className="text-xs text-muted-foreground">Find their XoraTV profile before opening a private conversation.</p></div>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                @
-              </span>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => onUsernameChange(e.target.value)}
-                placeholder="Enter username"
-                className="w-full pl-7 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Type @ to find a username"
+                className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 autoFocus
                 disabled={busy}
+                autoComplete="off"
+                aria-label="Search XoraTV usernames"
               />
             </div>
             <p className="text-xs text-muted-foreground">
