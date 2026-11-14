@@ -54,8 +54,8 @@ body,
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--channel-accent);
-  --color-accent-foreground: var(--channel-accent-contrast);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
@@ -64,7 +64,7 @@ body,
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
-  --color-surface: var(--channel-surface);
+  --color-surface: var(--surface);
   --color-surface-solid: var(--channel-surface-solid);
   --color-surface-raised: var(--channel-surface-raised);
   --color-text-strong: var(--channel-text-strong);
@@ -2442,6 +2442,11 @@ section[aria-label="X-Series live channels"] {
 
 /* Premium X Channel profile: scoped to the channel route, preserving the app-wide design tokens. */
 
+html.xora-channel-route {
+  --color-surface: var(--channel-surface);
+  --color-accent: var(--channel-accent);
+  --color-accent-contrast: var(--channel-accent-contrast);
+}
 html.xora-channel-route .xora-channel-page .text-muted-foreground { color:var(--color-text-muted)!important; }
 html.xora-channel-route .xora-channel-page .text-foreground { color:var(--color-text-strong)!important; }
 html.xora-channel-route .xora-channel-page .text-primary { color:var(--color-accent)!important; }
