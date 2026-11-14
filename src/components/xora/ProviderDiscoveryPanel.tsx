@@ -8,7 +8,7 @@ import {
   Play,
   ExternalLink,
   Waves,
-  Sparkles,
+  Search,
   Send,
   AlertCircle,
   RefreshCw,
@@ -266,7 +266,7 @@ export function ProviderDiscoveryPanel() {
       {/* Quick Search Chips */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 mr-1">
-          <Sparkles className="size-3 text-primary" /> Popular Topics:
+          <Search className="size-3 text-primary" /> Popular Topics:
         </span>
         {QUICK_QUERIES.map((chip) => (
           <button
