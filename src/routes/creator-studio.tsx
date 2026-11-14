@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen, Check, ChevronDown, Clapperboard, FileText, Gift, Info, Landmark, Loader2,
@@ -512,10 +512,10 @@ function ChannelPage(){
     try{await navigator.clipboard.writeText(url);}catch{window.prompt("Copy your X Channel link",url);}
   };
   const onShare=()=>void shareChannel();
-  const handleChannelSwipe=(event:any)=>{
+  const handleChannelSwipe=(event:TouchEvent<HTMLDivElement>)=>{
     const start=touchStartX.current;touchStartX.current=null;if(start===null||!publicTabs.some(([key])=>key===section))return;
-    if(event.target?.closest?.("button,a,input,video"))return;
-    const delta=event.changedTouches[0].clientX-start;if(Math.abs(delta)<55)return;
+    if(event.target instanceof Element && event.target.closest("button,a,input,video"))return;
+    const touch=event.changedTouches[0];if(!touch)return;const delta=touch.clientX-start;if(Math.abs(delta)<55)return;
     const next=Math.min(publicTabs.length-1,Math.max(0,activeTabIndex+(delta<0?1:-1)));
     if(next!==activeTabIndex)setSection(publicTabs[next][0]);
   };
