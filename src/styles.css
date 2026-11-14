@@ -1943,7 +1943,7 @@ section[aria-label="X-Series live channels"] {
   line-height: 1.3;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 .xora-profile-meta {
   display: flex;
@@ -1982,6 +1982,7 @@ section[aria-label="X-Series live channels"] {
   white-space: nowrap;
 }
 .xora-profile-stat dd {
+  order: -1;
   margin: 0;
   color: #39251c;
   font-size: 12px;
@@ -2011,7 +2012,8 @@ section[aria-label="X-Series live channels"] {
   display: inline-flex;
   min-width: 0;
   min-height: 39px;
-  height: 39px;
+  height: 40px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -2054,8 +2056,8 @@ section[aria-label="X-Series live channels"] {
 .xora-profile-page .xora-profile-tabs .xora-profile-tab {
   display: inline-flex;
   min-width: 0;
-  min-height: 35px;
-  height: 35px;
+  min-height: 40px;
+  height: 40px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -2104,7 +2106,7 @@ section[aria-label="X-Series live channels"] {
   .xora-profile-photo-frame .xora-profile-avatar { border-radius: 11px !important; }
   .xora-profile-photo-frame .xora-profile-avatar img { border-radius: 10px !important; }
   .xora-profile-name { font-size: 30px; }
-  .xora-profile-bio { font-size: 13px; }
+  .xora-profile-bio { font-size: 13px; -webkit-line-clamp: 2; }
   .xora-profile-meta { font-size: 11px; }
   .xora-profile-stat dd { font-size: 13px; }
   .xora-profile-stat dt { font-size: 10px; }
