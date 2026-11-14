@@ -525,7 +525,7 @@ function ChannelPage(){
       <ChannelHeader channel={editChannel} isOwner={isOwner} onEdit={onEdit} onOpenStudio={onOpenStudio} onShare={onShare}/>
       <ChannelTabs tabs={publicTabs} activeTab={publicTabs.some(([id])=>id===section)?section as TabId:"shorts"} onChange={setSection}/>
 
-      <EditChannelSheet open={editOpen} channel={editChannel} onOpenChange={setEditOpen} onSave={saveChannel}/>
+      <EditChannelSheet key={(editOpen?"open-":"closed-")+username} open={editOpen} channel={editChannel} onOpenChange={setEditOpen} onSave={saveChannel}/>
       <StudioSheet open={menuOpen} tabs={manageTabs} onOpenChange={setMenuOpen} onSelect={(tab)=>{setSection(tab);setMenuOpen(false)}}/>
 
       <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={0} className="xora-channel-panel" onTouchStart={event=>{touchStartX.current=event.changedTouches[0].clientX;}} onTouchEnd={handleChannelSwipe}>
