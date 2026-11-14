@@ -2442,6 +2442,12 @@ section[aria-label="X-Series live channels"] {
 
 /* Premium X Channel profile: scoped to the channel route, preserving the app-wide design tokens. */
 
+html.xora-channel-route .xora-channel-page .text-muted-foreground { color:var(--color-text-muted)!important; }
+html.xora-channel-route .xora-channel-page .text-foreground { color:var(--color-text-strong)!important; }
+html.xora-channel-route .xora-channel-page .text-primary { color:var(--color-accent)!important; }
+html.xora-channel-route .xora-channel-page .text-primary-foreground { color:var(--color-accent-contrast)!important; }
+html.xora-channel-route .xora-channel-page .bg-background { background:var(--color-surface)!important; }
+html.xora-channel-route .xora-channel-page .border-border { border-color:var(--color-hairline)!important; }
 .xora-channel-page {
   color: var(--color-text-strong);
   width: 100%;
