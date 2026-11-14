@@ -335,7 +335,7 @@ function ChannelPage(){
         <CourseShelf courses={publishedCourses.slice(0,4)}/>
       </section>
       <section>
-        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Posts</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest thoughts</h2></div><button onClick={()=>setSection("community")} className="text-xs font-semibold text-primary">View all</button></div>
+        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Posts</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest thoughts</h2></div><button onClick={()=>setSection("posts")} className="text-xs font-semibold text-primary">View all</button></div>
         {textPosts.slice(0,2).map((post:any)=><article key={post.id} className="mt-3 rounded-2xl border border-border bg-surface p-4 shadow-sm"><p className="whitespace-pre-wrap text-sm leading-6">{post.caption}</p><p className="mt-3 text-[10px] text-muted-foreground">{new Date(post.created_at||Date.now()).toLocaleDateString()}</p></article>)}
         {!textPosts.length?<div className="mt-3 rounded-2xl border border-dashed border-border bg-surface p-6 text-center text-xs text-muted-foreground">No text posts yet.</div>:null}
       </section>
