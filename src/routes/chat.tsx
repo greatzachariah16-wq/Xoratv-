@@ -385,7 +385,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
         busy={modalBusy}
         resolvedUser={dmResolvedUser}
         onUsernameChange={(value) => { setDmTargetUsername(value); setDmResolvedUser(null); }}
-        onClose={() => setShowDmModal(false)}
+        onClose={() => { setShowDmModal(false); setDmTargetUsername(""); setDmResolvedUser(null); }}
         onSubmit={handleStartDm}
       />
       <NewGroupModal
