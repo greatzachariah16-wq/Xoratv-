@@ -830,7 +830,7 @@ export function AdminCampaignManager() {
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <Sparkles className="size-2.5 inline mr-1" />
+                      <Layers className="size-2.5 inline mr-1" />
                       Presets
                     </button>
                   </div>
@@ -1111,7 +1111,7 @@ export function AdminCampaignManager() {
             {/* Right Column: Live In-House Ad Shell Preview */}
             <div className="space-y-3 lg:col-span-5">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                <Sparkles className="size-3.5 text-primary" />
+                <Megaphone className="size-3.5 text-primary" />
                 <span>Live Deep-Shadow Ad Preview</span>
               </div>
 
