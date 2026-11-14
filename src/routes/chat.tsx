@@ -55,6 +55,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [showDmModal, setShowDmModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [dmTargetUsername, setDmTargetUsername] = useState("");
+  const [dmResolvedUser, setDmResolvedUser] = useState<ProfileLite | null>(null);
   const [groupName, setGroupName] = useState("");
   const [groupMembersInput, setGroupMembersInput] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
@@ -225,13 +226,33 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
     setModalBusy(true);
     try {
       const cleanHandle = dmTargetUsername.trim().replace(/^@/, "").toLowerCase();
-      const targetUser = await getProfileByUsername(cleanHandle);
-      if (!targetUser) {
-        toast.error(`User @${cleanHandle} was not found on Xora.`);
+      if (!dmResolvedUser) {
+        const targetUser = await getProfileByUsername(cleanHandle);
+        if (!targetUser) {
+          toast.error(`We couldn't find @${cleanHandle}. Check the username and try again.`);
+          return;
+        }
+        if (targetUser.id === user.id) {
+          toast.error("You cannot start a private message with yourself.");
+          return;
+        }
+        setDmResolvedUser({
+          id: targetUser.id,
+          username: targetUser.username,
+          display_name: targetUser.display_name || targetUser.username || "Xora member",
+          avatar_url: targetUser.avatar_url ?? null,
+        });
         return;
       }
-      if (targetUser.id === user.id) {
-        toast.error("You cannot start a direct message with yourself.");
+      if (dmResolvedUser.username.toLowerCase() !== cleanHandle) {
+        setDmResolvedUser(null);
+        toast.error("The username changed. Find the person again to confirm.");
+        return;
+      }
+      const targetUser = await getProfileByUsername(cleanHandle);
+      if (!targetUser || targetUser.id !== dmResolvedUser.id) {
+        setDmResolvedUser(null);
+        toast.error("That profile could not be confirmed. Please search again.");
         return;
       }
       const roomId = await createDmRoom(user.id, targetUser.id, {
@@ -250,6 +271,7 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
       setActiveRoomId(roomId);
       setShowDmModal(false);
       setDmTargetUsername("");
+      setDmResolvedUser(null);
       toast.success(`Chat started with @${targetUser.username}`);
       void navigate({ to: "/chat/$roomId", params: { roomId } });
     } catch (err) {
@@ -361,8 +383,9 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
         open={showDmModal}
         username={dmTargetUsername}
         busy={modalBusy}
-        onUsernameChange={setDmTargetUsername}
-        onClose={() => setShowDmModal(false)}
+        resolvedUser={dmResolvedUser}
+        onUsernameChange={(value) => { setDmTargetUsername(value); setDmResolvedUser(null); }}
+        onClose={() => { setShowDmModal(false); setDmTargetUsername(""); setDmResolvedUser(null); }}
         onSubmit={handleStartDm}
       />
       <NewGroupModal

@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/xora/UserAvatar";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { RowSkeleton } from "@/components/xora/Skeletons";
 import { timeAgo } from "@/lib/format";
+import "@/components/chat/chatcn-xora.css";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -79,10 +80,10 @@ function NotificationsPage() {
             const isSupport =
               item.kind === "support_reply" || item.actor_id === "xora_support_admin";
             return (
+              <div key={item.id} className="xora-alert-float-wrap xora-chat-float-wrap xora-chat-float-wrap--wide">
               <div
-                key={item.id}
-                className={`xora-alert-row flex items-start gap-3 rounded-2xl border border-border/70 p-3.5 transition-colors shadow-[0_5px_18px_rgba(42,31,26,0.07)] ${
-                  isSupport ? "bg-[linear-gradient(145deg,rgba(181,80,46,0.075),rgba(255,253,250,0.98)_62%)]" : "bg-[#FFFDFA]"
+                className={`xora-alert-row xora-chat-float-surface flex items-start gap-3 rounded-2xl p-3.5 transition-colors ${
+                  isSupport ? "xora-alert-row--support" : ""
                 }`}
               >
                 {isSupport ? (
@@ -132,6 +133,7 @@ function NotificationsPage() {
                     View
                   </Link>
                 ) : null}
+              </div>
               </div>
             );
           })

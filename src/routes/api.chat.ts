@@ -56,8 +56,10 @@ async function roomWithLatest(row: Row) {
   ]);
   return safeRoom(row, memberList, latest[0] || null);
 }
-async function requireMember(roomId: string, uid: string) {
-  const rows = await db(`xora_chat_members?room_id=eq.${encodeURIComponent(roomId)}&user_id=eq.${encodeURIComponent(uid)}&select=room_id&limit=1`);
+async function requireMember(roomId: string, user: { id: string; legacyFirebaseUid: string | null }) {
+  const identityIds = [...new Set([user.id, user.legacyFirebaseUid].filter((value): value is string => Boolean(value)))];
+  const filters = identityIds.map((id) => `user_id.eq.${encodeURIComponent(id)}`).join(",");
+  const rows = filters ? await db(`xora_chat_members?room_id=eq.${encodeURIComponent(roomId)}&or=(${filters})&select=room_id&limit=1`) : [];
   if (!rows.length) throw Object.assign(new Error("You are not a member of this chat."), { status: 403 });
 }
 function roomIdForPair(a: string, b: string) {
@@ -100,7 +102,7 @@ async function handle(request: Request): Promise<Response> {
     if (action === "messages" && request.method === "GET") {
       const roomId = url.searchParams.get("roomId") || "";
       if (!roomId) return json({ error: "Room is required." }, 400);
-      await requireMember(roomId, uid);
+      await requireMember(roomId, user);
       const rows = await db(`xora_chat_messages?room_id=eq.${encodeURIComponent(roomId)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=*&order=created_at.asc&limit=250`);
       return json({ messages: rows.map((m) => ({ id: m.id, roomId: m.room_id, senderId: m.sender_id, senderName: m.sender_name, senderAvatar: m.sender_avatar, text: m.message_text, created_at: m.created_at, type: m.message_type, expiresAt: m.expires_at })) });
     }
@@ -109,7 +111,7 @@ async function handle(request: Request): Promise<Response> {
       const message = String(input.text || "").trim();
       const type = input.type === "experience" ? "experience" : "text";
       if (!roomId || !message || message.length > 2000) return json({ error: "Message must contain 1–2,000 characters." }, 400);
-      await requireMember(roomId, uid);
+      await requireMember(roomId, user);
       const now = new Date();
       const inserted = await db("xora_chat_messages", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({
         room_id: roomId, sender_id: uid, sender_name: String(input.senderName || "Xora user").slice(0,80),
@@ -123,7 +125,18 @@ async function handle(request: Request): Promise<Response> {
     if (action === "create-dm" && request.method === "POST") {
       const targetId = String(input.targetId || "");
       if (!targetId || targetId === uid || targetId.length > 160) return json({ error: "A different valid user is required." }, 400);
-      const roomId = roomIdForPair(uid, targetId);
+      // Profile usernames still resolve to their legacy Firebase UID. Resolve that
+      // identity to the canonical Xora account ID for deterministic room identity,
+      // but keep the legacy UID as the recipient membership key so profile lookup
+      // and existing legacy room discovery continue to work.
+      const targetAccounts = await db(`xora_auth_accounts?or=(id.eq.${encodeURIComponent(targetId)},legacy_firebase_uid.eq.${encodeURIComponent(targetId)})&disabled_at=is.null&select=id,legacy_firebase_uid&limit=1`);
+      const targetAccount = targetAccounts[0];
+      if (!targetAccount || typeof targetAccount.id !== "string") {
+        return json({ error: "This username is not linked to an active Xora account." }, 404);
+      }
+      const targetCanonicalId = targetAccount.id;
+      if (targetCanonicalId === uid) return json({ error: "You cannot start a direct message with yourself." }, 400);
+      const roomId = roomIdForPair(uid, targetCanonicalId);
       await db("xora_chat_rooms", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify({ id: roomId, room_type: "dm", created_by: uid }) });
       await db("xora_chat_members", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify([{ room_id: roomId, user_id: uid, role: "member" }, { room_id: roomId, user_id: targetId, role: "member" }]) });
       return json({ roomId });
