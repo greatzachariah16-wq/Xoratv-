@@ -116,7 +116,7 @@ body,
     --channel-accent-contrast: #2a160d;
   }
 }
-:root[data-theme="dark"], html[data-theme="dark"] {
+:root[data-theme="light"], html[data-theme="light"] { --channel-surface:#faf6f0; --channel-surface-solid:#fffdfa; --channel-surface-raised:#ffffff; --channel-text-strong:#2a1f1a; --channel-text-muted:#62534b; --channel-hairline:#d9cec4; --channel-accent:#a94424; --channel-accent-contrast:#ffffff; }\n:root[data-theme="dark"], html[data-theme="dark"] {
   --channel-surface: #171310;
   --channel-surface-solid: #171310;
   --channel-surface-raised: #211a16;
@@ -2495,7 +2495,7 @@ section[aria-label="X-Series live channels"] {
 @keyframes xora-channel-shimmer { to { background-position-x:-200%; } }
 html.xora-channel-route { scroll-padding-top:calc(var(--header-h,56px) + var(--compact-h,56px) + var(--tabs-h,48px)); }
 html.xora-channel-route header.fixed { background:var(--channel-surface-solid)!important; color:var(--channel-text-strong); border-bottom:1px solid var(--channel-hairline); }
-html.xora-channel-route .xora-floating-nav { border:1px solid var(--channel-hairline); background:var(--channel-surface-solid); color:var(--channel-text-strong); }\nhtml.xora-channel-route .ad-slot { position:relative; display:flex; width:min(100%,728px); min-height:50px; aspect-ratio:320 / 50; align-items:center; justify-content:center; margin:16px auto!important; background:var(--channel-surface); border:1px solid var(--channel-hairline); border-radius:12px; }\nhtml.xora-channel-route .ad-slot::before { position:absolute; top:-9px; left:12px; padding:0 6px; background:var(--channel-surface); color:var(--channel-text-muted); content:"Sponsored"; font-size:10px; line-height:16px; }
+html.xora-channel-route .xora-floating-nav { border:1px solid var(--channel-hairline); background:var(--channel-surface-solid); color:var(--channel-text-strong); }\nhtml.xora-channel-route .xora-floating-nav button { color:var(--channel-text-muted); }\nhtml.xora-channel-route .ad-slot { position:relative; display:flex; width:min(100%,728px); min-height:50px; aspect-ratio:320 / 50; align-items:center; justify-content:center; margin:16px auto!important; background:var(--channel-surface); border:1px solid var(--channel-hairline); border-radius:12px; }\nhtml.xora-channel-route .ad-slot::before { position:absolute; top:-9px; left:12px; padding:0 6px; background:var(--channel-surface); color:var(--channel-text-muted); content:"Sponsored"; font-size:10px; line-height:16px; }
 html.xora-channel-route .xora-floating-nav button[aria-current="page"] { color:var(--channel-accent); }
 html.xora-channel-route .xora-floating-nav button[aria-current="page"]>span:first-child { border-radius:999px; background:color-mix(in srgb,var(--channel-accent) 14%,var(--channel-surface)); }
 html.xora-channel-route .xora-floating-nav button[aria-current="page"] svg { fill:currentColor; stroke-width:2.35; }
