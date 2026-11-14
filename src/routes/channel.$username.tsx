@@ -102,7 +102,7 @@ function PublicChannelPage() {
   const handleSwipe = (event: TouchEvent<HTMLDivElement>) => {
     const start = touchStartX.current;
     touchStartX.current = null;
-    if (start === null || event.target?.closest?.("button,a,input,video")) return;
+    if (start === null || (event.target instanceof Element && event.target.closest("button,a,input,video"))) return;
     const delta = event.changedTouches[0].clientX - start;
     if (Math.abs(delta) < 55) return;
     const next = Math.min(tabs.length - 1, Math.max(0, activeIndex + (delta < 0 ? 1 : -1)));
