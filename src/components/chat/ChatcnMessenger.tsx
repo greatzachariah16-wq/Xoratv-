@@ -149,9 +149,15 @@ export default function ChatcnMessenger({
         </div>
       ) : (
         <section className="xora-community-discover-view">
-          <header className="xora-community-discover-heading shadow-hard">
-            <h1>Find your people.</h1>
-            <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
+          <header className="xora-community-discover-heading xora-community-cinematic-hero shadow-hard">
+            <div className="xora-community-hero-copy">
+              <span className="xora-community-hero-kicker">XORATV COMMUNITY</span>
+              <h1>Find your people.</h1>
+              <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
+            </div>
+            <span className="xora-community-hero-orbit xora-community-hero-orbit-one" aria-hidden="true" />
+            <span className="xora-community-hero-orbit xora-community-hero-orbit-two" aria-hidden="true" />
+            <span className="xora-community-hero-glow" aria-hidden="true" />
           </header>
 
           <div className="xora-community-directory-head">
@@ -170,7 +176,7 @@ export default function ChatcnMessenger({
             <span>Your private messages are separate. Only members of a circle can see its conversation.</span>
           </div>
 
-          <div className="xora-community-directory-list">
+          <div className="xora-community-directory-list xora-community-horizontal-circles">
             {communities.length ? communities.map((room, index) => {
               const memberCount = Object.keys(room.memberIds || {}).length;
               return (
