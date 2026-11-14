@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Compass, Play, Sparkles, Star } from "lucide-react";
+import { Compass, Play, Baby, Star } from "lucide-react";
 import { CategoryChips } from "@/components/xora/XSportsComponents";
 
 export type AgeFilter = "All" | "Preschool" | "Family" | "Older kids";
@@ -50,7 +50,7 @@ export function KidsHeader() {
       <div aria-hidden="true" className="pointer-events-none absolute bottom-[-3rem] left-1/3 size-28 rounded-full bg-[#d8c9f3]/35 blur-2xl dark:bg-[#a38acb]/10" />
       <div className="relative flex flex-col gap-2">
         <p className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#9b5035] dark:text-[#e6ad91]">
-          <Sparkles className="size-3.5" /> XORA Kids
+          <Baby className="size-3.5" /> XORA Kids
         </p>
         <h1 className="whitespace-nowrap font-display text-[clamp(15px,4.3vw,19px)] font-semibold leading-tight tracking-[-0.035em] text-[#382d27] dark:text-[#fff4e9]">
           A little corner for big imaginations.
@@ -175,7 +175,7 @@ export function KidsEmptyState({ message }: { message: string }) {
   return (
     <div className="rounded-[22px] border border-dashed border-[#d8c9bd] bg-[#fffaf4]/80 px-5 py-10 text-center dark:border-white/10 dark:bg-[#29231f]">
       <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#f2e4da] text-[#96553b] dark:bg-[#3a2d26] dark:text-[#e6ad91]">
-        <Sparkles className="size-5" />
+        <Compass className="size-5" />
       </span>
       <p className="mt-3 text-sm font-semibold text-[#493c33] dark:text-[#f4e9df]">{message}</p>
       <p className="mt-1 text-xs text-[#6B5F57] dark:text-[#bcb0a6]">Try another age group or search.</p>
