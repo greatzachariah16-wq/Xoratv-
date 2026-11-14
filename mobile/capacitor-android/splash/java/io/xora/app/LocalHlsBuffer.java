@@ -132,6 +132,7 @@ final class LocalHlsBuffer {
     private volatile String error = "";
     private volatile int errorCode;
     private volatile String mediaPlaylistUrl;
+    private volatile String qualityMode = "auto";
     private volatile String localPlaylist = "";
     private volatile long bufferedMillis;
     private volatile double speedRatio = 1.0;
@@ -142,13 +143,15 @@ final class LocalHlsBuffer {
     private volatile long downloadedBytes;
 
     LocalHlsBuffer(OkHttpClient client, File directory, String sessionId,
-                   int localPort, JSONObject headers, Listener listener) {
+                   int localPort, JSONObject headers, Listener listener, String qualityMode) {
         this.client = client;
         this.directory = directory;
         this.sessionId = sessionId;
         this.localPort = localPort;
         this.headers = headers == null ? new JSONObject() : headers;
         this.listener = listener;
+        this.qualityMode = "data-saver".equals(qualityMode) || "high".equals(qualityMode)
+            ? qualityMode : "auto";
     }
 
     void start() {
@@ -372,6 +375,8 @@ final class LocalHlsBuffer {
         long chosenBandwidth = -1L;
         String lowest = null;
         long lowestBandwidth = Long.MAX_VALUE;
+        String highest = null;
+        long highestBandwidth = -1L;
         long preferredMaximum = 4_500_000L;
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].trim();
@@ -386,11 +391,17 @@ final class LocalHlsBuffer {
                 lowestBandwidth = bandwidth;
                 lowest = candidate;
             }
+            if (bandwidth > highestBandwidth) {
+                highestBandwidth = bandwidth;
+                highest = candidate;
+            }
             if (bandwidth <= preferredMaximum && bandwidth > chosenBandwidth) {
                 chosenBandwidth = bandwidth;
                 chosen = candidate;
             }
         }
+        if ("data-saver".equals(qualityMode)) return lowest;
+        if ("high".equals(qualityMode)) return highest != null ? highest : lowest;
         return chosen != null ? chosen : lowest;
     }
 

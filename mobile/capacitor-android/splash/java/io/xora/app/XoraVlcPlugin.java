@@ -9,6 +9,7 @@ import android.content.res.Configuration;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -28,6 +29,8 @@ import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
+import android.widget.PopupMenu;
+import android.widget.Toast;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -101,9 +104,10 @@ public class XoraVlcPlugin extends Plugin {
     private TextView statusIcon;
     private TextView statusText;
     private TextView offlineBanner;
-    private TextView bufferProgressText;
-    private TextView bufferHealthBanner;
+    private TextView connectionQualityChip;
     private ProgressBar bufferProgressBar;
+    private ProgressBar bufferingSpinner;
+    private Button dataSaverButton;
     private TextView channelTitleText;
     private TextView liveBadge;
     private TextView playButton;
@@ -133,8 +137,9 @@ public class XoraVlcPlugin extends Plugin {
     private boolean resumeAfterFocusGain;
     private boolean playingBeforeAppPause;
     private boolean startupBufferActive;
-    private boolean bufferHealthKnown;
-    private boolean bufferHealthy = true;
+    private boolean longBufferingVisible;
+    private String connectionQuality = "good";
+    private String pendingConnectionQuality = "";
 
     private int currentStreamIndex;
     private int autoRetryCount;
@@ -157,6 +162,10 @@ public class XoraVlcPlugin extends Plugin {
     private Runnable streamStartupTimeout;
     private Runnable bufferingWatchdog;
     private Runnable bufferingIndicatorDelay;
+    private Runnable bufferingLongStallNotice;
+    private Runnable bufferingDataSaverFallback;
+    private Runnable connectionQualityHysteresis;
+    private Runnable connectionChipCollapse;
     private Runnable stablePlaybackReset;
     private Runnable retryRunnable;
     private Runnable controlsAutoHide;
@@ -775,23 +784,29 @@ public class XoraVlcPlugin extends Plugin {
         offlineParams.setMargins(dp(12), dp(58), dp(12), 0);
         videoFrame.addView(offlineBanner, offlineParams);
 
-        bufferHealthBanner = new TextView(getContext());
-        bufferHealthBanner.setTextColor(Color.WHITE);
-        bufferHealthBanner.setTextSize(10);
-        bufferHealthBanner.setGravity(Gravity.CENTER);
-        bufferHealthBanner.setSingleLine(true);
-        bufferHealthBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        bufferHealthBanner.setPadding(dp(10), dp(6), dp(10), dp(6));
-        bufferHealthBanner.setBackground(roundedBackground(0xDD315847, dp(9)));
-        bufferHealthBanner.setText("Stream buffer healthy");
-        bufferHealthBanner.setVisibility(View.GONE);
-        FrameLayout.LayoutParams healthParams = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
+        connectionQualityChip = new TextView(getContext());
+        connectionQualityChip.setText("▂▄▆");
+        connectionQualityChip.setTextColor(0xFF2FBF8F);
+        connectionQualityChip.setTextSize(11);
+        connectionQualityChip.setGravity(Gravity.CENTER);
+        connectionQualityChip.setSingleLine(true);
+        connectionQualityChip.setMinHeight(dp(44));
+        connectionQualityChip.setPadding(dp(13), 0, dp(13), 0);
+        connectionQualityChip.setBackground(new InsetDrawable(
+            roundedBackground(0xB9000000, dp(18)), 0, dp(8), 0, dp(8)
+        ));
+        connectionQualityChip.setContentDescription("Connection: Smooth");
+        connectionQualityChip.setFocusable(true);
+        connectionQualityChip.setClickable(true);
+        connectionQualityChip.setVisibility(View.GONE);
+        FrameLayout.LayoutParams qualityParams = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
+            dp(44),
+            Gravity.BOTTOM | Gravity.START
         );
-        healthParams.setMargins(dp(12), dp(58), dp(12), 0);
-        videoFrame.addView(bufferHealthBanner, healthParams);
+        qualityParams.setMargins(dp(12), 0, dp(12), dp(62));
+        videoFrame.addView(connectionQualityChip, qualityParams);
+        connectionQualityChip.setOnClickListener(view -> showNativeQualityMenu());
 
         statusCard = new LinearLayout(getContext());
         statusCard.setOrientation(LinearLayout.VERTICAL);
@@ -814,33 +829,43 @@ public class XoraVlcPlugin extends Plugin {
         statusText.setPadding(dp(4), dp(5), dp(4), dp(2));
         statusCard.addView(statusText);
 
-        bufferProgressText = new TextView(getContext());
-        bufferProgressText.setTextColor(0xFFEEDFD4);
-        bufferProgressText.setTextSize(10);
-        bufferProgressText.setGravity(Gravity.CENTER);
-        bufferProgressText.setPadding(dp(2), dp(5), dp(2), dp(3));
-        bufferProgressText.setVisibility(View.GONE);
-        statusCard.addView(bufferProgressText);
-
         bufferProgressBar = new ProgressBar(getContext(), null, android.R.attr.progressBarStyleHorizontal);
         bufferProgressBar.setMax(100);
         bufferProgressBar.setProgress(0);
         bufferProgressBar.setProgressTintList(ColorStateList.valueOf(0xFFE5A58D));
         bufferProgressBar.setProgressBackgroundTintList(ColorStateList.valueOf(0x55FFFFFF));
         bufferProgressBar.setVisibility(View.GONE);
-        LinearLayout.LayoutParams bufferBarParams = new LinearLayout.LayoutParams(
-            Math.min(dp(230), getContext().getResources().getDisplayMetrics().widthPixels - dp(96)), dp(5)
+        FrameLayout.LayoutParams bufferBarParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, dp(4), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL
         );
-        bufferBarParams.setMargins(0, dp(3), 0, dp(8));
-        statusCard.addView(bufferProgressBar, bufferBarParams);
+        bufferBarParams.setMargins(dp(24), 0, dp(24), dp(64));
+        videoFrame.addView(bufferProgressBar, bufferBarParams);
+
+        dataSaverButton = new Button(getContext());
+        dataSaverButton.setText("Data saver");
+        dataSaverButton.setTextSize(11);
+        dataSaverButton.setAllCaps(false);
+        dataSaverButton.setMinHeight(dp(44));
+        dataSaverButton.setPadding(dp(18), 0, dp(18), 0);
+        dataSaverButton.setTextColor(0xFFF4E9DE);
+        dataSaverButton.setBackground(roundedBackground(0x443D302B, dp(22)));
+        dataSaverButton.setVisibility(View.GONE);
+        dataSaverButton.setOnClickListener(view -> setNativeQualityMode("data-saver", true));
+        statusCard.addView(dataSaverButton);
 
         retryButton = new Button(getContext());
         retryButton.setText("Retry");
         retryButton.setTextSize(11);
         retryButton.setAllCaps(false);
-        retryButton.setMinHeight(dp(38));
+        retryButton.setMinHeight(dp(44));
+        retryButton.setVisibility(View.GONE);
         retryButton.setPadding(dp(18), 0, dp(18), 0);
-        retryButton.setOnClickListener(view -> retryCurrentStream());
+        retryButton.setTextColor(Color.WHITE);
+        retryButton.setBackground(roundedBackground(0xFFB85F45, dp(22)));
+        retryButton.setOnClickListener(view -> {
+            clearLongBufferingFallback();
+            retryCurrentStream();
+        });
         statusCard.addView(retryButton);
         FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -849,6 +874,15 @@ public class XoraVlcPlugin extends Plugin {
         );
         statusParams.setMargins(dp(18), dp(12), dp(18), dp(12));
         videoFrame.addView(statusCard, statusParams);
+
+        bufferingSpinner = new ProgressBar(getContext());
+        bufferingSpinner.setIndeterminate(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            bufferingSpinner.setIndeterminateTintList(ColorStateList.valueOf(Color.WHITE));
+        }
+        bufferingSpinner.setVisibility(View.GONE);
+        FrameLayout.LayoutParams spinnerParams = new FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER);
+        videoFrame.addView(bufferingSpinner, spinnerParams);
 
         controls = new LinearLayout(getContext());
         controls.setOrientation(LinearLayout.HORIZONTAL);
@@ -927,6 +961,7 @@ public class XoraVlcPlugin extends Plugin {
         controlsVisible = true;
         topBar.setVisibility(View.VISIBLE);
         controls.setVisibility(View.VISIBLE);
+        updateNativeConnectionChip(true);
         if (topScrim != null) topScrim.setVisibility(View.VISIBLE);
         if (bottomScrim != null) bottomScrim.setVisibility(View.VISIBLE);
         scheduleControlsAutoHide();
@@ -941,6 +976,7 @@ public class XoraVlcPlugin extends Plugin {
                 if (topBar != null) topBar.setVisibility(View.GONE);
                 if (topScrim != null) topScrim.setVisibility(View.GONE);
                 if (bottomScrim != null) bottomScrim.setVisibility(View.GONE);
+                updateNativeConnectionChip(false);
             }
         };
         mainHandler.postDelayed(controlsAutoHide, 3000L);
@@ -985,7 +1021,9 @@ public class XoraVlcPlugin extends Plugin {
             if (controls != null) controls.setVisibility(View.GONE);
             if (topBar != null) topBar.setVisibility(View.GONE);
             if (statusCard != null) statusCard.setVisibility(View.GONE);
+            if (bufferingSpinner != null) bufferingSpinner.setVisibility(View.GONE);
             if (offlineBanner != null) offlineBanner.setVisibility(View.GONE);
+            if (connectionQualityChip != null) connectionQualityChip.setVisibility(View.GONE);
             playerOverlay.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -1336,7 +1374,7 @@ public class XoraVlcPlugin extends Plugin {
                         setBufferProgressVisible(false);
                         startCurrentStream(usePreferredDecoder);
                     }
-                }));
+                }), getNativeQualityMode());
             } catch (IOException error) {
                 startupBufferActive = false;
                 setState(PlaybackState.ERR_UNKNOWN);
@@ -1382,6 +1420,14 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
+        String qualityMode = getNativeQualityMode();
+        if ("data-saver".equals(qualityMode)) {
+            media.addOption(":adaptive-maxwidth=640");
+            media.addOption(":adaptive-maxheight=360");
+        } else if ("high".equals(qualityMode)) {
+            media.addOption(":adaptive-maxwidth=1920");
+            media.addOption(":adaptive-maxheight=1080");
+        }
         // LibVLC receives loopback URLs only. The local proxy injects provider headers.
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
@@ -1446,7 +1492,28 @@ public class XoraVlcPlugin extends Plugin {
             mainHandler.removeCallbacks(bufferingWatchdog);
             bufferingWatchdog = null;
         }
+        if (bufferingLongStallNotice != null) {
+            mainHandler.removeCallbacks(bufferingLongStallNotice);
+            bufferingLongStallNotice = null;
+        }
+        clearLongBufferingFallback();
+        if (connectionQualityHysteresis != null) {
+            mainHandler.removeCallbacks(connectionQualityHysteresis);
+            connectionQualityHysteresis = null;
+        }
+        if (connectionChipCollapse != null) {
+            mainHandler.removeCallbacks(connectionChipCollapse);
+            connectionChipCollapse = null;
+        }
         bufferingStartedAt = 0L;
+    }
+
+    private void clearLongBufferingFallback() {
+        if (bufferingDataSaverFallback != null) {
+            mainHandler.removeCallbacks(bufferingDataSaverFallback);
+            bufferingDataSaverFallback = null;
+        }
+        longBufferingVisible = false;
     }
 
     private void clearRetry() {
@@ -1610,7 +1677,7 @@ public class XoraVlcPlugin extends Plugin {
                 setState(PlaybackState.BUFFERING);
             }
         };
-        mainHandler.postDelayed(bufferingIndicatorDelay, 400L);
+        mainHandler.postDelayed(bufferingIndicatorDelay, 1000L);
     }
 
     private void startBufferingWatchdog(
@@ -1620,6 +1687,24 @@ public class XoraVlcPlugin extends Plugin {
     ) {
         if (bufferingWatchdog != null || bufferingStartedAt > 0L) return;
         bufferingStartedAt = System.currentTimeMillis();
+        bufferingLongStallNotice = () -> {
+            bufferingLongStallNotice = null;
+            if (!isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                || playbackState != PlaybackState.BUFFERING || userPaused) return;
+            longBufferingVisible = true;
+            setState(PlaybackState.BUFFERING);
+        };
+        mainHandler.postDelayed(bufferingLongStallNotice, 6000L);
+
+        bufferingDataSaverFallback = () -> {
+            bufferingDataSaverFallback = null;
+            if (!isCurrentPlayer(eventPlayer, eventPlayerGeneration, eventAttemptGeneration)
+                || playbackState != PlaybackState.BUFFERING || userPaused) return;
+            if ("data-saver".equals(getNativeQualityMode())) return;
+            setNativeQualityMode("data-saver", true);
+        };
+        mainHandler.postDelayed(bufferingDataSaverFallback, 8000L);
+
         bufferingWatchdog = () -> {
             bufferingWatchdog = null;
             bufferingStartedAt = 0L;
@@ -1722,35 +1807,144 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void setBufferProgressVisible(boolean visible) {
-        if (bufferProgressText != null) bufferProgressText.setVisibility(visible ? View.VISIBLE : View.GONE);
         if (bufferProgressBar != null) bufferProgressBar.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     private void updateBufferProgress(LocalHlsBuffer.Progress progress) {
         if (progress == null) return;
-        bufferHealthKnown = progress.ready;
-        bufferHealthy = progress.healthy;
+        if (playbackState == PlaybackState.BUFFERING) {
+            connectionQuality = "weak";
+            pendingConnectionQuality = "";
+            if (connectionQualityHysteresis != null) {
+                mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = null;
+            }
+            updateNativeConnectionChip(true);
+            return;
+        }
         if (startupBufferActive && statusText != null) {
-            statusText.setText(!progress.healthy
-                ? "Slow internet connection · building stream buffer"
-                : "Preparing your live stream on this device");
+            statusText.setText("Preparing your live stream on this device");
         }
         if (bufferProgressBar != null) bufferProgressBar.setProgress(progress.percent);
-        if (bufferProgressText != null) {
-            long seconds = Math.max(0L, Math.min(60L, Math.round(progress.bufferedMillis / 1000.0)));
-            bufferProgressText.setText("Downloaded " + seconds + " / 60 seconds  ·  "
-                + progress.downloadedSegments + " segments");
-        }
-        if (bufferHealthBanner != null) {
-            if (!progress.healthy) {
-                bufferHealthBanner.setText("Slow internet connection · buffer replenishing slowly");
-                bufferHealthBanner.setBackground(roundedBackground(0xDD8E482F, dp(9)));
-            } else {
-                bufferHealthBanner.setText("Stream buffer healthy · " + progress.downloadedSegments + " segments cached");
-                bufferHealthBanner.setBackground(roundedBackground(0xDD315847, dp(9)));
+
+        String nextQuality = !progress.healthy || progress.bufferedMillis < 3000L
+            ? "weak"
+            : progress.bufferedMillis < 10000L ? "fair" : "good";
+        if (!nextQuality.equals(connectionQuality)) {
+            if (!nextQuality.equals(pendingConnectionQuality)) {
+                pendingConnectionQuality = nextQuality;
+                if (connectionQualityHysteresis != null) mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = () -> {
+                    connectionQualityHysteresis = null;
+                    if (!pendingConnectionQuality.equals(nextQuality)) return;
+                    connectionQuality = nextQuality;
+                    pendingConnectionQuality = "";
+                    updateNativeConnectionChip(true);
+                };
+                mainHandler.postDelayed(connectionQualityHysteresis, 2000L);
             }
-            bufferHealthBanner.setVisibility(progress.ready && playbackState == PlaybackState.PLAYING
-                ? View.VISIBLE : View.GONE);
+        } else {
+            pendingConnectionQuality = "";
+            if (connectionQualityHysteresis != null) {
+                mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = null;
+            }
+        }
+    }
+
+    private String getNativeQualityMode() {
+        try {
+            return getContext().getSharedPreferences("xora_player_preferences", Context.MODE_PRIVATE)
+                .getString("quality_mode", "auto");
+        } catch (RuntimeException ignored) {
+            return "auto";
+        }
+    }
+
+    private void saveNativeQualityMode(String mode) {
+        try {
+            getContext().getSharedPreferences("xora_player_preferences", Context.MODE_PRIVATE)
+                .edit().putString("quality_mode", mode).apply();
+        } catch (RuntimeException ignored) {
+            // Storage may be unavailable on managed devices; playback remains usable.
+        }
+    }
+
+    private void setNativeQualityMode(String mode, boolean restart) {
+        if (!"auto".equals(mode) && !"data-saver".equals(mode) && !"high".equals(mode)) return;
+        boolean changed = !mode.equals(getNativeQualityMode());
+        saveNativeQualityMode(mode);
+        if (changed && restart && !streamUrls.isEmpty() && !userPaused) {
+            try {
+                // Recreate local HLS sessions so Data saver/High can select a
+                // matching variant from the provider's master playlist.
+                if (localHlsProxy != null && !upstreamStreamUrls.isEmpty()) {
+                    // Stop VLC before its loopback HLS session and cached files are replaced.
+                    if (mediaPlayer != null) {
+                        try {
+                            mediaPlayer.stop();
+                        } catch (RuntimeException ignored) {
+                            // The previous stream may already have stopped while buffering.
+                        }
+                    }
+                    refreshLocalPlaybackSessions();
+                }
+                Toast.makeText(
+                    getContext(),
+                    "Preparing " + ("data-saver".equals(mode) ? "Data saver"
+                        : "high".equals(mode) ? "High quality" : "Auto") + " playback",
+                    Toast.LENGTH_SHORT
+                ).show();
+                startCurrentStream(true);
+            } catch (IOException ignored) {
+                setState(PlaybackState.ERR_UNKNOWN);
+            }
+        }
+    }
+
+    private void showNativeQualityMenu() {
+        if (connectionQualityChip == null) return;
+        PopupMenu menu = new PopupMenu(getContext(), connectionQualityChip);
+        menu.getMenu().add("Auto");
+        menu.getMenu().add("Data saver");
+        menu.getMenu().add("High");
+        menu.setOnMenuItemClickListener(item -> {
+            String title = item.getTitle().toString();
+            String mode = "Data saver".equals(title) ? "data-saver"
+                : "High".equals(title) ? "high" : "auto";
+            setNativeQualityMode(mode, true);
+            return true;
+        });
+        menu.show();
+    }
+
+    private void updateNativeConnectionChip(boolean expanded) {
+        if (connectionQualityChip == null) return;
+        boolean active = playbackState == PlaybackState.PLAYING || playbackState == PlaybackState.BUFFERING;
+        if (!active || pipMode) {
+            connectionQualityChip.setVisibility(View.GONE);
+            return;
+        }
+
+        String label = "good".equals(connectionQuality) ? "Smooth"
+            : "fair".equals(connectionQuality) ? "Fair" : "Weak";
+        String bars = "good".equals(connectionQuality) ? "▂▄▆"
+            : "fair".equals(connectionQuality) ? "▂▄" : "▂";
+        connectionQualityChip.setText(expanded ? bars + "  " + label : bars);
+        connectionQualityChip.setTextColor("good".equals(connectionQuality) ? 0xFF2FBF8F
+            : "fair".equals(connectionQuality) ? 0xFFE6C06E : 0xFFB5502E);
+        connectionQualityChip.setContentDescription("Connection: " + label);
+        connectionQualityChip.setVisibility(View.VISIBLE);
+
+        if (connectionChipCollapse != null) mainHandler.removeCallbacks(connectionChipCollapse);
+        if (expanded) {
+            connectionChipCollapse = () -> {
+                connectionChipCollapse = null;
+                if (connectionQualityChip != null && connectionQualityChip.getVisibility() == View.VISIBLE) {
+                    connectionQualityChip.setText(bars);
+                }
+            };
+            mainHandler.postDelayed(connectionChipCollapse, 3000L);
         }
     }
 
@@ -1758,27 +1952,53 @@ public class XoraVlcPlugin extends Plugin {
         if (next == null) return;
         PlaybackState previous = playbackState;
         playbackState = next;
+        if (videoLayout != null) videoLayout.setAlpha(next == PlaybackState.BUFFERING ? 0.8f : 1f);
+        if (next == PlaybackState.BUFFERING) {
+            connectionQuality = "weak";
+            pendingConnectionQuality = "";
+            if (connectionQualityHysteresis != null) {
+                mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = null;
+            }
+        } else if (next == PlaybackState.PLAYING) {
+            longBufferingVisible = false;
+            connectionQuality = "good";
+            pendingConnectionQuality = "";
+            if (connectionQualityHysteresis != null) {
+                mainHandler.removeCallbacks(connectionQualityHysteresis);
+                connectionQualityHysteresis = null;
+            }
+        }
+        updateNativeConnectionChip(next == PlaybackState.PLAYING || next == PlaybackState.BUFFERING);
 
         if (statusCard != null) {
             boolean error = isErrorState(next);
-            boolean showCard = next == PlaybackState.CONNECTING
-                || next == PlaybackState.BUFFERING
-                || error;
+            boolean showCard = next == PlaybackState.BUFFERING || error;
             statusCard.setVisibility(showCard ? View.VISIBLE : View.GONE);
+            FrameLayout.LayoutParams statusParams = (FrameLayout.LayoutParams) statusCard.getLayoutParams();
+            statusParams.gravity = next == PlaybackState.BUFFERING
+                ? Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL : Gravity.CENTER;
+            statusParams.setMargins(dp(18), dp(12), dp(18),
+                next == PlaybackState.BUFFERING ? dp(74) : dp(12));
+            statusCard.setLayoutParams(statusParams);
+            if (bufferingSpinner != null) {
+                bufferingSpinner.setVisibility(next == PlaybackState.BUFFERING ? View.VISIBLE : View.GONE);
+            }
             statusIcon.setText(stateIcon(next));
             statusText.setText(stateMessage(next));
             boolean showManualRetry = next == PlaybackState.ERR_REGION
                 || next == PlaybackState.ERR_CHANNEL_DOWN
                 || ((next == PlaybackState.ERR_TIMEOUT || next == PlaybackState.ERR_UNKNOWN)
                     && autoRetryCount >= 3);
-            retryButton.setVisibility(showManualRetry ? View.VISIBLE : View.GONE);
-            offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
-            if (bufferProgressText != null) bufferProgressText.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
-            if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
-            if (bufferHealthBanner != null) {
-                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown;
-                bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
+            retryButton.setVisibility(showManualRetry || (next == PlaybackState.BUFFERING && longBufferingVisible)
+                ? View.VISIBLE : View.GONE);
+            if (dataSaverButton != null) {
+                dataSaverButton.setVisibility(next == PlaybackState.BUFFERING && longBufferingVisible
+                    ? View.VISIBLE : View.GONE);
             }
+            offlineBanner.setVisibility(next == PlaybackState.OFFLINE ? View.VISIBLE : View.GONE);
+            if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
+
         }
         String transport = currentStreamIndex < streamTransports.size()
             ? streamTransports.get(currentStreamIndex)
@@ -1806,7 +2026,7 @@ public class XoraVlcPlugin extends Plugin {
         switch (state) {
             case OFFLINE: return "You're offline. Playback resumes automatically.";
             case CONNECTING: return startupBufferActive ? "Preparing your live stream on this device" : "Connecting to channel";
-            case BUFFERING: return "Buffering";
+            case BUFFERING: return "Weak connection, hang tight";
             case PLAYING: return "";
             case ERR_REGION: return "Not available in your region";
             case ERR_CHANNEL_DOWN: return "Channel is offline";
@@ -1821,7 +2041,7 @@ public class XoraVlcPlugin extends Plugin {
         switch (state) {
             case OFFLINE: return "⌁";
             case CONNECTING: return "◌";
-            case BUFFERING: return "◌";
+            case BUFFERING: return "▂";
             case ERR_REGION: return "⊘";
             case ERR_CHANNEL_DOWN: return "⌁";
             case ERR_TIMEOUT: return "◷";
@@ -1907,12 +2127,14 @@ public class XoraVlcPlugin extends Plugin {
         statusIcon = null;
         statusText = null;
         offlineBanner = null;
-        bufferProgressText = null;
+        connectionQualityChip = null;
         bufferProgressBar = null;
-        bufferHealthBanner = null;
+        bufferingSpinner = null;
+        dataSaverButton = null;
         startupBufferActive = false;
-        bufferHealthKnown = false;
-        bufferHealthy = true;
+        longBufferingVisible = false;
+        connectionQuality = "good";
+        pendingConnectionQuality = "";
         channelTitleText = null;
         liveBadge = null;
         topScrim = null;

@@ -90,7 +90,8 @@ public final class LocalHlsProxy extends NanoHTTPD {
         return localUrl;
     }
 
-    public void prebufferSession(String localUrl, LocalHlsBuffer.Listener listener) throws IOException {
+    public void prebufferSession(String localUrl, LocalHlsBuffer.Listener listener,
+                                 String qualityMode) throws IOException {
         Session session = findSession(localUrl);
         if (session == null) throw new IOException("Playback session is unavailable.");
         LocalHlsBuffer buffer = session.buffer;
@@ -99,7 +100,9 @@ public final class LocalHlsProxy extends NanoHTTPD {
                 buffer = session.buffer;
                 if (buffer == null) {
                     File directory = new File(cacheDirectory, session.id);
-                    buffer = new LocalHlsBuffer(client, directory, session.id, listeningPort, session.headers, listener);
+                    buffer = new LocalHlsBuffer(
+                        client, directory, session.id, listeningPort, session.headers, listener, qualityMode
+                    );
                     buffer.setOriginUrl(session.upstreamUrl);
                     session.buffer = buffer;
                 }
