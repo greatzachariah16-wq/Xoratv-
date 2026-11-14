@@ -2140,3 +2140,73 @@ section[aria-label="X-Series live channels"] {
 @media (prefers-reduced-motion: reduce) {
   .xora-profile-page :where(a, button) { transition: none; }
 }
+
+
+/* Profile hero composition: keep the complete card in a compact landscape form. */
+.xora-profile-cover { height: 26px; }
+.xora-profile-inner { padding: 0 12px 8px; }
+.xora-profile-identity {
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: -13px;
+}
+.xora-profile-photo-frame {
+  width: 88px;
+  height: 66px;
+  border-radius: 10px;
+}
+.xora-profile-photo-frame .xora-profile-avatar { border-radius: 7px !important; }
+.xora-profile-photo-frame .xora-profile-avatar img { border-radius: 6px !important; }
+.xora-profile-copy { padding-bottom: 0; }
+.xora-profile-bio { -webkit-line-clamp: 2; }
+.xora-profile-stats { margin-top: 5px; }
+.xora-profile-actions {
+  margin-top: 7px;
+  padding-top: 6px;
+}
+.xora-profile-page .xora-profile-actions :where(a, button) {
+  min-height: 36px;
+  height: 36px;
+}
+.xora-profile-tabs { margin-top: 6px; }
+.xora-profile-page .xora-profile-tabs .xora-profile-tab {
+  min-height: 34px;
+  height: 34px;
+}
+@media (min-width: 600px) {
+  .xora-profile-cover { height: 30px; }
+  .xora-profile-inner { padding: 0 18px 10px; }
+  .xora-profile-identity {
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 14px;
+    margin-top: -15px;
+  }
+  .xora-profile-photo-frame { width: 108px; height: 80px; }
+  .xora-profile-actions { margin-top: 8px; }
+}
+@media (max-width: 380px) {
+  .xora-profile-inner { padding-inline: 9px; }
+  .xora-profile-identity {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .xora-profile-photo-frame { width: 76px; height: 58px; }
+  .xora-profile-name { font-size: 19px; }
+  .xora-profile-bio { font-size: 10px; }
+  .xora-profile-meta { margin-top: 3px; }
+  .xora-profile-stats { margin-top: 3px; }
+  .xora-profile-page .xora-profile-actions :where(a, button) {
+    min-height: 34px;
+    height: 34px;
+  }
+  .xora-profile-page .xora-profile-tabs .xora-profile-tab {
+    min-height: 32px;
+    height: 32px;
+  }
+}
+@media (max-width: 340px) {
+  .xora-profile-identity { grid-template-columns: 70px minmax(0, 1fr); }
+  .xora-profile-photo-frame { width: 70px; height: 54px; }
+  .xora-profile-name { font-size: 18px; }
+}
