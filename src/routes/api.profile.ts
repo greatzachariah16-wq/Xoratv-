@@ -60,12 +60,14 @@ export const Route = createFileRoute("/api/profile")({
         if (!user) return json({ ok: false, error: "Please sign in again to edit your profile." }, 401);
         let body: Row;
         try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request body." }, 400); }
-        const display_name = typeof body.display_name === "string" ? body.display_name.trim() : "";\n        const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+        const display_name = typeof body.display_name === "string" ? body.display_name.trim() : "";
+        const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
         const bio = typeof body.bio === "string" ? body.bio.trim() : "";
         const avatar_url = typeof body.avatar_url === "string" ? body.avatar_url.trim() : "";
         const location = typeof body.location === "string" ? body.location.trim() : "";
         const website = typeof body.website === "string" ? body.website.trim() : "";
-        if (display_name.length < 2 || display_name.length > 40) return json({ ok: false, error: "Display name must be 2–40 characters." }, 400);\n        if (!/^[a-z0-9_]{3,20}$/.test(username)) return json({ ok: false, error: "Handle must be 3–20 lowercase letters, numbers or underscores." }, 400);
+        if (display_name.length < 2 || display_name.length > 40) return json({ ok: false, error: "Display name must be 2–40 characters." }, 400);
+        if (!/^[a-z0-9_]{3,20}$/.test(username)) return json({ ok: false, error: "Handle must be 3–20 lowercase letters, numbers or underscores." }, 400);
         if (bio.length > 600 || location.length > 80 || website.length > 200) return json({ ok: false, error: "One or more profile fields are too long." }, 400);
         let avatar: URL;
         try { avatar = new URL(avatar_url); } catch { return json({ ok: false, error: "Upload a valid channel image." }, 400); }
