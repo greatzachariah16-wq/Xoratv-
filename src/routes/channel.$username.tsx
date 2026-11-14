@@ -35,7 +35,7 @@ function PublicChannelPage() {
   const isOwner = Boolean(user && profile && user.id === profile.id);
   const displayName = profile?.display_name || username;
   const avatar = profile?.avatar_url || "";
-  const shorts = posts.filter((post: any) => post.kind === "video" && post.status === "published");
+  const shorts = posts.filter((post: any) => post.kind === "video" && post.source === "creator" && post.status === "published");
   const textPosts = posts.filter((post: any) => post.kind === "text" && post.status === "published");
   const followerCount = Number(profile?.subscriber_count || 0);
   const followerLabel = followerCount === 0 ? "New channel" : new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followerCount) + " followers";
