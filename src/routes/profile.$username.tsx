@@ -94,45 +94,12 @@ function ProfilePage() {
           <div className="h-[72px] bg-gradient-to-r from-[#f5d7c7] via-[#f1c8b5] to-[#f8e5d9]" />
 
           <div className="relative px-3 pb-1 sm:px-5 sm:pb-2">
-            <div className="-mt-10 flex min-w-0 flex-col gap-0.5">
-              <div className="relative h-9">
-                <div className="absolute left-0 top-0 size-20 rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
-                  <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={74} />
-                  {isMe ? <span className="brand-surface absolute bottom-0 right-0 grid size-7 place-items-center rounded-full border-2 border-white" title="Your profile"><Camera className="size-3.5" /></span> : null}
-                </div>
+            <div className="-mt-9 grid min-w-0 grid-cols-[68px_minmax(0,1fr)] items-end gap-x-3 gap-y-2">
+              <div className="relative size-[68px] rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
+                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={62} />
+                {isMe ? <span className="brand-surface absolute bottom-0 right-0 grid size-6 place-items-center rounded-full border-2 border-white" title="Your profile"><Camera className="size-3" /></span> : null}
               </div>
-              <div className="flex h-11 min-w-0 flex-nowrap items-center justify-end gap-1.5 pb-0.5">
-                {isMe ? (
-                  <>
-                    <Link to="/edit-profile" className="soft-pill press inline-flex h-11 min-w-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PenLine className="size-4 shrink-0" /><span className="whitespace-nowrap">Edit profile</span></Link>
-                    <Link to="/creator-studio" className="brand-surface press inline-flex h-11 min-w-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4 shrink-0" /><span className="whitespace-nowrap">X Channel</span></Link>
-                    <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="soft-pill press inline-flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground focus-visible:ring-2 focus-visible:ring-clay/40 disabled:opacity-60" aria-label="Sign out" title={signingOut ? "Signing out…" : "Sign out"}><LogOut className="size-4" /></button>
-                  </>
-                ) : profile ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!user) {
-                          void navigate({ to: "/auth" });
-                          return;
-                        }
-                        window.location.assign(`/chat?to=${encodeURIComponent(profile.username || username)}`);
-                      }}
-                      className="xora-profile-message press inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
-                    >
-                      <MessageCircle className="size-4" /> Message
-                    </button>
-                    <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user} title={!user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "xora-profile-secondary" : "xora-profile-primary")}>
-                      <Users className="size-4" /> {subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="mt-1 grid gap-1">
-              <div className="min-w-0">
+              <div className="min-w-0 pb-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
                   <h1 className="break-words font-display text-[28px] font-extrabold leading-7 tracking-tight">{profile?.display_name || username}</h1>
                 </div>
@@ -146,28 +113,59 @@ function ProfilePage() {
                   {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
                 </div>
               </div>
-              <dl className="inset-field grid h-16 grid-cols-3 overflow-hidden rounded-2xl border-0 shadow-none">
+
+              <div className="col-span-2 flex h-11 min-w-0 flex-nowrap items-center justify-end gap-1.5">
+                {isMe ? (
+                  <>
+                    <Link to="/edit-profile" className="soft-pill press inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PenLine className="size-4 shrink-0" /><span className="whitespace-nowrap">Edit profile</span></Link>
+                    <Link to="/creator-studio" className="brand-surface press inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PlayCircle className="size-4 shrink-0" /><span className="whitespace-nowrap">X Channel</span></Link>
+                    <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="soft-pill press inline-flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground focus-visible:ring-2 focus-visible:ring-clay/40 disabled:opacity-60" aria-label="Sign out" title={signingOut ? "Signing out…" : "Sign out"}><LogOut className="size-4" /></button>
+                  </>
+                ) : profile ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user) {
+                          void navigate({ to: "/auth" });
+                          return;
+                        }
+                        window.location.assign(`/chat?to=${encodeURIComponent(profile.username || username)}`);
+                      }}
+                      className="xora-profile-message press inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition"
+                    >
+                      <MessageCircle className="size-4" /> Message
+                    </button>
+                    <button type="button" onClick={() => subscriptions.toggle(profile.id)} disabled={subscriptions.pending || !user} title={!user ? "Sign in to subscribe" : undefined} className={cn("press inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70", subscriptions.isSubscribed(profile.id) ? "xora-profile-secondary" : "xora-profile-primary")}>
+                      <Users className="size-4" /> {subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mt-2 grid gap-2">
+              <dl className="inset-field grid h-14 grid-cols-3 overflow-hidden rounded-2xl border-0 shadow-none">
                 {[
                   ["Posts", publishedPosts.length],
                   ["Subscribers", profile?.subscriber_count ?? 0],
                   ["Following", profile?.following_count ?? 0],
                 ].map(([label, value], index) => {
                   return <div key={String(label)} className={cn("flex flex-col justify-center px-2 py-1 text-center", index < 2 && "border-r border-[rgba(120,60,30,.1)]")}>
-                    <dd className="font-display text-xl font-bold leading-6 tabular-nums text-ink">{compactNumber(Number(value))}</dd>
-                    <dt className="mt-0.5 text-[12px] font-medium text-muted">{String(label)}</dt>
+                    <dd className="font-display text-lg font-bold leading-5 tabular-nums text-ink">{compactNumber(Number(value))}</dd>
+                    <dt className="mt-0.5 text-[11px] font-medium text-muted">{String(label)}</dt>
                   </div>;
                 })}
               </dl>
-            </div>
-
             {/* Real-data tabs only: no fabricated watch history or playlists */}
-            <div className="mt-1 flex h-11 items-center gap-1 rounded-full bg-[#f5ede6] p-1">
+            <div className="mt-0 flex h-10 items-center gap-1 rounded-full bg-[#f5ede6] p-1">
               <button type="button" onClick={() => setActiveTab("posts")} className={cn("press inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[13px] font-semibold transition focus-visible:ring-2 focus-visible:ring-clay/40", activeTab === "posts" ? "soft-pill text-clay" : "text-muted")}>
                 Posts <span className="inset-field rounded-full px-1.5 py-0.5 text-[11px] tabular-nums">{publishedPosts.length}</span>
               </button>
               <button type="button" onClick={() => setActiveTab("about")} className={cn("press inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[13px] font-semibold transition focus-visible:ring-2 focus-visible:ring-clay/40", activeTab === "about" ? "soft-pill text-clay" : "text-muted")}>
                 About
               </button>
+            </div>
             </div>
           </div>
         </section>
