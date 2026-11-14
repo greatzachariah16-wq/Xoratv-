@@ -55,7 +55,9 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
   const [showDmModal, setShowDmModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [dmTargetUsername, setDmTargetUsername] = useState("");
-  const [dmResolvedUser, setDmResolvedUser] = useState<ProfileLite | null>(null);\n  const [dmSuggestions, setDmSuggestions] = useState<ProfileLite[]>([]);\n  const [dmSuggestionsLoading, setDmSuggestionsLoading] = useState(false);
+  const [dmResolvedUser, setDmResolvedUser] = useState<ProfileLite | null>(null);
+  const [dmSuggestions, setDmSuggestions] = useState<ProfileLite[]>([]);
+  const [dmSuggestionsLoading, setDmSuggestionsLoading] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupMembersInput, setGroupMembersInput] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
@@ -423,6 +425,9 @@ export function ChatIndexPage({ initialRoomId }: { initialRoomId?: string }) {
         username={dmTargetUsername}
         busy={modalBusy}
         resolvedUser={dmResolvedUser}
+        suggestions={dmSuggestions}
+        suggestionsLoading={dmSuggestionsLoading}
+        onSelectSuggestion={(suggestion) => { setDmTargetUsername(suggestion.username); setDmResolvedUser(suggestion); setDmSuggestions([]); }}
         onUsernameChange={(value) => { setDmTargetUsername(value); setDmResolvedUser(null); }}
         onClose={() => { setShowDmModal(false); setDmTargetUsername(""); setDmResolvedUser(null); setDmSuggestions([]); }}
         onSubmit={handleStartDm}
