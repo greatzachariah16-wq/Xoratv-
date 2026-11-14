@@ -14,12 +14,17 @@ export type Channel = {
 
 export type ChannelUpdate = Pick<Channel, "displayName" | "handle" | "bio" | "avatarUrl" | "bannerUrl">;
 
+const mediaUrlSchema = z.string().refine(
+  (value) => value === "" || value.startsWith("/profile-avatar/") || value.startsWith("/channel-featured/") || /^https:\/\//i.test(value),
+  "Choose a valid uploaded image.",
+);
+
 const channelSchema = z.object({
   displayName: z.string().trim().min(2, "Use at least 2 characters.").max(40, "Use 40 characters or fewer."),
   handle: z.string().trim().regex(/^[a-z0-9_]{3,20}$/, "Use 3–20 lowercase letters, numbers or underscores."),
   bio: z.string().max(160, "Keep your bio under 160 characters."),
-  avatarUrl: z.string().url().or(z.literal("")),
-  bannerUrl: z.string().url().or(z.literal("")),
+  avatarUrl: mediaUrlSchema,
+  bannerUrl: mediaUrlSchema,
 });
 
 type ChannelErrors = Partial<Record<keyof ChannelUpdate, string>>;
