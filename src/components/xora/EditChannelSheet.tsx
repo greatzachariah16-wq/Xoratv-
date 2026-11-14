@@ -73,7 +73,7 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
       setServerError("Choose a JPG, PNG or WebP image.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > (field === "avatarUrl" ? 3 : 5) * 1024 * 1024) {
       setServerError("Images must be 5MB or smaller.");
       return;
     }
@@ -82,7 +82,7 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
     try {
       const form = new FormData();
       form.append("file", file);
-      form.append("bucket", field === "avatarUrl" ? "avatars" : "channel-featured");
+      form.append("bucket", field === "avatarUrl" ? "profile-avatar" : "channel-featured");
       form.append("userId", channel.id);
       const response = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
       const result = await response.json() as { ok?: boolean; url?: string; error?: string };
