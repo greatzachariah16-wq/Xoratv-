@@ -10,12 +10,12 @@ type Props = {
 
 export function EmptyState({ icon: Icon, title, description, action }: Props) {
   return (
-    <div className="rise mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-dashed border-border bg-surface/60 px-6 py-12 text-center">
-      <span className="grid size-12 place-items-center rounded-full bg-accent text-accent-foreground">
+    <div className="rise mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-dashed border-(--color-hairline) bg-(--color-surface-solid) px-6 py-12 text-center text-(--color-text-strong)">
+      <span className="grid size-12 place-items-center rounded-full bg-(--color-accent) text-(--color-accent-contrast)">
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <h2 className="mt-4 font-display text-lg font-semibold">{title}</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-pretty">
+      <p className="mt-1.5 text-sm leading-relaxed text-(--color-text-muted) text-pretty">
         {description}
       </p>
       {action ? <div className="mt-5">{action}</div> : null}
