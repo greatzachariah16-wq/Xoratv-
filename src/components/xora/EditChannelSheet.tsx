@@ -10,9 +10,13 @@ export type Channel = {
   bio: string;
   avatarUrl: string;
   bannerUrl: string;
+  followerCount?: number;
+  coursesCount?: number;
+  shortsCount?: number;
+  verified?: boolean;
 };
 
-export type ChannelUpdate = Pick<Channel, "displayName" | "handle" | "bio" | "avatarUrl" | "bannerUrl">;
+export type ChannelUpdate = { displayName: string; handle: string; bio: string; avatarUrl: string; bannerUrl: string };
 
 const mediaUrlSchema = z.string().refine(
   (value) => value === "" || value.startsWith("/profile-avatar/") || value.startsWith("/channel-featured/") || /^https:\/\//i.test(value),
