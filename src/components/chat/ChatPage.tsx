@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./xora-chat-premium.css";
-import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Sparkles, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose, CheckCheck, ChevronDown, Coffee, Info, Leaf, Paperclip, Smile, Sun, Moon, Volume2, VolumeX, X } from "lucide-react";
+import { MessageCircle, Plus, Users, Send, Search, ArrowLeft, Clock, Clapperboard, Lock, Loader2, Compass, MessagesSquare, UsersRound, ArrowUpRight, Film, Music2, BookOpen, Heart, MoreHorizontal, PanelLeftClose, CheckCheck, ChevronDown, Coffee, Info, Leaf, Paperclip, Smile, Sun, Moon, Volume2, VolumeX, X } from "lucide-react";
 
 export type ChatRoom = { id: string; type: "dm" | "group"; name: string | null; photo_url: string | null; description?: string | null; lastMessage: string | null; lastMessageAt: string | null; memberIds?: Record<string, boolean> };
 export type ChatMessage = { id: string; roomId: string; senderId: string; senderName?: string | null; senderAvatar?: string | null; text: string; created_at: string; type: "text" | "experience"; expiresAt: string };
