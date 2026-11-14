@@ -96,6 +96,7 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiTargetId, setEmojiTargetId] = useState<string | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -277,7 +278,7 @@ export default function App() {
                   <div className="message-bubble">{message.text}</div>
                   <div className="message-tools">
                     {message.reactions?.map((reaction) => <button key={reaction.emoji} className={"reaction-chip" + (reaction.active ? " reacted" : "")} onClick={() => toggleReaction(message.id, reaction.emoji)}>{reaction.emoji}<span>{reaction.count}</span></button>)}
-                    <button className="quick-react" title="Add reaction" onClick={() => { setReplyTo(null); setEmojiOpen(true); }}><Smile size={14} /></button>
+                    <button className="quick-react" title="Add reaction" onClick={() => { setReplyTo(null); setEmojiTargetId(message.id); setEmojiOpen(true); }}><Smile size={14} /></button>
                     <button className="quick-reply" title="Reply to message" onClick={() => setReplyTo(message)}><ArrowDownLeft size={14} /></button>
                   </div>
                 </div>
@@ -290,12 +291,12 @@ export default function App() {
 
           <div className="composer-wrap">
             {replyTo && <div className="replying-to"><span>Replying to <b>{replyTo.author}</b><small>{replyTo.text}</small></span><button onClick={() => setReplyTo(null)} aria-label="Cancel reply"><X size={16} /></button></div>}
-            {emojiOpen && <div className="emoji-picker">{emojiOptions.map((emoji) => <button key={emoji} onClick={() => { if (activeMessages.length) toggleReaction(activeMessages[activeMessages.length - 1].id, emoji); else setDraft((value) => value + emoji); }}>{emoji}</button>)}</div>}
+            {emojiOpen && <div className="emoji-picker">{emojiOptions.map((emoji) => <button key={emoji} onClick={() => { if (emojiTargetId) { toggleReaction(emojiTargetId, emoji); setEmojiTargetId(null); } else { setDraft((value) => value + emoji); setEmojiOpen(false); } }}>{emoji}</button>)}</div>}
             {attachOpen && <div className="attach-menu"><button onClick={() => { setAttachOpen(false); showNotice("Photo attachment preview"); }}><ImageIcon size={16} /> Photo</button><button onClick={() => { setAttachOpen(false); showNotice("Video attachment preview"); }}><Video size={16} /> Video</button><button onClick={() => { setAttachOpen(false); showNotice("Link sharing preview"); }}><Link2 size={16} /> Share a link</button></div>}
             <div className="composer">
               <button className="composer-action" title="Add attachment" onClick={() => { setAttachOpen(!attachOpen); setEmojiOpen(false); }}><Plus size={19} /></button>
               <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={onComposerKeyDown} rows={1} placeholder={"Message " + activeChat.name + "..."} aria-label="Write a message" />
-              <button className="composer-action emoji-action" title="Choose emoji" onClick={() => { setEmojiOpen(!emojiOpen); setAttachOpen(false); }}><Smile size={19} /></button>
+              <button className="composer-action emoji-action" title="Choose emoji" onClick={() => { setEmojiOpen(!emojiOpen); setEmojiTargetId(null); setAttachOpen(false); }}><Smile size={19} /></button>
               <button className="send-button" title="Send message" onClick={sendMessage} disabled={!draft.trim()}><Send size={17} /></button>
             </div>
             <div className="composer-hint">Press <kbd>Enter</kbd> to send <span>·</span> <kbd>Shift + Enter</kbd> for a new line</div>
