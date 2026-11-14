@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { X, Sparkles, ExternalLink } from "lucide-react";
+import { X, Megaphone, ExternalLink } from "lucide-react";
 import type { Campaign, CampaignPlacement } from "@/lib/campaigns/types";
 import { cn } from "@/lib/utils";
 
@@ -165,7 +165,7 @@ export function LargeBannerPopupAd({
             <div className="absolute inset-0 bg-gradient-to-t from-[#0e0b17] via-[#0e0b17]/20 to-transparent landscape:bg-gradient-to-r landscape:from-transparent landscape:to-[#0e0b17]" />
             <div className="absolute bottom-3 left-3 sm:left-4 flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-primary-foreground shadow-sm">
-                <Sparkles className="size-2.5 sm:size-3" /> {campaign.badge || "Sponsored"}
+                <Megaphone className="size-2.5 sm:size-3" /> {campaign.badge || "Sponsored"}
               </span>
               {campaign.sponsorName ? (
                 <span className="rounded-full bg-black/70 px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white/90 backdrop-blur-md border border-white/10">
@@ -187,7 +187,7 @@ export function LargeBannerPopupAd({
             {!campaign.bannerUrl ? (
               <div className="mb-3 flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-3 py-1 text-[11px] font-bold text-primary">
-                  <Sparkles className="size-3" /> {campaign.badge || "Featured Promotion"}
+                  <Megaphone className="size-3" /> {campaign.badge || "Featured Promotion"}
                 </span>
                 {campaign.sponsorName ? (
                   <span className="text-xs font-medium text-muted-foreground">
