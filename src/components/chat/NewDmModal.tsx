@@ -6,7 +6,10 @@ export interface NewDmModalProps {
   open: boolean;
   username: string;
   busy: boolean;
-  resolvedUser?: { id: string; username: string; display_name: string; avatar_url?: string | null } | null;\n  suggestions?: { id: string; username: string; display_name: string; avatar_url?: string | null }[];\n  suggestionsLoading?: boolean;\n  onSelectSuggestion?: (user: { id: string; username: string; display_name: string; avatar_url?: string | null }) => void;
+  resolvedUser?: { id: string; username: string; display_name: string; avatar_url?: string | null } | null;
+  suggestions?: { id: string; username: string; display_name: string; avatar_url?: string | null }[];
+  suggestionsLoading?: boolean;
+  onSelectSuggestion?: (user: { id: string; username: string; display_name: string; avatar_url?: string | null }) => void;
   onUsernameChange: (v: string) => void;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -17,6 +20,9 @@ export default function NewDmModal({
   username,
   busy,
   resolvedUser,
+  suggestions = [],
+  suggestionsLoading = false,
+  onSelectSuggestion,
   onUsernameChange,
   onClose,
   onSubmit,
