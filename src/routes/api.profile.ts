@@ -69,9 +69,11 @@ export const Route = createFileRoute("/api/profile")({
         if (!display_name || display_name.length > 60) return json({ ok: false, error: "Display name must be 1–60 characters." }, 400);
         if (!/^[a-z0-9_]{3,20}$/.test(username)) return json({ ok: false, error: "Handle must be 3–20 lowercase letters, numbers or underscores." }, 400);
         if (bio.length > 600 || location.length > 80 || website.length > 200) return json({ ok: false, error: "One or more profile fields are too long." }, 400);
-        let avatar: URL;
-        try { avatar = new URL(avatar_url); } catch { return json({ ok: false, error: "Upload a valid channel image." }, 400); }
-        if (avatar.protocol !== "https:") return json({ ok: false, error: "Channel images must use HTTPS." }, 400);
+        if (avatar_url && !avatar_url.startsWith("/profile-avatar/")) {
+          let avatar: URL;
+          try { avatar = new URL(avatar_url); } catch { return json({ ok: false, error: "Upload a valid channel image." }, 400); }
+          if (avatar.protocol !== "https:") return json({ ok: false, error: "Channel images must use HTTPS." }, 400);
+        }
         const duplicate = await db(`xora_profiles?username=eq.${encodeURIComponent(username)}&id=neq.${encodeURIComponent(user.id)}&select=id`);
         if (duplicate.length) return json({ ok: false, error: "That handle is already in use." }, 409);
         if (website && !/^https?:\/\//i.test(website)) return json({ ok: false, error: "Website must start with https:// or http://." }, 400);
