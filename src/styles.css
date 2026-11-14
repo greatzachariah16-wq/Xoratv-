@@ -1799,3 +1799,9 @@ section[aria-label="X-Series live channels"] {
 @media (prefers-reduced-motion: reduce) {
   .xora-profile-page :where(a,button) { transition:none; }
 }
+
+/* Keep profile typography on the chat palette even where legacy theme tokens differ. */
+.xora-profile-page .text-ink { color:#2a1a14; }
+.xora-profile-page .text-muted { color:#7d695f; }
+.xora-profile-page .text-clay { color:#b5532f; }
+.xora-profile-page .page-bg { background:linear-gradient(180deg,#faf7f2 0%,#f3ebe3 100%); }
