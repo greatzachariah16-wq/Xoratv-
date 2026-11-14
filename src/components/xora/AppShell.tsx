@@ -46,14 +46,14 @@ const NAV = [
   { to: "/kids", label: "Xora Kids", icon: Baby },
   { to: "/learn", label: "Learn", icon: GraduationCap },
   { to: "/creator-studio", label: "X Channel", icon: RadioTower },
-  { to: "/chat", label: "Community Chat", icon: MessagesSquare },
+  { to: "/chat", label: "Messages", icon: MessagesSquare },
   { to: "/catalog", label: "Movie Catalog", icon: Film },
   { to: "/special-prizes", label: "Special Prizes", icon: Gem },
   { to: "/data-rewards", label: "Data Rewards", icon: Signal },
   { to: "/surveys", label: "Surveys", icon: ClipboardCheck },
   { to: "/search", label: "Search", icon: Search },
   { to: "/wallet", label: "Xora Wallet", icon: WalletCards },
-  { to: "/notifications", label: "Notifications", icon: BellRing },
+  { to: "/notifications", label: "Alerts", icon: BellRing },
   { to: "/support", label: "Support", icon: Headset },
 ] as const;
 
