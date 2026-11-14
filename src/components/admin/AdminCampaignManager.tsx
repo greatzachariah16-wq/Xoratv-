@@ -19,7 +19,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Sparkles,
   Trash2,
   Upload,
   UploadCloud,
