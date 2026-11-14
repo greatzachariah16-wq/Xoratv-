@@ -2417,6 +2417,7 @@ section[aria-label="X-Series live channels"] {
 .xora-channel-cover {
   position: relative;
   isolation: isolate;
+  height: 168px;
   height: clamp(140px, 28vh, 168px);
   aspect-ratio: 16 / 5;
   overflow: hidden;
@@ -2554,9 +2555,9 @@ section[aria-label="X-Series live channels"] {
 .xora-channel-primary {
   flex: 1;
   padding: 0 18px;
-  border: 1px solid color-mix(in srgb,var(--primary) 82%,#55230f);
+  border: 1px solid rgba(90,38,18,.42);
   color: var(--primary-foreground);
-  background: linear-gradient(180deg,color-mix(in srgb,var(--primary) 88%,#fff),var(--primary));
+  background: var(--primary);
   box-shadow: 0 7px 16px -10px rgba(130,55,25,.72),inset 0 1px 0 rgba(255,255,255,.24);
 }
 .xora-channel-icon-button {
@@ -2639,7 +2640,7 @@ section[aria-label="X-Series live channels"] {
   padding: 36px 22px;
   border: 1.5px dashed rgba(181,83,47,.2);
   border-radius: 20px;
-  background: color-mix(in srgb,var(--surface) 88%,transparent);
+  background: rgba(255,253,250,.82);
   text-align: center;
 }
 .xora-channel-empty-icon {
