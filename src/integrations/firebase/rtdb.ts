@@ -151,11 +151,46 @@ export async function setProfile(profile: ProfileRecord): Promise<void> {
 }
 
 export async function getProfileByUsername(username: string): Promise<ProfileRecord | null> {
-  const safeUsername = pathSafe(username.toLowerCase());
+  const cleanUsername = username.trim().replace(/^@/, "").toLowerCase();
+  if (!cleanUsername) return null;
+
+  // New Xora accounts live in Supabase. Resolve those first so the returned ID
+  // is the canonical account ID expected by the chat API.
+  if (typeof window !== "undefined") {
+    try {
+      const response = await fetch(`/api/profile?username=${encodeURIComponent(cleanUsername)}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; profile?: ProfileRecord } | null;
+      if (response.ok && result?.ok && result.profile) return result.profile;
+    } catch {
+      // Keep legacy Firebase lookup available if the Supabase profile endpoint is unavailable.
+    }
+  }
+
+  const safeUsername = pathSafe(cleanUsername);
   const uidSnap = await get(ref(rtdb, `usernames/${safeUsername}`));
   if (!uidSnap.exists()) return null;
   const uid = uidSnap.val() as string;
   return getProfile(uid);
+}
+
+export async function searchProfilesByUsername(queryText: string): Promise<ProfileRecord[]> {
+  const cleanQuery = queryText.trim().replace(/^@/, "").toLowerCase();
+  if (typeof window === "undefined") return [];
+
+  try {
+    const response = await fetch(`/api/profile?search=${encodeURIComponent(cleanQuery)}`, {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => null) as { ok?: boolean; profiles?: ProfileRecord[] } | null;
+    if (response.ok && result?.ok && Array.isArray(result.profiles)) return result.profiles;
+  } catch {
+    // Autocomplete is an enhancement; the exact lookup action remains available.
+  }
+  return [];
 }
 
 // --- POSTS & POSTS BY FEED ---
