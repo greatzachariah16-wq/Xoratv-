@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BadgeCheck, Bell, BookOpen, Check, ChevronDown, Clapperboard, FileText, Gift, Info, Landmark, Loader2,
@@ -13,10 +13,12 @@ import { commerceFetch, creatorDashboardQuery } from "@/lib/commerce";
 import { profilePostsQuery } from "@/lib/api";
 import { CourseCreatorForm } from "@/components/xora/CourseCreatorForm";
 import { EditChannelSheet, type Channel, type ChannelUpdate } from "@/components/xora/EditChannelSheet";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useInView } from "@/hooks/useInView";
+import { ChannelHeader } from "@/components/xora/ChannelHeader";
+import { ChannelTabs, type TabId } from "@/components/xora/ChannelTabs";
+import { StudioSheet, type StudioTabId } from "@/components/xora/StudioSheet";
+import { EmptyState } from "@/components/xora/EmptyState";
 
-export const Route = createFileRoute("/creator-studio")({ component: XChannel });
+export const Route = createFileRoute("/creator-studio")({ component: ChannelPage });
 
 const BANK_OPTIONS = [
   ["Access Bank","access-bank"],["ALAT by Wema","alat-by-wema"],["Citibank Nigeria","citibank-nigeria"],
@@ -36,10 +38,9 @@ function BankLogo({name,slug}:{name:string;slug:string}){
   </span>;
 }
 
-type TabId = "shorts" | "courses" | "posts" | "about";
 type Section=TabId|"videos"|"manage"|"analytics"|"earnings"|"referrals"|"payout"|"customize";
 
-function XChannel(){
+function ChannelPage(){
   const {user,profile}=useAuth();
   const [section,setSection]=useState<Section>(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("createCourse")==="1"?"manage":"shorts");
   const [showCourseCreator,setShowCourseCreator]=useState(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("createCourse")==="1");
@@ -280,7 +281,7 @@ function XChannel(){
   </AppShell>;
 
   const publicTabs:Array<[TabId,string]>=[["shorts","Shorts"],...(showCourses?[["courses","Courses"] as [TabId,string]]:[]),["posts","Posts"],["about","About"]];
-  const manageTabs:[Section,string][]=[["manage","Overview"],["analytics","Analytics"],["earnings","Earnings"],["referrals","Referrals"],["payout","Payout details"],["customize","Customize"]];
+  const manageTabs:Array<[StudioTabId,string]>=[["manage","Overview"],["analytics","Analytics"],["earnings","Earnings"],["referrals","Referrals"],["payout","Payout details"],["customize","Customize"]];
 
   function PublicContent(){
     if(section==="shorts")return shorts.length?<section className="space-y-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Channel Shorts</p><h2 className="mt-1 font-display text-2xl font-semibold">Published Shorts</h2><p className="mt-1 text-xs text-muted-foreground">Shorts published by this X Channel.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shorts.map((post:any)=><article key={post.id} className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-card"><div className="aspect-[9/16] max-h-[420px] bg-black"><video src={post.stream_url||post.media_path||""} poster={post.poster_path||undefined} controls playsInline preload="metadata" className="size-full object-contain"/></div>{post.special_prize_id&&post.special_prize_link_token?<a href={`/s/${encodeURIComponent(post.special_prize_link_token)}?postId=${encodeURIComponent(post.id)}`} className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2.5 text-xs font-semibold text-primary"><Gift className="size-3.5"/>Get your special prize</a>:null}<div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{post.title||"Untitled Short"}</p><p className="mt-1 text-[11px] text-muted-foreground">{post.views_count||0} views</p></div><button onClick={()=>setDeleteTarget({...post,_type:"short"})} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-destructive/20 px-2.5 py-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10" aria-label="Delete Short"><Trash2 className="size-3.5"/>Delete</button></div></article>)}</div></section>:<section className="xora-channel-empty"><div className="xora-channel-empty-icon"><Clapperboard className="size-6"/></div><h2>{isOwner?"Share your first Short":"No Shorts yet"}</h2><p>{isOwner?"Upload a video and start building your audience.":"Check back soon."}</p>{isOwner?<Link to="/create" className="xora-channel-empty-action"><Upload className="size-4"/>Upload Short</Link>:null}</section>;
@@ -476,15 +477,8 @@ function XChannel(){
   const activeTabIndex=Math.max(0,publicTabs.findIndex(([key])=>key===section));
   const onEdit=()=>setEditOpen(true);
   const onOpenStudio=()=>setMenuOpen(true);
-  const onShare=()=>void shareChannel();
-  const handleTabKeyDown=(event:KeyboardEvent<HTMLButtonElement>,index:number)=>{
-    if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
-    event.preventDefault();
-    const next=(index+(event.key==="ArrowRight"?1:-1)+publicTabs.length)%publicTabs.length;
-    setSection(publicTabs[next][0]);
-    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("[role=tab]")[next]?.focus();
-  };
-  const editChannel:Channel={id:user.id,displayName,handle:username,bio:publicBio==="Creator on XoraTV"?"":publicBio,avatarUrl:avatar,bannerUrl:coverUrl};
+  
+  const editChannel:Channel={id:user.id,displayName,handle:username,bio:publicBio==="Creator on XoraTV"?"":publicBio,avatarUrl:avatar,bannerUrl:coverUrl,followerCount,coursesCount:publishedCourses.length,shortsCount:shorts.length,verified:Boolean(creatorInfo?.verified)};
   const saveChannel=async(update:ChannelUpdate)=>{
     const previous=optimisticChannel;
     const previousBio=creatorInfo?.channelBio||"";
@@ -521,6 +515,7 @@ function XChannel(){
     if(typeof navigator!=="undefined" && navigator.share){try{await navigator.share(payload);return;}catch(error){if(error instanceof Error && error.name==="AbortError")return;}}
     try{await navigator.clipboard.writeText(url);}catch{window.prompt("Copy your X Channel link",url);}
   };
+  const onShare=()=>void shareChannel();
   const handleChannelSwipe=(event:any)=>{
     const start=touchStartX.current;touchStartX.current=null;if(start===null||!publicTabs.some(([key])=>key===section))return;
     if(event.target?.closest?.("button,a,input,video"))return;
@@ -530,33 +525,12 @@ function XChannel(){
   };
 
   return <AppShell wide>
-    <div className="xora-channel-page space-y-5 pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+24px)]" data-compact={compactVisible}>
-      <header className="xora-channel-hero">
-        <div className="xora-channel-cover" style={coverUrl?{backgroundImage:'linear-gradient(180deg,rgba(38,23,17,.05),rgba(38,23,17,.4)),url("'+coverUrl+'")'}:undefined}>
-          <span className="xora-channel-pill"><Radio className="size-3"/>X CHANNEL</span>
-        </div>
-        <div className="xora-channel-card">
-          <div className="xora-channel-identity">
-            <div className="xora-channel-avatar-wrap">
-              <UserAvatar path={avatar} name={displayName} size={88} className="!rounded-full"/>
-              {dashboard?.creator?.verified?<span className="xora-channel-verified" aria-label="Verified channel"><BadgeCheck className="size-4"/></span>:null}
-            </div>
-            <div className="xora-channel-copy"><div ref={nameRowRef} className="xora-channel-name-row"><h1 className="xora-channel-name">{displayName}</h1></div><p className="xora-channel-handle">@{username}</p><p className="xora-channel-followers">{followerLabel}</p></div>
-          </div>
-          <div className="xora-channel-actions">
-            {isOwner?<><button type="button" onClick={onEdit} className="xora-channel-primary"><PenLine className="size-4"/>Edit channel</button><button type="button" onClick={onShare} className="xora-channel-icon-button" aria-label="Share channel" title="Share channel"><Share2 className="size-4"/></button><button type="button" onClick={onOpenStudio} className="xora-channel-icon-button" aria-label="Open creator studio" title="Creator studio"><Settings2 className="size-4"/></button></>:<><button type="button" className="xora-channel-primary"><Users className="size-4"/>Subscribe</button><button type="button" className="xora-channel-icon-button" aria-label="Channel notifications"><Bell className="size-4"/></button></>}
-          </div>
-          <p className="xora-channel-bio">{publicBio||"Stories, ideas and original videos from XoraTV."}</p>
-          <div className="xora-channel-stats"><span><strong>{followerCount===0?"—":new Intl.NumberFormat(undefined,{notation:"compact",maximumFractionDigits:1}).format(followerCount)}</strong><small>{followerCount===0?"New channel":"Followers"}</small></span><span><strong>{publishedCourses.length}</strong><small>Courses</small></span><span><strong>{shorts.length}</strong><small>Shorts</small></span></div>
-        </div>
-      </header>
-      <nav className="xora-channel-tabs" role="tablist" aria-label="Channel sections">
-        {publicTabs.map(([key,label])=><button type="button" key={key} id={"xora-channel-tab-"+key} role="tab" aria-selected={section===key} aria-controls="xora-channel-tabpanel" onClick={()=>setSection(key)} onKeyDown={(event)=>handleTabKeyDown(event,publicTabs.findIndex(([tab])=>tab===key))} className="xora-channel-tab">{label}</button>)}
-        <span className="xora-channel-tab-indicator" aria-hidden="true" style={{"--tab-index":activeTabIndex,"--tab-count":publicTabs.length} as React.CSSProperties}/>
-      </nav>
-      <div className="xora-channel-compact" data-visible={compactVisible} aria-hidden={!compactVisible} inert={!compactVisible}><UserAvatar path={avatar} name={displayName} size={34} className="!rounded-full"/><span className="xora-channel-compact-name">{displayName}</span><button type="button" tabIndex={compactVisible?0:-1} onClick={onEdit}>Edit channel</button></div>
+    <div className="xora-channel-page space-y-5 pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+24px)]" >
+      <ChannelHeader channel={editChannel} isOwner={isOwner} onEdit={onEdit} onOpenStudio={onOpenStudio} onShare={onShare}/>
+      <ChannelTabs tabs={publicTabs} activeTab={publicTabs.some(([id])=>id===section)?section as TabId:"shorts"} onChange={setSection}/>
+
       <EditChannelSheet open={editOpen} channel={editChannel} onOpenChange={setEditOpen} onSave={saveChannel}/>
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetContent side="bottom" className="mx-auto max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] border-border bg-surface p-5 text-foreground sm:rounded-[28px]"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Manage your X Channel</SheetTitle><SheetDescription>Choose a creator workspace to continue.</SheetDescription></SheetHeader><div className="mt-5 grid gap-2 sm:grid-cols-2">{manageTabs.map(([key,label])=><button type="button" key={key} onClick={()=>{setSection(key);setMenuOpen(false)}} className="flex min-h-12 items-center justify-between rounded-xl border border-border bg-background px-4 text-left text-sm font-semibold transition hover:border-primary/30 hover:bg-primary/5">{label}<span className="text-primary">→</span></button>)}</div></SheetContent></Sheet>
+      <StudioSheet open={menuOpen} tabs={manageTabs} onOpenChange={setMenuOpen} onSelect={(tab)=>{setSection(tab);setMenuOpen(false)}}/>
 
       <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={0} className="xora-channel-panel" onTouchStart={event=>{touchStartX.current=event.changedTouches[0].clientX;}} onTouchEnd={handleChannelSwipe}>
         {section==="manage"||section==="analytics"||section==="earnings"||section==="referrals"||section==="payout"||section==="customize"?<ManageContent/>:<PublicContent/>}
