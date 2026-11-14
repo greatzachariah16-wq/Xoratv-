@@ -13,7 +13,6 @@ import {
   MessageSquare,
   MessageSquareText,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Wrench,
 } from "lucide-react";
