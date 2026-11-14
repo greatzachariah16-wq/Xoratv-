@@ -1938,3 +1938,45 @@
     height: 112px;
   }
 }
+
+
+/* Alerts reuse the same animated floating shadow and warm porcelain surface as Messages. */
+.xora-alert-float-wrap {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 18px;
+}
+.xora-alert-float-wrap::before {
+  box-shadow: 0 9px 22px rgba(68, 43, 29, .13), 0 22px 34px -18px rgba(68, 43, 29, .24);
+}
+.xora-alert-float-wrap::after {
+  left: -8%;
+  right: -8%;
+  top: 38%;
+  bottom: -28%;
+  background:
+    radial-gradient(60% 50% at 30% 60%, rgba(181, 80, 46, .17), transparent 72%),
+    radial-gradient(55% 50% at 70% 70%, rgba(181, 82, 45, .13), transparent 72%);
+}
+.xora-alert-row {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, .88);
+  background: linear-gradient(145deg, #FFFEFC 0%, #FFFCF8 58%, #F8F0E9 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.98), inset 0 -2px 0 rgba(181,80,46,.07);
+  color: #30231D;
+}
+.xora-alert-row--support {
+  background: linear-gradient(145deg, #F8EDE5 0%, #FFFCF8 62%, #F3E4DA 100%);
+}
+.xora-alert-row .text-muted-foreground { color: #79685D; }
+.xora-alert-row a { box-shadow: 0 3px 9px rgba(75,49,34,.10), inset 0 1px 0 rgba(255,255,255,.45); }
+@media (prefers-reduced-motion: reduce) {
+  .xora-alert-float-wrap,
+  .xora-alert-float-wrap::before,
+  .xora-alert-float-wrap::after,
+  .xora-alert-row { animation: none !important; }
+}
