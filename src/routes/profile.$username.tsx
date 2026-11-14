@@ -15,6 +15,7 @@ import { AppShell } from "@/components/xora/AppShell";
 import { PostCard } from "@/components/xora/PostCard";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import { FeedSkeleton } from "@/components/xora/Skeletons";
+import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/profile/$username")({
@@ -239,6 +240,15 @@ function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <div className="ad-slot xora-profile-ad-slot mt-3 mb-4 flex w-full items-center justify-center" aria-label="Advertisement">
+          <AdsterraBannerAd
+            adKey="075ef17698a6be8914c3d3aaaf74c814"
+            width={320}
+            height={50}
+            className="my-0 shadow-xs"
+          />
+        </div>
 
         {!user ? <section className="soft-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3.5"><div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-border/70 bg-surface text-primary shadow-sm"><Sparkles className="size-5" /></div><div><h2 className="font-display text-base font-semibold">Make XoraTV yours</h2><p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">Create a profile to follow creators and share what you love with the community.</p></div></div>

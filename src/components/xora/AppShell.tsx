@@ -391,7 +391,7 @@ export function AppShell({
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
-          {!hideTopBanner ? (
+          {!hideTopBanner && !pathname.startsWith("/profile/") ? (
             <div className={cn("ad-slot mb-5 flex items-center justify-center", pathname.startsWith("/profile/") && "xora-profile-ad-slot")}>
               <AdsterraBannerAd
                 adKey="075ef17698a6be8914c3d3aaaf74c814"
