@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { ExternalLink, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Campaign } from "@/lib/campaigns/types";
 import { cn } from "@/lib/utils";
@@ -148,7 +148,7 @@ export function DeepShadowAdShell({
           <div className="space-y-1.5 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                <Sparkles className="size-3" />
+                <Megaphone className="size-3" />
                 {campaign.badge || "Sponsored Promotion"}
               </span>
               {campaign.sponsorName && (
@@ -199,7 +199,7 @@ export function DeepShadowAdShell({
           <div className="absolute inset-0 bg-gradient-to-t from-[#110d1f] via-transparent to-black/30" />
           <div className="absolute left-3 top-3">
             <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/60 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-md">
-              <Sparkles className="size-2.5 text-primary" />
+              <Megaphone className="size-2.5 text-primary" />
               {campaign.badge || "Sponsored"}
             </span>
           </div>
@@ -218,7 +218,7 @@ export function DeepShadowAdShell({
         {!campaign.bannerUrl && (
           <div className="mb-2 flex items-center justify-between">
             <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-              <Sparkles className="size-2.5" />
+              <Megaphone className="size-2.5" />
               {campaign.badge || "Sponsored"}
             </span>
             {campaign.sponsorName && (
