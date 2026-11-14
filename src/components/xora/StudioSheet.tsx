@@ -18,7 +18,7 @@ export function StudioSheet({ open, tabs, onOpenChange, onSelect }: StudioSheetP
           <SheetDescription className="text-(--color-text-muted)">Choose a creator workspace to continue.</SheetDescription>
         </SheetHeader>
         <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          {tabs.map(([id, label]) => <button type="button" key={id} onClick={() => onSelect(id)} className="flex min-h-12 items-center justify-between rounded-xl border border-(--color-hairline) bg-(--color-surface) px-4 text-left text-sm font-semibold text-(--color-text-strong) transition hover:border-primary/30 hover:bg-primary/5">{label}<span className="text-primary">→</span></button>)}
+          {tabs.map(([id, label]) => <button type="button" key={id} onClick={() => onSelect(id)} className="flex min-h-12 items-center justify-between rounded-xl border border-(--color-hairline) bg-(--color-surface) px-4 text-left text-sm font-semibold text-(--color-text-strong) transition hover:border-primary/30 hover:bg-primary/5">{label}<span className="text-(--color-accent)">→</span></button>)}
         </div>
       </SheetContent>
     </Sheet>
