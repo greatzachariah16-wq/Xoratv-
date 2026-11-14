@@ -58,7 +58,9 @@ function PublicChannelPage() {
       return (result.courses || []).filter((course) => course.status === "published");
     },
   });
-  const channelProfile = profile as (typeof profile & ChannelProfileMedia) | undefined;\n  const channelPosts = posts as ChannelPost[];\n  const isOwner = Boolean(user && profile && user.id === profile.id);
+  const channelProfile = profile as (typeof profile & ChannelProfileMedia) | undefined;
+  const channelPosts = posts as ChannelPost[];
+  const isOwner = Boolean(user && profile && user.id === profile.id);
   const displayName = profile?.display_name || username;
   const avatar = profile?.avatar_url || "";
   const shorts = channelPosts.filter((post) => post.kind === "video" && post.source === "creator" && post.status === "published");
