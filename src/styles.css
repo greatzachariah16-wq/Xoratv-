@@ -1805,3 +1805,17 @@ section[aria-label="X-Series live channels"] {
 .xora-profile-page .text-muted { color:#7d695f; }
 .xora-profile-page .text-clay { color:#b5532f; }
 .xora-profile-page .page-bg { background:linear-gradient(180deg,#faf7f2 0%,#f3ebe3 100%); }
+
+
+/* Profile identity is deliberately rectangular: portrait, actions and tabs share one shape language. */
+.xora-profile-page .xora-profile-hero .xora-profile-avatar {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 11px !important;
+}
+.xora-profile-page .xora-profile-hero .xora-profile-avatar img {
+  border-radius: 11px !important;
+}
+.xora-profile-page .xora-profile-hero :where(a, button, [class*="rounded-full"]) {
+  border-radius: 12px !important;
+}
