@@ -47,7 +47,7 @@ function ChannelPage(){
   const [menuOpen,setMenuOpen]=useState(false);
   const [editOpen,setEditOpen]=useState(false);
   const [optimisticChannel,setOptimisticChannel]=useState<ChannelUpdate|null>(null);
-  const touchStartX=useRef<number|null>(null);
+  const touchStart=useRef<{x:number;y:number}|null>(null);
   const [registered,setRegistered]=useState(false);
   const [terms,setTerms]=useState(false);
   const [busy,setBusy]=useState(false);
@@ -513,10 +513,16 @@ function ChannelPage(){
   };
   const onShare=()=>void shareChannel();
   const handleChannelSwipe=(event:TouchEvent<HTMLDivElement>)=>{
-    const start=touchStartX.current;touchStartX.current=null;if(start===null||!publicTabs.some(([key])=>key===section))return;
-    if(event.target instanceof Element && event.target.closest("button,a,input,video"))return;
-    const touch=event.changedTouches[0];if(!touch)return;const delta=touch.clientX-start;if(Math.abs(delta)<55)return;
-    const next=Math.min(publicTabs.length-1,Math.max(0,activeTabIndex+(delta<0?1:-1)));
+    const start=touchStart.current;touchStart.current=null;
+    if(!start||!publicTabs.some(([key])=>key===section))return;
+    if(event.target instanceof Element && event.target.closest("button,a,input,textarea,select,video,[contenteditable='true'],[data-no-channel-swipe]"))return;
+    const touch=event.changedTouches[0];if(!touch)return;
+    const deltaX=touch.clientX-start.x;
+    const deltaY=touch.clientY-start.y;
+    // Only a deliberate, dominant horizontal gesture changes tabs.
+    // Normal vertical and diagonal page scrolling must never switch sections.
+    if(Math.abs(deltaX)<60||Math.abs(deltaX)<Math.abs(deltaY)*1.35)return;
+    const next=Math.min(publicTabs.length-1,Math.max(0,activeTabIndex+(deltaX<0?1:-1)));
     if(next!==activeTabIndex)setSection(publicTabs[next][0]);
   };
 
@@ -528,7 +534,7 @@ function ChannelPage(){
       <EditChannelSheet key={(editOpen?"open-":"closed-")+username} open={editOpen} channel={editChannel} onOpenChange={setEditOpen} onSave={saveChannel}/>
       <StudioSheet open={menuOpen} tabs={manageTabs} onOpenChange={setMenuOpen} onSelect={(tab)=>{setSection(tab);setMenuOpen(false)}}/>
 
-      <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={0} className="xora-channel-panel" onTouchStart={event=>{touchStartX.current=event.changedTouches[0].clientX;}} onTouchEnd={handleChannelSwipe}>
+      <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={0} className="xora-channel-panel" onTouchStart={event=>{const touch=event.touches[0];touchStart.current=event.touches.length===1&&touch?{x:touch.clientX,y:touch.clientY}:null;}} onTouchEnd={handleChannelSwipe} onTouchCancel={()=>{touchStart.current=null;}}>
         {section==="manage"||section==="analytics"||section==="earnings"||section==="referrals"||section==="payout"||section==="customize"?<ManageContent/>:<PublicContent/>}
       </div>
 
