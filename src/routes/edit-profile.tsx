@@ -102,6 +102,7 @@ function EditProfilePage() {
         method: "PUT", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          username: profile.username,
           display_name: cleanName,
           avatar_url: avatarFor(avatarStyle, avatarSeed.trim() || profile.username),
           bio: [cleanAbout ? `About: ${cleanAbout}` : "", cleanCreating ? `Creating: ${cleanCreating}` : ""].filter(Boolean).join("\n"),
