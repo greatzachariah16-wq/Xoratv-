@@ -93,9 +93,9 @@ function ProfilePage() {
         <section className="xora-profile-hero soft-card relative isolate overflow-hidden">
           <div className="h-[72px] bg-gradient-to-r from-[#f5d7c7] via-[#f1c8b5] to-[#f8e5d9]" />
 
-          <div className="relative px-3 pb-2 sm:px-5 sm:pb-3">
+          <div className="relative px-3 pb-1 sm:px-5 sm:pb-2">
             <div className="-mt-10 flex min-w-0 flex-col gap-0.5">
-              <div className="relative h-10">
+              <div className="relative h-9">
                 <div className="absolute left-0 top-0 size-20 rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
                   <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={74} />
                   {isMe ? <span className="brand-surface absolute bottom-0 right-0 grid size-7 place-items-center rounded-full border-2 border-white" title="Your profile"><Camera className="size-3.5" /></span> : null}
@@ -138,10 +138,10 @@ function ProfilePage() {
                 </div>
                 <div className="flex min-w-0 items-center gap-2">
                   <p className="truncate text-[13px] font-medium text-muted-foreground">@{profile?.username || username}</p>
-                  {isMe ? <span className="inset-field inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] font-semibold text-clay"><BadgeCheck className="size-3.5" />Your profile</span> : null}
+                  {isMe ? <span className="inset-field inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] font-semibold text-clay"><BadgeCheck className="size-3.5" />Your profile</span> : null}
                 </div>
                 {profile?.bio ? <div className="mt-1 max-w-2xl space-y-0 text-[14px] leading-4 text-ink"><p className="line-clamp-2 whitespace-pre-wrap">{profileBioSections(profile.bio).about || profileBioSections(profile.bio).creating}</p></div> : <p className="mt-1 max-w-xl line-clamp-2 text-[14px] leading-4 text-muted">{isMe ? "Add a little introduction so the XoraTV community can get to know you." : "A member of the XoraTV community."}</p>}
-                <div className="mt-1 flex flex-nowrap gap-x-3 overflow-hidden whitespace-nowrap text-[13px] text-muted">
+                <div className="mt-1 flex flex-nowrap gap-x-3 overflow-hidden whitespace-nowrap text-[13px] leading-4 text-muted">
                   {profile?.location ? <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" />{profile.location}</span> : null}
                   {joinedDate ? <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5 text-primary" />Joined {joinedDate}</span> : null}
                 </div>
