@@ -89,7 +89,7 @@ function ProfilePage() {
 
   return (
     <AppShell wide>
-      <main className="xora-profile-page page-bg mx-auto max-w-6xl space-y-3 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-3 sm:space-y-4 sm:pt-5">
+      <main className="xora-profile-page page-bg mx-auto max-w-6xl space-y-3 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-0 sm:space-y-4 sm:pt-5">
         {/* Cinematic member cover */}
         <section className="xora-profile-hero">
           <div className="xora-profile-cover" aria-hidden="true" />
