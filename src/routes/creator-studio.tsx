@@ -99,7 +99,7 @@ function XChannel(){
   const publishedCourses=courses.filter((c:any)=>c.status==="published");
   const shorts=dashboard?.shorts||[];
   const textPosts=profilePosts.filter((post:any)=>post.kind==="text" && post.status==="published").sort((a:any,b:any)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
-  const isOwner=Boolean(user && creatorInfo);
+  const isOwner=Boolean(user && (creatorInfo || registered));
   const followerCount=Number(dashboard?.stats?.followers||0);
   const followerLabel=followerCount===0?"New channel":new Intl.NumberFormat(undefined,{notation:"compact",maximumFractionDigits:1}).format(followerCount)+" followers";
   const coverUrl=String(dashboard?.creator?.coverImageUrl||dashboard?.creator?.featuredImageUrl||"");
