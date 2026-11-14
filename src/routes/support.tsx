@@ -90,7 +90,7 @@ const categories: CategoryOption[] = [
     value: "feedback",
     label: "Feedback & ideas",
     description: "Feature suggestions and product improvements",
-    icon: Sparkles,
+    icon: MessageSquareText,
   },
   {
     value: "other",
