@@ -487,17 +487,33 @@ function XChannel(){
   const editChannel:Channel={id:user.id,displayName,handle:username,bio:publicBio==="Creator on XoraTV"?"":publicBio,avatarUrl:avatar,bannerUrl:coverUrl};
   const saveChannel=async(update:ChannelUpdate)=>{
     const previous=optimisticChannel;
+    const previousBio=creatorInfo?.channelBio||"";
+    let customizationSaved=false;
+    let bannerSaved=false;
     setOptimisticChannel(update);
     try{
+      if(update.bio!==publicBio){
+        await commerceFetch("/api/commerce/creator/customization",{method:"POST",body:JSON.stringify({userId:user.id,channelBio:update.bio,featuredTitle,featuredDescription,showCourses,showCommunity})});
+        customizationSaved=true;
+      }
+      if(update.bannerUrl!==coverUrl){
+        await commerceFetch("/api/commerce/creator/featured-image",{method:"POST",body:JSON.stringify({userId:user.id,featuredImageUrl:update.bannerUrl})});
+        bannerSaved=true;
+      }
       const response=await fetch("/api/profile",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:update.handle,display_name:update.displayName,avatar_url:update.avatarUrl,bio:update.bio})});
       const result=await response.json() as {ok?:boolean;profile?:unknown;error?:string};
       if(!response.ok||!result.ok)throw new Error(result.error||"Could not save your channel profile.");
-      if(update.bannerUrl!==coverUrl)await commerceFetch("/api/commerce/creator/featured-image",{method:"POST",body:JSON.stringify({userId:user.id,featuredImageUrl:update.bannerUrl})});
+      setChannelBio(update.bio);
       window.dispatchEvent(new CustomEvent("xora-auth-changed"));
       window.dispatchEvent(new CustomEvent("xora:profile-updated",{detail:result.profile}));
       await refetch();
       setOptimisticChannel(null);
-    }catch(error){setOptimisticChannel(previous);throw error;}
+    }catch(error){
+      if(bannerSaved)await commerceFetch("/api/commerce/creator/featured-image",{method:"POST",body:JSON.stringify({userId:user.id,featuredImageUrl:coverUrl})}).catch(()=>undefined);
+      if(customizationSaved)await commerceFetch("/api/commerce/creator/customization",{method:"POST",body:JSON.stringify({userId:user.id,channelBio:previousBio,featuredTitle,featuredDescription,showCourses,showCommunity})}).catch(()=>undefined);
+      setOptimisticChannel(previous);
+      throw error;
+    }
   };
   const shareChannel=async()=>{
     const url=window.location.origin+"/channel/"+encodeURIComponent(username);
