@@ -94,7 +94,7 @@ function ProfilePage() {
           <div className="xora-profile-cover" aria-hidden="true" />
 
           <div className="xora-profile-inner">
-            <div className="xora-profile-identity">
+            <div className="xora-profile-identity !mt-0 pt-1.5">
               <div className="xora-profile-photo-frame">
                 <UserAvatar
                   path={profile?.avatar_url}
@@ -109,7 +109,7 @@ function ProfilePage() {
                 ) : null}
               </div>
 
-              <div className="xora-profile-copy">
+              <div className="xora-profile-copy relative z-10">
                 <h1 className="xora-profile-name">{profile?.display_name || username}</h1>
                 <div className="xora-profile-handle-row">
                   <p className="xora-profile-handle">@{profile?.username || username}</p>
