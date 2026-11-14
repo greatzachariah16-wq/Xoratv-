@@ -1785,7 +1785,7 @@ section[aria-label="X-Series live channels"] {
   .peach-tile { background:linear-gradient(180deg,#f3c9b4 0%,#e3a98f 100%); box-shadow:0 0 0 3px #fff, 0 6px 14px -6px rgb(120 60 30/.4); }
 }
 .xora-profile-page { color:#2a1a14; }
-.xora-profile-page .xora-profile-hero { border-radius:26px; }
+.xora-profile-page .xora-profile-hero { border-radius:22px; }
 .xora-profile-page .xora-profile-hero .UserAvatar,
 .xora-profile-page .xora-profile-hero img { border-radius:9999px; }
 .xora-profile-page :where(a,button) { min-height:44px; transition:transform 150ms ease, box-shadow 150ms ease; }
