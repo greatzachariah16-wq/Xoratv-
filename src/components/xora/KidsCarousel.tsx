@@ -1,6 +1,6 @@
 import { memo, type CSSProperties } from "react";
 import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
-import { Baby, Sparkles } from "lucide-react";
+import { Baby, Play } from "lucide-react";
 import { Pill } from "@/components/xora/Pill";
 import { ChannelTile } from "@/components/xora/ChannelTile";
 
@@ -24,7 +24,7 @@ function KidsCarouselComponent({ channels, onOpenKids }: KidsCarouselProps) {
                 <h2 className="whitespace-nowrap font-editorial text-xl font-semibold tracking-tight text-foreground">
                   Xora Kids
                 </h2>
-                <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                <Play className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
               </div>
               <p className="mt-1 block w-full truncate text-xs text-muted-foreground">
                 Cartoons, animation & kids TV
