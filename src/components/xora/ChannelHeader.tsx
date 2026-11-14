@@ -26,6 +26,7 @@ export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare 
   const followerLabel = followers === 0 ? "New channel" : new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followers) + " followers";
 
   return (
+    <>
     <header className="xora-channel-hero">
       <div className="xora-channel-cover" style={channel.bannerUrl ? { backgroundImage: 'linear-gradient(180deg,rgba(38,23,17,.05),rgba(38,23,17,.4)),url("' + channel.bannerUrl + '")' } : undefined}>
         <span className="xora-channel-pill"><Radio className="size-3"/>X CHANNEL</span>
@@ -66,5 +67,6 @@ export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare 
       </div>
     </header>
     <CompactBar channel={channel} visible={compactVisible} onEdit={onEdit}/>
+    </>
   );
 }
