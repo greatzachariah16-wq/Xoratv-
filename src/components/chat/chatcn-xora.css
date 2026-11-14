@@ -1882,3 +1882,18 @@
     font-size: 10px;
   }
 }
+
+
+/* Private inbox compose control: compact, soft, and consistent with chat surfaces. */
+.xora-chat-page .xora-chat-compose-trigger {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border-radius: 15px;
+  box-shadow: 0 3px 10px rgba(181, 80, 46, 0.16), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.xora-chat-page .xora-chat-compose-trigger:active {
+  box-shadow: 0 1px 4px rgba(181, 80, 46, 0.14);
+}
