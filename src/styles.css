@@ -2383,3 +2383,12 @@ section[aria-label="X-Series live channels"] {
   .xora-profile-name { font-size: 18px; }
   .xora-profile-page .xora-profile-actions :where(a, button) { padding-inline: 5px; font-size: 9px; }
 }
+
+/* Keep the mobile profile hero anchored directly below the app bar and distinct from page content. */
+@media (max-width: 639px) {
+  .xora-profile-page .xora-profile-hero {
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(120, 60, 30, .16);
+    border-radius: 0 0 18px 18px;
+  }
+}
