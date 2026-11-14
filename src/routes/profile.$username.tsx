@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  Sparkles, PenLine, LogOut, MapPin, CalendarDays, Film, UserRound,
+  Sparkles, PenLine, LogOut, MapPin, CalendarDays, UserRound,
   Settings2, ArrowUpRight, PlayCircle, ShieldCheck, Grid2X2, CircleUserRound,
-  Clapperboard, ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle,
+  ChevronRight, Users, Heart, Camera, BadgeCheck, MessageCircle,
 } from "lucide-react";
 import { profilePostsQuery, profileQuery } from "@/lib/api";
 import { compactNumber } from "@/lib/format";
@@ -14,7 +14,6 @@ import { useSubscriptions } from "@/hooks/useEngagement";
 import { AppShell } from "@/components/xora/AppShell";
 import { PostCard } from "@/components/xora/PostCard";
 import { UserAvatar } from "@/components/xora/UserAvatar";
-import { EmptyState } from "@/components/xora/EmptyState";
 import { FeedSkeleton } from "@/components/xora/Skeletons";
 import { cn } from "@/lib/utils";
 
@@ -95,12 +94,14 @@ function ProfilePage() {
           <div className="h-[72px] bg-gradient-to-r from-[#f5d7c7] via-[#f1c8b5] to-[#f8e5d9]" />
 
           <div className="relative px-3 pb-3 sm:px-5 sm:pb-4">
-            <div className="-mt-10 flex min-w-0 items-end justify-between gap-2">
-              <div className="relative size-20 shrink-0 rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
-                <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={74} />
-                {isMe ? <span className="brand-surface absolute bottom-0 right-0 grid size-7 place-items-center rounded-full border-2 border-white" title="Your profile"><Camera className="size-3.5" /></span> : null}
+            <div className="-mt-10 flex min-w-0 flex-col gap-0.5">
+              <div className="relative h-10">
+                <div className="absolute left-0 top-0 size-20 rounded-full border-[3px] border-white bg-white shadow-[0_0_0_3px_#fff,0_6px_14px_-6px_rgba(120,60,30,.4)]">
+                  <UserAvatar path={profile?.avatar_url} name={profile?.display_name} size={74} />
+                  {isMe ? <span className="brand-surface absolute bottom-0 right-0 grid size-7 place-items-center rounded-full border-2 border-white" title="Your profile"><Camera className="size-3.5" /></span> : null}
+                </div>
               </div>
-              <div className="flex min-w-0 flex-nowrap items-center justify-end gap-1.5 pb-0.5">
+              <div className="flex h-11 min-w-0 flex-nowrap items-center justify-end gap-1.5 pb-0.5">
                 {isMe ? (
                   <>
                     <Link to="/edit-profile" className="soft-pill press inline-flex h-11 min-w-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold focus-visible:ring-2 focus-visible:ring-clay/40"><PenLine className="size-4 shrink-0" /><span className="whitespace-nowrap">Edit profile</span></Link>
