@@ -54,7 +54,7 @@ export function EditChannelSheet({ open, channel, onOpenChange, onSave }: EditCh
       return result;
     }, {});
   }, [draft]);
-  const changed = (Object.keys(draft) as Array<keyof ChannelUpdate>).some((key) => draft[key] !== channel[key === "displayName" ? "displayName" : key === "handle" ? "handle" : key === "bio" ? "bio" : key] );
+  const changed = (Object.keys(draft) as Array<keyof ChannelUpdate>).some((key) => draft[key] !== channel[key] );
   const valid = Object.keys(errors).length === 0;
 
   function update<K extends keyof ChannelUpdate>(key: K, value: ChannelUpdate[K]) {
