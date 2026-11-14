@@ -536,7 +536,7 @@ function XChannel(){
       </header>
       <nav className="xora-channel-tabs" role="tablist" aria-label="Channel sections">
         {publicTabs.map(([key,label])=><button type="button" key={key} id={"xora-channel-tab-"+key} role="tab" aria-selected={section===key} aria-controls="xora-channel-tabpanel" onClick={()=>setSection(key)} onKeyDown={(event)=>handleTabKeyDown(event,publicTabs.findIndex(([tab])=>tab===key))} className="xora-channel-tab">{label}</button>)}
-        <span className="xora-channel-tab-indicator" aria-hidden="true" style={{"--tab-index":activeTabIndex} as React.CSSProperties}/>
+        <span className="xora-channel-tab-indicator" aria-hidden="true" style={{"--tab-index":activeTabIndex,"--tab-count":publicTabs.length} as React.CSSProperties}/>
       </nav>
       <div className="xora-channel-compact" data-visible={compactVisible} aria-hidden={!compactVisible} inert={!compactVisible}><UserAvatar path={avatar} name={displayName} size={34} className="!rounded-full"/><span className="xora-channel-compact-name">{displayName}</span><button type="button" tabIndex={compactVisible?0:-1} onClick={onEdit}>Edit channel</button></div>
       <EditChannelSheet open={editOpen} channel={editChannel} onOpenChange={setEditOpen} onSave={saveChannel}/>
