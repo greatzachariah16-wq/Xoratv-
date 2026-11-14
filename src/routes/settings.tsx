@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon,
   Wallet,
   Smartphone,
-  Sparkles,
+  Clapperboard,
   BookOpen,
   Tv,
   MessageCircle,
