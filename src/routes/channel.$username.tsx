@@ -10,6 +10,32 @@ import { profilePostsQuery, profileQuery } from "@/lib/api";
 import { commerceFetch } from "@/lib/commerce";
 
 type ChannelTab = "shorts" | "courses" | "posts" | "about";
+type ChannelPost = {
+  id: string | number;
+  kind?: string;
+  source?: string;
+  status?: string;
+  stream_url?: string | null;
+  media_path?: string | null;
+  poster_path?: string | null;
+  title?: string | null;
+  views_count?: number | null;
+  created_at?: string | null;
+  caption?: string | null;
+};
+type ChannelCourse = {
+  id: string | number;
+  status?: string;
+  title?: string;
+  thumbnailUrl?: string | null;
+  thumbnail_url?: string | null;
+  unlockPoints?: number | string | null;
+};
+type ChannelProfileMedia = {
+  cover_image_url?: string | null;
+  banner_url?: string | null;
+  verified?: boolean;
+};
 
 export const Route = createFileRoute("/channel/$username")({ component: PublicChannelPage });
 
@@ -28,19 +54,19 @@ function PublicChannelPage() {
     queryKey: ["public-channel-courses", profile?.id],
     enabled: Boolean(profile?.id),
     queryFn: async () => {
-      const result = await commerceFetch<{ courses: any[] }>(`/api/commerce/creator/courses?userId=${encodeURIComponent(profile?.id || "")}`);
+      const result = await commerceFetch<{ courses: ChannelCourse[] }>(`/api/commerce/creator/courses?userId=${encodeURIComponent(profile?.id || "")}`);
       return (result.courses || []).filter((course) => course.status === "published");
     },
   });
-  const isOwner = Boolean(user && profile && user.id === profile.id);
+  const channelProfile = profile as (typeof profile & ChannelProfileMedia) | undefined;\n  const channelPosts = posts as ChannelPost[];\n  const isOwner = Boolean(user && profile && user.id === profile.id);
   const displayName = profile?.display_name || username;
   const avatar = profile?.avatar_url || "";
-  const shorts = posts.filter((post: any) => post.kind === "video" && post.source === "creator" && post.status === "published");
-  const textPosts = posts.filter((post: any) => post.kind === "text" && post.status === "published");
+  const shorts = channelPosts.filter((post) => post.kind === "video" && post.source === "creator" && post.status === "published");
+  const textPosts = channelPosts.filter((post) => post.kind === "text" && post.status === "published");
   const followerCount = Number(profile?.subscriber_count || 0);
   const followerLabel = followerCount === 0 ? "New channel" : new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followerCount) + " followers";
   const joinedDate = profile?.created_at ? new Date(profile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "";
-  const coverUrl = String((profile as any)?.cover_image_url || (profile as any)?.banner_url || "");
+  const coverUrl = String(channelProfile?.cover_image_url || channelProfile?.banner_url || "");
   const tabs: Array<[ChannelTab, string]> = [["shorts", "Shorts"], ["courses", "Courses"], ["posts", "Posts"], ["about", "About"]];
   const activeIndex = Math.max(0, tabs.findIndex(([key]) => key === activeTab));
 
@@ -71,7 +97,7 @@ function PublicChannelPage() {
     catch { window.prompt("Copy this channel link", url); }
   };
 
-  const handleSwipe = (event: any) => {
+  const handleSwipe = (event: React.TouchEvent<HTMLDivElement>) => {
     const start = touchStartX.current;
     touchStartX.current = null;
     if (start === null || event.target?.closest?.("button,a,input,video")) return;
@@ -104,7 +130,7 @@ function PublicChannelPage() {
         </div>
         <div className="xora-channel-card">
           <div className="xora-channel-identity">
-            <div className="xora-channel-avatar-wrap"><UserAvatar path={avatar} name={displayName} size={88} className="!rounded-full"/>{(profile as any)?.verified ? <span className="xora-channel-verified" aria-label="Verified channel"><BadgeCheck className="size-4"/></span> : null}</div>
+            <div className="xora-channel-avatar-wrap"><UserAvatar path={avatar} name={displayName} size={88} className="!rounded-full"/>{channelProfile?.verified ? <span className="xora-channel-verified" aria-label="Verified channel"><BadgeCheck className="size-4"/></span> : null}</div>
             <div className="xora-channel-copy"><h1 className="xora-channel-name">{displayName}</h1><p className="xora-channel-handle">@{profile.username || username}</p><p className="xora-channel-followers">{followerText}</p></div>
           </div>
           <div className="xora-channel-actions">
@@ -120,9 +146,9 @@ function PublicChannelPage() {
       </nav>
       <div className={"xora-channel-compact " + (compactVisible ? "is-visible" : "")} aria-hidden={!compactVisible}><UserAvatar path={avatar} name={displayName} size={34} className="!rounded-full"/><span className="xora-channel-compact-name">{displayName}</span><button type="button" onClick={isOwner ? () => void navigate({ to: "/creator-studio" }) : handleSubscribe}>{isOwner ? "Edit channel" : subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}</button></div>
       <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-" + activeTab} tabIndex={0} className="xora-channel-panel" onTouchStart={(event) => { touchStartX.current = event.changedTouches[0].clientX; }} onTouchEnd={handleSwipe}>
-        {activeTab === "shorts" ? shorts.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shorts.map((post: any) => <article key={post.id} className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-card"><div className="aspect-[9/16] max-h-[420px] bg-black"><video src={post.stream_url || post.media_path || ""} poster={post.poster_path || undefined} controls playsInline preload="metadata" className="size-full object-contain"/></div><div className="p-4"><p className="truncate text-sm font-semibold">{post.title || "Untitled Short"}</p><p className="mt-1 text-[11px] text-muted-foreground">{post.views_count || 0} views</p></div></article>)}</div> : <section className="xora-channel-empty"><div className="xora-channel-empty-icon"><Clapperboard className="size-6"/></div><h2>{isOwner ? "Share your first Short" : "No Shorts yet"}</h2><p>{isOwner ? "Upload a video and start building your audience." : "Check back soon."}</p>{isOwner ? <Link to="/create" className="xora-channel-empty-action"><Upload className="size-4"/>Upload Short</Link> : null}</section> : null}
-        {activeTab === "courses" ? courses.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{courses.map((course: any) => <article key={course.id} className="rounded-2xl border border-border bg-surface p-3 shadow-sm"><div className="aspect-video overflow-hidden rounded-xl bg-secondary">{course.thumbnailUrl ? <img src={course.thumbnailUrl} alt={"Thumbnail for " + course.title} loading="lazy" className="size-full object-cover"/> : <div className="grid size-full place-items-center text-primary"><BookOpen className="size-6"/></div>}</div><h2 className="mt-3 truncate text-sm font-semibold">{course.title}</h2><p className="mt-1 text-xs text-muted-foreground">{Number(course.unlockPoints || 0).toLocaleString()} XP</p></article>)}</div> : <section className="xora-channel-empty"><div className="xora-channel-empty-icon"><BookOpen className="size-6"/></div><h2>No courses yet</h2><p>{isOwner ? "Create a course and share what you know." : "Check back soon."}</p>{isOwner ? <Link to="/creator-studio?createCourse=1" className="xora-channel-empty-action"><BookOpen className="size-4"/>Create course</Link> : null}</section> : null}
-        {activeTab === "posts" ? textPosts.length ? <div className="space-y-3">{textPosts.map((post: any) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm"><div className="flex items-center gap-3"><UserAvatar path={avatar} name={displayName} size={38}/><div><p className="text-sm font-semibold">{displayName}</p><p className="text-[11px] text-muted-foreground">{new Date(post.created_at || Date.now()).toLocaleDateString()}</p></div></div>{post.title ? <h2 className="mt-3 text-base font-semibold">{post.title}</h2> : null}<p className="mt-2 whitespace-pre-wrap text-sm leading-6">{post.caption || " "}</p></article>)}</div> : <section className="xora-channel-empty"><div className="xora-channel-empty-icon"><FileText className="size-6"/></div><h2>{isOwner ? "Share your first post" : "No posts yet"}</h2><p>{isOwner ? "Share an update with your audience." : "Check back soon."}</p>{isOwner ? <Link to="/create" className="xora-channel-empty-action"><FileText className="size-4"/>Create post</Link> : null}</section> : null}
+        {activeTab === "shorts" ? shorts.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shorts.map((post) => <article key={post.id} className="overflow-hidden rounded-[22px] border border-border bg-surface shadow-card"><div className="aspect-[9/16] max-h-[420px] bg-black"><video src={post.stream_url || post.media_path || ""} poster={post.poster_path || undefined} controls playsInline preload="metadata" className="size-full object-contain"/></div><div className="p-4"><p className="truncate text-sm font-semibold">{post.title || "Untitled Short"}</p><p className="mt-1 text-[11px] text-muted-foreground">{post.views_count || 0} views</p></div></article>)}</div> : <section className="xora-channel-empty"><div className="xora-channel-empty-icon"><Clapperboard className="size-6"/></div><h2>{isOwner ? "Share your first Short" : "No Shorts yet"}</h2><p>{isOwner ? "Upload a video and start building your audience." : "Check back soon."}</p>{isOwner ? <Link to="/create" className="xora-channel-empty-action"><Upload className="size-4"/>Upload Short</a> : null}</section> : null}
+        {activeTab === "courses" ? courses.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{courses.map((course) => <article key={course.id} className="rounded-2xl border border-border bg-surface p-3 shadow-sm"><div className="aspect-video overflow-hidden rounded-xl bg-secondary">{(course.thumbnailUrl || course.thumbnail_url) ? <img src={course.thumbnailUrl || course.thumbnail_url || undefined} alt={"Thumbnail for " + course.title} loading="lazy" className="size-full object-cover"/> : <div className="grid size-full place-items-center text-primary"><BookOpen className="size-6"/></div>}</div><h2 className="mt-3 truncate text-sm font-semibold">{course.title}</h2><p className="mt-1 text-xs text-muted-foreground">{Number(course.unlockPoints || 0).toLocaleString()} XP</p></article>)}</div> : <section className="xora-channel-empty"><div className="xora-channel-empty-icon"><BookOpen className="size-6"/></div><h2>No courses yet</h2><p>{isOwner ? "Create a course and share what you know." : "Check back soon."}</p>{isOwner ? <a href="/creator-studio?createCourse=1" className="xora-channel-empty-action"><BookOpen className="size-4"/>Create course</Link> : null}</section> : null}
+        {activeTab === "posts" ? textPosts.length ? <div className="space-y-3">{textPosts.map((post) => <article key={post.id} className="rounded-2xl border border-border bg-surface p-4 shadow-sm"><div className="flex items-center gap-3"><UserAvatar path={avatar} name={displayName} size={38}/><div><p className="text-sm font-semibold">{displayName}</p><p className="text-[11px] text-muted-foreground">{new Date(post.created_at || Date.now()).toLocaleDateString()}</p></div></div>{post.title ? <h2 className="mt-3 text-base font-semibold">{post.title}</h2> : null}<p className="mt-2 whitespace-pre-wrap text-sm leading-6">{post.caption || " "}</p></article>)}</div> : <section className="xora-channel-empty"><div className="xora-channel-empty-icon"><FileText className="size-6"/></div><h2>{isOwner ? "Share your first post" : "No posts yet"}</h2><p>{isOwner ? "Share an update with your audience." : "Check back soon."}</p>{isOwner ? <Link to="/create" className="xora-channel-empty-action"><FileText className="size-4"/>Create post</Link> : null}</section> : null}
         {activeTab === "about" ? <section className="rounded-2xl border border-border bg-surface p-5 shadow-card"><div className="flex items-center gap-2 text-primary"><Info className="size-4"/><h2 className="text-sm font-semibold uppercase tracking-wide">About this channel</h2></div><p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{profile.bio || "No description added yet."}</p>{joinedDate ? <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><CalendarDays className="size-4 text-primary"/>Joined {joinedDate}</p> : null}</section> : null}
       </div>
     </div>
