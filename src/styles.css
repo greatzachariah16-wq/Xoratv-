@@ -1839,7 +1839,7 @@ section[aria-label="X-Series live channels"] {
 .xora-profile-inner { padding: 0 12px 9px; }
 .xora-profile-identity {
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr);
   align-items: end;
   gap: 11px;
   min-width: 0;
@@ -1847,8 +1847,8 @@ section[aria-label="X-Series live channels"] {
 }
 .xora-profile-photo-frame {
   position: relative;
-  width: 80px;
-  height: 98px;
+  width: 104px;
+  height: 76px;
   padding: 3px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.95);
@@ -2098,11 +2098,11 @@ section[aria-label="X-Series live channels"] {
   .xora-profile-cover { height: 50px; }
   .xora-profile-inner { padding-inline: 18px; padding-bottom: 12px; }
   .xora-profile-identity {
-    grid-template-columns: 94px minmax(0, 1fr);
+    grid-template-columns: 120px minmax(0, 1fr);
     gap: 14px;
     margin-top: -25px;
   }
-  .xora-profile-photo-frame { width: 94px; height: 116px; border-radius: 15px; }
+  .xora-profile-photo-frame { width: 120px; height: 88px; border-radius: 15px; }
   .xora-profile-photo-frame .xora-profile-avatar { border-radius: 11px !important; }
   .xora-profile-photo-frame .xora-profile-avatar img { border-radius: 10px !important; }
   .xora-profile-name { font-size: 30px; }
@@ -2115,10 +2115,10 @@ section[aria-label="X-Series live channels"] {
 @media (max-width: 380px) {
   .xora-profile-inner { padding-inline: 10px; }
   .xora-profile-identity {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: 88px minmax(0, 1fr);
     gap: 9px;
   }
-  .xora-profile-photo-frame { width: 72px; height: 90px; border-radius: 12px; }
+  .xora-profile-photo-frame { width: 88px; height: 66px; border-radius: 12px; }
   .xora-profile-name { font-size: 21px; }
   .xora-profile-owner-label { padding-inline: 5px; font-size: 9px; }
   .xora-profile-bio { -webkit-line-clamp: 1; font-size: 11px; }
@@ -2131,8 +2131,8 @@ section[aria-label="X-Series live channels"] {
   .xora-profile-page .xora-profile-actions .xora-profile-action--icon { width: 38px; min-width: 38px; }
 }
 @media (max-width: 340px) {
-  .xora-profile-identity { grid-template-columns: 64px minmax(0, 1fr); gap: 8px; }
-  .xora-profile-photo-frame { width: 64px; height: 84px; }
+  .xora-profile-identity { grid-template-columns: 80px minmax(0, 1fr); gap: 8px; }
+  .xora-profile-photo-frame { width: 80px; height: 60px; }
   .xora-profile-name { font-size: 19px; }
   .xora-profile-owner-label { gap: 2px; padding-inline: 4px; }
   .xora-profile-page .xora-profile-actions :where(a, button) { padding-inline: 6px; font-size: 9px; }
