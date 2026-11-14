@@ -2495,6 +2495,7 @@ html[data-channel-compact="true"] .xora-channel-tabs { top:calc(var(--header-h) 
 .xora-channel-tabs-skeleton span { flex:1; border-radius:8px; background:var(--color-hairline); }
 @keyframes xora-channel-shimmer { to { background-position-x:-200%; } }
 html.xora-channel-route { scroll-padding-top:calc(var(--header-h,56px) + var(--compact-h,56px) + var(--tabs-h,48px)); }
+html.xora-channel-route body { background:var(--color-surface); color:var(--color-text-strong); }
 html.xora-channel-route header.fixed { background:var(--color-surface-solid)!important; color:var(--color-text-strong); border-bottom:1px solid var(--color-hairline); }
 html.xora-channel-route .xora-floating-nav { border:1px solid var(--color-hairline); background:var(--color-surface-solid); color:var(--color-text-strong); }
 html.xora-channel-route .xora-floating-nav button { color:var(--color-text-muted); }
