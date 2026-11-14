@@ -10,6 +10,7 @@ import "./chatcn-xora.css";
 import "./chatcn-xora-depth.css";
 import "./chatcn-xora-portrait-depth.css";
 import "./chatcn-community-discovery.css";
+import "./chatcn-community-modern.css";
 import type { ChatRoom, ChatMessage, ProfileLite } from "@/components/chat/ChatPage";
 import { getRoomTitle } from "@/components/chat/ChatPage";
 
@@ -124,10 +125,10 @@ export default function ChatcnMessenger({
     <div className="xora-chat-page xora-community-app h-[100dvh] min-h-[100svh] w-full min-w-0 overflow-hidden">
       <nav className="xora-community-switcher" aria-label="Chat spaces">
         <button type="button" className={section === "messages" ? "is-active shadow-hard-sm" : ""} aria-pressed={section === "messages"} onClick={() => changeSection("messages")}>
-          <MessageCircle className="size-4" /> Messages
+          <MessageCircle className="size-4" aria-hidden="true" /><span>Messages</span>
         </button>
         <button type="button" className={section === "discover" ? "is-active shadow-hard-sm" : ""} aria-pressed={section === "discover"} onClick={() => changeSection("discover")}>
-          <Compass className="size-4" /> Discover
+          <Compass className="size-4" aria-hidden="true" /><span>Discover</span>
         </button>
       </nav>
 
@@ -148,9 +149,15 @@ export default function ChatcnMessenger({
         </div>
       ) : (
         <section className="xora-community-discover-view">
-          <header className="xora-community-discover-heading shadow-hard">
-            <h1>Find your people.</h1>
-            <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
+          <header className="xora-community-discover-heading xora-community-cinematic-hero shadow-hard">
+            <div className="xora-community-hero-copy">
+              <span className="xora-community-hero-kicker">XORATV COMMUNITY</span>
+              <h1>Find your people.</h1>
+              <p className="xora-community-intro">Join a circle, meet people who love the same things, and make the conversation yours.</p>
+            </div>
+            <span className="xora-community-hero-orbit xora-community-hero-orbit-one" aria-hidden="true" />
+            <span className="xora-community-hero-orbit xora-community-hero-orbit-two" aria-hidden="true" />
+            <span className="xora-community-hero-glow" aria-hidden="true" />
           </header>
 
           <div className="xora-community-directory-head">
@@ -169,7 +176,7 @@ export default function ChatcnMessenger({
             <span>Your private messages are separate. Only members of a circle can see its conversation.</span>
           </div>
 
-          <div className="xora-community-directory-list">
+          <div className="xora-community-directory-list xora-community-horizontal-circles">
             {communities.length ? communities.map((room, index) => {
               const memberCount = Object.keys(room.memberIds || {}).length;
               return (
@@ -197,15 +204,6 @@ export default function ChatcnMessenger({
             )}
           </div>
 
-          <aside className="xora-community-start-card">
-            <div className="xora-community-start-copy">
-              <h3>Start your own</h3>
-              <p>Bring your people together in a circle of your own.</p>
-            </div>
-            <button type="button" className="xora-community-start-button pressable" onClick={onOpenNewGroup}>
-              <Plus className="size-4" /> Create circle
-            </button>
-          </aside>
 
           {discoverableError && <p className="xora-community-directory-error" role="status">Community directory connection issue. Retrying automatically.</p>}
         </section>
