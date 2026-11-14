@@ -1,0 +1,556 @@
+/* Unified modern cream-clay refresh for Community Discover and Messages.
+   Visual-only overrides: all existing messaging and membership behavior stays intact. */
+.xora-community-app {
+  --modern-paper: #faf4ee;
+  --modern-card: #fffdfa;
+  --modern-ink: #2b1d18;
+  --modern-muted: #6b5a52;
+  --modern-clay: #b4532f;
+  --modern-sand: #ecd2c2;
+  --modern-shadow: 4px 4px 0 0 var(--modern-ink);
+  --modern-shadow-sm: 2px 2px 0 0 var(--modern-ink);
+  background: var(--modern-paper) !important;
+  color: var(--modern-ink) !important;
+}
+
+/* Tabs: unmistakable labels, compact proportions and a clear selected state. */
+.xora-community-app .xora-community-switcher {
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border: 0;
+  background: var(--modern-paper);
+}
+.xora-community-app .xora-community-switcher button {
+  display: inline-flex !important;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  gap: 9px;
+  border: 1.5px solid var(--modern-ink) !important;
+  border-radius: 999px;
+  background: var(--modern-card) !important;
+  color: var(--modern-ink) !important;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1;
+  box-shadow: var(--modern-shadow-sm) !important;
+  opacity: 1 !important;
+}
+.xora-community-app .xora-community-switcher button span { display: inline !important; visibility: visible !important; }
+.xora-community-app .xora-community-switcher button.is-active {
+  background: var(--modern-ink) !important;
+  color: var(--modern-card) !important;
+  border-color: var(--modern-ink) !important;
+}
+.xora-community-app .xora-community-switcher button:focus-visible,
+.xora-community-app button:focus-visible,
+.xora-community-app input:focus-visible {
+  outline: 3px solid var(--modern-clay);
+  outline-offset: 3px;
+}
+.xora-community-app .xora-community-messages-pane { background: var(--modern-paper); }
+
+/* Discover: quieter editorial hero, cleaner directory hierarchy and a single create action. */
+.xora-community-app .xora-community-discover-view {
+  gap: 16px;
+  padding: 14px 16px max(24px, env(safe-area-inset-bottom));
+  background: var(--modern-paper);
+}
+.xora-community-app .xora-community-discover-heading {
+  padding: 22px 20px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 24px;
+  background: var(--modern-card);
+  color: var(--modern-ink);
+  box-shadow: var(--modern-shadow);
+}
+.xora-community-app .xora-community-discover-heading h1 {
+  font-size: clamp(30px, 6vw, 42px);
+  line-height: 1.02;
+  letter-spacing: -.06em;
+  color: var(--modern-ink);
+}
+.xora-community-app .xora-community-intro {
+  max-width: 470px;
+  margin-top: 10px;
+  color: var(--modern-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.xora-community-app .xora-community-directory-head { align-items: center; gap: 10px; }
+.xora-community-app .xora-community-directory-head h2 {
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -.04em;
+}
+.xora-community-app .xora-community-directory-head p { font-size: 12px; color: var(--modern-muted); }
+.xora-community-app .xora-community-create {
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  background: var(--modern-clay);
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-community-search {
+  min-height: 52px;
+  padding: 0 17px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  background: var(--modern-card);
+  color: var(--modern-ink);
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-community-search input {
+  min-height: 48px;
+  color: var(--modern-ink);
+  font-size: 14px;
+}
+.xora-community-app .xora-community-search input::placeholder { color: var(--modern-muted); }
+.xora-community-app .xora-community-privacy-note {
+  padding: 0 2px;
+  color: var(--modern-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.xora-community-app .xora-community-privacy-note svg { color: var(--modern-ink); }
+.xora-community-app .xora-community-directory-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 13px;
+  padding: 1px 5px 7px 1px;
+}
+.xora-community-app .xora-community-tile {
+  gap: 13px;
+  min-height: 112px;
+  padding: 13px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 22px;
+  background: var(--modern-card);
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-community-tile-art {
+  width: 60px;
+  height: 60px;
+  flex-basis: 60px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 17px;
+  background: var(--modern-sand) !important;
+}
+.xora-community-app .xora-community-tile-copy h3 { font-size: 14px; color: var(--modern-ink); }
+.xora-community-app .xora-community-tile-copy p { font-size: 12px; color: var(--modern-muted); line-height: 1.45; }
+.xora-community-app .xora-community-member-pill {
+  padding: 4px 9px;
+  border: 1px solid var(--modern-ink);
+  background: #f5e8de;
+  color: var(--modern-ink);
+  font-size: 10px;
+}
+.xora-community-app .xora-community-join {
+  min-width: 68px;
+  min-height: 40px;
+  height: 40px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--modern-ink);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: none !important;
+}
+.xora-community-app .xora-community-join:active { transform: translate(1px,1px); }
+.xora-community-app .xora-community-no-results {
+  min-height: 180px;
+  border: 1.5px dashed var(--modern-ink);
+  border-radius: 22px;
+  background: rgba(255,253,250,.55);
+}
+.xora-community-app .xora-community-no-results > div { background: var(--modern-sand); }
+.xora-community-app .xora-community-no-results h3 { color: var(--modern-ink); font-size: 16px; }
+.xora-community-app .xora-community-no-results p { color: var(--modern-muted); font-size: 12px; }
+
+/* Messages: compact, premium inbox with one coherent surface and crisp hard shadows. */
+.xora-community-app .xora-chat-page {
+  background: var(--modern-paper) !important;
+  color: var(--modern-ink) !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-shell {
+  background: var(--modern-paper) !important;
+  box-shadow: none !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-shell > aside {
+  background: var(--modern-paper) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-sidebar-header {
+  min-height: auto;
+  padding: 12px 16px 10px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-brandline {
+  margin-bottom: 13px;
+}
+.xora-community-app .xora-chat-page .xora-chat-heading-row h1 {
+  color: var(--modern-ink);
+  font-size: 30px;
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: -.06em;
+}
+.xora-community-app .xora-chat-page .xora-chat-heading-row p {
+  margin-top: 5px;
+  color: var(--modern-muted);
+  font-size: 13px;
+}
+.xora-community-app .xora-chat-page .xora-chat-create-trigger {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  background: var(--modern-clay);
+  color: white;
+  box-shadow: var(--modern-shadow-sm);
+  font-size: 13px;
+  font-weight: 800;
+}
+.xora-community-app .xora-chat-page .xora-chat-create-trigger::after { display: none; }
+.xora-community-app .xora-chat-page .xora-chat-search-wrap {
+  min-height: 50px;
+  margin: 7px 16px 11px;
+  padding: 0 15px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  background: var(--modern-card);
+  color: var(--modern-ink);
+  box-shadow: var(--modern-shadow-sm) !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-search-wrap input {
+  min-height: 46px;
+  color: var(--modern-ink);
+  font-size: 13px;
+}
+.xora-community-app .xora-chat-page .xora-chat-search-wrap input::placeholder { color: var(--modern-muted); }
+.xora-community-app .xora-chat-page .xora-chat-filter-row {
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.xora-community-app .xora-chat-page .xora-chat-filter-row button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  background: var(--modern-card);
+  color: var(--modern-muted);
+  box-shadow: var(--modern-shadow-sm);
+  font-size: 12px;
+  font-weight: 750;
+}
+.xora-community-app .xora-chat-page .xora-chat-filter-row button.is-selected {
+  background: var(--modern-ink);
+  color: var(--modern-card);
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-chat-page .xora-chat-list-heading {
+  padding: 0 17px 8px;
+  color: var(--modern-muted);
+  font-size: 11px;
+  letter-spacing: .13em;
+}
+.xora-community-app .xora-chat-page .xora-chat-list-heading span:last-child {
+  color: var(--modern-ink);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.xora-community-app .xora-chat-page .xora-chat-conversation-list {
+  padding: 2px 16px max(18px, env(safe-area-inset-bottom));
+}
+.xora-community-app .xora-chat-page .xora-chat-conversation-item {
+  width: 100%;
+  min-height: 82px;
+  margin: 0 0 12px;
+  padding: 12px;
+  gap: 12px;
+  border: 1.5px solid var(--modern-ink) !important;
+  border-radius: 20px;
+  background: var(--modern-card) !important;
+  box-shadow: var(--modern-shadow-sm) !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-conversation-item:hover,
+.xora-community-app .xora-chat-page .xora-chat-conversation-item.is-active {
+  background: #fff8f1 !important;
+  box-shadow: var(--modern-shadow) !important;
+  transform: translate(-1px,-1px);
+}
+.xora-community-app .xora-chat-page .xora-chat-avatar-image,
+.xora-community-app .xora-chat-page .xora-chat-avatar-fallback {
+  width: 48px;
+  height: 48px;
+  border: 1.5px solid var(--modern-ink);
+  background: var(--modern-sand);
+  box-shadow: 2px 2px 0 var(--modern-ink) !important;
+}
+.xora-community-app .xora-chat-page .xora-chat-conversation-title {
+  color: var(--modern-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+.xora-community-app .xora-chat-page .xora-chat-conversation-time {
+  color: var(--modern-muted);
+  font-size: 11px;
+}
+.xora-community-app .xora-chat-page .xora-chat-conversation-preview {
+  color: var(--modern-muted);
+  font-size: 12px;
+}
+.xora-community-app .xora-chat-page .xora-chat-kind {
+  color: var(--modern-clay);
+  font-size: 11px;
+  font-weight: 750;
+}
+.xora-community-app .xora-chat-page .xora-chat-row-chevron { color: var(--modern-muted); }
+.xora-community-app .xora-chat-page .xora-chat-empty-state {
+  min-height: 260px;
+  margin: 8px 0;
+  padding: 24px 18px;
+  border: 1.5px dashed var(--modern-ink);
+  border-radius: 24px;
+  background: rgba(255,253,250,.55);
+}
+.xora-community-app .xora-chat-page .xora-chat-empty-actions button {
+  min-height: 44px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 999px;
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-chat-page .xora-chat-empty-actions button::after { display: none; }
+.xora-community-app .xora-chat-page .xora-chat-empty-actions button:first-child {
+  background: var(--modern-clay);
+  color: white;
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-chat-page .xora-chat-empty-actions button:last-child {
+  background: var(--modern-card);
+  color: var(--modern-ink);
+}
+.xora-community-app .xora-chat-page .xora-chat-create-menu {
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 18px;
+  background: var(--modern-card);
+  box-shadow: var(--modern-shadow);
+}
+.xora-community-app .xora-chat-page .xora-chat-create-menu button {
+  min-height: 44px;
+  color: var(--modern-ink);
+}
+.xora-community-app .xora-chat-page .xora-chat-desktop-empty {
+  color: var(--modern-ink);
+}
+.xora-community-app .xora-chat-page .xora-chat-desktop-empty p { color: var(--modern-muted); }
+
+@media (max-width: 640px) {
+  .xora-community-app .xora-community-discover-view { gap: 14px; padding: 12px 16px 24px; }
+  .xora-community-app .xora-community-discover-heading { padding: 20px 18px; border-radius: 22px; }
+  .xora-community-app .xora-community-directory-head h2 { font-size: 16px; }
+  .xora-community-app .xora-community-directory-head p { max-width: 170px; font-size: 11px; }
+  .xora-community-app .xora-community-create { min-height: 44px; padding-inline: 13px; }
+  .xora-community-app .xora-community-tile { min-height: 104px; gap: 10px; padding: 11px; }
+  .xora-community-app .xora-community-tile-art { width: 54px; height: 54px; flex-basis: 54px; }
+  .xora-community-app .xora-community-join { min-width: 62px; min-height: 40px; }
+  .xora-community-app .xora-chat-page .xora-chat-sidebar-header { padding: 10px 15px 9px; }
+  .xora-community-app .xora-chat-page .xora-chat-heading-row h1 { font-size: 28px; }
+  .xora-community-app .xora-chat-page .xora-chat-create-trigger { min-height: 44px; }
+  .xora-community-app .xora-chat-page .xora-chat-search-wrap { margin: 7px 15px 10px; }
+  .xora-community-app .xora-chat-page .xora-chat-conversation-list { padding-inline: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-community-app *,
+  .xora-community-app *::before,
+  .xora-community-app *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+
+/* Hybrid visual direction: cinematic clay hero + real live-room horizontal discovery. */
+.xora-community-app .xora-community-cinematic-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 218px;
+  align-items: flex-start;
+  overflow: hidden;
+  padding: 25px 22px;
+  border-radius: 26px;
+  border: 1.5px solid var(--modern-ink);
+  background: linear-gradient(118deg, #2b150e 0%, #592516 52%, #b4532f 100%);
+  color: #fffdfa;
+  box-shadow: 4px 4px 0 0 var(--modern-ink);
+}
+.xora-community-app .xora-community-hero-copy {
+  position: relative;
+  z-index: 2;
+  width: min(76%, 390px);
+}
+.xora-community-app .xora-community-hero-kicker {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #f5c8a8;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .19em;
+}
+.xora-community-app .xora-community-cinematic-hero h1 {
+  max-width: 360px;
+  color: #fffdfa;
+  font-size: clamp(32px, 7vw, 44px);
+  line-height: .99;
+  letter-spacing: -.065em;
+  font-weight: 900;
+}
+.xora-community-app .xora-community-cinematic-hero .xora-community-intro {
+  max-width: 330px;
+  margin-top: 12px;
+  color: rgb(255 253 250 / .88);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.xora-community-app .xora-community-hero-orbit {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  border: 1px solid rgb(255 244 232 / .24);
+  border-radius: 999px;
+  pointer-events: none;
+}
+.xora-community-app .xora-community-hero-orbit-one {
+  width: 250px;
+  height: 250px;
+  right: -65px;
+  top: -55px;
+}
+.xora-community-app .xora-community-hero-orbit-two {
+  width: 180px;
+  height: 180px;
+  right: -30px;
+  top: -18px;
+  border-width: 2px;
+  border-color: rgb(255 244 232 / .16);
+}
+.xora-community-app .xora-community-hero-glow {
+  position: absolute;
+  z-index: 0;
+  width: 155px;
+  height: 155px;
+  right: -12px;
+  bottom: -82px;
+  border-radius: 50%;
+  background: #e47a45;
+  opacity: .48;
+  filter: blur(1px);
+}
+.xora-community-app .xora-community-horizontal-circles {
+  display: flex;
+  width: calc(100% + 32px);
+  overflow-x: auto;
+  overflow-y: visible;
+  gap: 12px;
+  padding: 3px 20px 14px 2px;
+  margin-right: -16px;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  grid-template-columns: none;
+}
+.xora-community-app .xora-community-horizontal-circles::-webkit-scrollbar { display: none; }
+.xora-community-app .xora-community-horizontal-circles .xora-community-tile {
+  display: flex;
+  width: 148px;
+  min-width: 148px;
+  min-height: 186px;
+  flex: 0 0 148px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 19px;
+  scroll-snap-align: start;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-tile-art {
+  width: 100%;
+  height: 78px;
+  flex: 0 0 78px;
+  border-radius: 13px;
+  background: var(--modern-sand) !important;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-tile-art svg {
+  width: 29px;
+  height: 29px;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-tile-copy {
+  width: 100%;
+  flex: 1 1 auto;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-tile-copy h3 {
+  font-size: 12px;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-tile-copy p {
+  display: none;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-member-pill {
+  margin-top: 5px;
+  font-size: 9px;
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-join {
+  width: 100%;
+  min-height: 35px;
+  height: 35px;
+  margin-top: auto;
+  background: transparent;
+  color: var(--modern-ink);
+}
+.xora-community-app .xora-community-horizontal-circles .xora-community-join:disabled {
+  opacity: .55;
+}
+.xora-community-app .xora-chat-page .xora-chat-heading-row {
+  padding: 17px 16px;
+  border: 1.5px solid var(--modern-ink);
+  border-radius: 22px;
+  background: linear-gradient(110deg, #f6dfcf 0%, #f4c6a9 100%);
+  box-shadow: var(--modern-shadow-sm);
+}
+.xora-community-app .xora-chat-page .xora-chat-heading-row h1 {
+  font-size: 31px;
+  letter-spacing: -.065em;
+}
+.xora-community-app .xora-chat-page .xora-chat-heading-row p {
+  color: #594238;
+}
+.xora-community-app .xora-chat-page .xora-chat-create-trigger {
+  min-height: 44px;
+  border-radius: 999px;
+  background: var(--modern-clay);
+  box-shadow: var(--modern-shadow-sm);
+}
+@media (max-width: 640px) {
+  .xora-community-app .xora-community-cinematic-hero {
+    min-height: 204px;
+    padding: 22px 18px;
+  }
+  .xora-community-app .xora-community-hero-copy { width: 82%; }
+  .xora-community-app .xora-community-cinematic-hero h1 { font-size: 35px; }
+  .xora-community-app .xora-community-horizontal-circles {
+    width: calc(100% + 32px);
+    margin-right: -16px;
+  }
+  .xora-community-app .xora-community-horizontal-circles .xora-community-tile {
+    width: 144px;
+    min-width: 144px;
+    flex-basis: 144px;
+  }
+}
