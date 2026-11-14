@@ -14,7 +14,7 @@ export type ChannelHeaderProps = {
 };
 
 export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare }: ChannelHeaderProps) {
-  const nameRowRef = useRef<HTMLElement>(null!);
+  const nameRowRef = useRef<HTMLDivElement>(null!);
   const observerOptions = useMemo<IntersectionObserverInit>(() => ({ threshold: 0, rootMargin: "-56px 0px 0px 0px" }), []);
   const nameRowInView = useInView(nameRowRef, observerOptions);
   const compactVisible = !nameRowInView;
