@@ -889,6 +889,7 @@ export function VideoPlayer(props: Props) {
       feed={props.feed}
       onClose={props.onClose}
       cinemaMode={props.cinemaMode}
+      externalPoster={props.externalPoster}
     />
   ) : (
     <NativeVideoPlayer {...props} />
