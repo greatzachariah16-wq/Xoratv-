@@ -37,6 +37,7 @@ async function loadXSeriesChannels(): Promise<XSeriesLiveChannel[]> {
 
 const FILTERS: ShelfFilter[] = ["All", "Movies", "Series", "Action", "Romance"];
 const PAGE_SIZE = 24;
+const EMPTY_CHANNELS: XSeriesLiveChannel[] = [];
 
 function channelType(channel: XSeriesLiveChannel) {
   return (channel.categories || []).includes("series") ? "SERIES" : "MOVIES";
@@ -115,7 +116,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
     retry: 2,
   });
 
-  const channels = query.data || [];
+  const channels = query.data ?? EMPTY_CHANNELS;
   const visible = useMemo(
     () =>
       channels.filter((channel) => {
