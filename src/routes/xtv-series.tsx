@@ -267,7 +267,8 @@ function XTvSeriesPage() {
   }, [allItems, genre, search, userSignals, user?.id]);
 
   const featured = filtered[0];
-  const seriesShelf = filtered.filter(isSeriesTitle);\n  const shelves = filtered.filter((item) => item.id !== featured?.id && !isSeriesTitle(item));
+  const seriesShelf = filtered.filter(isSeriesTitle);
+  const shelves = filtered.filter((item) => item.id !== featured?.id && !isSeriesTitle(item));
 
   return (
     <AppShell wide extraWide immersive={activeSection === "cinema"}>
