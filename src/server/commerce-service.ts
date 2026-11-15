@@ -2109,8 +2109,8 @@ export async function getCreatorDashboard(userId: string) {
     queryRtdb("commerce/creatorReferralClicks"),
   ]);
   const vasCommissions = await getCreatorVasCommissions(userId);
-  const pendingVasCommissions = vasCommissions.filter((item: any) => item.status === "pending" && item.currency === "NGN");
-  const eligibleVasCommissions = vasCommissions.filter((item: any) => item.status === "eligible" && item.currency === "NGN");
+  const pendingVasCommissions = vasCommissions.filter((item) => item.status === "pending" && item.currency === "NGN");
+  const eligibleVasCommissions = vasCommissions.filter((item) => item.status === "eligible" && item.currency === "NGN");
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
   const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
   const courseOrders = courseOrdersRaw ? Object.values(courseOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
@@ -2141,8 +2141,8 @@ export async function getCreatorDashboard(userId: string) {
   }));
   const legacyEligibleIds = new Set(legacyEligibleAttributions.map((item) => String(item.referredUserId)));
   const vasEligibleAttributions = eligibleVasCommissions
-    .filter((item: any) => !legacyEligibleIds.has(String(item.referredUserId)))
-    .map((item: any) => ({
+    .filter((item) => !legacyEligibleIds.has(String(item.referredUserId)))
+    .map((item) => ({
       referredUserId: item.referredUserId, status: "eligible",
       registeredAt: referralAttributions.find((entry) => entry.referredUserId === item.referredUserId)?.registeredAt || null,
       qualifiedAt: item.eligibleAt, amount: Number(item.amount || 0),
@@ -2166,15 +2166,15 @@ export async function getCreatorDashboard(userId: string) {
   const legacyReferralBalance = referralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0);
   const legacyReferredIds = new Set(referralClaims.map((event) => String(event.referredUserId)));
   const eligibleVasBalance = eligibleVasCommissions
-    .filter((item: any) => !legacyReferredIds.has(String(item.referredUserId)))
-    .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+    .filter((item) => !legacyReferredIds.has(String(item.referredUserId)))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const pendingVasBalance = pendingVasCommissions
     .filter((item: any) => !legacyReferredIds.has(String(item.referredUserId)))
     .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const referralEarnings = {
     balance: Math.round((legacyReferralBalance + eligibleVasBalance) * 100) / 100,
     pendingBalance: Math.round(pendingVasBalance * 100) / 100,
-    successfulReferrals: new Set([...referralClaims.map((event) => String(event.referredUserId)), ...eligibleVasCommissions.map((item: any) => String(item.referredUserId))]).size,
+    successfulReferrals: new Set([...referralClaims.map((event) => String(event.referredUserId)), ...eligibleVasCommissions.map((item) => String(item.referredUserId))]).size,
     activeAudience: [...successfulClaimsByUser.values()].filter((count) => count >= 3).length,
     minimumWithdrawal: 500,
     currency: "NGN" as const,
@@ -2199,8 +2199,8 @@ export async function getCreatorDashboard(userId: string) {
       eligibleBalance: Math.round(eligibleVasBalance * 100) / 100,
       pendingCount: pendingVasCommissions.length,
       eligibleCount: eligibleVasCommissions.length,
-      subscriptionReferrals: vasCommissions.filter((item: any) => item.status === "pending" || item.status === "eligible").length,
-      entries: vasCommissions.slice(0, 50).map((item: any) => ({ referredUserId: item.referredUserId, amount: Number(item.amount || 0), grossAmount: Number(item.grossAmount || 0), currency: item.currency || "NGN", status: item.status, paidAt: item.paidAt, eligibleAt: item.eligibleAt })),
+      subscriptionReferrals: vasCommissions.filter((item) => item.status === "pending" || item.status === "eligible").length,
+      entries: vasCommissions.slice(0, 50).map((item) => ({ referredUserId: item.referredUserId, amount: Number(item.amount || 0), grossAmount: Number(item.grossAmount || 0), currency: item.currency || "NGN", status: item.status, paidAt: item.paidAt, eligibleAt: item.eligibleAt })),
     },
     referralEarnings,
     referralTracking,
