@@ -103,7 +103,7 @@ function isSeriesTitle(item: XTvSeriesItem): boolean {
   return Boolean(
     (item.seasons || 0) > 0 ||
       (item.episodesCount || 0) > 0 ||
-      /\\b(series|season|episodic|tv show|mini-series|docuseries)\\b/.test(metadata),
+      /\b(series|season|episodic|tv show|mini-series|docuseries)\b/.test(metadata),
   );
 }
 
