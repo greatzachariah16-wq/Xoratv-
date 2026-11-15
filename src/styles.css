@@ -3092,6 +3092,7 @@ html.xora-channel-route .ad-slot::before {
   line-height: 16px;
 }
 @media (max-width: 639px) {
+  html.xora-channel-route { --tabs-h: 53px; }
   .xora-channel-page { max-width: none; }
   .xora-channel-hero { border-radius: 20px; }
   .xora-channel-cover { height: 144px; border-radius: 19px 19px 0 0; }
@@ -3132,7 +3133,6 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-stats strong { font-size: 14px; }
   .xora-channel-stats small { font-size: 9px; }
   .xora-channel-tabs {
-    --tabs-h: 53px;
     top: var(--header-h);
     height: 53px;
     --tab-padding: 4px;
