@@ -51,8 +51,8 @@ function BankSheet({ open, selected, onSelect, onClose }: {
   if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[130] flex items-end" role="presentation">
-      <button type="button" aria-label="Close bank picker" onClick={onClose} className="absolute inset-0 bg-[rgba(42,31,26,.45)] backdrop-blur-[3px] motion-safe:animate-[xoraBankFade_.18s_ease-out]"/>
-      <section role="dialog" aria-modal="true" aria-label="Select your bank" className="relative flex max-h-[82dvh] w-full flex-col rounded-t-[32px] border border-border bg-[var(--channel-surface-solid)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(42,31,26,.18)] motion-safe:animate-[xoraBankUp_.22s_ease-out]">
+      <button type="button" aria-label="Close bank picker" onClick={onClose} className="absolute inset-0 bg-[color-mix(in_oklab,var(--channel-text-strong)_45%,transparent)] backdrop-blur-[3px] motion-safe:animate-[xoraBankFade_.18s_ease-out]"/>
+      <section role="dialog" aria-modal="true" aria-label="Select your bank" className="relative flex max-h-[82dvh] w-full flex-col rounded-t-[32px] border border-border bg-[var(--channel-surface-solid)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 shadow-lift motion-safe:animate-[xoraBankUp_.22s_ease-out]">
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-[var(--channel-hairline)]"/>
         <div className="mb-4 flex items-center justify-between"><h3 className="text-lg font-semibold text-[var(--channel-text-strong)]">Select your bank</h3><button type="button" onClick={onClose} aria-label="Close bank picker" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground"><X className="size-4"/></button></div>
         <label className="relative mb-3 block">
@@ -70,7 +70,6 @@ function BankSheet({ open, selected, onSelect, onClose }: {
           }) : <p className="px-3 py-8 text-center text-sm leading-6 text-muted-foreground">No bank matches “{query}”. Check the spelling.</p>}
         </div>
       </section>
-      <style>{`@keyframes xoraBankFade { from { opacity: 0 } to { opacity: 1 } } @keyframes xoraBankUp { from { transform: translateY(24px); opacity: .8 } to { transform: translateY(0); opacity: 1 } } @media (prefers-reduced-motion: reduce) { .xora-bank-motion { animation: none !important; transition: none !important; } }`}</style>
     </div>, document.body
   );
 }
@@ -96,8 +95,8 @@ export function PayoutBankModal({ open, onClose, initialValues, onSave }: Props)
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(42,31,26,.52)] p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="payout-bank-title">
-      <section className="flex max-h-[calc(100dvh-24px-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-border bg-[var(--channel-surface-solid)] shadow-[0_18px_55px_rgba(42,31,26,.22)]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[color-mix(in_oklab,var(--channel-text-strong)_52%,transparent)] p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="payout-bank-title">
+      <section className="flex max-h-[calc(100dvh-24px-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-border bg-[var(--channel-surface-solid)] shadow-lift">
         <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5 sm:px-6 sm:pt-6">
           <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-[var(--channel-accent)]">Secure payout setup</p><h3 id="payout-bank-title" className="mt-1 text-xl font-semibold text-[var(--channel-text-strong)]">Where should we send your earnings?</h3><p className="mt-2 text-xs leading-5 text-muted-foreground">Payouts go to this account. Make sure the name matches your bank.</p></div>
           <button type="button" onClick={onClose} aria-label="Close bank details" className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"><X className="size-4"/></button>
@@ -110,7 +109,7 @@ export function PayoutBankModal({ open, onClose, initialValues, onSave }: Props)
         </div>
         <div className="sticky bottom-0 flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-[var(--channel-surface-solid)] px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-end sm:px-6">
           <button type="button" onClick={onClose} className="h-14 rounded-full border border-border bg-white px-6 text-sm font-semibold text-[var(--channel-text-strong)] transition active:scale-[.98]">Cancel</button>
-          <button type="button" onClick={async () => { setSaving(true); setError(""); try { await onSave({ accountName: accountName.trim(), accountNumber, bankName }); onClose(); } catch (cause) { setError(cause instanceof Error ? "Couldn't save. Try again." : "Couldn't save. Try again."); } finally { setSaving(false); } }} disabled={!valid || saving} className="h-14 rounded-full bg-gradient-to-r from-[var(--channel-accent)] to-[color-mix(in_oklab,var(--channel-accent),#71351f_22%)] px-6 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(181,80,46,.22)] transition active:scale-[.98] disabled:scale-100 disabled:opacity-45 disabled:shadow-none">{saving ? <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin"/>Saving…</span> : "Save bank details"}</button>
+          <button type="button" onClick={async () => { setSaving(true); setError(""); try { await onSave({ accountName: accountName.trim(), accountNumber, bankName }); onClose(); } catch (cause) { setError(cause instanceof Error ? "Couldn't save. Try again." : "Couldn't save. Try again."); } finally { setSaving(false); } }} disabled={!valid || saving} className="h-14 rounded-full bg-gradient-to-r from-[var(--channel-accent)] to-[color-mix(in_oklab,var(--channel-accent),var(--channel-text-strong)_22%)] px-6 text-sm font-semibold text-white shadow-[0_7px_18px_color-mix(in_oklab,var(--channel-accent)_22%,transparent)] transition active:scale-[.98] disabled:scale-100 disabled:opacity-45 disabled:shadow-none">{saving ? <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin"/>Saving…</span> : "Save bank details"}</button>
         </div>
       </section>
       <BankSheet open={sheetOpen} selected={bankName} onSelect={bank => setBankName(bank.name)} onClose={() => setSheetOpen(false)}/>
