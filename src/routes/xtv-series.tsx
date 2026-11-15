@@ -63,11 +63,11 @@ function rankAndShuffleXSeries(items: XTvSeriesItem[], signals?: UserSignals | n
   }).sort((a, b) => b.score - a.score).map(({ item }) => item);
 }
 
-export function cleanTitle(value: string): string {
+function cleanTitle(value: string): string {
   return value
     .replace(/\p{Extended_Pictographic}/gu, "")
     .replace(/\s*(?:\||[-–—])\s*(?:CLIP|4K|8K|HD|UHD|FULL\s*HD|OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|TRAILER|TEASER)\b.*$/i, "")
-    .replace(/\s*[\[(](?:OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|4K|8K|HD|UHD|CLIP|TRAILER|TEASER)[^\])]*[\])]/gi, "")
+    .replace(/\s*\((?:OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|4K|8K|HD|UHD|CLIP|TRAILER|TEASER)[^)]*\)|\s*\[(?:OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|4K|8K|HD|UHD|CLIP|TRAILER|TEASER)[^\]]*\]/gi, "")
     .replace(/\b(?:4K|8K)\b/gi, "")
     .replace(/(?:\.{2,}|…)+$/g, "")
     .replace(/\s+/g, " ")
