@@ -407,7 +407,7 @@ export function ProviderEmbedPlayer({
           </span>
         </button>
       ) : null}
-      {cinemaMode && !playerClosed ? (
+      {cinemaMode && !playerClosed && hasStarted ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex items-center justify-between bg-gradient-to-t from-black/90 via-black/45 to-transparent px-3 pb-3 pt-10">
           <div className="pointer-events-auto flex items-center gap-2">
             <button
