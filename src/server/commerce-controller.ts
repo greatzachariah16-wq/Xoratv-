@@ -5,7 +5,7 @@ import {
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, refreshMeleDataRewardClaim, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink, recordCreatorReferralClick, createCreatorPayoutRequest, getCreatorPayoutRequests, getAdminCreatorPayoutRequests,
-  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization, recordVasReferralBillingEvent, recordVasReferralCancellation,
+  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization, recordVasReferralBillingEvent, recordVasReferralCancellation, createVasBillingReference, getVasBillingReferenceUserId,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
@@ -136,6 +136,16 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     return json({ ok: false, error: "This promotion programme has been retired." }, 410);
   }
 
+  if (path === "/api/commerce/vas/billing-reference" && request.method === "POST") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in before starting a VAS subscription." }, 401);
+    try {
+      return json({ ok: true, reference: await createVasBillingReference(authenticatedUserId) });
+    } catch (e) {
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create a billing reference." }, 400);
+    }
+  }
+
   if (path === "/api/webhooks/vas" && request.method === "GET") {
     return json({ ok: true, service: "xora-vas-billing", ready: Boolean(process.env.XORA_VAS_WEBHOOK_SECRET?.trim()), endpoint: "/api/webhooks/vas" });
   }
@@ -149,7 +159,8 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       const eventType = String(body.eventType || body.event || "").toLowerCase();
       const status = String(body.status || "").toLowerCase();
       const eventId = String(body.transactionId || body.eventId || "");
-      const userId = String(body.xoraUserId || body.userId || "");
+      const reference = String(body.xoraReference || body.reference || "");
+      const userId = String(body.xoraUserId || body.userId || await getVasBillingReferenceUserId(reference) || "");
       const provider = String(body.provider || "vas");
       const occurredAt = body.occurredAt ? String(body.occurredAt) : undefined;
       if (["subscription.cancelled", "subscription.canceled", "billing.reversed", "subscription.expired"].includes(eventType) || ["cancelled", "canceled", "reversed", "refunded"].includes(status)) {
