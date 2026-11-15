@@ -5,11 +5,10 @@ import {
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, refreshMeleDataRewardClaim, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink, recordCreatorReferralClick, createCreatorPayoutRequest, getCreatorPayoutRequests, getAdminCreatorPayoutRequests,
-  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization,
+  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization, recordVasReferralBillingEvent, recordVasReferralCancellation, createVasBillingReference, getVasBillingReferenceUserId,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
-import { listSpecialPrizes, saveSpecialPrize, setSpecialPrizeStatus, deleteSpecialPrize, recordSpecialPrizeClick, getSpecialPrizesBanner, saveSpecialPrizesBanner, resolveSpecialPrizePromotionClick, listSpecialPrizeTraffic, createGoldenGooseTest, getGoldenGooseTest, renderGoldenGooseTestPage, getGoldenGoosePostbackUrl } from "./special-prizes-service";
 
 
 const headers = {
@@ -27,8 +26,6 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
 
   if (path.startsWith("/s/") && request.method === "GET") {
     const token = path.slice(3).split("/")[0];
-    const specialPrizeClick = await resolveSpecialPrizePromotionClick(token, request, url);
-    if (specialPrizeClick) return Response.redirect(new URL(specialPrizeClick.targetPath, url.origin), 302);
     const promotion = await resolvePromotionLink(token);
     if (!promotion || promotion.service === "special-prize") return new Response("Promotion link not found or no longer active.", { status: 404, headers });
     const redirect = new Response(null, { status: 302, headers: { Location: new URL(promotion.targetPath, url.origin).toString() } });
@@ -40,7 +37,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     }
     return redirect;
   }
-  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/discount-cpa"))) {
+  if (request.method === "OPTIONS" && (path.startsWith("/api/commerce") || path.startsWith("/api/webhooks/mele") || path.startsWith("/api/webhooks/vtushare") || path.startsWith("/api/webhooks/vas") || path.startsWith("/api/webhooks/discount-cpa"))) {
     return new Response(null, { status: 204, headers });
   }
 
@@ -135,296 +132,51 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     }
   }
 
-  if (path === "/api/commerce/special-prizes" && request.method === "GET") {
+  if (path.startsWith("/api/commerce/special-prizes") || path.startsWith("/api/admin/commerce/special-prizes") || path.startsWith("/goldengoose/test/")) {
+    return json({ ok: false, error: "This promotion programme has been retired." }, 410);
+  }
+
+  if (path === "/api/commerce/vas/billing-reference" && request.method === "POST") {
+    const authenticatedUserId = await getAuthenticatedUserId(request);
+    if (!authenticatedUserId) return json({ ok: false, error: "Sign in before starting a VAS subscription." }, 401);
     try {
-      return json({ ok: true, prizes: await listSpecialPrizes(false), banner: await getSpecialPrizesBanner() });
+      return json({ ok: true, reference: await createVasBillingReference(authenticatedUserId) });
     } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load special prizes." }, 500);
+      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create a billing reference." }, 400);
     }
   }
 
-  if (path === "/api/commerce/special-prizes/click" && request.method === "POST") {
-    try {
-      const body = await request.json();
-      if (!body.id) return json({ ok: false, error: "Prize ID is required." }, 400);
-      return json({ ok: true, click: await recordSpecialPrizeClick(String(body.id)) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "This prize is no longer available." }, 400);
-    }
+  if (path === "/api/webhooks/vas" && request.method === "GET") {
+    return json({ ok: true, service: "xora-vas-billing", ready: Boolean(process.env.XORA_VAS_WEBHOOK_SECRET?.trim()), endpoint: "/api/webhooks/vas" });
   }
 
-
-  if (path.startsWith("/goldengoose/test/") && request.method === "GET") {
+  if (path === "/api/webhooks/vas" && request.method === "POST") {
+    const secret = process.env.XORA_VAS_WEBHOOK_SECRET?.trim() || "";
+    if (!secret) return json({ ok: false, error: "VAS webhook is not configured." }, 503);
+    if (request.headers.get("authorization") !== `Bearer ${secret}`) return json({ ok: false, error: "Unauthorized VAS callback." }, 401);
     try {
-      const testId = path.slice("/goldengoose/test/".length).split("/")[0];
-      return await renderGoldenGooseTestPage(testId);
-    } catch (e) {
-      return new Response(e instanceof Error ? e.message : "Golden Goose test link not found.", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/test" && request.method === "POST") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      const snippet = String(body.scriptSnippet || "").trim();
-      if (!snippet) return json({ ok: false, error: "Paste the Golden Goose campaign code first." }, 400);
-      const test = await createGoldenGooseTest(url.origin, snippet);
-      return json({ ok: true, test });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create Golden Goose test link." }, 400);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/test" && request.method === "GET") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const testId = url.searchParams.get("id") || "";
-      const test = await getGoldenGooseTest(testId);
-      return json({ ok: true, test: {
-        testId: test.id,
-        testUrl: `${url.origin}/goldengoose/test/${test.id}`,
-        postbackUrl: getGoldenGoosePostbackUrl(url.origin),
-        status: test.status,
-        prizeTitle: test.prizeTitle,
-        receivedAt: test.receivedAt,
-        eventId: test.eventId,
-        event: test.event,
-        profit: test.profit,
-      } });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not read Golden Goose test." }, 404);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/traffic" && request.method === "GET") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      return json({ ok: true, traffic: await listSpecialPrizeTraffic(250) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load Special Prize traffic." }, 500);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/banner" && request.method === "GET") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      return json({ ok: true, banner: await getSpecialPrizesBanner() });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load Special Prizes banner." }, 500);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/banner" && request.method === "POST") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      return json({ ok: true, banner: await saveSpecialPrizesBanner({
-        enabled: body.enabled === true,
-        imageUrl: String(body.imageUrl || ""),
-        title: String(body.title ?? ""),
-        subtitle: String(body.subtitle ?? ""),
-      }) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not save Special Prizes banner." }, 400);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes" && request.method === "GET") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      return json({ ok: true, prizes: await listSpecialPrizes(true) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not load special prizes." }, 500);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes" && request.method === "POST") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      if (!body.title || (!body.campaignId && !body.scriptSnippet)) return json({ ok: false, error: "Title and either a campaign ID or offer script are required." }, 400);
-      const prize = await saveSpecialPrize({
-        id: body.id ? String(body.id) : undefined,
-        title: String(body.title),
-        description: body.description == null ? "" : String(body.description),
-        details: body.details == null ? "" : String(body.details),
-        steps: Array.isArray(body.steps) ? body.steps.map((step: unknown) => String(step || "")) : [],
-        smsInstructions: body.smsInstructions == null ? "" : String(body.smsInstructions),
-        screenshots: Array.isArray(body.screenshots) ? body.screenshots.map((item: unknown) => String(item || "")) : [],
-        campaignId: body.campaignId ? String(body.campaignId) : "",
-        imageUrl: body.imageUrl ? String(body.imageUrl) : "",
-        scriptSnippet: body.scriptSnippet ? String(body.scriptSnippet) : "",
-        currency: body.currency ? String(body.currency) : "USD",
-        status: body.status === "paused" ? "paused" : "active",
-      });
-      return json({ ok: true, prize });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not save special prize." }, 400);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/status" && request.method === "POST") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      if (!body.id || (body.status !== "active" && body.status !== "paused")) return json({ ok: false, error: "Prize ID and valid status are required." }, 400);
-      return json({ ok: true, prize: await setSpecialPrizeStatus(String(body.id), body.status) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not update prize status." }, 400);
-    }
-  }
-
-  if (path === "/api/admin/commerce/special-prizes/delete" && request.method === "POST") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      if (!body.id) return json({ ok: false, error: "Prize ID is required." }, 400);
-      return json({ ok: true, result: await deleteSpecialPrize(String(body.id)) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not delete special prize." }, 400);
-    }
-  }
-
-  if (path === "/api/commerce/vtushare/plans" && request.method === "GET") {
-    try {
-      return json({ ok: true, plans: await getVtusharePlans(url.searchParams.get("refresh") === "1") });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare plan catalog error." }, 500);
-    }
-  }
-
-  if (path === "/api/admin/commerce/vtushare-health" && request.method === "GET") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    return json({ ok: true, health: await getVtushareHealth() });
-  }
-
-  if (path === "/api/admin/commerce/vtushare-test-purchase" && request.method === "POST") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      const body = await request.json();
-      if (!body.bundleId || !body.networkId || !body.typeId || !body.phoneNumber) {
-        return json({ ok: false, error: "Bundle, network, type and recipient number are required." }, 400);
+      const body = await request.json() as Record<string, unknown>;
+      const eventType = String(body.eventType || body.event || "").toLowerCase();
+      const status = String(body.status || "").toLowerCase();
+      const eventId = String(body.transactionId || body.eventId || "");
+      const reference = String(body.xoraReference || body.reference || "");
+      const userId = String(body.xoraUserId || body.userId || await getVasBillingReferenceUserId(reference) || "");
+      const provider = String(body.provider || "vas");
+      const occurredAt = body.occurredAt ? String(body.occurredAt) : undefined;
+      if (["subscription.cancelled", "subscription.canceled", "billing.reversed", "subscription.expired"].includes(eventType) || ["cancelled", "canceled", "reversed", "refunded"].includes(status)) {
+        const result = await recordVasReferralCancellation({ eventId, userId, provider, occurredAt });
+        return json({ ok: true, ...result });
       }
-      return json({
-        ok: true,
-        test: await testVtusharePurchase({
-          bundleId: Number(body.bundleId),
-          networkId: Number(body.networkId),
-          typeId: Number(body.typeId),
-          phoneNumber: String(body.phoneNumber),
-        }),
+      if (!["subscription.billing.success", "billing.success"].includes(eventType) || !["success", "paid"].includes(status)) {
+        return json({ ok: true, ignored: true, reason: "not-a-successful-paid-billing-event" });
+      }
+      const result = await recordVasReferralBillingEvent({
+        eventId, userId, amount: Number(body.amount), currency: String(body.currency || "NGN"), provider, occurredAt,
       });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare test purchase failed." }, 400);
-    }
-  }
-
-  if (path === "/api/admin/commerce/vtushare-account" && request.method === "GET") {
-    const session = verifyAdminSession(request);
-    if (!session.valid) return json({ ok: false, error: session.error || "Unauthorized." }, 401);
-    try {
-      return json({ ok: true, account: await getVtushareAccount() });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "VTUshare account error." }, 500);
-    }
-  }
-
-  if (path === "/api/commerce/wallet" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, wallet: await getWallet(userId) });
-  }
-
-  if (path === "/api/commerce/wallet/deposit" && request.method === "POST") {
-    try {
-      const body = await request.json();
-      if (!body.userId || body.amount === undefined) return json({ ok: false, error: "User and amount are required." }, 400);
-      return json({ ok: true, deposit: await createWalletDeposit({ userId: String(body.userId), amount: Number(body.amount) }) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create wallet funding request." }, 400);
-    }
-  }
-
-  if (path === "/api/commerce/wallet/deposit/status" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    const reference = url.searchParams.get("reference");
-    if (!userId || !reference) return json({ ok: false, error: "User and deposit reference are required." }, 400);
-    try {
-      return json({ ok: true, deposit: await getWalletDepositStatus(reference, userId) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not read wallet funding status." }, 404);
-    }
-  }
-
-  if (path === "/api/commerce/data/plans" && request.method === "GET") {
-    try {
-      return json({ ok: true, plans: await getPublicDataPlans(url.searchParams.get("refresh") === "1") });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Plan catalog error" }, 500);
-    }
-  }
-
-  if (path === "/api/commerce/data/quote" && request.method === "GET") {
-    try {
-      const userId = url.searchParams.get("userId");
-      const catalogId = url.searchParams.get("catalogId");
-      if (!userId || !catalogId) return json({ ok: false, error: "userId and catalogId are required." }, 400);
-      const result = await getDataPriceQuote({ userId, catalogId, usePoints: url.searchParams.get("usePoints") === "1" });
       return json({ ok: true, ...result });
     } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not calculate data price." }, 500);
+      return json({ ok: false, error: e instanceof Error ? e.message : "VAS billing callback failed." }, 400);
     }
-  }
-
-  if (path === "/api/commerce/data/order" && request.method === "POST") {
-    try {
-      const body = await request.json();
-      if (!body.userId || !body.catalogId || !body.phoneNumber) return json({ ok: false, error: "Missing purchase details." }, 400);
-      const order = await createDataOrder(body);
-      return json({ ok: true, order });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create data order." }, 500);
-    }
-  }
-
-  if (path === "/api/commerce/courses" && request.method === "GET") {
-    return json({ ok: true, courses: await getPublishedCourses() });
-  }
-
-  if (path === "/api/commerce/course/order" && request.method === "POST") {
-    try {
-      const authenticatedUserId = await getAuthenticatedUserId(request);
-      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before unlocking a course." }, 401);
-      const body = await request.json();
-      if (!body.courseId) return json({ ok: false, error: "Missing course details." }, 400);
-      return json({ ok: true, order: await createCourseOrder({ ...body, userId: authenticatedUserId, paymentMethod: "points" }) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create course order." }, 500);
-    }
-  }
-
-  if (path === "/api/commerce/courses/purchased" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, courseIds: await getUserPurchasedCourseIds(userId) });
-  }
-
-  if (path === "/api/commerce/creator/courses" && request.method === "GET") {
-    const userId = url.searchParams.get("userId");
-    if (!userId) return json({ ok: false, error: "Missing userId." }, 400);
-    return json({ ok: true, courses: await getCreatorCourses(userId) });
   }
 
   if (path === "/api/commerce/creator/register" && request.method === "POST") {
@@ -494,17 +246,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
   }
 
   if (path === "/api/commerce/creator/special-prize-link" && request.method === "POST") {
-    try {
-      const authenticatedUserId = await getAuthenticatedUserId(request);
-      if (!authenticatedUserId) return json({ ok: false, error: "Sign in before creating a promotion link." }, 401);
-      const body = await request.json();
-      if (!body.specialPrizeId) return json({ ok: false, error: "Choose a special prize to promote." }, 400);
-      const creator = await getCreator(authenticatedUserId);
-      if (!creator || creator.status !== "active") return json({ ok: false, error: "Only active X Channel creators can promote special prizes." }, 403);
-      return json({ ok: true, link: await createCreatorPromotionLink({ creatorId: authenticatedUserId, service: "special-prize", specialPrizeId: String(body.specialPrizeId) }) });
-    } catch (e) {
-      return json({ ok: false, error: e instanceof Error ? e.message : "Could not create special-prize link." }, 400);
-    }
+    return json({ ok: false, error: "This promotion programme has been retired." }, 410);
   }
 
   if (path === "/api/commerce/creator/promotion-link" && request.method === "POST") {
@@ -544,8 +286,6 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
         posterPath: String(body.posterPath || "").trim() || null,
         streamUrl: String(body.streamUrl || "").trim() || null,
         durationSeconds: body.durationSeconds == null ? null : (Number.isFinite(Number(body.durationSeconds)) ? Number(body.durationSeconds) : null),
-        specialPrizeId: String(body.specialPrizeId || "").trim() || null,
-        specialPrizeLinkToken: String(body.specialPrizeLinkToken || "").trim() || null,
       });
       return json({ ok: true, post });
     } catch (e) {
@@ -628,7 +368,7 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (!authenticatedUserId) return json({ ok: false, error: "Sign in before requesting a payout." }, 401);
     try {
       const body = await request.json();
-      if (body.payoutType !== "referral" && body.payoutType !== "special-prize") return json({ ok: false, error: "Choose Referral payout or Special Prize earnings." }, 400);
+      if (body.payoutType !== "referral") return json({ ok: false, error: "Only VAS referral commission payouts are available." }, 400);
       return json({ ok: true, request: await createCreatorPayoutRequest(authenticatedUserId, body.payoutType) });
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : "Payout request could not be submitted." }, 400);
