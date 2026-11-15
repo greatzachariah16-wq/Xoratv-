@@ -1479,3 +1479,6 @@ body:has(.xseries-library),
     animation-iteration-count: 1 !important;
   }
 }
+
+.xsl-sponsored.is-empty { display: none; }
+.xsl-search-icon { color: #8E7D72; }
