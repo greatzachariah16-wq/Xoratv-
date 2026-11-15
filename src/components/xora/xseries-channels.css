@@ -1273,7 +1273,7 @@ body:has(.xseries-library),
   gap: 16px;
   padding: 18px;
   border: 1px solid rgba(255,255,255,.88);
-  border-radius: 24px;
+  border-radius: 28px;
   background: linear-gradient(145deg,#FFFEFC,#F3E8DF);
   color: var(--xsl-ink);
   box-shadow: var(--xsl-soft-shadow);
@@ -1337,7 +1337,7 @@ body:has(.xseries-library),
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.88);
-  border-radius: 24px;
+  border-radius: 28px;
   background: linear-gradient(145deg,#FFFEFC 0%,#FFFCF8 58%,#F6ECE4 100%);
   color: var(--xsl-ink);
   box-shadow: var(--xsl-card-shadow);
@@ -1441,7 +1441,7 @@ body:has(.xseries-library),
   gap: 12px;
   padding: 28px 18px;
   border: 1px solid rgba(255,255,255,.88);
-  border-radius: 24px;
+  border-radius: 28px;
   background: linear-gradient(145deg,#FFFEFC,#F4E9E0);
   box-shadow: var(--xsl-soft-shadow);
   text-align: center;
