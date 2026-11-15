@@ -9,6 +9,8 @@ interface XoraInHouseAdProps {
   variant?: "card" | "banner" | "compact";
   className?: string;
   campaign?: Campaign; // Optional override if provided directly
+  collapseWhenEmpty?: boolean;
+  onAvailabilityChange?: (available: boolean) => void;
 }
 
 export function XoraInHouseAd({
@@ -16,19 +18,28 @@ export function XoraInHouseAd({
   variant = "card",
   className,
   campaign: initialCampaign,
+  collapseWhenEmpty = false,
+  onAvailabilityChange,
 }: XoraInHouseAdProps) {
   const [campaign, setCampaign] = useState<Campaign | null>(initialCampaign || null);
   const [loading, setLoading] = useState(!initialCampaign);
 
   useEffect(() => {
-    if (PREVIEW_NO_ADS) return;
+    if (PREVIEW_NO_ADS) {
+      setLoading(false);
+      onAvailabilityChange?.(false);
+      return;
+    }
     if (initialCampaign) {
       setCampaign(initialCampaign);
+      setLoading(false);
+      onAvailabilityChange?.(true);
       return;
     }
 
     let isMounted = true;
     const fetchCampaign = async () => {
+      let foundCampaign = false;
       try {
         const query = placement ? `?placement=${encodeURIComponent(placement)}` : "";
         const res = await fetch(`/api/campaigns${query}`);
@@ -45,14 +56,20 @@ export function XoraInHouseAd({
               const topTier = pool.filter((c) => (c.priority ?? 50) >= maxPriority - 10);
               const selected = topTier[Math.floor(Math.random() * topTier.length)];
 
-              setCampaign(selected || pool[0]);
+              const chosen = selected || pool[0];
+              setCampaign(chosen);
+              foundCampaign = Boolean(chosen);
+              onAvailabilityChange?.(Boolean(chosen));
             }
           }
         }
       } catch {
         // graceful silence
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          if (!foundCampaign) onAvailabilityChange?.(false);
+        }
       }
     };
 
@@ -60,16 +77,15 @@ export function XoraInHouseAd({
     return () => {
       isMounted = false;
     };
-  }, [placement, initialCampaign]);
+  }, [placement, initialCampaign, onAvailabilityChange]);
 
   if (loading) {
-    return <div className="h-28 w-full animate-pulse rounded-2xl bg-secondary/30" />;
+    return collapseWhenEmpty ? null : <div className="h-28 w-full animate-pulse rounded-2xl bg-secondary/30" />;
   }
 
-  if (!campaign) {
+  if (!campaign || PREVIEW_NO_ADS) {
     return null;
   }
 
-  if (PREVIEW_NO_ADS) return null;
   return <DeepShadowAdShell campaign={campaign} variant={variant} className={className} />;
 }
