@@ -2060,18 +2060,18 @@ export async function createCreatorPayoutRequest(userId: string, payoutType: "re
     queryRtdb("commerce/creatorReferralClaims"),
   ]);
   const vasCommissions = await getCreatorVasCommissions(userId);
-  const requests = Object.values((requestsRaw || {}) as Record<string, any>).filter((item: any) => item?.creatorId === userId && item?.payoutType === payoutType);
-  if (requests.some((item: any) => ["pending", "approved", "processing"].includes(String(item.status)))) {
+  const requests = Object.values((requestsRaw || {}) as Record<string, CreatorPayoutRequestRecord>).filter((item) => item.creatorId === userId && item.payoutType === payoutType);
+  if (requests.some((item) => ["pending", "approved", "processing"].includes(String(item.status)))) {
     throw new Error("You already have an open referral payout request.");
   }
-  const paidTotal = requests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
-  const legacyClaims = Object.values((referralRaw || {}) as Record<string, any>)
-    .filter((item: any) => item?.creatorId === userId && item?.status === "confirmed");
-  const legacyReferredIds = new Set(legacyClaims.map((item: any) => String(item.referredUserId)));
+  const paidTotal = requests.filter((item) => item.status === "paid").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const legacyClaims = Object.values((referralRaw || {}) as Record<string, CreatorReferralClaimRecord>)
+    .filter((item) => item.creatorId === userId && item.status === "confirmed");
+  const legacyReferredIds = new Set(legacyClaims.map((item) => String(item.referredUserId)));
   const eligibleVasAmount = vasCommissions
-    .filter((item: any) => item.status === "eligible" && item.currency === "NGN" && !legacyReferredIds.has(String(item.referredUserId)))
-    .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
-  const amount = Math.round(Math.max(0, legacyClaims.reduce((sum: number, item: any) => sum + Number(item.amount || 50), 0) + eligibleVasAmount - paidTotal) * 100) / 100;
+    .filter((item) => item.status === "eligible" && item.currency === "NGN" && !legacyReferredIds.has(String(item.referredUserId)))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const amount = Math.round(Math.max(0, legacyClaims.reduce((sum, item) => sum + Number(item.amount || 50), 0) + eligibleVasAmount - paidTotal) * 100) / 100;
   const currency = "NGN";
   const minimum = 500;
   if (amount < minimum) throw new Error(`Minimum payout is ₦${minimum.toLocaleString()}.`);
