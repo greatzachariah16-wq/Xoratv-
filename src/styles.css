@@ -2443,7 +2443,8 @@ section[aria-label="X-Series live channels"] {
 
 
 /* X Channel — aligned with the Xora Chat cream-and-clay design system. */
-.xora-channel-page {
+ .xora-channel-page {
+  padding-bottom: calc(var(--nav-h, 64px) + env(safe-area-inset-bottom, 0px) + 24px);
   --channel-app: #FAF6EF;
   --channel-panel: #FFFDFA;
   --channel-panel-soft: #F5EFE7;
@@ -2664,14 +2665,17 @@ html.xora-channel-route header.fixed {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   margin: 0 0 2px;
 }
 .xora-channel-primary,
 .xora-channel-icon-button {
+  position: relative;
   display: inline-flex;
-  min-height: 44px;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -2682,12 +2686,32 @@ html.xora-channel-route header.fixed {
   -webkit-tap-highlight-color: transparent;
 }
 .xora-channel-primary {
-  min-width: 140px;
-  padding: 0 17px;
+  width: auto;
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  font-size: 12px;
   border: 1px solid var(--channel-accent);
   color: #FFFFFF;
   background: var(--channel-accent);
   box-shadow: 0 3px 9px rgba(181, 80, 46, .18), inset 0 1px 0 rgba(255,255,255,.15);
+}
+.xora-channel-primary::after,
+.xora-channel-icon-button::after,
+.xora-channel-compact button::after {
+  position: absolute;
+  inset: -3px 0;
+  content: "";
+}
+.xora-channel-primary svg,
+.xora-channel-icon-button svg { width: 15px; height: 15px; }
+.xora-channel-icon-button {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  flex: 0 0 38px;
 }
 .xora-channel-primary:hover {
   border-color: var(--channel-accent-dark);
@@ -2917,8 +2941,9 @@ html.xora-channel-route header.fixed {
   border-bottom: 1px solid var(--channel-line);
   border-radius: 0;
   color: var(--channel-ink);
-  background: rgba(255, 253, 250, .97);
-  box-shadow: 0 4px 14px rgba(42, 31, 26, .055);
+  background: rgba(250, 244, 236, .97);
+  border-bottom: 1px solid rgba(62, 43, 31, .14);
+  box-shadow: 0 6px 16px -6px rgba(42, 31, 26, .22);
   backdrop-filter: blur(18px);
   opacity: 0;
   visibility: hidden;
@@ -2926,28 +2951,35 @@ html.xora-channel-route header.fixed {
   transform: translateY(-6px);
   transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
 }
-.xora-channel-compact[data-visible="true"] {
+.xora-channel-compact.is-visible {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
   transform: translateY(0);
+}
+ .xora-channel-compact > :first-child {
+  width: 32px !important;
+  height: 32px !important;
+  flex: 0 0 32px;
 }
 .xora-channel-compact-name {
   min-width: 0;
   flex: 1;
   overflow: hidden;
   color: var(--channel-ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.xora-channel-compact button {
+ .xora-channel-compact button {
+  position: relative;
   display: inline-flex;
-  min-height: 38px;
+  height: 34px;
+  min-height: 34px;
   align-items: center;
   justify-content: center;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 1px solid var(--channel-accent);
   border-radius: 12px;
   color: #FFFFFF;
@@ -3081,11 +3113,11 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-handle { font-size: 12px; }
   .xora-channel-followers { margin-top: 5px; font-size: 10px; }
   .xora-channel-actions {
-    width: 100%;
+    width: auto;
     margin-top: 15px;
-    justify-content: stretch;
+    justify-content: flex-start;
   }
-  .xora-channel-primary { min-width: 0; flex: 1; }
+  .xora-channel-primary { width: auto; min-width: 0; flex: 0 0 auto; }
   .xora-channel-bio { margin-top: 15px; font-size: 12px; }
   .xora-channel-stats { margin-top: 15px; padding-top: 12px; }
   .xora-channel-stats span { min-width: 0; flex: 1; padding: 0 12px; }
@@ -3093,7 +3125,7 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-stats strong { font-size: 14px; }
   .xora-channel-stats small { font-size: 9px; }
   .xora-channel-tabs {
-    top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + 5px);
+    top: calc(var(--header-h, 56px) + var(--compact-h, 56px));
     height: 53px;
     --tab-padding: 4px;
     padding: 4px;
@@ -3107,7 +3139,7 @@ html.xora-channel-route .ad-slot::before {
 @media (min-width: 1024px) {
   html.xora-channel-route { --header-h: 0px; }
   .xora-channel-compact { top: 0; }
-  .xora-channel-tabs { top: calc(var(--compact-h, 56px) + 8px); }
+  .xora-channel-tabs { top: var(--compact-h, 56px); }
 }
 @media (max-width: 380px) {
   .xora-channel-card { padding-right: 12px; padding-left: 12px; }
@@ -3115,9 +3147,9 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-avatar-wrap { width: 74px; height: 74px; flex-basis: 74px; }
   .xora-channel-avatar-wrap > *:first-child { width: 66px !important; height: 66px !important; }
   .xora-channel-name { font-size: 19px; }
-  .xora-channel-actions { gap: 7px; }
-  .xora-channel-primary { padding-inline: 12px; }
-  .xora-channel-icon-button { width: 42px; flex-basis: 42px; }
+  .xora-channel-actions { gap: 8px; }
+  .xora-channel-primary { padding-inline: 14px; }
+  .xora-channel-icon-button { width: 38px; height: 38px; min-height: 38px; flex-basis: 38px; }
   .xora-channel-tab { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
