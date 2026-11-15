@@ -286,8 +286,6 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
         posterPath: String(body.posterPath || "").trim() || null,
         streamUrl: String(body.streamUrl || "").trim() || null,
         durationSeconds: body.durationSeconds == null ? null : (Number.isFinite(Number(body.durationSeconds)) ? Number(body.durationSeconds) : null),
-        specialPrizeId: String(body.specialPrizeId || "").trim() || null,
-        specialPrizeLinkToken: String(body.specialPrizeLinkToken || "").trim() || null,
       });
       return json({ ok: true, post });
     } catch (e) {
