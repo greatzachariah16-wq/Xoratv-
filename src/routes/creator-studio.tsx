@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BookOpen, Check, ChevronDown, Clapperboard, FileText, Gift, Info, Landmark, Loader2,
+  BookOpen, Check, Clapperboard, FileText, Gift, Info, Landmark, Loader2,
   Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users, ImagePlus,
   X, AlertTriangle, Copy, MousePointerClick,
 } from "lucide-react";
