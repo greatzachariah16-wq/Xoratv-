@@ -20,6 +20,7 @@ export interface ProviderEmbedPlayerProps {
   onClose?: () => void;
   /** Clean, YouTube-controls-only presentation used by the Watch route. */
   cinemaMode?: boolean;
+  externalPoster?: string | null;
 }
 
 export function ProviderEmbedPlayer({
@@ -34,6 +35,7 @@ export function ProviderEmbedPlayer({
   feed,
   onClose,
   cinemaMode = false,
+  externalPoster,
 }: ProviderEmbedPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
@@ -378,6 +380,8 @@ export function ProviderEmbedPlayer({
               className="h-full w-full object-cover"
               style={{ aspectRatio: "16 / 9" }}
             />
+          ) : externalPoster ? (
+            <img src={externalPoster} alt="" className="h-full w-full object-cover" loading="eager" />
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
           )}
@@ -385,8 +389,10 @@ export function ProviderEmbedPlayer({
           <button
             type="button"
             onClick={() => {
+              setEmbedError(null);
+              setEmbedLoading(true);
               setHasStarted(true);
-              setIsPlaying(true);
+              setIsPlaying(false);
             }}
             aria-label="Play video"
             className="press absolute inset-0 grid place-items-center"
@@ -406,6 +412,14 @@ export function ProviderEmbedPlayer({
           loading="eager"
           referrerPolicy="strict-origin-when-cross-origin"
           className={cn("h-full w-full border-0 pointer-events-auto", cinemaMode ? "rounded-none" : "rounded-2xl", cinemaMode && embedLoading && "opacity-0")}
+          onLoad={() => {
+            if (cinemaMode) setEmbedLoading(false);
+            const target = iframeRef.current?.contentWindow;
+            if (target && cinemaMode && youtubeVideoId) {
+              target.postMessage(JSON.stringify({ event: "command", func: "addEventListener", args: ["onStateChange"] }), "*");
+              target.postMessage(JSON.stringify({ event: "command", func: "addEventListener", args: ["onError"] }), "*");
+            }
+          }}
         />
       ) : (
         <div className="h-full w-full flex items-center justify-center bg-black/90 text-xs text-white/40">
