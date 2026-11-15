@@ -45,22 +45,46 @@ function primaryCategory(item: XTvSeriesItem): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function rankAndShuffleXSeries(items: XTvSeriesItem[], signals?: UserSignals | null, userId?: string | null): XTvSeriesItem[] {
+function rankAndShuffleXSeries(
+  items: XTvSeriesItem[],
+  signals?: UserSignals | null,
+  userId?: string | null,
+): XTvSeriesItem[] {
   if (!items || items.length <= 1) return items;
-  const seed = "xseries_" + (userId || "anon") + "_" + getOrCreateSessionId() + "_" + new Date().toISOString().slice(0, 10);
+  const sessionId = getOrCreateSessionId();
+  const utcDate = new Date().toISOString().slice(0, 10);
+  const seedString = "xseries_" + (userId || "anon") + "_" + sessionId + "_" + utcDate;
   let hash = 2166136261;
-  for (let i = 0; i < seed.length; i++) { hash ^= seed.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+  for (let i = 0; i < seedString.length; i++) {
+    hash ^= seedString.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
   let state = hash >>> 0;
-  const random = () => {
+  const prng = () => {
     let t = (state += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  return items.map((item) => {
-    const genreScore = signals?.genres?.[primaryCategory(item).toLowerCase()] || 0;
-    return { item, score: 50 + genreScore * 4 + (((item.year || 2026) - 2000) * .2) + (random() - .5) * 16 };
-  }).sort((a, b) => b.score - a.score).map(({ item }) => item);
+  const scored = items.map((item) => {
+    let score = 50;
+    if (signals?.genres) {
+      const primaryGenre = item.genre?.toLowerCase() || "";
+      if (primaryGenre && signals.genres[primaryGenre]) score += (signals.genres[primaryGenre] || 0) * 4;
+      if (Array.isArray(item.categories)) {
+        item.categories.forEach((category) => {
+          const lower = category.toLowerCase();
+          if (signals.genres?.[lower]) score += (signals.genres[lower] || 0) * 2;
+        });
+      }
+    }
+    const year = item.year || 2026;
+    score += (year - 2000) * 0.2;
+    score += (prng() - 0.5) * 16;
+    return { item, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map((entry) => entry.item);
 }
 
 function cleanTitle(value: string): string {
