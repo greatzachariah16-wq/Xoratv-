@@ -17,6 +17,7 @@ import { ChannelHeader } from "@/components/xora/ChannelHeader";
 import { ChannelTabs, type TabId } from "@/components/xora/ChannelTabs";
 import { StudioSheet, type StudioTabId } from "@/components/xora/StudioSheet";
 import { EmptyState } from "@/components/xora/EmptyState";
+import { PayoutBankModal } from "@/components/xora/PayoutBankModal";
 
 export const Route = createFileRoute("/creator-studio")({ component: ChannelPage });
 
@@ -53,12 +54,7 @@ function ChannelPage(){
   const [busy,setBusy]=useState(false);
   const [deleteTarget,setDeleteTarget]=useState<any>(null);
   const [deleteBusy,setDeleteBusy]=useState(false);
-  const [payoutBusy,setPayoutBusy]=useState(false);
   const [payoutRequestBusy,setPayoutRequestBusy]=useState("");
-  const [bankOpen,setBankOpen]=useState(false);
-  const [accountName,setAccountName]=useState("");
-  const [accountNumber,setAccountNumber]=useState("");
-  const [bankName,setBankName]=useState("");
   const [linkBusy,setLinkBusy]=useState(false);
   const [specialPrizes,setSpecialPrizes]=useState<any[]>([]);
   const [specialPrizeLinkBusy,setSpecialPrizeLinkBusy]=useState("");
@@ -110,7 +106,6 @@ function ChannelPage(){
   const coverUrl=optimisticChannel?.bannerUrl||String(dashboard?.creator?.coverImageUrl||dashboard?.creator?.featuredImageUrl||"");
 
   useEffect(()=>{ if(!creatorInfo)return; setChannelBio(creatorInfo.channelBio||""); setFeaturedTitle(creatorInfo.featuredTitle||"Your channel. Your stories."); setFeaturedDescription(creatorInfo.featuredDescription||"Make your best work the first thing people discover on XoraTV."); setShowCourses(creatorInfo.showCourses!==false); setShowCommunity(creatorInfo.showCommunity!==false); },[creatorInfo]);
-  useEffect(()=>{const payout=dashboard?.payout;if(!payout)return;setAccountName(String(payout.accountName||""));setAccountNumber(String(payout.accountNumber||""));setBankName(String(payout.bankName||""));},[dashboard?.payout]);
   useEffect(()=>{ if(section==="earnings"||section==="referrals") void refetch(); },[section,refetch]);
   useEffect(()=>{document.documentElement.classList.add("xora-channel-route");return ()=>document.documentElement.classList.remove("xora-channel-route");},[]);
 
@@ -228,14 +223,9 @@ function ChannelPage(){
     }finally{setFeaturedBusy(false);}
   }
 
-  async function savePayout(){
-    if(!accountName.trim() || accountNumber.length!==10 || !bankName){alert("Complete all bank details before saving.");return;}
-    setPayoutBusy(true);
-    try{
-      await commerceFetch("/api/commerce/creator/payout",{method:"POST",body:JSON.stringify({accountName,accountNumber,bankName})});
-      setBankOpen(false);await refetch();
-    }catch(e){alert(e instanceof Error?e.message:"Could not save payout details.");}
-    finally{setPayoutBusy(false);}
+  async function savePayout(details:{accountName:string;accountNumber:string;bankName:string}){
+    await commerceFetch("/api/commerce/creator/payout",{method:"POST",body:JSON.stringify(details)});
+    await refetch();
   }
 
   async function requestCreatorPayout(payoutType:"referral"|"special-prize"){
@@ -449,24 +439,19 @@ function ChannelPage(){
   }
 
   function PayoutForm(){
-    const saved=Boolean(dashboard?.payout?.bankName && dashboard?.payout?.accountName && dashboard?.payout?.accountNumber);
+    const payout=dashboard?.payout;
+    const saved=Boolean(payout?.bankName && payout?.accountName && payout?.accountNumber);
+    const [bankOpen,setBankOpen]=useState(false);
     return <div className="mt-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/70 p-4">
-        <div className="min-w-0"><p className="text-sm font-semibold">{saved?dashboard.payout.bankName:"No bank account saved"}</p><p className="mt-1 text-xs text-muted-foreground">{saved?`${dashboard.payout.accountName} · •••• ${String(dashboard.payout.accountNumber).slice(-4)}`:"Add your bank details to receive creator payouts."}</p></div>
-        <button type="button" onClick={()=>setBankOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Landmark className="size-4"/>{saved?"Edit bank details":"Add bank details"}</button>
-      </div>
-      {bankOpen?<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="payout-bank-title">
-        <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-border bg-surface p-5 shadow-2xl sm:p-7">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-primary">Secure payout setup</p><h3 id="payout-bank-title" className="mt-1 text-xl font-semibold">Where should we send your earnings?</h3><p className="mt-2 text-xs leading-5 text-muted-foreground">Select your bank and enter the exact recipient account details. All three fields are required.</p></div><button type="button" onClick={()=>setBankOpen(false)} className="grid size-9 shrink-0 place-items-center rounded-full border border-border hover:bg-secondary" aria-label="Close bank details"><X className="size-4"/></button></div>
-          <div className="mt-6 space-y-4">
-            <label className="block"><span className="mb-1.5 block text-xs font-semibold">Bank</span><select value={bankName} onChange={e=>setBankName(e.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-3 text-sm"><option value="">Select your bank</option>{BANK_OPTIONS.map(([name])=><option key={name} value={name}>{name}</option>)}</select></label>
-            <label className="block"><span className="mb-1.5 block text-xs font-semibold">Account number</span><input inputMode="numeric" autoComplete="off" maxLength={10} value={accountNumber} onChange={e=>setAccountNumber(e.target.value.replace(/\D/g,"").slice(0,10))} placeholder="Enter 10-digit account number" className="h-12 w-full rounded-xl border border-border bg-background px-3 text-sm"/></label>
-            <label className="block"><span className="mb-1.5 block text-xs font-semibold">Recipient account name</span><input value={accountName} onChange={e=>setAccountName(e.target.value)} autoComplete="name" placeholder="Name as registered with your bank" className="h-12 w-full rounded-xl border border-border bg-background px-3 text-sm"/></label>
+      <section className="rounded-[24px] border border-border bg-surface p-4 shadow-card">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">Payout bank account</p>
+            {saved?<><p className="mt-2 text-sm font-semibold">{payout.bankName} <span className="font-medium tracking-[.08em] text-muted-foreground">••••{String(payout.accountNumber).slice(-4)}</span></p><p className="mt-1 text-xs text-muted-foreground">{payout.accountName}</p></>:<p className="mt-2 text-sm text-muted-foreground">No bank account saved. Add your details to receive creator payouts.</p>}
           </div>
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={()=>setBankOpen(false)} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Cancel</button><button type="button" onClick={()=>void savePayout()} disabled={payoutBusy||!bankName||accountNumber.length!==10||!accountName.trim()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{payoutBusy?<Loader2 className="size-4 animate-spin"/>:<Check className="size-4"/>}{payoutBusy?"Saving…":"Save bank details"}</button></div>
-          <p className="mt-3 text-[10px] leading-4 text-muted-foreground">Incomplete bank details cannot be saved. Your saved details are shared with the XoraTV admin team for payout processing.</p>
+          <button type="button" onClick={()=>setBankOpen(true)} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-border bg-background px-4 text-xs font-semibold text-foreground transition active:scale-[.97]">{saved?"Edit":"Add bank"}</button>
         </div>
-      </div>:null}
+      </section>
+      <PayoutBankModal open={bankOpen} onClose={()=>setBankOpen(false)} initialValues={{accountName:String(payout?.accountName||""),accountNumber:String(payout?.accountNumber||""),bankName:String(payout?.bankName||"")}} onSave={savePayout}/>
     </div>;
   }
 
