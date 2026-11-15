@@ -69,13 +69,6 @@ async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
   }
 }
 
-function toneClass(tone?: string) {
-  if (tone === "clay") return "from-[#9a6248] via-[#704437] to-[#241c19]";
-  if (tone === "sage") return "from-[#667461] via-[#39463e] to-[#202825]";
-  if (tone === "sand") return "from-[#756d5f] via-[#454039] to-[#24211e]";
-  return "from-[#343534] via-[#202322] to-[#111312]";
-}
-
 function rankAndShuffleXSeries(
   items: XTvSeriesItem[],
   signals?: UserSignals | null,
