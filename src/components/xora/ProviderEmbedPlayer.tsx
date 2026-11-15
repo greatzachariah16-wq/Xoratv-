@@ -18,6 +18,9 @@ export interface ProviderEmbedPlayerProps {
   genre?: string | null;
   feed?: FeedType;
   onClose?: () => void;
+  /** Clean, YouTube-controls-only presentation used by the Watch route. */
+  cinemaMode?: boolean;
+  externalPoster?: string | null;
 }
 
 export function ProviderEmbedPlayer({
@@ -31,6 +34,8 @@ export function ProviderEmbedPlayer({
   genre,
   feed,
   onClose,
+  cinemaMode = false,
+  externalPoster,
 }: ProviderEmbedPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
@@ -39,6 +44,9 @@ export function ProviderEmbedPlayer({
   const [isClient, setIsClient] = useState<boolean>(false);
   const [currentOrigin, setCurrentOrigin] = useState("");
   const [playerClosed, setPlayerClosed] = useState(false);
+  const [embedError, setEmbedError] = useState<number | null>(null);
+  const [embedLoading, setEmbedLoading] = useState(false);
+  const [thumbnailIndex, setThumbnailIndex] = useState(0);
   const { user } = useAuth();
 
   const embedSessionRef = useRef<{ sessionId: string; nonce: string; devId: string } | null>(null);
@@ -55,6 +63,9 @@ export function ProviderEmbedPlayer({
     setHasStarted(Boolean(autoPlay));
     setIsPlaying(Boolean(autoPlay));
     setThumbnailFailed(false);
+    setEmbedError(null);
+    setEmbedLoading(false);
+    setThumbnailIndex(0);
   }, [embedUrl, autoPlay]);
 
   useEffect(() => {
@@ -63,12 +74,19 @@ export function ProviderEmbedPlayer({
     const handleEmbedMessage = (event: MessageEvent) => {
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (event.source !== iframeRef.current?.contentWindow) return;
         if (data && data.event === "onStateChange") {
           if (data.info === 1) {
             setIsPlaying(true);
+            setEmbedLoading(false);
           } else if (data.info === 2 || data.info === 0) {
             setIsPlaying(false);
           }
+        }
+        if (data && data.event === "onError" && [101, 150].includes(Number(data.info))) {
+          setEmbedError(Number(data.info));
+          setEmbedLoading(false);
+          setIsPlaying(false);
         }
       } catch {
         // ignore non-json messages from other extensions or iframes
@@ -220,14 +238,23 @@ export function ProviderEmbedPlayer({
     ? embedUrl.match(/\/embed\/([\w-]{11})/)?.[1]
     : null;
   const { config: dataSaver } = useDataSaver();
+  const youtubeWatchUrl = youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null;
+  const thumbnailCandidates = youtubeVideoId ? [
+    `https://img.youtube.com/vi/${youtubeVideoId}/maxresdefault.jpg`,
+    `https://img.youtube.com/vi/${youtubeVideoId}/sddefault.jpg`,
+    `https://img.youtube.com/vi/${youtubeVideoId}/mqdefault.jpg`,
+  ] : [];
   let embedSrc = embedUrl;
-  if (!embedSrc.includes("enablejsapi=1") && !embedSrc.includes("/api/stream/embed/")) {
+  if (cinemaMode && youtubeVideoId) {
+    embedSrc = `https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=1&playsinline=1&rel=0&controls=1&enablejsapi=1${currentOrigin ? `&origin=${encodeURIComponent(currentOrigin)}` : ""}`;
+  }
+  if (!(cinemaMode && youtubeVideoId) && !embedSrc.includes("enablejsapi=1") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += (embedSrc.includes("?") ? "&" : "?") + "enablejsapi=1";
   }
-  if (currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
+  if (!(cinemaMode && youtubeVideoId) && currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += `&origin=${encodeURIComponent(currentOrigin)}`;
   }
-  if (dataSaver.maxBitrateKbps <= 667) {
+  if (!cinemaMode && dataSaver.maxBitrateKbps <= 667) {
     if (embedSrc.includes("youtube.com") || embedSrc.includes("youtube-nocookie.com")) {
       if (!embedSrc.includes("vq="))
         embedSrc +=
@@ -237,13 +264,13 @@ export function ProviderEmbedPlayer({
         embedSrc += (embedSrc.includes("?") ? "&" : "?") + "quality=360p&dnt=1";
     }
   }
-  if (hasStarted) {
+  if (hasStarted && !(cinemaMode && youtubeVideoId)) {
     if (embedSrc.includes("autoplay=0")) {
       embedSrc = embedSrc.replace("autoplay=0", "autoplay=1");
     } else if (!embedSrc.includes("autoplay=1")) {
       embedSrc += (embedSrc.includes("?") ? "&" : "?") + "autoplay=1";
     }
-  } else {
+  } else if (!(cinemaMode && youtubeVideoId)) {
     if (embedSrc.includes("autoplay=1")) {
       embedSrc = embedSrc.replace("autoplay=1", "autoplay=0");
     } else if (!embedSrc.includes("autoplay=0")) {
@@ -283,20 +310,20 @@ export function ProviderEmbedPlayer({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden bg-black flex items-center justify-center select-none transition-all duration-300",
+        "group relative overflow-hidden bg-black flex items-center justify-center select-none",
         vertical
           ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
-          : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
+          : cinemaMode ? "h-full w-full rounded-none" : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
         className,
       )}
     >
-      <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-4.5rem)]">
+      {!cinemaMode ? <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-4.5rem)]">
         <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
           4K HD
         </span>
-      </div>
+      </div> : null}
 
-      {!playerClosed ? (
+      {!cinemaMode && !playerClosed ? (
         <button
           type="button"
           onClick={() => {
@@ -311,7 +338,7 @@ export function ProviderEmbedPlayer({
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
-      {playerClosed ? (
+      {!cinemaMode && playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white">
           <div>
             <p className="font-semibold">Player closed</p>
@@ -324,33 +351,53 @@ export function ProviderEmbedPlayer({
             </button>
           </div>
         </div>
+      ) : embedError && cinemaMode ? (
+        <div className="absolute inset-0 grid place-items-center bg-[#1E1713] p-5 text-center text-white">
+          <div className="max-w-xs">
+            <p className="text-base font-semibold">This video can’t play here</p>
+            <p className="mt-2 text-sm leading-6 text-white/70">The video owner has disabled playback on other websites. You can continue on YouTube.</p>
+            {youtubeWatchUrl ? <a href={youtubeWatchUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-gradient-to-r from-[#C0583A] to-[#9C3F27] px-5 text-sm font-semibold text-white">Open on YouTube</a> : null}
+          </div>
+        </div>
       ) : !hasStarted ? (
-        <div className="absolute inset-0 overflow-hidden bg-[#2A1F1A]">
-          {youtubeVideoId && !thumbnailFailed ? (
+        <div className="absolute inset-0 overflow-hidden bg-[#14100E]">
+          {youtubeVideoId && !thumbnailFailed && thumbnailCandidates[thumbnailIndex] ? (
             <img
-              src={`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`}
+              src={thumbnailCandidates[thumbnailIndex]}
               alt=""
               width={1280}
               height={720}
               loading="lazy"
-              onError={() => setThumbnailFailed(true)}
+              onLoad={(event) => {
+                if (event.currentTarget.naturalWidth >= 640) return;
+                if (thumbnailIndex < thumbnailCandidates.length - 1) setThumbnailIndex((index) => index + 1);
+                else setThumbnailFailed(true);
+              }}
+              onError={() => {
+                if (thumbnailIndex < thumbnailCandidates.length - 1) setThumbnailIndex((index) => index + 1);
+                else setThumbnailFailed(true);
+              }}
               className="h-full w-full object-cover"
               style={{ aspectRatio: "16 / 9" }}
             />
+          ) : !youtubeVideoId && externalPoster ? (
+            <img src={externalPoster} alt="" className="h-full w-full object-cover" loading="eager" />
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
+          {!cinemaMode ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" /> : null}
           <button
             type="button"
             onClick={() => {
+              setEmbedError(null);
+              setEmbedLoading(true);
               setHasStarted(true);
-              setIsPlaying(true);
+              setIsPlaying(false);
             }}
             aria-label="Play video"
             className="press absolute inset-0 grid place-items-center"
           >
-            <span className="grid size-16 place-items-center rounded-full border border-white/45 bg-white/20 text-white shadow-xl backdrop-blur-xl">
+            <span className={cn("grid place-items-center rounded-full text-white shadow-[0_12px_34px_rgba(0,0,0,.45)]", cinemaMode ? "size-[76px] bg-gradient-to-br from-[#C0583A] to-[#9C3F27]" : "size-16 border border-white/45 bg-white/20 backdrop-blur-xl")}>
               <Play className="ml-1 size-7 fill-current" aria-hidden="true" />
             </span>
           </button>
@@ -362,9 +409,17 @@ export function ProviderEmbedPlayer({
           title={title}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
-          loading="lazy"
+          loading="eager"
           referrerPolicy="strict-origin-when-cross-origin"
-          className={cn("h-full w-full border-0 pointer-events-auto", "rounded-2xl")}
+          className={cn("h-full w-full border-0 pointer-events-auto", cinemaMode ? "rounded-none" : "rounded-2xl", cinemaMode && embedLoading && "opacity-0")}
+          onLoad={() => {
+            if (cinemaMode) setEmbedLoading(false);
+            const target = iframeRef.current?.contentWindow;
+            if (target && cinemaMode && youtubeVideoId) {
+              target.postMessage(JSON.stringify({ event: "command", func: "addEventListener", args: ["onStateChange"] }), "*");
+              target.postMessage(JSON.stringify({ event: "command", func: "addEventListener", args: ["onError"] }), "*");
+            }
+          }}
         />
       ) : (
         <div className="h-full w-full flex items-center justify-center bg-black/90 text-xs text-white/40">
@@ -372,7 +427,13 @@ export function ProviderEmbedPlayer({
         </div>
       )}
 
-      {!playerClosed && hasStarted && !isPlaying ? (
+      {cinemaMode && hasStarted && embedLoading && !embedError ? (
+        <div className="absolute inset-0 grid place-items-center bg-black" role="status" aria-label="Loading video">
+          <span className="size-9 animate-spin rounded-full border-[3px] border-white/20 border-t-[#C0583A]" />
+        </div>
+      ) : null}
+
+      {!cinemaMode && !playerClosed && hasStarted && !isPlaying ? (
         <button
           type="button"
           onClick={togglePlayState}
