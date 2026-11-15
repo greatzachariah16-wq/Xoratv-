@@ -21,24 +21,6 @@ import { PayoutBankModal } from "@/components/xora/PayoutBankModal";
 
 export const Route = createFileRoute("/creator-studio")({ component: ChannelPage });
 
-const BANK_OPTIONS = [
-  ["Access Bank","access-bank"],["ALAT by Wema","alat-by-wema"],["Citibank Nigeria","citibank-nigeria"],
-  ["Ecobank Nigeria","ecobank"],["FCMB","fcmb"],["Fidelity Bank","fidelity-bank"],["First Bank of Nigeria","first-bank"],
-  ["Globus Bank","globus-bank"],["GTBank","gtbank"],["Jaiz Bank","jaiz-bank"],["Keystone Bank","keystone-bank"],
-  ["Kuda","kuda"],["Moniepoint","moniepoint"],["OPay","opay"],["PalmPay","palmpay"],["Polaris Bank","polaris-bank"],
-  ["PremiumTrust Bank","premiumtrust-bank"],["Providus Bank","providus-bank"],["Stanbic IBTC","stanbic-ibtc"],
-  ["Sterling Bank","sterling-bank"],["UBA","uba"],["Union Bank","union-bank"],["Unity Bank","unity-bank"],
-  ["Wema Bank","wema-bank"],["Zenith Bank","zenith-bank"],
-] as const;
-
-function bankLogoUrl(slug:string){return `https://cdn.jsdelivr.net/gh/supermx1/nigerian-banks-api@main/logos/${slug}.png`;}
-function BankLogo({name,slug}:{name:string;slug:string}){
-  const [failed,setFailed]=useState(false);
-  return <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white">
-    {!failed?<img src={bankLogoUrl(slug)} alt="" className="size-6 object-contain" onError={()=>setFailed(true)}/>:<span className="text-[10px] font-bold text-primary">{name.split(/\s+/).map(x=>x[0]).join("").slice(0,2)}</span>}
-  </span>;
-}
-
 type Section=TabId|"videos"|"manage"|"analytics"|"earnings"|"referrals"|"payout"|"customize";
 
 function ChannelPage(){
