@@ -5,7 +5,7 @@ import {
   getPublicDataPlans,
   getCreatorDashboard, getAdminDataCatalog, syncDataCatalog, updateDataCatalogPrice, updateDataCatalogStatus, getMeleHealth, getMelePlans, getMeleWallet, getDataRewardStatus, claimMeleDataReward, refreshMeleDataRewardClaim, getVtushareHealth, getVtusharePlans, getVtushareAccount, handleMeleWebhook, handleVtushareWebhook, getPayoutDetails, getPublishedCourses, getUserPurchasedCourseIds,
   saveCourse, deleteCreatorCourse, deleteCreatorShort, savePayoutDetails, saveCreatorFeaturedImage, createCreatorPromotionLink, resolvePromotionLink, recordCreatorReferralClick, createCreatorPayoutRequest, getCreatorPayoutRequests, getAdminCreatorPayoutRequests,
-  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization, recordVasReferralBillingEvent,
+  getDiscountCampaigns, createDiscountCampaign, updateDiscountCampaignStatus, recordDiscountPostback, testMelePurchase, testVtusharePurchase, saveCreatorCustomization, recordVasReferralBillingEvent, recordVasReferralCancellation,
 } from "./commerce-service";
 import { getWallet, createWalletDeposit, getWalletDepositStatus } from "./wallet-service";
 import { getAdminCpaOverview, runCpaPostbackSelfTest } from "./offerwall-service";
@@ -148,15 +148,19 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
       const body = await request.json() as Record<string, unknown>;
       const eventType = String(body.eventType || body.event || "").toLowerCase();
       const status = String(body.status || "").toLowerCase();
-      if (!["subscription.activated", "subscription.billing.success", "billing.success"].includes(eventType) || !["success", "paid", "active"].includes(status)) {
-        return json({ ok: true, ignored: true, reason: "not-a-successful-billing-event" });
+      const eventId = String(body.transactionId || body.eventId || "");
+      const userId = String(body.xoraUserId || body.userId || "");
+      const provider = String(body.provider || "vas");
+      const occurredAt = body.occurredAt ? String(body.occurredAt) : undefined;
+      if (["subscription.cancelled", "subscription.canceled", "billing.reversed", "subscription.expired"].includes(eventType) || ["cancelled", "canceled", "reversed", "refunded"].includes(status)) {
+        const result = await recordVasReferralCancellation({ eventId, userId, provider, occurredAt });
+        return json({ ok: true, ...result });
+      }
+      if (!["subscription.billing.success", "billing.success"].includes(eventType) || !["success", "paid"].includes(status)) {
+        return json({ ok: true, ignored: true, reason: "not-a-successful-paid-billing-event" });
       }
       const result = await recordVasReferralBillingEvent({
-        eventId: String(body.transactionId || body.eventId || ""),
-        userId: String(body.xoraUserId || body.userId || ""),
-        amount: Number(body.amount), currency: String(body.currency || "NGN"),
-        provider: String(body.provider || "vas"),
-        occurredAt: body.occurredAt ? String(body.occurredAt) : undefined,
+        eventId, userId, amount: Number(body.amount), currency: String(body.currency || "NGN"), provider, occurredAt,
       });
       return json({ ok: true, ...result });
     } catch (e) {
