@@ -172,13 +172,11 @@ function WatchPage() {
     const stage = document.getElementById("xora-cinema-stage");
     if (!stage) return;
     if (!document.fullscreenElement) {
-      void stage.requestFullscreen?.()
-        .then(() => setIsFullscreen(true))
-        .catch(() => {});
+      const request = stage.requestFullscreen?.();
+      if (request) void request.then(() => setIsFullscreen(true)).catch(() => {});
     } else {
-      void document.exitFullscreen?.()
-        .then(() => setIsFullscreen(false))
-        .catch(() => {});
+      const exit = document.exitFullscreen?.();
+      if (exit) void exit.then(() => setIsFullscreen(false)).catch(() => {});
     }
   }
 
