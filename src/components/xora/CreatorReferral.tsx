@@ -114,7 +114,7 @@ export function ReferralList({ pending, eligible }: ReferralListProps) {
       </div>)}
     </div> : <div className="mt-3 rounded-xl border border-dashed border-border px-3 py-5 text-center">
       {active === "pending" ? <Clock3 className="mx-auto size-4 text-muted-foreground"/> : <BadgeCheck className="mx-auto size-4 text-muted-foreground"/>}
-      <p className="mt-1.5 break-words text-xs leading-4 text-muted-foreground">{active === "pending" ? "No pending referrals yet. New sign-ups will show up here." : "No eligible referrals yet. They appear after a friend's first paid subscription is confirmed."}</p>
+      <p className="mt-1.5 break-words text-xs leading-4 text-muted-foreground">{active === "pending" ? "No pending referrals yet. New sign-ups will show up here." : "No eligible referrals yet. They appear after the 7-day billing hold completes."}</p>
     </div>}
   </section>;
 }
@@ -130,7 +130,7 @@ export function HowItWorks() {
       <div className="min-h-0 overflow-hidden">
         <ol className="mt-3 space-y-3">
           <li className="flex min-w-0 items-center gap-2.5"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">1</span><p className="min-w-0 break-words text-xs leading-5">Share your link. Your friend signs up on XoraTV.</p></li>
-          <li className="flex min-w-0 items-center gap-2.5"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">2</span><p className="min-w-0 break-words text-xs leading-5">They complete their first paid subscription. You earn ₦100 once per friend.</p></li>
+          <li className="flex min-w-0 items-center gap-2.5"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">2</span><p className="min-w-0 break-words text-xs leading-5">Their first paid subscription earns you ₦100 once per friend, held for 7 days.</p></li>
         </ol>
         <p className="mt-3 border-t border-border pt-2.5 text-xs text-muted-foreground">The commission stays pending for 7 days, then becomes eligible. Minimum withdrawal: ₦500.</p>
       </div>
