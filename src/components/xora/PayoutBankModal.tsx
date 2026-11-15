@@ -51,8 +51,8 @@ function BankSheet({ open, selected, onSelect, onClose }: {
   if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[130] flex items-end" role="presentation">
-      <button type="button" aria-label="Close bank picker" onClick={onClose} className="absolute inset-0 bg-[color-mix(in_oklab,var(--channel-text-strong)_45%,transparent)] backdrop-blur-[3px] motion-safe:animate-[xoraBankFade_.18s_ease-out]"/>
-      <section role="dialog" aria-modal="true" aria-label="Select your bank" className="relative flex max-h-[82dvh] w-full flex-col rounded-t-[32px] border border-border bg-[var(--channel-surface-solid)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 shadow-lift motion-safe:animate-[xoraBankUp_.22s_ease-out]">
+      <button type="button" aria-label="Close bank picker" onClick={onClose} className="xora-bank-backdrop absolute inset-0 bg-[color-mix(in_oklab,var(--channel-text-strong)_45%,transparent)] backdrop-blur-[3px] motion-safe:animate-[xoraBankFade_.18s_ease-out]"/>
+      <section role="dialog" aria-modal="true" aria-label="Select your bank" className="xora-bank-sheet relative flex max-h-[82dvh] w-full flex-col rounded-t-[32px] border border-border bg-[var(--channel-surface-solid)] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 shadow-lift motion-safe:animate-[xoraBankUp_.22s_ease-out]">
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-[var(--channel-hairline)]"/>
         <div className="mb-4 flex items-center justify-between"><h3 className="text-lg font-semibold text-[var(--channel-text-strong)]">Select your bank</h3><button type="button" onClick={onClose} aria-label="Close bank picker" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground"><X className="size-4"/></button></div>
         <label className="relative mb-3 block">
@@ -70,6 +70,7 @@ function BankSheet({ open, selected, onSelect, onClose }: {
           }) : <p className="px-3 py-8 text-center text-sm leading-6 text-muted-foreground">No bank matches “{query}”. Check the spelling.</p>}
         </div>
       </section>
+      <style>{`@keyframes xoraBankFade { from { opacity: 0 } to { opacity: 1 } } @keyframes xoraBankUp { from { transform: translateY(24px); opacity: .8 } to { transform: translateY(0); opacity: 1 } } @media (prefers-reduced-motion: reduce) { .xora-bank-backdrop, .xora-bank-sheet { animation: none !important; transition: none !important; } }`}</style>
     </div>, document.body
   );
 }
