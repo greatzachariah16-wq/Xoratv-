@@ -210,6 +210,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
         </div>
       </nav>
 
+      <div className="xsc-page-flow">
       <div className="xsc-main-column">
         <section className={cn("xsc-player-card", selected && "is-playing")} aria-label="Live channel player">
           <div className={cn("xsc-player-sticky", selected && "is-playing")}>
@@ -314,6 +315,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
       <div className="xsc-ad-slot" aria-label="Sponsored content">
         <span className="xsc-sponsored-label">Sponsored</span>
         <XoraInHouseAd placement="xseries_feed" variant="banner" className="xsc-ad-content" />
+      </div>
       </div>
     </section>
   );
