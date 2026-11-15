@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
   Film,
-  Loader2,
   Play,
   Share2,
 } from "lucide-react";
@@ -181,8 +180,11 @@ function WatchPage() {
     [allMovies, activeId],
   );
 
-  useMemo(() => {
-    if (typeof window === "undefined" || !activeId) return;
+  useEffect(() => {
+    if (typeof window === "undefined" || !activeId) {
+      setSaved(false);
+      return;
+    }
     try {
       setSaved(window.localStorage.getItem(\`xora:saved-movie:\${activeId}\`) === "1");
     } catch {
@@ -252,6 +254,7 @@ function WatchPage() {
               </div>
             ) : streamUrl ? (
               <VideoPlayer
+                key={activeId}
                 streamUrl={streamUrl}
                 externalPoster={activeMovie?.thumbnailUrl}
                 title={title}
@@ -261,8 +264,8 @@ function WatchPage() {
                 postId={activeId || "cinema-stream"}
                 authorId="xora-cinema"
                 genre={activeMovie?.genre}
+                source={streamData?.sourceType || activeMovie?.provider}
                 cinemaMode
-                onClose={() => undefined}
               />
             ) : (
               <div className="xora-watch-player-message">
@@ -276,7 +279,7 @@ function WatchPage() {
         <section className="xora-watch-details" aria-label="Movie details">
           {meta.length > 0 ? <p className="xora-watch-meta">{meta.join(" · ")}</p> : null}
           <h2 className={\`xora-watch-title\${titleExpanded ? " is-expanded" : ""}\`} aria-label={title}>
-            {displayTitle}
+            {titleExpanded ? title : displayTitle}
           </h2>
           {displayTitle !== title ? (
             <button
