@@ -302,8 +302,13 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
             </div>
             {shownChannels.length < visible.length ? (
               <div ref={loadMoreRef} className="xsc-load-more" aria-live="polite">
-                <span className="xsc-load-more-dot" />
-                <span>Loading more channels</span>
+                {typeof IntersectionObserver === "undefined" ? (
+                  <button type="button" onClick={() => setVisibleCount((current) => Math.min(current + PAGE_SIZE, visible.length))}>
+                    Load more channels
+                  </button>
+                ) : (
+                  <><span className="xsc-load-more-dot" /><span>Loading more channels</span></>
+                )}
               </div>
             ) : null}
           </>
