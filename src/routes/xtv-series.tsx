@@ -181,6 +181,7 @@ function XTvSeriesPage() {
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
   const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
+  const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
 
   const { data: userSignals } = useQuery({
     queryKey: ["user-signals", user?.id],
@@ -282,7 +283,7 @@ function XTvSeriesPage() {
         <section className="xsl-library-hero">
           <div className="xsl-hero-content">
             <div className="flex items-center gap-3">
-              <XSeriesMark size="lg" />
+              <XSeriesMark size="lg" className="xsc-brand-mark" />
               <div className="min-w-0">
                 <p className="xsl-eyebrow">XORA ENTERTAINMENT</p>
                 <h1 className="xsl-page-title">X Series</h1>
@@ -291,7 +292,7 @@ function XTvSeriesPage() {
             </div>
 
             <div className="xsl-search">
-              <Search className="size-4 shrink-0 text-[#d1b78d]" />
+              <Search className="xsl-search-icon size-4 shrink-0" />
               <input
                 id="xseries-search-input"
                 value={search}
@@ -363,7 +364,7 @@ function XTvSeriesPage() {
           </div>
         </section>
 
-        <div className="xsl-sponsored"><span>Sponsored</span><XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" /></div>
+        {libraryAdAvailable ? <div className="xsl-sponsored"><span>Sponsored</span><XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} /></div> : <XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} />}
 
         {featured ? (
           <section id="featured-movie-section">
@@ -373,7 +374,7 @@ function XTvSeriesPage() {
               <div className="xsl-featured-details">
                 <div>
                   <div className="flex items-center gap-3">
-                    <XSeriesMark size="sm" />
+                    <XSeriesMark size="sm" className="xsc-brand-mark" />
                     <p className="xsl-eyebrow">X SERIES SELECTION</p>
                   </div>
                   <h3 className="xsl-featured-title">
