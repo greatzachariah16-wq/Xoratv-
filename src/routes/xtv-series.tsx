@@ -1,14 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Film,
-  Play,
-  Search,
-  X,
-} from "lucide-react";
-import { AppShell, FeedTabs } from "@/components/xora/AppShell";
+import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
+import { AppShell } from "@/components/xora/AppShell";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { useAuth } from "@/hooks/useAuth";
 import { loadUserSignals, trackEvent } from "@/lib/events";
@@ -16,49 +10,24 @@ import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
-import { ContentLockGate } from "@/components/commerce/ContentLockGate";
 import { XSeriesChannelShelf } from "@/components/xora/XSeriesChannelShelf";
-import { XSeriesMark } from "@/components/xora/XSeriesMark";
+import "./xseries-premium.css";
 
 export const Route = createFileRoute("/xtv-series")({
   head: () => ({
     meta: [
       { title: "X Series — Movies, Series & Cinema | Xora" },
-      {
-        name: "description",
-        content: "Curated movies and series published directly from the sovereign Xora Studio.",
-      },
+      { name: "description", content: "Curated movies and series published directly from the sovereign Xora Studio." },
     ],
   }),
   component: XTvSeriesPage,
 });
 
-const DEFAULT_CATEGORIES = [
-  "All",
-  "Movies",
-  "Series",
-  "Action",
-  "Drama",
-  "Comedy",
-  "Sci-Fi",
-  "Thriller",
-  "Horror",
-  "Documentary",
-  "Romance",
-  "Crime",
-  "Adventure",
-  "Fantasy",
-  "Animation",
-  "Kids",
-  "Other",
-] as const;
+const CATEGORY_ORDER = ["Drama", "Action", "Comedy", "Romance", "Thriller", "Horror", "Sci-Fi", "Crime", "Adventure", "Fantasy", "Documentary", "Animation", "Kids", "More"];
 
 async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
   try {
-    const url =
-      genre && genre !== "All"
-        ? `/api/xtv-series/items?genre=${encodeURIComponent(genre)}`
-        : "/api/xtv-series/items";
+    const url = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch X Series titles");
     const json = (await res.json()) as { ok: boolean; items?: XTvSeriesItem[] };
@@ -69,279 +38,274 @@ async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
   }
 }
 
-function rankAndShuffleXSeries(
-  items: XTvSeriesItem[],
-  signals?: UserSignals | null,
-  userId?: string | null,
-): XTvSeriesItem[] {
+function primaryCategory(item: XTvSeriesItem): string {
+  const raw = item.genre || item.categories?.[0] || item.tag || "More";
+  const label = raw.trim();
+  if (!label || label.toLowerCase() === "other") return "More";
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function rankAndShuffleXSeries(items: XTvSeriesItem[], signals?: UserSignals | null, userId?: string | null): XTvSeriesItem[] {
   if (!items || items.length <= 1) return items;
-
-  const sessionId = getOrCreateSessionId();
-  const utcDate = new Date().toISOString().slice(0, 10);
-  const seedString = `xseries_${userId || "anon"}_${sessionId}_${utcDate}`;
-
+  const seed = "xseries_" + (userId || "anon") + "_" + getOrCreateSessionId() + "_" + new Date().toISOString().slice(0, 10);
   let hash = 2166136261;
-  for (let i = 0; i < seedString.length; i++) {
-    hash ^= seedString.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  let s = hash >>> 0;
-
-  const prng = () => {
-    let t = (s += 0x6d2b79f5);
+  for (let i = 0; i < seed.length; i++) { hash ^= seed.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+  let state = hash >>> 0;
+  const random = () => {
+    let t = (state += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-
-  const scored = items.map((item) => {
-    let score = 50;
-    if (signals?.genres) {
-      const primaryGenre = item.genre?.toLowerCase() || "";
-      if (primaryGenre && signals.genres[primaryGenre]) {
-        score += (signals.genres[primaryGenre] || 0) * 4;
-      }
-      if (Array.isArray(item.categories)) {
-        item.categories.forEach((c) => {
-          const lower = c.toLowerCase();
-          if (signals.genres[lower]) {
-            score += (signals.genres[lower] || 0) * 2;
-          }
-        });
-      }
-    }
-
-    const yr = item.year || 2026;
-    score += (yr - 2000) * 0.2;
-    score += (prng() - 0.5) * 16;
-    return { item, score };
-  });
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map((s) => s.item);
+  return items.map((item) => {
+    const genreScore = signals?.genres?.[primaryCategory(item).toLowerCase()] || 0;
+    return { item, score: 50 + genreScore * 4 + (((item.year || 2026) - 2000) * .2) + (random() - .5) * 16 };
+  }).sort((a, b) => b.score - a.score).map(({ item }) => item);
 }
 
-function XTvCard({
-  item,
-  userId,
-}: {
-  item: XTvSeriesItem;
-  featured?: boolean;
-  userId?: string | null;
-}) {
-  const handleInteraction = () => {
-    trackEvent({ type: "open_video", postId: item.id, genre: item.genre, feed: "xtv-series", userId });
-  };
+export function cleanTitle(value: string): string {
+  return value
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/\s*(?:\||[-–—])\s*(?:CLIP|4K|8K|HD|UHD|FULL\s*HD|OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|TRAILER|TEASER)\b.*$/i, "")
+    .replace(/\s*[\[(](?:OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|4K|8K|HD|UHD|CLIP|TRAILER|TEASER)[^\])]*[\])]/gi, "")
+    .replace(/\b(?:4K|8K)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/[\s|·:–—-]+$/g, "")
+    .trim();
+}
+
+function youtubeId(item: XTvSeriesItem): string | null {
+  const values = [item.videoUrl, item.streamUrl, item.thumbnailUrl, item.id].filter((v): v is string => Boolean(v));
+  for (const value of values) {
+    const match = value.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/|i\.ytimg\.com\/vi(?:_webp)?\/)([A-Za-z0-9_-]{11})/) || value.match(/^yt[_-]([A-Za-z0-9_-]{11})$/);
+    if (match?.[1]) return match[1];
+    if (/^[A-Za-z0-9_-]{11}$/.test(value)) return value;
+  }
+  return null;
+}
+
+function isYouTube(item: XTvSeriesItem): boolean {
+  return item.provider === "youtube" || [item.videoUrl, item.streamUrl, item.thumbnailUrl].some((v) => Boolean(v && /youtube\.com|youtu\.be|ytimg\.com|youtube-nocookie/i.test(v)));
+}
+
+function channelName(item: XTvSeriesItem): string {
+  const extra = item as XTvSeriesItem & { channelName?: string };
+  if (extra.channelName?.trim()) return extra.channelName.trim();
+  const byline = item.description?.match(/^\s*By\s+(.+)$/i);
+  return byline?.[1]?.trim() || (isYouTube(item) ? "YouTube" : "Xora Cinema");
+}
+
+function trackOpen(item: XTvSeriesItem, userId?: string | null) {
+  trackEvent({ type: "open_video", postId: item.id, genre: item.genre, feed: "xtv-series", userId });
+}
+
+function SeriesThumbnail({ item, eager = false }: { item: XTvSeriesItem; eager?: boolean }) {
+  const youtube = isYouTube(item);
+  const id = youtube ? youtubeId(item) : null;
+  const sources = id
+    ? ["https://i.ytimg.com/vi/" + id + "/maxresdefault.jpg", "https://i.ytimg.com/vi/" + id + "/sddefault.jpg", "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"]
+    : item.thumbnailUrl ? [item.thumbnailUrl] : [];
+  const [index, setIndex] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setIndex(0); setFailed(false); }, [item.id]);
+  const next = () => index < sources.length - 1 ? setIndex((current) => current + 1) : setFailed(true);
+  if (failed || !sources[index]) return <div className="xsp-thumb-fallback" aria-hidden="true"><Film size={22} /></div>;
   return (
-    <article id={`card-${item.id}`} className="xsl-card">
-      <Link id={`btn-play-card-${item.id}`} to="/watch" search={{ id: item.id }} onClick={handleInteraction} className="xsl-card-link" aria-label={`Play ${item.title}`}>
-        <div className="xsl-poster">
-          {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="xsl-poster-image" /> : null}
-          <div className="xsl-poster-shade" />
-          <span className="xsl-poster-play" aria-hidden="true"><Play className="size-4 fill-current" /></span>
-          {item.genre ? <span className="xsl-genre-chip">{item.genre}</span> : null}
+    <img
+      className="xsp-thumb-image"
+      src={sources[index]}
+      alt=""
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : "auto"}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={next}
+      onLoad={(event) => { if (youtube && event.currentTarget.naturalWidth < 640) next(); }}
+    />
+  );
+}
+
+function SeriesCard({ item, userId, grid = false }: { item: XTvSeriesItem; userId?: string | null; grid?: boolean }) {
+  const title = cleanTitle(item.title) || "Untitled";
+  const minutes = item.durationSeconds ? Math.max(1, Math.round(item.durationSeconds / 60)) : null;
+  return (
+    <article className={cn("xsp-card", grid && "xsp-card-grid")}>
+      <Link to="/watch" search={{ id: item.id }} onClick={() => trackOpen(item, userId)} className="xsp-card-link" aria-label={"Play " + item.title} title={item.title}>
+        <div className="xsp-card-image">
+          <SeriesThumbnail item={item} />
+          {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
+        </div>
+        <div className="xsp-card-copy">
+          <h3 className="xsp-card-title">{title}</h3>
+          <p className="xsp-card-channel">{channelName(item)}</p>
         </div>
       </Link>
-      <div className="xsl-card-copy">
-        <h3 className="xsl-card-title">{item.title}</h3>
-        {item.description ? <p className="xsl-card-description">{item.description}</p> : null}
-      </div>
     </article>
   );
 }
 
 function XTvSeriesPage() {
   const { user } = useAuth();
-  const [genre, setGenre] = useState<string>("All");
+  const [genre, setGenre] = useState("All");
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
+  const [activeGridCategory, setActiveGridCategory] = useState<string | null>(null);
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  const { data: userSignals } = useQuery({
-    queryKey: ["user-signals", user?.id],
-    queryFn: () => loadUserSignals(user?.id),
-    staleTime: 10_000,
-  });
-
-  const {
-    data: rawAllItems = [],
-    isFetching,
-  } = useQuery({
-    queryKey: ["xtv-series-all"],
-    queryFn: () => fetchXTvSeries("All"),
-    staleTime: 30_000,
-  });
+  const { data: userSignals } = useQuery({ queryKey: ["user-signals", user?.id], queryFn: () => loadUserSignals(user?.id), staleTime: 10_000 });
+  const { data: rawAllItems = [], isFetching } = useQuery({ queryKey: ["xtv-series-all"], queryFn: () => fetchXTvSeries("All"), staleTime: 30_000 });
 
   const allItems = useMemo(() => {
     const seen = new Set<string>();
     return rawAllItems.filter((item) => {
-      if (!item || !item.id || seen.has(item.id)) return false;
+      if (!item?.id || seen.has(item.id)) return false;
       seen.add(item.id);
       return true;
     });
   }, [rawAllItems]);
 
-  const availableCategories = useMemo(() => {
-    const cats = new Set<string>(["All"]);
-    allItems.forEach((item) => {
-      if (item.genre) cats.add(item.genre);
-      if (Array.isArray(item.categories)) item.categories.forEach((c) => c && cats.add(c));
-    });
-    DEFAULT_CATEGORIES.forEach((c) => cats.add(c));
-    return Array.from(cats);
+  const categories = useMemo(() => {
+    const found = new Set(allItems.map(primaryCategory));
+    return ["All", ...Array.from(found).sort((a, b) => {
+      const ai = CATEGORY_ORDER.indexOf(a), bi = CATEGORY_ORDER.indexOf(b);
+      if (ai < 0 && bi < 0) return a.localeCompare(b);
+      if (ai < 0) return 1;
+      if (bi < 0) return -1;
+      return ai - bi;
+    })];
   }, [allItems]);
 
   const filtered = useMemo(() => {
     let list = allItems;
-    if (genre && genre !== "All") {
-      const g = genre.toLowerCase();
-      list = list.filter((item) => {
-        const primaryMatch =
-          item.genre?.toLowerCase() === g || item.genre?.toLowerCase().includes(g);
-        const tagMatch = item.tag?.toLowerCase() === g || item.tag?.toLowerCase().includes(g);
-        const catMatch =
-          Array.isArray(item.categories) &&
-          item.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g));
-        const isMovieCategory = g === "movies" || g === "movie";
-        const movieMatch =
-          isMovieCategory &&
-          (item.tag?.toLowerCase().includes("movie") ||
-            item.tag?.toLowerCase().includes("feature") ||
-            item.genre?.toLowerCase().includes("movie"));
-        const isSeriesCategory = g === "series";
-        const seriesMatch =
-          isSeriesCategory &&
-          (item.tag?.toLowerCase().includes("series") ||
-            item.genre?.toLowerCase().includes("series") ||
-            (item.seasons && item.seasons > 0));
-        return primaryMatch || tagMatch || catMatch || movieMatch || seriesMatch;
-      });
-    }
-
+    if (genre !== "All") list = list.filter((item) => primaryCategory(item).toLowerCase() === genre.toLowerCase());
     const q = search.trim().toLowerCase();
-    if (q) {
-      list = list.filter((item) =>
-        [item.title, item.description, item.genre, item.tag, ...(item.categories || [])]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
-      );
-    }
-
+    if (q) list = list.filter((item) => [item.title, item.description, item.genre, item.tag, ...(item.categories || [])].filter(Boolean).join(" ").toLowerCase().includes(q));
     return rankAndShuffleXSeries(list, userSignals, user?.id);
   }, [allItems, genre, search, userSignals, user?.id]);
 
   const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
+  const categoryRows = useMemo(() => {
+    const grouped = new Map<string, XTvSeriesItem[]>();
+    shelves.forEach((item) => {
+      const category = primaryCategory(item);
+      grouped.set(category, [...(grouped.get(category) || []), item]);
+    });
+    return Array.from(grouped.entries()).sort(([a], [b]) => {
+      const ai = CATEGORY_ORDER.indexOf(a), bi = CATEGORY_ORDER.indexOf(b);
+      if (ai < 0 && bi < 0) return a.localeCompare(b);
+      if (ai < 0) return 1;
+      if (bi < 0) return -1;
+      return ai - bi;
+    });
+  }, [shelves]);
+  const gridItems = activeGridCategory ? filtered.filter((item) => primaryCategory(item) === activeGridCategory) : [];
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const frame = window.requestAnimationFrame(() => searchRef.current?.focus());
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setSearchOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.cancelAnimationFrame(frame); window.removeEventListener("keydown", onKey); };
+  }, [searchOpen]);
+
+  const openSearch = () => { setSearchOpen(true); setActiveGridCategory(null); };
 
   return (
-    <AppShell wide extraWide immersive={activeSection === "cinema"}>
-      <div className={cn("w-full max-w-full", activeSection === "library" ? "xseries-library space-y-6 pb-10" : "overflow-x-clip space-y-0 pb-0")}>
+    <AppShell wide extraWide immersive={activeSection === "cinema"} onSearchClick={openSearch}>
+      <div className="xseries-page">
         {activeSection === "library" ? (
           <>
-            <FeedTabs />
-            <nav aria-label="X-Series sections" className="xsl-section-switch">
-          <button type="button" onClick={() => setActiveSection("library")} aria-pressed={activeSection === "library"} className={cn("xsl-section-tab", activeSection === "library" && "is-active")}>
-            Movies &amp; Series
-          </button>
-          <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("xsl-section-tab", activeSection === "cinema" && "is-active")}>
-            Cinema Live TV
-          </button>
-            </nav>
-          </>
-        ) : null}
-
-        {activeSection === "library" ? (
-          <>
-        <header className="xsl-library-header">
-          <div className="xsl-library-brand">
-            <XSeriesMark size="lg" className="xsc-brand-mark" />
-            <div className="min-w-0">
-              <p className="xsl-eyebrow">XORA ENTERTAINMENT</p>
-              <h1 className="xsl-page-title">X Series</h1>
-              <p className="xsl-page-subtitle">A better seat for every story.</p>
-            </div>
-          </div>
-          <span className="xsl-library-count">{allItems.length ? `${allItems.length} titles` : "Your cinema"}</span>
-          <div className="xsl-search">
-            <Search className="xsl-search-icon size-4 shrink-0" />
-            <input id="xseries-search-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search movies and series" className="xsl-search-input" aria-label="Search X Series" />
-            {search ? <button type="button" onClick={() => setSearch("")} className="xsl-search-clear" aria-label="Clear search"><X className="size-3.5" /></button> : null}
-          </div>
-        </header>
-        <nav className="xsl-category-rail" role="tablist" aria-label="Filter by category">
-          {availableCategories.map((cat) => {
-            const isActive = genre === cat;
-            const count = cat === "All" ? allItems.length : allItems.filter((item) => {
-              const g = cat.toLowerCase();
-              return item.genre?.toLowerCase() === g || item.tag?.toLowerCase() === g ||
-                (Array.isArray(item.categories) && item.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g)));
-            }).length;
-            return (
-              <button key={cat} id={`cat-btn-${cat.toLowerCase().replace(/\s+/g, "-")}`} type="button" role="tab" aria-selected={isActive} onClick={() => setGenre(cat)} className={cn("xsl-category-chip", isActive && "is-active")}>
-                <span>{cat}</span>
-                {allItems.length > 0 && count > 0 ? <span className="xsl-category-count">{count}</span> : null}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className={cn("xsl-sponsored", !libraryAdAvailable && "is-empty")}>{libraryAdAvailable ? <span>Sponsored</span> : null}<XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} /></div>
-
-        {featured ? (
-          <section id="featured-movie-section" className="xsl-featured-section" aria-label="Featured movie">
-            <div className="xsl-section-heading"><div><p className="xsl-eyebrow">THE X SERIES PREMIERE</p><h2>Featured tonight</h2></div>{isFetching ? <span className="xsl-updating">Updating</span> : null}</div>
-            <div className="xsl-cinema-hero">
-              {featured.thumbnailUrl ? <img src={featured.thumbnailUrl} alt="" className="xsl-cinema-hero-image" fetchPriority="high" decoding="async" referrerPolicy="no-referrer" /> : null}
-              <div className="xsl-cinema-hero-scrim" />
-              <div className="xsl-cinema-hero-copy">
-                <span className="xsl-premiere-label"><span /> EDITOR'S PICK</span>
-                <h2>{featured.title}</h2>
-                <p>{featured.description || "Settle in and discover your next favourite."}</p>
-                <div className="xsl-featured-actions">
-                  <Link id="btn-watch-featured" to="/watch" search={{ id: featured.id }} onClick={() => trackEvent({ type: "open_video", postId: featured.id, genre: featured.genre, feed: "xtv-series", userId: user?.id })} className="xsl-watch-button"><Play className="size-4 fill-current" /> Watch now</Link>
-                  {featured.genre ? <span className="xsl-featured-genre">{featured.genre}</span> : null}
-                </div>
+            <header className="xsp-page-header">
+              <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA</p><h1>Series</h1></div>
+              <div className="xsp-section-switch" role="group" aria-label="X Series sections">
+                <button type="button" className="is-active" aria-pressed="true" onClick={() => setActiveSection("library")}>Movies &amp; Series</button>
+                <button type="button" aria-pressed="false" onClick={() => setActiveSection("cinema")}>Live TV</button>
               </div>
-            </div>
-          </section>
-        ) : isFetching ? (
-          <section className="xsl-featured-skeleton" aria-label="Loading featured titles"><div className="xsl-skeleton-glow" /><div className="xsl-skeleton-line" /><div className="xsl-skeleton-line short" /></section>
-        ) : null}
+            </header>
 
-        {shelves.length > 0 ? (
-          <section aria-label="More movies and series">
-            <div className="xsl-section-heading"><div><p className="xsl-eyebrow">THE COLLECTION</p><h2>More to watch</h2></div><span className="xsl-updating">{shelves.length + (featured ? 1 : 0)} titles</span></div>
-            <div className="xsl-video-rail">
-              {shelves.map((item) => (
-                <div key={item.id} className="xsl-grid-item">
-                  <XTvCard item={item} userId={user?.id} />
-                </div>
+            {searchOpen ? (
+              <div className="xsp-search-overlay" role="search">
+                <Search size={18} aria-hidden="true" />
+                <input ref={searchRef} value={search} onChange={(event) => { setSearch(event.target.value); setActiveGridCategory(null); }} placeholder="Find a story, genre or title" aria-label="Search series" />
+                {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={17} /></button> : null}
+                <button type="button" onClick={() => setSearchOpen(false)} aria-label="Close search"><X size={18} /></button>
+              </div>
+            ) : null}
+
+            <nav className="xsp-category-rail" aria-label="Filter by category">
+              {categories.map((category) => (
+                <button key={category} type="button" aria-pressed={genre === category} className={cn("xsp-category-chip", genre === category && "is-active")} onClick={() => { setGenre(category); setActiveGridCategory(null); }}>
+                  {category}
+                </button>
               ))}
-            </div>
-          </section>
-        ) : !featured ? (
-          <section className="xsl-empty-state">
-            <span className="xsl-empty-icon"><Film className="size-4" /></span>
-            <h3>Nothing here yet.</h3>
-            <button
-              id="btn-reset-category-filter"
-              type="button"
-              onClick={() => {
-                setGenre("All");
-                setSearch("");
-              }}
-              className="xsl-watch-button"
-            >
-              Show all titles
-            </button>
-          </section>
-        ) : null}
+            </nav>
+
+            {activeGridCategory ? (
+              <section className="xsp-grid-view" aria-label={activeGridCategory + " titles"}>
+                <div className="xsp-section-heading">
+                  <button type="button" className="xsp-back-link" onClick={() => setActiveGridCategory(null)}><ArrowLeft size={16} /> Back to Series</button>
+                  <span>{gridItems.length} titles</span>
+                </div>
+                <h2>{activeGridCategory}</h2>
+                <div className="xsp-grid">{gridItems.map((item) => <SeriesCard key={item.id} item={item} userId={user?.id} grid />)}</div>
+              </section>
+            ) : (
+              <>
+                {featured ? (
+                  <section className="xsp-featured" aria-label="Featured tonight">
+                    <div className="xsp-section-heading"><h2>Featured tonight</h2>{isFetching ? <span className="xsp-muted">Updating</span> : null}</div>
+                    <div className="xsp-hero">
+                      <SeriesThumbnail item={featured} eager />
+                      <div className="xsp-hero-scrim" />
+                      <div className="xsp-hero-copy">
+                        <span className="xsp-editor-label">Editor's pick</span>
+                        <h3 title={featured.title}>{cleanTitle(featured.title) || "Untitled"}</h3>
+                        <p>{channelName(featured)} <span aria-hidden="true">·</span> {primaryCategory(featured)}</p>
+                        <div className="xsp-hero-actions">
+                          <Link to="/watch" search={{ id: featured.id }} onClick={() => trackOpen(featured, user?.id)} className="xsp-watch-button" aria-label={"Watch " + featured.title} title={featured.title}>
+                            <Play size={17} fill="currentColor" /> Watch now
+                          </Link>
+                          <Link to="/watch" search={{ id: featured.id }} onClick={() => trackOpen(featured, user?.id)} className="xsp-detail-button" aria-label={"View details for " + featured.title} title={"Details: " + featured.title}>
+                            <ChevronRight size={20} />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                ) : isFetching ? (
+                  <section className="xsp-hero-skeleton" aria-label="Loading featured titles"><div className="xsp-skeleton-copy"><span /><span /><span /></div></section>
+                ) : null}
+
+                <div className={cn("xsp-sponsored", !libraryAdAvailable && "is-empty")}>
+                  {libraryAdAvailable ? <span>Sponsored</span> : null}
+                  <XoraInHouseAd placement="xseries_feed" variant="banner" className="xsp-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} />
+                </div>
+
+                {categoryRows.length ? (
+                  <div className="xsp-rows">
+                    {categoryRows.map(([category, items]) => (
+                      <section className="xsp-category-section" key={category} aria-label={category + " titles"}>
+                        <div className="xsp-row-heading">
+                          <h2>{category}</h2>
+                          <button type="button" onClick={() => setActiveGridCategory(category)}>See all <ChevronRight size={15} /></button>
+                        </div>
+                        <div className="xsp-card-rail">{items.slice(0, 10).map((item) => <SeriesCard key={item.id} item={item} userId={user?.id} />)}</div>
+                      </section>
+                    ))}
+                  </div>
+                ) : !featured ? (
+                  <section className="xsp-empty-state">
+                    <Film size={22} /><h2>No titles found</h2><p>Try another category or search.</p>
+                    <button type="button" onClick={() => { setGenre("All"); setSearch(""); setSearchOpen(false); }}>Show all titles</button>
+                  </section>
+                ) : null}
+              </>
+            )}
           </>
-        ) : (
-          <XSeriesChannelShelf onBackToLibrary={() => setActiveSection("library")} />
-        )}
+        ) : <XSeriesChannelShelf onBackToLibrary={() => setActiveSection("library")} />}
       </div>
     </AppShell>
   );
