@@ -55,6 +55,8 @@ type Props = {
   /** Use the more forgiving buffering/recovery profile for live TV HLS streams. */
   liveTv?: boolean;
   onClose?: () => void;
+  /** Clean Watch-page facade with native controls and no Xora overlays. */
+  cinemaMode?: boolean;
 };
 
 export function NativeVideoPlayer({
@@ -75,6 +77,7 @@ export function NativeVideoPlayer({
   feed,
   liveTv = false,
   onClose,
+  cinemaMode = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { config: dataSaver } = useDataSaver();
@@ -648,7 +651,7 @@ export function NativeVideoPlayer({
           4K HD
         </span>
       </div>
-      {!playerClosed ? (
+      {!cinemaMode && !playerClosed ? (
         <button type="button" onClick={() => {
           videoRef.current?.pause();
           if (nativeVlcActiveRef.current) {
@@ -664,7 +667,7 @@ export function NativeVideoPlayer({
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
-      {playerClosed ? (
+      {!cinemaMode && playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-ink p-4 text-center text-background">
           <div><p className="font-semibold">Player closed</p><button type="button" onClick={reopenPlayer} className="mt-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/15">Reopen player</button></div>
         </div>
@@ -681,6 +684,7 @@ export function NativeVideoPlayer({
           // Shorts need the media connection warmed before the in-view autoplay
           // starts; lazy-loading the video element can add an unnecessary stall on mobile.
           preload={autoPlay ? "auto" : "metadata"}
+          controls={cinemaMode}
           controlsList="nodownload"
           aria-label={title}
           className="h-full w-full bg-ink object-contain"
@@ -779,14 +783,14 @@ export function NativeVideoPlayer({
       ) : null}
 
       {/* Buffering indicator */}
-      {waiting && !failed ? (
+      {!cinemaMode && waiting && !failed ? (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40">
           <Loader2 className="size-8 animate-spin text-background" aria-hidden="true" />
         </div>
       ) : null}
 
       {/* Error overlay */}
-      {failed ? (
+      {!cinemaMode && failed ? (
         <div className="absolute inset-0 grid place-items-center bg-black/75 p-4 text-center text-xs text-background">
           <div>
             <p className="font-semibold">Unable to play video</p>
@@ -796,7 +800,7 @@ export function NativeVideoPlayer({
       ) : null}
 
       {/* Center play icon toggle flash */}
-      {!playing && !waiting && !failed ? (
+      {!cinemaMode && !playing && !waiting && !failed ? (
         <button
           type="button"
           onClick={toggle}
@@ -809,7 +813,7 @@ export function NativeVideoPlayer({
         </button>
       ) : null}
 
-      {!nativeVlcOnly ? (
+      {!cinemaMode && !nativeVlcOnly ? (
       <div
         className={cn(
           "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
@@ -884,6 +888,7 @@ export function VideoPlayer(props: Props) {
       genre={props.genre}
       feed={props.feed}
       onClose={props.onClose}
+      cinemaMode={props.cinemaMode}
     />
   ) : (
     <NativeVideoPlayer {...props} />
