@@ -130,49 +130,23 @@ function XTvCard({
   userId?: string | null;
 }) {
   const handleInteraction = () => {
-    trackEvent({
-      type: "open_video",
-      postId: item.id,
-      genre: item.genre,
-      feed: "xtv-series",
-      userId,
-    });
+    trackEvent({ type: "open_video", postId: item.id, genre: item.genre, feed: "xtv-series", userId });
   };
-
   return (
-    <div className="xsl-card-wrap">
-      <article id={`card-${item.id}`} className="xsl-card group">
-        <Link
-          id={`btn-play-card-${item.id}`}
-          to="/watch"
-          search={{ id: item.id }}
-          onClick={handleInteraction}
-          className="block w-full text-left"
-          aria-label={`Play ${item.title}`}
-        >
-          <div
-            className="xsl-poster"
-          >
-            {item.thumbnailUrl ? (
-              <img
-                src={item.thumbnailUrl}
-                alt={item.title}
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                className="xsl-poster-image"
-              />
-            ) : null}
-            <div className="xsl-poster-shade" />
-            <div className="xsl-poster-play"><span><Play className="size-3.5 fill-current" /></span></div>
-            {item.genre ? <span className="xsl-genre-chip">{item.genre}</span> : null}
-          </div>
-        </Link>
-        <div className="xsl-card-copy">
-          <h3 className="xsl-card-title">{item.title}</h3>
-          {item.description ? <p className="xsl-card-description">{item.description}</p> : null}
+    <article id={`card-${item.id}`} className="xsl-card">
+      <Link id={`btn-play-card-${item.id}`} to="/watch" search={{ id: item.id }} onClick={handleInteraction} className="xsl-card-link" aria-label={`Play ${item.title}`}>
+        <div className="xsl-poster">
+          {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="xsl-poster-image" /> : null}
+          <div className="xsl-poster-shade" />
+          <span className="xsl-poster-play" aria-hidden="true"><Play className="size-4 fill-current" /></span>
+          {item.genre ? <span className="xsl-genre-chip">{item.genre}</span> : null}
         </div>
-      </article>
-    </div>
+      </Link>
+      <div className="xsl-card-copy">
+        <h3 className="xsl-card-title">{item.title}</h3>
+        {item.description ? <p className="xsl-card-description">{item.description}</p> : null}
+      </div>
+    </article>
   );
 }
 
@@ -280,138 +254,66 @@ function XTvSeriesPage() {
 
         {activeSection === "library" ? (
           <>
-        <section className="xsl-library-hero">
-          <div className="xsl-hero-content">
-            <div className="flex items-center gap-3">
-              <XSeriesMark size="lg" className="xsc-brand-mark" />
-              <div className="min-w-0">
-                <p className="xsl-eyebrow">XORA ENTERTAINMENT</p>
-                <h1 className="xsl-page-title">X Series</h1>
-                <p className="xsl-page-subtitle">Movies, series and live channels.</p>
-              </div>
-            </div>
-
-            <div className="xsl-search">
-              <Search className="xsl-search-icon size-4 shrink-0" />
-              <input
-                id="xseries-search-input"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search movies and series"
-                className="xsl-search-input"
-                aria-label="Search X Series"
-              />
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="xsl-search-clear"
-                  aria-label="Clear search"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-
-            <div
-              className="xsl-category-rail"
-              style={{ touchAction: "pan-x" }}
-              role="tablist"
-              aria-label="Filter by category"
-            >
-              {availableCategories.map((cat) => {
-                const isActive = genre === cat;
-                const count =
-                  cat === "All"
-                    ? allItems.length
-                    : allItems.filter((item) => {
-                        const g = cat.toLowerCase();
-                        return (
-                          item.genre?.toLowerCase() === g ||
-                          item.tag?.toLowerCase() === g ||
-                          (Array.isArray(item.categories) &&
-                            item.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g)))
-                        );
-                      }).length;
-
-                return (
-                  <button
-                    key={cat}
-                    id={`cat-btn-${cat.toLowerCase().replace(/\s+/g, "-")}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setGenre(cat)}
-                    className={cn(
-                      "xsl-category-chip", isActive && "is-active",
-                    )}
-                  >
-                    <span>{cat}</span>
-                    {allItems.length > 0 && count > 0 ? (
-                      <span
-                        className={cn(
-                          "xsl-category-count",
-                        )}
-                      >
-                        {count}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+        <header className="xsl-library-header">
+          <div className="xsl-library-brand">
+            <XSeriesMark size="lg" className="xsc-brand-mark" />
+            <div className="min-w-0">
+              <p className="xsl-eyebrow">XORA ENTERTAINMENT</p>
+              <h1 className="xsl-page-title">X Series</h1>
+              <p className="xsl-page-subtitle">A better seat for every story.</p>
             </div>
           </div>
-        </section>
+          <span className="xsl-library-count">{allItems.length ? `${allItems.length} titles` : "Your cinema"}</span>
+          <div className="xsl-search">
+            <Search className="xsl-search-icon size-4 shrink-0" />
+            <input id="xseries-search-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search movies and series" className="xsl-search-input" aria-label="Search X Series" />
+            {search ? <button type="button" onClick={() => setSearch("")} className="xsl-search-clear" aria-label="Clear search"><X className="size-3.5" /></button> : null}
+          </div>
+        </header>
+        <nav className="xsl-category-rail" role="tablist" aria-label="Filter by category">
+          {availableCategories.map((cat) => {
+            const isActive = genre === cat;
+            const count = cat === "All" ? allItems.length : allItems.filter((item) => {
+              const g = cat.toLowerCase();
+              return item.genre?.toLowerCase() === g || item.tag?.toLowerCase() === g ||
+                (Array.isArray(item.categories) && item.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g)));
+            }).length;
+            return (
+              <button key={cat} id={`cat-btn-${cat.toLowerCase().replace(/\s+/g, "-")}`} type="button" role="tab" aria-selected={isActive} onClick={() => setGenre(cat)} className={cn("xsl-category-chip", isActive && "is-active")}>
+                <span>{cat}</span>
+                {allItems.length > 0 && count > 0 ? <span className="xsl-category-count">{count}</span> : null}
+              </button>
+            );
+          })}
+        </nav>
 
         <div className={cn("xsl-sponsored", !libraryAdAvailable && "is-empty")}>{libraryAdAvailable ? <span>Sponsored</span> : null}<XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} /></div>
 
         {featured ? (
-          <section id="featured-movie-section">
-            <div className="xsl-section-heading"><div><p className="xsl-eyebrow">PICKED FOR YOU</p><h2>Featured</h2></div>{isFetching ? <span className="xsl-updating">Updating</span> : null}</div>
-            <div className="xsl-featured-grid">
-              <XTvCard item={featured} userId={user?.id} />
-              <div className="xsl-featured-details">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <XSeriesMark size="sm" className="xsc-brand-mark" />
-                    <p className="xsl-eyebrow">X SERIES SELECTION</p>
-                  </div>
-                  <h3 className="xsl-featured-title">
-                    {featured.title}
-                  </h3>
-                  <p className="xsl-featured-description">
-                    {featured.description || ""}
-                  </p>
-                </div>
+          <section id="featured-movie-section" className="xsl-featured-section" aria-label="Featured movie">
+            <div className="xsl-section-heading"><div><p className="xsl-eyebrow">THE X SERIES PREMIERE</p><h2>Featured tonight</h2></div>{isFetching ? <span className="xsl-updating">Updating</span> : null}</div>
+            <div className="xsl-cinema-hero">
+              {featured.thumbnailUrl ? <img src={featured.thumbnailUrl} alt="" className="xsl-cinema-hero-image" fetchPriority="high" decoding="async" referrerPolicy="no-referrer" /> : null}
+              <div className="xsl-cinema-hero-scrim" />
+              <div className="xsl-cinema-hero-copy">
+                <span className="xsl-premiere-label"><span /> EDITOR'S PICK</span>
+                <h2>{featured.title}</h2>
+                <p>{featured.description || "Settle in and discover your next favourite."}</p>
                 <div className="xsl-featured-actions">
-                  <Link
-                    id="btn-watch-featured"
-                    to="/watch"
-                    search={{ id: featured.id }}
-                    onClick={() =>
-                      trackEvent({
-                        type: "open_video",
-                        postId: featured.id,
-                        genre: featured.genre,
-                        feed: "xtv-series",
-                        userId: user?.id,
-                      })
-                    }
-                    className="xsl-watch-button"
-                  >
-                    Watch now <ArrowRight className="size-3.5" />
-                  </Link>
-                  <span className="xsl-featured-genre">{featured.genre}</span>
+                  <Link id="btn-watch-featured" to="/watch" search={{ id: featured.id }} onClick={() => trackEvent({ type: "open_video", postId: featured.id, genre: featured.genre, feed: "xtv-series", userId: user?.id })} className="xsl-watch-button"><Play className="size-4 fill-current" /> Watch now</Link>
+                  {featured.genre ? <span className="xsl-featured-genre">{featured.genre}</span> : null}
                 </div>
               </div>
             </div>
           </section>
+        ) : isFetching ? (
+          <section className="xsl-featured-skeleton" aria-label="Loading featured titles"><div className="xsl-skeleton-glow" /><div className="xsl-skeleton-line" /><div className="xsl-skeleton-line short" /></section>
         ) : null}
 
         {shelves.length > 0 ? (
           <section aria-label="More movies and series">
             <div className="xsl-section-heading"><div><p className="xsl-eyebrow">THE COLLECTION</p><h2>More to watch</h2></div><span className="xsl-updating">{shelves.length + (featured ? 1 : 0)} titles</span></div>
-            <div className="xsl-video-grid">
+            <div className="xsl-video-rail">
               {shelves.map((item) => (
                 <div key={item.id} className="xsl-grid-item">
                   <XTvCard item={item} userId={user?.id} />
