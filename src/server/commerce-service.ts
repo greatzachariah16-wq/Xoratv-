@@ -2057,7 +2057,9 @@ export async function createCreatorPayoutRequest(userId: string, payoutType: "re
   const paidTotal = requests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const legacyClaims = Object.values((referralRaw || {}) as Record<string, any>)
     .filter((item: any) => item?.creatorId === userId && item?.status === "confirmed");
-  const eligibleVasAmount = vasCommissions.filter((item: any) => item.status === "eligible" && item.currency === "NGN")
+  const legacyReferredIds = new Set(legacyClaims.map((item: any) => String(item.referredUserId)));
+  const eligibleVasAmount = vasCommissions
+    .filter((item: any) => item.status === "eligible" && item.currency === "NGN" && !legacyReferredIds.has(String(item.referredUserId)))
     .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const amount = Math.round(Math.max(0, legacyClaims.reduce((sum: number, item: any) => sum + Number(item.amount || 50), 0) + eligibleVasAmount - paidTotal) * 100) / 100;
   const currency = "NGN";
@@ -2120,9 +2122,6 @@ export async function getCreatorDashboard(userId: string) {
   const referralAttributions = Object.values((referralAttributionsRaw || {}) as Record<string, any>)
     .filter((event) => event?.creatorId === userId && event?.referredUserId);
   const eligibleUserIds = new Set(referralClaims.map((event) => String(event.referredUserId || "")));
-  const pendingAttributions = referralAttributions
-    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)) && !vasEligibleIds.has(String(event.referredUserId)))
-    .map((event) => ({ referredUserId: event.referredUserId, status: "pending", registeredAt: event.registeredAt || event.createdAt }));
   const legacyEligibleAttributions = referralClaims.map((event) => ({
     referredUserId: event.referredUserId, status: "eligible",
     registeredAt: referralAttributions.find((item) => item.referredUserId === event.referredUserId)?.registeredAt || null,
@@ -2141,6 +2140,9 @@ export async function getCreatorDashboard(userId: string) {
     }));
   const eligibleAttributions = [...legacyEligibleAttributions, ...vasEligibleAttributions];
   const vasEligibleIds = new Set(vasEligibleAttributions.map((item) => String(item.referredUserId)));
+  const pendingAttributions = referralAttributions
+    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)) && !vasEligibleIds.has(String(event.referredUserId)))
+    .map((event) => ({ referredUserId: event.referredUserId, status: "pending", registeredAt: event.registeredAt || event.createdAt }));
   const referralClickRecords = Object.values((referralClicksRaw || {}) as Record<string, any>)
     .filter((event) => event?.creatorId === userId);
   const attributedClickIds = new Set(referralAttributions.map((event) => String(event.clickId || "")).filter(Boolean));
