@@ -289,7 +289,12 @@ function XTvSeriesPage() {
 
   return (
     <AppShell wide extraWide immersive={activeSection === "cinema"}>
-      <div className={cn("max-w-full overflow-x-hidden", activeSection === "library" ? "space-y-7 pb-10" : "space-y-0 pb-0")}>
+      <div className={cn(
+        "w-full max-w-full",
+        activeSection === "library"
+          ? "overflow-x-hidden space-y-7 pb-10"
+          : "overflow-x-clip space-y-0 pb-0",
+      )}>
         {activeSection === "library" ? (
           <>
             <FeedTabs />
