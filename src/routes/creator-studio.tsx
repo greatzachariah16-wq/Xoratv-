@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen, Check, Clapperboard, FileText, Info, Landmark, Loader2,
   Menu, PenLine, Plus, Radio, Settings2, Trash2, Upload, Users, ImagePlus,
-  X, AlertTriangle, Copy,
+  X, AlertTriangle,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { UserAvatar } from "@/components/xora/UserAvatar";
@@ -42,7 +42,6 @@ function ChannelPage(){
   const [linkBusy,setLinkBusy]=useState(false);
   const [referralLinkBusy,setReferralLinkBusy]=useState(false);
   const [referralUrl,setReferralUrl]=useState("");
-  const [copiedPromotion,setCopiedPromotion]=useState("");
   const [featuredBusy,setFeaturedBusy]=useState(false);
   const [featuredError,setFeaturedError]=useState("");
   const [featuredPreview,setFeaturedPreview]=useState("");
@@ -129,12 +128,6 @@ function ChannelPage(){
       await refetch();
     }catch(e){alert(e instanceof Error?e.message:"Could not create your Xora sign-up referral link.");}
     finally{setReferralLinkBusy(false);}
-  }
-
-  async function copyReferralLink(){
-    if(!referralShareUrl)return;
-    try{await navigator.clipboard.writeText(referralShareUrl);setCopiedPromotion("creator-referral");setTimeout(()=>setCopiedPromotion(""),2500);}
-    catch{window.prompt("Copy your Xora sign-up referral link",referralShareUrl);}
   }
 
   async function uploadFeaturedImage(file: File){
