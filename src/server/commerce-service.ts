@@ -1012,6 +1012,10 @@ export async function recordVasBillingEvent(input: VasBillingEventInput) {
   const wasActiveWhenReferred = attribution.creatorStatusAttribution === "active";
   if ((!creator || creator.status !== "active") && !wasActiveWhenReferred) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "creator-inactive" as const };
   if (creator?.userId === userId || attribution.creatorUserId === userId) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "self-referral" as const };
+  const legacyClaim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as any;
+  if (legacyClaim?.creatorId === attribution.creatorId && legacyClaim?.status === "confirmed") {
+    return { accepted: true, duplicate: true, attributed: true, commissionStatus: "legacy-eligible" as const };
+  }
 
   const paidAt = occurredAt;
   const eligibleAt = new Date(Date.parse(paidAt) + VAS_REFERRAL_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -2154,8 +2158,13 @@ export async function getCreatorDashboard(userId: string) {
     eligibleMembers: eligibleAttributions.sort((a, b) => String(b.qualifiedAt || "").localeCompare(String(a.qualifiedAt || ""))).slice(0, 50),
   };
   const legacyReferralBalance = referralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0);
-  const eligibleVasBalance = eligibleVasCommissions.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
-  const pendingVasBalance = pendingVasCommissions.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+  const legacyReferredIds = new Set(referralClaims.map((event) => String(event.referredUserId)));
+  const eligibleVasBalance = eligibleVasCommissions
+    .filter((item: any) => !legacyReferredIds.has(String(item.referredUserId)))
+    .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+  const pendingVasBalance = pendingVasCommissions
+    .filter((item: any) => !legacyReferredIds.has(String(item.referredUserId)))
+    .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const referralEarnings = {
     balance: Math.round((legacyReferralBalance + eligibleVasBalance) * 100) / 100,
     pendingBalance: Math.round(pendingVasBalance * 100) / 100,
