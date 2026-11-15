@@ -37,6 +37,7 @@ function ChannelPage(){
   const [deleteTarget,setDeleteTarget]=useState<any>(null);
   const [deleteBusy,setDeleteBusy]=useState(false);
   const [payoutRequestBusy,setPayoutRequestBusy]=useState("");
+  const [bankOpen,setBankOpen]=useState(false);
   const [linkBusy,setLinkBusy]=useState(false);
   const [specialPrizes,setSpecialPrizes]=useState<any[]>([]);
   const [specialPrizeLinkBusy,setSpecialPrizeLinkBusy]=useState("");
@@ -423,7 +424,6 @@ function ChannelPage(){
   function PayoutForm(){
     const payout=dashboard?.payout;
     const saved=Boolean(payout?.bankName && payout?.accountName && payout?.accountNumber);
-    const [bankOpen,setBankOpen]=useState(false);
     return <div className="mt-4">
       <section className="rounded-[24px] border border-border bg-surface p-4 shadow-card">
         <div className="flex items-center justify-between gap-3">
