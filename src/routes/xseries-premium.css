@@ -55,6 +55,7 @@
 .xsp-sponsored-ad{min-width:0;overflow:hidden;border-radius:16px}
 .xsp-sponsored.is-empty{display:none}
 .xsp-rows{display:grid;gap:23px;margin-top:20px}
+.xsp-rows-title h2{margin:0 0 -3px;color:var(--xsp-ink);font-size:22px;font-weight:830;letter-spacing:-.045em;line-height:1.1}
 .xsp-category-section{min-width:0}
 .xsp-row-heading{display:flex;min-width:0;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px}
 .xsp-row-heading button{display:inline-flex;min-height:36px;flex:0 0 auto;align-items:center;gap:2px;padding:0 0 0 8px;border:0;background:transparent;color:var(--xsp-clay-deep);font-size:11px;font-weight:760}
