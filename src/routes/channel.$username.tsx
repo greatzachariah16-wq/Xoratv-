@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type TouchEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, BookOpen, CalendarDays, Clapperboard, FileText, Info, PenLine, Share2, Upload, Users } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -144,7 +144,7 @@ function PublicChannelPage() {
       </header>
       <nav className="xora-channel-tabs" role="tablist" aria-label="Channel sections">
         {tabs.map(([key, label]) => <button type="button" key={key} id={"xora-channel-tab-" + key} role="tab" aria-selected={activeTab === key} aria-controls="xora-channel-tabpanel" onClick={() => setActiveTab(key)} className="xora-channel-tab">{label}</button>)}
-        <span className="xora-channel-tab-indicator" aria-hidden="true" style={{ width: (100 / tabs.length) + "%", transform: "translateX(" + (activeIndex * 100) + "%)" }}/>
+        <span className="xora-channel-tab-indicator" aria-hidden="true" style={{ "--tab-index": activeIndex, "--tab-count": tabs.length } as CSSProperties}/>
       </nav>
       <div className={"xora-channel-compact " + (compactVisible ? "is-visible" : "")} aria-hidden={!compactVisible}><UserAvatar path={avatar} name={displayName} size={34} className="!rounded-full"/><span className="xora-channel-compact-name">{displayName}</span><button type="button" onClick={isOwner ? () => void navigate({ to: "/creator-studio" }) : handleSubscribe}>{isOwner ? "Edit channel" : subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}</button></div>
       <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-" + activeTab} tabIndex={0} className="xora-channel-panel" onTouchStart={(event) => { touchStartX.current = event.changedTouches[0].clientX; }} onTouchEnd={handleSwipe}>
