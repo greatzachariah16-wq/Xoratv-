@@ -34,19 +34,23 @@ export async function handleCommerceRoute(request: Request, url: URL): Promise<R
     if (expectedBytes.length !== suppliedBytes.length || !timingSafeEqual(expectedBytes, suppliedBytes)) {
       return json({ ok: false, error: "Invalid VAS webhook credentials." }, 401);
     }
-    let body: any;
+    let body: unknown;
     try { body = await request.json(); }
     catch { return json({ ok: false, error: "The VAS callback body must be valid JSON." }, 400); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return json({ ok: false, error: "The VAS callback body must be a JSON object." }, 400);
+    }
+    const payload = body as Record<string, unknown>;
     try {
       const result = await recordVasBillingEvent({
-        eventId: String(body.eventId || ""),
-        eventType: String(body.eventType || body.event || "") as "payment.succeeded" | "payment.reversed" | "subscription.cancelled",
-        userId: String(body.userId || ""),
-        subscriptionId: String(body.subscriptionId || ""),
-        amount: Number(body.amount),
-        currency: String(body.currency || "NGN").toUpperCase() as "NGN",
-        provider: body.provider ? String(body.provider) : "vas-provider",
-        occurredAt: body.occurredAt ? String(body.occurredAt) : undefined,
+        eventId: String(payload.eventId || ""),
+        eventType: String(payload.eventType || payload.event || "") as "payment.succeeded" | "payment.reversed" | "subscription.cancelled",
+        userId: String(payload.userId || ""),
+        subscriptionId: String(payload.subscriptionId || ""),
+        amount: Number(payload.amount),
+        currency: String(payload.currency || "NGN").toUpperCase() as "NGN",
+        provider: payload.provider ? String(payload.provider) : "vas-provider",
+        occurredAt: payload.occurredAt ? String(payload.occurredAt) : undefined,
       });
       return json({ ok: true, result });
     } catch (error) {
