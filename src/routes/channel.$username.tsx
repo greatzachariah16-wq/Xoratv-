@@ -139,7 +139,7 @@ function PublicChannelPage() {
             {isOwner ? <><Link to="/creator-studio" className="xora-channel-primary"><PenLine className="size-4"/>Edit channel</Link><button type="button" onClick={() => void shareChannel()} className="xora-channel-icon-button" aria-label="Share channel"><Share2 className="size-4"/></button></> : <><button type="button" onClick={handleSubscribe} disabled={subscriptions.pending && Boolean(user)} className="xora-channel-primary"><Users className="size-4"/>{subscriptions.isSubscribed(profile.id) ? "Subscribed" : "Subscribe"}</button><button type="button" onClick={() => void shareChannel()} className="xora-channel-icon-button" aria-label="Share channel"><Share2 className="size-4"/></button></>}
           </div>
           <p className="xora-channel-bio">{profile.bio || "Stories, ideas and original videos from XoraTV."}</p>
-          <div className="xora-channel-stats"><span><strong>{followerCount === 0 ? "—" : new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followerCount)}</strong><small>{followerCount === 0 ? "New channel" : "Followers"}</small></span><span><strong>{courses.length}</strong><small>Courses</small></span><span><strong>{shorts.length}</strong><small>Shorts</small></span></div>
+          <div className="xora-channel-stats"><span><strong>{new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followerCount)}</strong><small>Followers</small></span><span><strong>{courses.length}</strong><small>Courses</small></span><span><strong>{shorts.length}</strong><small>Shorts</small></span></div>
         </div>
       </header>
       <nav className="xora-channel-tabs" role="tablist" aria-label="Channel sections">
