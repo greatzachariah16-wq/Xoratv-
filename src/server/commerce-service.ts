@@ -996,6 +996,24 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
   return { referralQualified: false, reason: "paid-vas-subscription-required" as const };
 }
 
+export async function createVasBillingReference(userId: string) {
+  const cleanUserId = String(userId || "").trim();
+  if (!cleanUserId) throw new Error("Sign in before starting a VAS subscription.");
+  const reference = id("xora_vas");
+  const record = { reference, userId: cleanUserId, status: "pending", createdAt: new Date().toISOString() };
+  await queryRtdb(`commerce/vasBillingReferences/${encodeURIComponent(reference)}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+  });
+  return record;
+}
+
+export async function getVasBillingReferenceUserId(reference: string) {
+  const cleanReference = String(reference || "").trim();
+  if (!cleanReference || cleanReference.length > 180) return null;
+  const record = await queryRtdb(`commerce/vasBillingReferences/${encodeURIComponent(cleanReference)}`) as any;
+  return record?.userId ? String(record.userId) : null;
+}
+
 export async function recordVasReferralCancellation(params: {
   eventId: string; userId: string; provider?: string; occurredAt?: string;
 }) {
@@ -1011,6 +1029,14 @@ export async function recordVasReferralCancellation(params: {
     eventType: "subscription.cancelled", status: "verified", occurredAt, receivedAt: new Date().toISOString(),
   };
   await putRtdbRecordOnce(`commerce/vasBillingEvents/${encodeURIComponent(eventId)}`, event);
+  const subscriptionPath = `commerce/vasSubscriptions/${encodeURIComponent(userId)}`;
+  const currentSubscription = await queryRtdb(subscriptionPath) as any;
+  if (!currentSubscription?.lastPaidAt || Date.parse(occurredAt) >= Date.parse(String(currentSubscription.lastPaidAt))) {
+    await queryRtdb(subscriptionPath, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled", cancelledAt: occurredAt, cancellationEventId: eventId, updatedAt: new Date().toISOString() }),
+    });
+  }
   const claim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as any;
   if (!claim || claim.status !== "pending" || Date.parse(String(claim.eligibleAt || "")) <= Date.parse(occurredAt)) {
     return { accepted: true, commissionReversed: false, reason: "no-pending-commission-to-reverse" };
@@ -1045,6 +1071,17 @@ export async function recordVasReferralBillingEvent(params: {
     eventType: "subscription.billing.success", status: "verified", occurredAt, receivedAt: new Date().toISOString(),
   };
   const savedEvent = await putRtdbRecordOnce(eventPath, event);
+  const subscriptionPath = `commerce/vasSubscriptions/${encodeURIComponent(userId)}`;
+  const previousSubscription = await queryRtdb(subscriptionPath) as any;
+  const subscription = {
+    userId, status: "active", firstPaidAt: previousSubscription?.firstPaidAt || occurredAt,
+    lastPaidAt: occurredAt, lastTransactionId: eventId,
+    successfulBillingEvents: Number(previousSubscription?.successfulBillingEvents || 0) + (savedEvent.created ? 1 : 0),
+    updatedAt: new Date().toISOString(),
+  };
+  await queryRtdb(subscriptionPath, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription),
+  });
   // Continue after duplicate event delivery: if a previous attempt stored the
   // event but failed before creating its referral claim, this retry repairs it.
 
