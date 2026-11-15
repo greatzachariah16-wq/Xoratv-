@@ -46,12 +46,10 @@ function channelType(channel: XSeriesLiveChannel) {
 function ChannelCard({
   channel,
   selected,
-  showType,
   onSelect,
 }: {
   channel: XSeriesLiveChannel;
   selected: boolean;
-  showType: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -77,13 +75,12 @@ function ChannelCard({
       </span>
       <span className="xsc-channel-title">{channel.name}</span>
       <span className="xsc-channel-meta">
-        <span className="xsc-country">{channel.country || "Live channel"}</span>
-        <span className="xsc-channel-meta-right">
-          {showType ? <span className="xsc-type-chip">{channelType(channel)}</span> : null}
+        <span className="xsc-channel-meta-left">
+          <span className="xsc-country">{channel.country || "Live"}</span>
           {channel.quality ? <span className="xsc-quality-chip">{channel.quality}</span> : null}
-          <span className="xsc-play-button" aria-hidden="true">
-            <Play className="size-3.5 fill-current" />
-          </span>
+        </span>
+        <span className="xsc-play-button" aria-hidden="true">
+          <Play className="size-3.5 fill-current" />
         </span>
       </span>
     </button>
@@ -104,6 +101,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
   const [filter, setFilter] = useState<ShelfFilter>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [adAvailable, setAdAvailable] = useState(false);
   const filterRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -292,7 +290,6 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                   <ChannelCard
                     channel={channel}
                     selected={selectedId === channel.id}
-                    showType={filter === "All"}
                     onSelect={() => {
                       setSelectedId(channel.id);
                       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -314,13 +311,25 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
             ) : null}
           </>
         ) : (
-          <div className="xsc-empty-state">No channels match this filter.</div>
+          <div className="xsc-empty-state">
+            <span className="xsc-empty-icon"><Tv className="size-4" aria-hidden="true" /></span>
+            <p>No channels match the “{filter}” filter.</p>
+            <button type="button" className="xsc-empty-action" onClick={() => setFilter("All")}>
+              Show all channels
+            </button>
+          </div>
         )}
       </section>
 
-      <div className="xsc-ad-slot" aria-label="Sponsored content">
-        <span className="xsc-sponsored-label">Sponsored</span>
-        <XoraInHouseAd placement="xseries_feed" variant="banner" className="xsc-ad-content" />
+      <div className={cn("xsc-ad-slot", adAvailable && "is-loaded")} aria-label={adAvailable ? "Sponsored content" : undefined}>
+        {adAvailable ? <span className="xsc-sponsored-label">Sponsored</span> : null}
+        <XoraInHouseAd
+          placement="xseries_feed"
+          variant="banner"
+          className="xsc-ad-content"
+          collapseWhenEmpty
+          onAvailabilityChange={setAdAvailable}
+        />
       </div>
       </div>
     </section>
