@@ -2757,7 +2757,8 @@ html.xora-channel-route header.fixed {
 }
 .xora-channel-tabs {
   position: sticky;
-  top: calc(var(--header-h, 56px) + 8px);
+  /* Reserve the compact-bar lane so the tabs never jump when it appears. */
+  top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + 8px);
   z-index: 55;
   display: flex;
   width: 100%;
@@ -2771,9 +2772,6 @@ html.xora-channel-route header.fixed {
   background: rgba(245, 239, 231, .96);
   box-shadow: 0 2px 8px rgba(42, 31, 26, .045);
   backdrop-filter: blur(16px);
-}
-html[data-channel-compact="true"] .xora-channel-tabs {
-  top: calc(var(--header-h, 56px) + var(--compact-h, 52px) + 8px);
 }
 .xora-channel-tab {
   position: relative;
@@ -3085,13 +3083,10 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-stats strong { font-size: 14px; }
   .xora-channel-stats small { font-size: 9px; }
   .xora-channel-tabs {
-    top: calc(var(--header-h, 56px) + 5px);
+    top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + 5px);
     height: 53px;
     padding: 4px;
     border-radius: 15px;
-  }
-  html[data-channel-compact="true"] .xora-channel-tabs {
-    top: calc(var(--header-h, 56px) + var(--compact-h, 52px) + 5px);
   }
   .xora-channel-tab { height: 43px; min-height: 43px; padding: 0 4px; font-size: 11px; }
   .xora-channel-tab-indicator { top: 4px; bottom: 4px; left: 4px; border-radius: 11px; }
@@ -3101,10 +3096,7 @@ html.xora-channel-route .ad-slot::before {
 @media (min-width: 1024px) {
   html.xora-channel-route { --header-h: 0px; }
   .xora-channel-compact { top: 0; }
-  .xora-channel-tabs { top: 8px; }
-  html[data-channel-compact="true"] .xora-channel-tabs {
-    top: calc(var(--compact-h, 52px) + 8px);
-  }
+  .xora-channel-tabs { top: calc(var(--compact-h, 56px) + 8px); }
 }
 @media (max-width: 380px) {
   .xora-channel-card { padding-right: 12px; padding-left: 12px; }
