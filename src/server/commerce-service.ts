@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { queryRtdb, getLocalStore } from "./xseries-service-account";
 import { debitWallet, creditWallet, getWallet } from "./wallet-service";
-import { listSpecialPrizes, getCreatorSpecialPrizeEarnings, getCreatorSpecialPrizeAnalytics } from "./special-prizes-service";
 import { calculateDataPurchaseQuote, getCpaWallet, redeemCpaPoints, refundCpaPoints } from "./offerwall-service";
 import { deleteXoraContent, getXoraContent } from "./content-repository";
 import { deleteCloudinaryVideo } from "./content-media-controller";
@@ -947,6 +946,97 @@ async function putRtdbRecordOnce(path: string, value: Record<string, unknown>) {
   throw new Error("Referral ledger changed repeatedly. Retry settlement.");
 }
 
+export type VasBillingEventInput = {
+  eventId: string;
+  eventType: "payment.succeeded" | "payment.reversed" | "subscription.cancelled";
+  userId: string;
+  subscriptionId: string;
+  amount: number;
+  currency: "NGN";
+  provider?: string;
+  occurredAt?: string;
+};
+
+const VAS_REFERRAL_HOLD_DAYS = 7;
+
+export async function recordVasBillingEvent(input: VasBillingEventInput) {
+  const eventId = String(input.eventId || "").trim();
+  const userId = String(input.userId || "").trim();
+  const subscriptionId = String(input.subscriptionId || "").trim();
+  const eventType = input.eventType;
+  const amount = Number(input.amount);
+  const currency = String(input.currency || "").toUpperCase();
+  if (!eventId || eventId.length > 160) throw new Error("A valid VAS event ID is required.");
+  if (!userId || userId.length > 160) throw new Error("A valid XoraTV user ID is required.");
+  if (!subscriptionId || subscriptionId.length > 160) throw new Error("A subscription ID is required.");
+  if (!["payment.succeeded", "payment.reversed", "subscription.cancelled"].includes(eventType)) throw new Error("Unsupported VAS billing event type.");
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000000) throw new Error("The VAS payment amount is invalid.");
+  if (currency !== "NGN") throw new Error("Only NGN VAS billing events are currently supported.");
+
+  const eventKey = crypto.createHash("sha256").update(eventId).digest("hex");
+  const eventPath = `commerce/vasBillingEvents/${eventKey}`;
+  const occurredAt = input.occurredAt && Number.isFinite(Date.parse(input.occurredAt)) ? new Date(input.occurredAt).toISOString() : new Date().toISOString();
+  const eventRecord = {
+    eventId, eventType, userId, subscriptionId, amount: Math.round(amount * 100) / 100,
+    currency, provider: String(input.provider || "vas-provider").slice(0, 80), occurredAt, receivedAt: new Date().toISOString(),
+  };
+  const existingEvent = await queryRtdb(eventPath) as any;
+  if (existingEvent && (
+    existingEvent.eventId !== eventId || existingEvent.eventType !== eventType ||
+    existingEvent.userId !== userId || existingEvent.subscriptionId !== subscriptionId ||
+    Number(existingEvent.amount) !== eventRecord.amount || existingEvent.currency !== currency
+  )) throw new Error("This VAS event ID has already been used for different billing data.");
+  const eventWrite = await putRtdbRecordOnce(eventPath, eventRecord);
+  const commissionPath = `commerce/creatorVasCommissions/${encodeURIComponent(userId)}`;
+
+  if (eventType === "payment.reversed" || eventType === "subscription.cancelled") {
+    const commission = await queryRtdb(commissionPath) as any;
+    const holdIsOver = Boolean(commission?.eligibleAt && Date.parse(String(commission.eligibleAt)) <= Date.now());
+    if (commission?.subscriptionId === subscriptionId && commission.status === "pending" && !holdIsOver) {
+      await queryRtdb(commissionPath, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "reversed", reversedAt: occurredAt, reversalEventId: eventId, updatedAt: new Date().toISOString() }),
+      });
+      return { accepted: true, duplicate: !eventWrite.created, attributed: true, commissionStatus: "reversed" as const };
+    }
+    return { accepted: true, duplicate: !eventWrite.created, attributed: Boolean(commission), commissionStatus: holdIsOver ? "eligible" : commission?.status || "not-applicable" };
+  }
+
+  const rawRate = String(process.env.XORA_VAS_CREATOR_COMMISSION_BPS || "").trim();
+  const rateBps = Number(rawRate);
+  if (!rawRate || !Number.isInteger(rateBps) || rateBps < 1 || rateBps > 10000) throw new Error("VAS commission configuration is not enabled.");
+
+  const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
+  if (!attribution?.creatorId || attribution.creatorId === userId) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "not-attributed" as const };
+  const creator = await getCreator(String(attribution.creatorId));
+  const wasActiveWhenReferred = attribution.creatorStatusAttribution === "active";
+  if ((!creator || creator.status !== "active") && !wasActiveWhenReferred) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "creator-inactive" as const };
+  if (creator?.userId === userId || attribution.creatorUserId === userId) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "self-referral" as const };
+
+  const paidAt = occurredAt;
+  const eligibleAt = new Date(Date.parse(paidAt) + VAS_REFERRAL_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const commissionAmount = Math.round((eventRecord.amount * rateBps / 10000) * 100) / 100;
+  if (commissionAmount <= 0) throw new Error("The configured referral share rounds to zero for this payment.");
+  const commission = {
+    creatorId: String(attribution.creatorId),
+    creatorUserId: String(attribution.creatorUserId || creator?.userId || attribution.creatorId),
+    referredUserId: userId, subscriptionId, firstPaymentEventId: eventId, provider: eventRecord.provider,
+    grossAmount: eventRecord.amount, amount: commissionAmount, commissionRateBps: rateBps,
+    currency: "NGN", status: "pending", paidAt, eligibleAt,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  };
+  const commissionWrite = await putRtdbRecordOnce(commissionPath, commission);
+  await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      status: commissionWrite.record?.status === "eligible" ? "eligible" : "pending",
+      vasSubscriptionId: subscriptionId, vasFirstPaymentAt: paidAt,
+      vasCommissionEligibleAt: commissionWrite.record?.eligibleAt || eligibleAt, updatedAt: new Date().toISOString(),
+    }),
+  }).catch(() => undefined);
+  return { accepted: true, duplicate: !eventWrite.created || !commissionWrite.created, attributed: true, commissionStatus: commissionWrite.record?.status || "pending", commissionCreated: commissionWrite.created };
+}
+
 export async function attachCreatorReferralToUser(userId: string, referralToken: string | null | undefined, clickId?: string | null) {
   const token = String(referralToken || "").trim();
   if (!userId || !/^[A-Za-z0-9_-]{10,40}$/.test(token)) return { attached: false, reason: "missing-or-invalid-token" as const };
@@ -989,50 +1079,14 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
   const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
   const creatorId = String(claim?.referralCreatorId || attribution?.creatorId || "");
   const successEvent = {
-    reference: String(claim.reference),
-    userId,
-    creatorId: creatorId || null,
-    status: "success",
-    completedAt,
-    points: Number(claim.points || 0),
-    provider: "mele",
+    reference: String(claim.reference), userId, creatorId: creatorId || null,
+    status: "success", completedAt, points: Number(claim.points || 0),
+    provider: "mele", referralCommission: false,
+    qualificationReason: "verified-vas-subscription-required",
   };
   await putRtdbRecordOnce(`commerce/dataRewardSuccessEvents/${encodeURIComponent(String(claim.reference))}`, successEvent);
-  if (!creatorId || creatorId === userId) return { referralQualified: false, duplicate: false };
-  const creator = await getCreator(creatorId);
-  const wasActiveWhenReferred = attribution?.creatorId === creatorId && attribution?.creatorStatusAttribution === "active";
-  if ((!creator || creator.status !== "active") && !wasActiveWhenReferred) {
-    return { referralQualified: false, duplicate: false };
-  }
-  if (creator?.userId === userId || (attribution?.creatorUserId && attribution.creatorUserId !== creatorId)) {
-    return { referralQualified: false, duplicate: false };
-  }
-  const referralEvent = {
-    referredUserId: userId,
-    creatorId,
-    creatorStatusAtSignup: attribution?.creatorStatusAttribution || creator?.status || "unknown",
-    amount: 50,
-    currency: "NGN",
-    firstSuccessfulClaimReference: String(claim.reference),
-    status: "confirmed",
-    earnedAt: completedAt,
-    minimumWithdrawal: 500,
-  };
-  const result = await putRtdbRecordOnce(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`, referralEvent);
-  if (attribution?.creatorId === creatorId) {
-    await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "eligible", firstSuccessfulClaimReference: String(claim.reference), qualifiedAt: completedAt, updatedAt: completedAt }),
-    }).catch(() => undefined);
-    if (attribution.clickId) {
-      await queryRtdb(`commerce/creatorReferralClicks/${encodeURIComponent(String(attribution.clickId))}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "eligible", firstSuccessfulClaimReference: String(claim.reference), qualifiedAt: completedAt, updatedAt: completedAt }),
-      }).catch(() => undefined);
-    }
-  }
-  return { referralQualified: true, duplicate: !result.created, event: result.record };
+  // Keep Data Reward delivery analytics; no new creator commission is awarded for free data.
+  return { referralQualified: false, duplicate: false, reason: "verified-vas-subscription-required" as const };
 }
 
 function dataRewardTierForPlan(plan: MelePlan) {
@@ -1447,28 +1501,18 @@ async function writePromotionLinks(links: CreatorPromotionLink[]): Promise<void>
   });
 }
 
-export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course" | "special-prize" | "data-reward"; courseId?: string | null; specialPrizeId?: string | null; }): Promise<CreatorPromotionLink> {
+export async function createCreatorPromotionLink(params: { creatorId: string; service: "data" | "course" | "data-reward"; courseId?: string | null; }): Promise<CreatorPromotionLink> {
   const creator = await getCreator(params.creatorId);
   if (!creator || creator.status !== "active") throw new Error("Creator account is not active.");
   const courseIdInput = String(params.courseId || "").trim();
-  const prizeIdInput = String(params.specialPrizeId || "").trim();
-  if (params.service === "special-prize" && !prizeIdInput) throw new Error("Choose a special prize to promote.");
-  // Validate the current offer before considering reuse of an older creator link.
-  const activeSpecialPrize = params.service === "special-prize"
-    ? (await listSpecialPrizes(false)).find((item) => item.id === prizeIdInput) || null
-    : null;
-  if (params.service === "special-prize" && !activeSpecialPrize) throw new Error("That special prize is no longer available. Refresh the offer list and choose an active offer.");
   const existingLinks = await getCreatorPromotionLinks(params.creatorId);
-  const existing = existingLinks.find((link) =>
-    link.service === params.service &&
-    (params.service === "data" || params.service === "data-reward" || (params.service === "course" && link.courseId === courseIdInput) || (params.service === "special-prize" && link.specialPrizeId === prizeIdInput)),
-  );
+  const existing = existingLinks.find((item) => item.service === params.service &&
+    (params.service === "data" || params.service === "data-reward" || (params.service === "course" && item.courseId === courseIdInput)));
   if (existing) return existing;
 
   let label = params.service === "data-reward" ? "Xora Data Rewards" : "Xora Data Plans";
   let targetPath = params.service === "data-reward" ? "/data-rewards" : "/data";
   let courseId: string | null = null;
-  let specialPrizeId: string | null = null;
   if (params.service === "course") {
     courseId = courseIdInput;
     if (!courseId) throw new Error("A course is required for a course promotion link.");
@@ -1476,13 +1520,6 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
     if (!course) throw new Error("That course is not available for this creator.");
     label = course.title;
     targetPath = "/learn?course=" + encodeURIComponent(course.id);
-  } else if (params.service === "special-prize") {
-    specialPrizeId = prizeIdInput;
-    // Use the already-validated current offer so edits to its snippet/title are
-    // reflected without reusing links to a deleted offer.
-    if (!activeSpecialPrize) throw new Error("That special prize is no longer available.");
-    label = activeSpecialPrize.title;
-    targetPath = "/special-prizes?offer=" + encodeURIComponent(activeSpecialPrize.id);
   }
   let token = "";
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -1492,39 +1529,16 @@ export async function createCreatorPromotionLink(params: { creatorId: string; se
   if (!token) throw new Error("Could not generate a unique promotion link. Please try again.");
   const now = new Date().toISOString();
   if (params.service === "data-reward") targetPath = "/auth?mode=signup&ref=" + encodeURIComponent(token);
-  const record: CreatorPromotionLink = { token, creatorId: params.creatorId, service: params.service, courseId, specialPrizeId, label, targetPath, clicks: 0, createdAt: now, updatedAt: now };
+  const record: CreatorPromotionLink = { token, creatorId: params.creatorId, service: params.service, courseId, label, targetPath, clicks: 0, createdAt: now, updatedAt: now };
   await queryRtdb(promotionLinkPath(token), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
   return record;
 }
 
 export async function getCreatorPromotionLinks(creatorId: string): Promise<CreatorPromotionLink[]> {
-  const links = await readPromotionLinks();
-  // Existing links created before revocation support are reconciled against the
-  // current catalogue. A deleted offer cannot remain in the creator's active list.
-  const savedPrizes = await listSpecialPrizes(true);
-  const savedPrizeIds = new Set(savedPrizes.map((prize) => prize.id));
-  const staleLinks = links.filter((link) =>
-    link?.service === "special-prize" &&
-    link.status !== "revoked" &&
-    Boolean(link.specialPrizeId) &&
-    !savedPrizeIds.has(String(link.specialPrizeId)),
-  );
-  const revokedAt = new Date().toISOString();
-  await Promise.all(staleLinks.map((link) =>
-    queryRtdb(promotionLinkPath(link.token), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "revoked", revokedAt, revocationReason: "special-prize-deleted" }),
-    }).catch(() => undefined),
-  ));
-  const staleTokens = new Set(staleLinks.map((link) => link.token));
-  return links
-    .filter((link) =>
-      link.creatorId === creatorId &&
-      link.status !== "revoked" &&
-      !staleTokens.has(link.token) &&
-      (link.service !== "special-prize" || savedPrizeIds.has(String(link.specialPrizeId || ""))),
-    )
+  // Historical Special Prize rows stay in storage. The shared promotionLinks
+  // collection also serves CPA links, so it is intentionally not deleted.
+  return (await readPromotionLinks())
+    .filter((item) => item.creatorId === creatorId && item.status !== "revoked" && item.service !== "special-prize")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -1579,7 +1593,7 @@ export async function resolvePromotionLink(token: string) {
   if (!link || link.status === "revoked" || link.service === "special-prize") return null;
   const now = new Date().toISOString();
   await queryRtdb(promotionLinkPath(token), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clicks: Number(link.clicks || 0) + 1, updatedAt: now }) });
-  const targetPath = link.service === "data-reward" ? "/auth" : link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : link.service === "special-prize" ? "/special-prizes" : "/data";
+  const targetPath = link.service === "data-reward" ? "/auth" : link.service === "course" ? "/learn" : link.service === "offer" ? "/offers" : "/data";
   const target = new URL(targetPath, "https://xoratv.local");
   if (link.service === "data-reward") {
     target.searchParams.set("mode", "signup");
@@ -1588,7 +1602,6 @@ export async function resolvePromotionLink(token: string) {
     target.searchParams.set("promo", link.token);
   }
   if (link.service === "offer" && link.offerId) target.searchParams.set("offer", link.offerId);
-  if (link.service === "special-prize" && link.specialPrizeId) target.searchParams.set("offer", link.specialPrizeId);
   return { ...link, targetPath: target.pathname + target.search };
 }
 
@@ -2004,41 +2017,52 @@ export async function getCreatorPayoutRequests(userId: string) {
     .sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
-export async function createCreatorPayoutRequest(userId: string, payoutType: "referral" | "special-prize") {
+async function getCreatorVasCommissions(creatorId: string) {
+  const raw = await queryRtdb("commerce/creatorVasCommissions") as Record<string, any> | null;
+  const entries = Object.values(raw || {}).filter((item: any) => item?.creatorId === creatorId && item?.referredUserId);
+  const now = Date.now();
+  for (const item of entries) {
+    if (item.status !== "pending" || !item.eligibleAt || Date.parse(String(item.eligibleAt)) > now) continue;
+    const updatedAt = new Date().toISOString();
+    await queryRtdb(`commerce/creatorVasCommissions/${encodeURIComponent(String(item.referredUserId))}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "eligible", updatedAt }),
+    });
+    await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(String(item.referredUserId))}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "eligible", qualifiedAt: item.eligibleAt, updatedAt }),
+    }).catch(() => undefined);
+    item.status = "eligible";
+    item.updatedAt = updatedAt;
+  }
+  return entries.sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+export async function createCreatorPayoutRequest(userId: string, payoutType: "referral") {
   const creator = await getCreator(userId);
   if (!creator || creator.status !== "active") throw new Error("Only active X Channel creators can request a payout.");
   const bank = await getPayoutDetails(userId) as any;
-  if (!bank?.bankName || !/^\d{10}$/.test(String(bank.accountNumber || "")) || !String(bank.accountName || "").trim()) {
+  if (!bank?.bankName || !/^[0-9]{10}$/.test(String(bank.accountNumber || "")) || !String(bank.accountName || "").trim()) {
     throw new Error("Save complete bank details before requesting a payout.");
   }
-
-  const [requestsRaw, referralRaw, rewardEventsRaw, conversionsRaw] = await Promise.all([
+  const [requestsRaw, referralRaw] = await Promise.all([
     queryRtdb("commerce/creatorPayoutRequests"),
     queryRtdb("commerce/creatorReferralClaims"),
-    queryRtdb("commerce/dataRewardSuccessEvents"),
-    queryRtdb("commerce/specialPrizeConversions"),
   ]);
-  const requests = Object.values((requestsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.payoutType === payoutType);
-  if (requests.some((x: any) => ["pending", "approved", "processing"].includes(String(x.status)))) {
-    throw new Error("You already have an open request for this payout type.");
+  const vasCommissions = await getCreatorVasCommissions(userId);
+  const requests = Object.values((requestsRaw || {}) as Record<string, any>).filter((item: any) => item?.creatorId === userId && item?.payoutType === payoutType);
+  if (requests.some((item: any) => ["pending", "approved", "processing"].includes(String(item.status)))) {
+    throw new Error("You already have an open referral payout request.");
   }
-  const paidTotal = requests.filter((x: any) => x.status === "paid").reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0);
-
-  let amount = 0;
-  let currency: "NGN" | "USD";
-  let minimum: number;
-  if (payoutType === "referral") {
-    currency = "NGN"; minimum = 500;
-    const claims = Object.values((referralRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "confirmed");
-    amount = claims.reduce((sum: number, x: any) => sum + Number(x.amount || 50), 0) - paidTotal;
-  } else {
-    currency = "USD"; minimum = 5;
-    const conversions = Object.values((conversionsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "approved" && String(x?.currency || "USD") === "USD");
-    amount = conversions.reduce((sum: number, x: any) => sum + Number(x.creatorCommission || 0), 0) - paidTotal;
-  }
-  amount = Math.round(Math.max(0, amount) * 10000) / 10000;
-  if (amount < minimum) throw new Error(`Minimum payout is ${currency === "NGN" ? "₦" : "$"}${minimum.toLocaleString()}.`);
-
+  const paidTotal = requests.filter((item: any) => item.status === "paid").reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+  const legacyClaims = Object.values((referralRaw || {}) as Record<string, any>)
+    .filter((item: any) => item?.creatorId === userId && item?.status === "confirmed");
+  const eligibleVasAmount = vasCommissions.filter((item: any) => item.status === "eligible" && item.currency === "NGN")
+    .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+  const amount = Math.round(Math.max(0, legacyClaims.reduce((sum: number, item: any) => sum + Number(item.amount || 50), 0) + eligibleVasAmount - paidTotal) * 100) / 100;
+  const currency = "NGN";
+  const minimum = 500;
+  if (amount < minimum) throw new Error(`Minimum payout is ₦${minimum.toLocaleString()}.`);
   const requestId = id("creator_payout");
   const record = {
     id: requestId, creatorId: userId, creatorName: creator.displayName || creator.username,
@@ -2072,6 +2096,9 @@ export async function getCreatorDashboard(userId: string) {
     queryRtdb("commerce/creatorReferralAttributions"),
     queryRtdb("commerce/creatorReferralClicks"),
   ]);
+  const vasCommissions = await getCreatorVasCommissions(userId);
+  const pendingVasCommissions = vasCommissions.filter((item: any) => item.status === "pending" && item.currency === "NGN");
+  const eligibleVasCommissions = vasCommissions.filter((item: any) => item.status === "eligible" && item.currency === "NGN");
   const courses = coursesRaw ? Object.values(coursesRaw as Record<string, Course>).filter((c) => c.creatorId === userId) : [];
   const dataOrders = dataOrdersRaw ? Object.values(dataOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
   const courseOrders = courseOrdersRaw ? Object.values(courseOrdersRaw as Record<string, any>).filter((o) => o.referralCreatorId === userId || o.creatorId === userId) : [];
@@ -2094,14 +2121,26 @@ export async function getCreatorDashboard(userId: string) {
     .filter((event) => event?.creatorId === userId && event?.referredUserId);
   const eligibleUserIds = new Set(referralClaims.map((event) => String(event.referredUserId || "")));
   const pendingAttributions = referralAttributions
-    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)))
+    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)) && !vasEligibleIds.has(String(event.referredUserId)))
     .map((event) => ({ referredUserId: event.referredUserId, status: "pending", registeredAt: event.registeredAt || event.createdAt }));
-  const eligibleAttributions = referralClaims.map((event) => ({
-    referredUserId: event.referredUserId, status: "eligible", registeredAt: referralAttributions.find((item) => item.referredUserId === event.referredUserId)?.registeredAt || null,
+  const legacyEligibleAttributions = referralClaims.map((event) => ({
+    referredUserId: event.referredUserId, status: "eligible",
+    registeredAt: referralAttributions.find((item) => item.referredUserId === event.referredUserId)?.registeredAt || null,
     qualifiedAt: event.earnedAt, amount: Number(event.amount || 50),
     successfulClaims: successfulClaimsByUser.get(String(event.referredUserId)) || 0,
-    active: (successfulClaimsByUser.get(String(event.referredUserId)) || 0) >= 3,
+    active: (successfulClaimsByUser.get(String(event.referredUserId)) || 0) >= 3, source: "legacy",
   }));
+  const legacyEligibleIds = new Set(legacyEligibleAttributions.map((item) => String(item.referredUserId)));
+  const vasEligibleAttributions = eligibleVasCommissions
+    .filter((item: any) => !legacyEligibleIds.has(String(item.referredUserId)))
+    .map((item: any) => ({
+      referredUserId: item.referredUserId, status: "eligible",
+      registeredAt: referralAttributions.find((entry) => entry.referredUserId === item.referredUserId)?.registeredAt || null,
+      qualifiedAt: item.eligibleAt, amount: Number(item.amount || 0),
+      successfulClaims: successfulClaimsByUser.get(String(item.referredUserId)) || 0, active: true, source: "vas",
+    }));
+  const eligibleAttributions = [...legacyEligibleAttributions, ...vasEligibleAttributions];
+  const vasEligibleIds = new Set(vasEligibleAttributions.map((item) => String(item.referredUserId)));
   const referralClickRecords = Object.values((referralClicksRaw || {}) as Record<string, any>)
     .filter((event) => event?.creatorId === userId);
   const attributedClickIds = new Set(referralAttributions.map((event) => String(event.clickId || "")).filter(Boolean));
@@ -2112,13 +2151,20 @@ export async function getCreatorDashboard(userId: string) {
     pendingMembers: pendingAttributions.sort((a, b) => String(b.registeredAt || "").localeCompare(String(a.registeredAt || ""))).slice(0, 50),
     eligibleMembers: eligibleAttributions.sort((a, b) => String(b.qualifiedAt || "").localeCompare(String(a.qualifiedAt || ""))).slice(0, 50),
   };
+  const legacyReferralBalance = referralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0);
+  const eligibleVasBalance = eligibleVasCommissions.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+  const pendingVasBalance = pendingVasCommissions.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
   const referralEarnings = {
-    balance: referralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0),
-    successfulReferrals: referralClaims.length,
+    balance: Math.round((legacyReferralBalance + eligibleVasBalance) * 100) / 100,
+    pendingBalance: Math.round(pendingVasBalance * 100) / 100,
+    successfulReferrals: new Set([...referralClaims.map((event) => String(event.referredUserId)), ...eligibleVasCommissions.map((item: any) => String(item.referredUserId))]).size,
     activeAudience: [...successfulClaimsByUser.values()].filter((count) => count >= 3).length,
     minimumWithdrawal: 500,
     currency: "NGN" as const,
-    claims: referralClaims.map((event) => ({ referredUserId: event.referredUserId, amount: Number(event.amount || 50), earnedAt: event.earnedAt, successfulClaims: successfulClaimsByUser.get(String(event.referredUserId)) || 0, active: (successfulClaimsByUser.get(String(event.referredUserId)) || 0) >= 3 })),
+    claims: [
+      ...referralClaims.map((event) => ({ referredUserId: event.referredUserId, amount: Number(event.amount || 50), earnedAt: event.earnedAt, successfulClaims: successfulClaimsByUser.get(String(event.referredUserId)) || 0, active: (successfulClaimsByUser.get(String(event.referredUserId)) || 0) >= 3, source: "legacy" })),
+      ...vasEligibleAttributions.map((event) => ({ referredUserId: event.referredUserId, amount: Number(event.amount || 0), earnedAt: event.qualifiedAt, successfulClaims: event.successfulClaims, active: true, source: "vas" })),
+    ],
   };
   return {
     creator,
@@ -2131,8 +2177,14 @@ export async function getCreatorDashboard(userId: string) {
     payoutRequests: await getCreatorPayoutRequests(userId),
     cpa: cpaStatsRaw || { approvedConversions: 0, pendingCommission: 0, payableCommission: 0, paidCommission: 0, minConversions: 200, payoutEligible: false },
     links: (await getCreatorPromotionLinks(userId)).map((link) => ({ ...link, path: "/s/" + link.token })),
-    specialPrizeEarnings: await getCreatorSpecialPrizeEarnings(userId),
-    specialPrizeAnalytics: await getCreatorSpecialPrizeAnalytics(userId),
+    vasCommissions: {
+      pendingBalance: Math.round(pendingVasBalance * 100) / 100,
+      eligibleBalance: Math.round(eligibleVasBalance * 100) / 100,
+      pendingCount: pendingVasCommissions.length,
+      eligibleCount: eligibleVasCommissions.length,
+      subscriptionReferrals: vasCommissions.filter((item: any) => item.status === "pending" || item.status === "eligible").length,
+      entries: vasCommissions.slice(0, 50).map((item: any) => ({ referredUserId: item.referredUserId, amount: Number(item.amount || 0), grossAmount: Number(item.grossAmount || 0), currency: item.currency || "NGN", status: item.status, paidAt: item.paidAt, eligibleAt: item.eligibleAt })),
+    },
     referralEarnings,
     referralTracking,
   };
