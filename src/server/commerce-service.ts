@@ -1005,6 +1005,7 @@ type VasReferralClaimRecord = {
   creatorId?: string; status?: string; eligibleAt?: string; referredUserId?: string; amount?: number;
   earnedAt?: string; billingEventId?: string;
 };
+type CreatorPayoutRequestRecord = { creatorId?: string; payoutType?: string; status?: string; amount?: number; createdAt?: string };
 type CreatorReferralAttributionRecord = {
   creatorId?: string; creatorStatusAttribution?: string; clickId?: string; status?: string;
 };
@@ -2098,11 +2099,11 @@ export async function createCreatorPayoutRequest(userId: string, payoutType: "re
   const [requestsRaw, referralRaw] = await Promise.all([
     queryRtdb("commerce/creatorPayoutRequests"), queryRtdb("commerce/creatorReferralClaims"),
   ]);
-  const requests = Object.values((requestsRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.payoutType === payoutType);
-  if (requests.some((x: any) => ["pending", "approved", "processing"].includes(String(x.status)))) throw new Error("You already have an open request for this payout type.");
-  const paidTotal = requests.filter((x: any) => x.status === "paid").reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0);
-  const claims = Object.values((referralRaw || {}) as Record<string, any>).filter((x: any) => x?.creatorId === userId && x?.status === "confirmed");
-  const amount = Math.round(Math.max(0, claims.reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0) - paidTotal) * 10000) / 10000;
+  const requests = Object.values((requestsRaw || {}) as Record<string, CreatorPayoutRequestRecord>).filter((x) => x.creatorId === userId && x.payoutType === payoutType);
+  if (requests.some((x) => ["pending", "approved", "processing"].includes(String(x.status)))) throw new Error("You already have an open request for this payout type.");
+  const paidTotal = requests.filter((x) => x.status === "paid").reduce((sum, x) => sum + Number(x.amount || 0), 0);
+  const claims = Object.values((referralRaw || {}) as Record<string, VasReferralClaimRecord>).filter((x) => x.creatorId === userId && x.status === "confirmed");
+  const amount = Math.round(Math.max(0, claims.reduce((sum, x) => sum + Number(x.amount || 0), 0) - paidTotal) * 10000) / 10000;
   const currency = "NGN" as const;
   const minimum = 500;
   if (amount < minimum) throw new Error(`Minimum payout is ₦${minimum.toLocaleString()}.`);
@@ -2154,7 +2155,7 @@ export async function getCreatorDashboard(userId: string) {
   const totalSales = dataOrders.concat(courseOrders).filter(successful).reduce((n, o) => n + Number(o.customerPrice || 0), 0);
   const dataSales = dataOrders.filter(successful).reduce((n, o) => n + Number(o.customerPrice || 0), 0);
   const commission = commissions.reduce((n, c) => n + Number(c.amount || 0), 0);
-  const allReferralClaims = Object.values((referralClaimsRaw || {}) as Record<string, any>).filter((event) => event?.creatorId === userId);
+  const allReferralClaims = Object.values((referralClaimsRaw || {}) as Record<string, VasReferralClaimRecord>).filter((event) => event.creatorId === userId);
   const referralClaims = allReferralClaims.filter((event) => event?.status === "confirmed");
   const pendingReferralClaims = allReferralClaims.filter((event) => event?.status === "pending");
   const referredUserIds = new Set(referralClaims.map((event) => String(event.referredUserId || "")));
