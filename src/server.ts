@@ -36,7 +36,6 @@ import { runShortsVerification } from "./server/shorts-verification";
 import { handleSparkleStorageRoute } from "./server/sparkle-storage";
 import { handleCpxLiveTvRoute } from "./server/cpx-live-tv";
 import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
-import { recordGoldenGoosePostback } from "./server/special-prizes-service";
 
 const PLUTO_WRESTLING_DIAGNOSTIC_CHANNELS = new Set([
   "tna-wrestling-pluto",
@@ -717,19 +716,6 @@ export default {
       }
     }
 
-    if (url.pathname === "/api/webhooks/goldengoose" && request.method === "GET" && url.searchParams.get("healthcheck") === "1") {
-      return new Response(JSON.stringify({ ok: true, service: "goldengoose-webhook", endpoint: "/api/webhooks/goldengoose", reachable: true, check: "route_reachability_only" }), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } });
-    }
-
-    if (url.pathname === "/api/webhooks/goldengoose" && (request.method === "GET" || request.method === "POST")) {
-      try {
-        const result = await recordGoldenGoosePostback(request, url);
-        return new Response(JSON.stringify(result), { status: result.status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-      } catch (e) {
-        return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Golden Goose postback failed." }), { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-      }
-    }
-
     if (url.pathname === "/api/webhooks/cpagrip" && request.method === "POST") {
       const result = await handleCpaPostback(request);
       return new Response(JSON.stringify(result), { status: result.status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
@@ -742,6 +728,7 @@ export default {
       url.pathname.startsWith("/api/commerce") ||
       url.pathname.startsWith("/api/admin/commerce") ||
       url.pathname === "/api/webhooks/mele" ||
+      url.pathname === "/api/webhooks/vas" ||
       url.pathname === "/api/webhooks/discount-cpa"
     ) {
       const commerceRes = await handleCommerceRoute(request, url);
