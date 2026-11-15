@@ -999,10 +999,15 @@ export async function recordVasBillingEvent(input: VasBillingEventInput) {
     const commission = await queryRtdb(commissionPath) as CreatorVasCommissionRecord | null;
     const holdIsOver = Boolean(commission?.eligibleAt && Date.parse(String(commission.eligibleAt)) <= Date.now());
     if (commission?.subscriptionId === subscriptionId && commission.status === "pending" && !holdIsOver) {
+      const updatedAt = new Date().toISOString();
       await queryRtdb(commissionPath, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "reversed", reversedAt: occurredAt, reversalEventId: eventId, updatedAt: new Date().toISOString() }),
+        body: JSON.stringify({ status: "reversed", reversedAt: occurredAt, reversalEventId: eventId, updatedAt }),
       });
+      await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "reversed", vasReversedAt: occurredAt, vasReversalEventId: eventId, updatedAt }),
+      }).catch(() => undefined);
       return { accepted: true, duplicate: !eventWrite.created, attributed: true, commissionStatus: "reversed" as const };
     }
     return { accepted: true, duplicate: !eventWrite.created, attributed: Boolean(commission), commissionStatus: holdIsOver ? "eligible" : commission?.status || "not-applicable" };
@@ -2151,7 +2156,7 @@ export async function getCreatorDashboard(userId: string) {
   const eligibleAttributions = [...legacyEligibleAttributions, ...vasEligibleAttributions];
   const vasEligibleIds = new Set(vasEligibleAttributions.map((item) => String(item.referredUserId)));
   const pendingAttributions = referralAttributions
-    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)) && !vasEligibleIds.has(String(event.referredUserId)))
+    .filter((event) => event.status !== "eligible" && event.status !== "reversed" && !eligibleUserIds.has(String(event.referredUserId)) && !vasEligibleIds.has(String(event.referredUserId)))
     .map((event) => ({ referredUserId: event.referredUserId, status: "pending", registeredAt: event.registeredAt || event.createdAt }));
   const referralClickRecords = Object.values((referralClicksRaw || {}) as Record<string, any>)
     .filter((event) => event?.creatorId === userId);
