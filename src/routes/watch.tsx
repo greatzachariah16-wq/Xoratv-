@@ -162,6 +162,8 @@ function WatchPage() {
     (activeId ? \`/api/stream/embed/\${encodeURIComponent(activeId)}\` : "");
   const originalUrl = streamData?.originalUrl || activeMovie?.videoUrl || streamUrl;
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
+  const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
+  const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
   const youtubeUrl = youtubeId ? \`https://www.youtube.com/watch?v=\${youtubeId}\` : undefined;
   const title = activeMovie?.title || streamData?.title || "Now Playing";
   const displayTitle = cleanTitle(title);
@@ -255,7 +257,7 @@ function WatchPage() {
             ) : streamUrl ? (
               <VideoPlayer
                 key={activeId}
-                streamUrl={streamUrl}
+                streamUrl={playerStreamUrl}
                 externalPoster={activeMovie?.thumbnailUrl}
                 title={title}
                 autoPlay={false}
