@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, Bell, PenLine, Radio, Settings2, Share2, Users } from "lucide-react";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import type { Channel } from "@/components/xora/EditChannelSheet";
@@ -15,7 +15,23 @@ export type ChannelHeaderProps = {
 
 export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare }: ChannelHeaderProps) {
   const nameRowRef = useRef<HTMLDivElement>(null!);
-  const observerOptions = useMemo<IntersectionObserverInit>(() => ({ threshold: 0, rootMargin: "-56px 0px 0px 0px" }), []);
+  const [headerOffset, setHeaderOffset] = useState(56);
+
+  // AppShell only has a fixed 56px header below the desktop breakpoint.
+  // Keep the observer threshold aligned when the viewport crosses that breakpoint.
+  useEffect(() => {
+    const updateHeaderOffset = () => {
+      setHeaderOffset(window.matchMedia("(min-width: 1024px)").matches ? 0 : 56);
+    };
+    updateHeaderOffset();
+    window.addEventListener("resize", updateHeaderOffset, { passive: true });
+    return () => window.removeEventListener("resize", updateHeaderOffset);
+  }, []);
+
+  const observerOptions = useMemo<IntersectionObserverInit>(
+    () => ({ threshold: 0, rootMargin: headerOffset ? `-${headerOffset}px 0px 0px 0px` : "0px" }),
+    [headerOffset],
+  );
   const nameRowInView = useInView(nameRowRef, observerOptions);
   const compactVisible = !nameRowInView;
   useEffect(() => {
