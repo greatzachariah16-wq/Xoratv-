@@ -108,7 +108,6 @@ function SeriesThumbnail({ item, eager = false }: { item: XTvSeriesItem; eager?:
     : item.thumbnailUrl ? [item.thumbnailUrl] : [];
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { setIndex(0); setFailed(false); }, [item.id]);
   const next = () => index < sources.length - 1 ? setIndex((current) => current + 1) : setFailed(true);
   if (failed || !sources[index]) return <div className="xsp-thumb-fallback" aria-hidden="true"><Film size={22} /></div>;
   return (
@@ -223,7 +222,7 @@ function XTvSeriesPage() {
               <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA</p><h1>Series</h1></div>
               <div className="xsp-section-switch" role="group" aria-label="X Series sections">
                 <button type="button" className="is-active" aria-pressed="true" onClick={() => setActiveSection("library")}>Movies &amp; Series</button>
-                <button type="button" aria-pressed="false" onClick={() => setActiveSection("cinema")}>Live TV</button>
+                <button type="button" aria-pressed="false" onClick={() => setActiveSection("cinema")}>Cinema Live TV</button>
               </div>
             </header>
 
@@ -259,7 +258,7 @@ function XTvSeriesPage() {
                   <section className="xsp-featured" aria-label="Featured tonight">
                     <div className="xsp-section-heading"><h2>Featured tonight</h2>{isFetching ? <span className="xsp-muted">Updating</span> : null}</div>
                     <div className="xsp-hero">
-                      <SeriesThumbnail item={featured} eager />
+                      <SeriesThumbnail key={featured.id} item={featured} eager />
                       <div className="xsp-hero-scrim" />
                       <div className="xsp-hero-copy">
                         <span className="xsp-editor-label">Editor's pick</span>
@@ -286,7 +285,8 @@ function XTvSeriesPage() {
                 </div>
 
                 {categoryRows.length ? (
-                  <div className="xsp-rows">
+                  <section className="xsp-rows" aria-label="More to watch">
+                    <div className="xsp-rows-title"><h2>More to watch</h2></div>
                     {categoryRows.map(([category, items]) => (
                       <section className="xsp-category-section" key={category} aria-label={category + " titles"}>
                         <div className="xsp-row-heading">
@@ -296,7 +296,7 @@ function XTvSeriesPage() {
                         <div className="xsp-card-rail">{items.slice(0, 10).map((item) => <SeriesCard key={item.id} item={item} userId={user?.id} />)}</div>
                       </section>
                     ))}
-                  </div>
+                  </section>
                 ) : !featured ? (
                   <section className="xsp-empty-state">
                     <Film size={22} /><h2>No titles found</h2><p>Try another category or search.</p>
