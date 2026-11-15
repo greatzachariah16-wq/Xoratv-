@@ -296,15 +296,6 @@ function ChannelPage(){
         </aside>
       </section>
       <section>
-        <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Creator content</p><h2 className="mt-1 font-display text-2xl font-semibold">Latest from {displayName}</h2></div><button onClick={()=>setSection("shorts")} className="text-xs font-semibold text-primary">View Shorts</button></div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[1,2,3].map(i=><div key={i} className="group overflow-hidden rounded-[22px] border border-border bg-surface shadow-sm">
-            <div className="relative aspect-video overflow-hidden bg-secondary"><div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-foreground/10"/><div className="absolute bottom-3 left-3 rounded-full bg-ink/75 px-2.5 py-1 text-[9px] font-semibold text-white">Coming soon</div></div>
-            <div className="p-4"><p className="text-sm font-semibold">Your next Short</p><p className="mt-1 text-[11px] text-muted-foreground">Publish a Short to start filling your creator shelf.</p></div>
-          </div>)}
-        </div>
-      </section>
-      <section>
         <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Learning</p><h2 className="mt-1 font-display text-2xl font-semibold">Courses</h2></div><button onClick={()=>setSection("courses")} className="text-xs font-semibold text-primary">View all</button></div>
         <CourseShelf courses={publishedCourses.slice(0,4)}/>
       </section>
@@ -378,8 +369,8 @@ function ChannelPage(){
     </section>;
     if(section==="referrals")return <section className="w-full min-w-0 max-w-full space-y-4">
       <div className="min-w-0">
-        <h2 className="text-[22px] font-semibold tracking-tight">Invite friends</h2>
-        <p className="mt-2 max-w-[60ch] break-words text-[15px] leading-[1.5] text-muted-foreground">Share your link and earn ₦50 for every friend who joins and gets their first free data.</p>
+        <h2 className="text-xl font-semibold tracking-tight">Invite friends</h2>
+        <p className="mt-1 max-w-[60ch] break-words text-xs leading-5 text-muted-foreground">Share your link and earn ₦50 for every friend who joins and gets their first free data.</p>
       </div>
       <InviteLinkCard url={referralShareUrl} busy={referralLinkBusy} onCreate={()=>void createDataRewardReferralLink()}/>
       <ReferralStats
