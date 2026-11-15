@@ -437,6 +437,7 @@ function ChannelPage(){
     </div>;
   }
 
+  const isPublicSection=publicTabs.some(([key])=>key===section);
   const activeTabIndex=Math.max(0,publicTabs.findIndex(([key])=>key===section));
   const onEdit=()=>setEditOpen(true);
   const onOpenStudio=()=>setMenuOpen(true);
@@ -495,15 +496,18 @@ function ChannelPage(){
 
   return <AppShell wide>
     <div className="xora-channel-page space-y-5 pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+24px)]" >
-      <ChannelHeader channel={editChannel} isOwner={isOwner} onEdit={onEdit} onOpenStudio={onOpenStudio} onShare={onShare}/>
-      <ChannelTabs tabs={publicTabs} activeTab={publicTabs.some(([id])=>id===section)?section as TabId:"shorts"} onChange={setSection}/>
+      <div className="xora-channel-tab-scope">
+        <ChannelHeader channel={editChannel} isOwner={isOwner} onEdit={onEdit} onOpenStudio={onOpenStudio} onShare={onShare}/>
+        <ChannelTabs tabs={publicTabs} activeTab={publicTabs.some(([id])=>id===section)?section as TabId:"shorts"} onChange={setSection}/>
+        <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={isPublicSection?0:-1} hidden={!isPublicSection} className="xora-channel-panel" onTouchStart={event=>{const touch=event.touches[0];touchStart.current=event.touches.length===1&&touch?{x:touch.clientX,y:touch.clientY}:null;}} onTouchEnd={handleChannelSwipe} onTouchCancel={()=>{touchStart.current=null;}}>
+          {isPublicSection ? PublicContent() : null}
+        </div>
+      </div>
+
+      {!isPublicSection ? <div className="xora-channel-management-content"><ManageContent/></div> : null}
 
       <EditChannelSheet key={(editOpen?"open-":"closed-")+username} open={editOpen} channel={editChannel} onOpenChange={setEditOpen} onSave={saveChannel}/>
       <StudioSheet open={menuOpen} tabs={manageTabs} onOpenChange={setMenuOpen} onSelect={(tab)=>{setSection(tab);setMenuOpen(false)}}/>
-
-      <div id="xora-channel-tabpanel" role="tabpanel" aria-labelledby={"xora-channel-tab-"+(publicTabs[activeTabIndex]?.[0]||"shorts")} tabIndex={0} className="xora-channel-panel" onTouchStart={event=>{const touch=event.touches[0];touchStart.current=event.touches.length===1&&touch?{x:touch.clientX,y:touch.clientY}:null;}} onTouchEnd={handleChannelSwipe} onTouchCancel={()=>{touchStart.current=null;}}>
-        {section==="manage"||section==="analytics"||section==="earnings"||section==="referrals"||section==="payout"||section==="customize"?<ManageContent/>:<PublicContent/>}
-      </div>
 
       {deleteTarget?<div className="fixed inset-0 z-[90] grid place-items-center bg-foreground/30 p-4 backdrop-blur-sm"><div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl"><div className="flex items-start gap-3"><div className="grid size-9 place-items-center rounded-xl bg-destructive/10 text-destructive"><AlertTriangle className="size-4"/></div><div><h2 className="font-display text-lg font-semibold">Delete “{deleteTarget.title||"Untitled Short"}”?</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{deleteTarget._type==="short"?"This removes the Short from your channel and deletes its stored video.":"This removes the course from your channel catalogue."}</p></div><button onClick={()=>setDeleteTarget(null)} className="ml-auto rounded-lg p-1.5 hover:bg-secondary"><X className="size-4"/></button></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setDeleteTarget(null)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Cancel</button><button onClick={()=>void (deleteTarget._type==="short"?deleteShort():deleteCourse())} disabled={deleteBusy} className="inline-flex items-center gap-2 rounded-lg bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground">{deleteBusy?<Loader2 className="size-3.5 animate-spin"/>:<Trash2 className="size-3.5"/>}Delete</button></div></div></div>:null}
     </div>
