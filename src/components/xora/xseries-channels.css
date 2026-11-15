@@ -451,8 +451,7 @@ body:has(.xseries-channels),
 
 .xsc-channel-grid > [role="listitem"] {
   min-width: 0;
-  content-visibility: auto;
-  contain-intrinsic-size: 210px;
+  overflow: visible;
 }
 
 .xsc-channel-card,
