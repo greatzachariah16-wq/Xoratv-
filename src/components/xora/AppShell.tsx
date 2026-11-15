@@ -291,7 +291,7 @@ export function AppShell({
       ) : null}
 
       {!immersive ? (
-      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur-md sm:px-4 lg:hidden">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-[var(--header-h)] items-center justify-between border-b border-border bg-background/95 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:px-4 lg:hidden">
         <Link to="/" className="press">
           <Logo />
         </Link>
@@ -387,7 +387,7 @@ export function AppShell({
       <main id="main" className={immersive ? "min-h-screen w-full overflow-x-clip" : "overflow-x-clip lg:pl-[248px] xl:pr-[320px]"}>
         <div
           className={cn(
-            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-14" : "pt-18"),
+            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-[var(--header-h)]" : "pt-[calc(var(--header-h)+16px)]"),
             !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
           )}
         >
