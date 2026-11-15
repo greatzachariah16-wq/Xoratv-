@@ -3268,3 +3268,16 @@ html.xora-channel-route .ad-slot::before {
   }
 }
 
+/* Keep public channel shelves visually related to the compact Studio panels. */
+.xora-channel-panel :is(section, article)[class*="rounded-"][class~="border"] {
+  border-color: var(--channel-line) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--channel-shadow-sm) !important;
+}
+.xora-channel-panel .shadow-sm {
+  box-shadow: var(--channel-shadow-sm) !important;
+}
+.xora-channel-panel aside[class~="p-6"] {
+  padding: 16px !important;
+}
+
