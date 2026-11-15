@@ -109,7 +109,7 @@ body,
   --channel-accent-contrast: #ffffff;
   --header-h: calc(56px + env(safe-area-inset-top, 0px));
   --compact-h: 56px;
-  --tabs-h: 48px;
+  --tabs-h: 56px;
   --nav-h: 64px;
 }
 @media (prefers-color-scheme: dark) {
