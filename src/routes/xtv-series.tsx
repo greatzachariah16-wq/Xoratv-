@@ -121,6 +121,14 @@ function rankAndShuffleXSeries(
   return scored.map((s) => s.item);
 }
 
+function isSeriesTitle(item: XTvSeriesItem): boolean {
+  const metadata = [item.tag, item.genre, ...(item.categories || [])]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return Boolean((item.seasons || 0) > 0 || (item.episodesCount || 0) > 0 || /\b(series|season|episodic|tv show|mini-series|docuseries)\b/.test(metadata));
+}
+
 function XTvCard({
   item,
   userId,
@@ -259,7 +267,7 @@ function XTvSeriesPage() {
   }, [allItems, genre, search, userSignals, user?.id]);
 
   const featured = filtered[0];
-  const shelves = filtered.slice(featured ? 1 : 0);
+  const seriesShelf = filtered.filter(isSeriesTitle);\n  const shelves = filtered.filter((item) => item.id !== featured?.id && !isSeriesTitle(item));
 
   return (
     <AppShell wide extraWide immersive={activeSection === "cinema"}>
@@ -272,7 +280,7 @@ function XTvSeriesPage() {
             Movies &amp; Series
           </button>
           <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("xsl-section-tab", activeSection === "cinema" && "is-active")}>
-            Cinema Live TV
+            Channels
           </button>
             </nav>
           </>
@@ -404,6 +412,25 @@ function XTvSeriesPage() {
                   <span className="xsl-featured-genre">{featured.genre}</span>
                 </div>
               </div>
+            </div>
+          </section>
+        ) : null}
+
+        {seriesShelf.length > 0 ? (
+          <section aria-label="Series on Xora" className="space-y-3">
+            <div className="xsl-section-heading">
+              <div>
+                <p className="xsl-eyebrow">WATCH EPISODIC STORIES</p>
+                <h2>Series on Xora</h2>
+              </div>
+              <span className="xsl-updating">{seriesShelf.length} series</span>
+            </div>
+            <div className="xsl-video-grid">
+              {seriesShelf.map((item) => (
+                <div key={item.id} className="xsl-grid-item">
+                  <XTvCard item={item} userId={user?.id} />
+                </div>
+              ))}
             </div>
           </section>
         ) : null}
