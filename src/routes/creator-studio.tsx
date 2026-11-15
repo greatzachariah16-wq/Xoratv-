@@ -18,6 +18,7 @@ import { ChannelTabs, type TabId } from "@/components/xora/ChannelTabs";
 import { StudioSheet, type StudioTabId } from "@/components/xora/StudioSheet";
 import { EmptyState } from "@/components/xora/EmptyState";
 import { PayoutBankModal } from "@/components/xora/PayoutBankModal";
+import { HowItWorks, InviteLinkCard, ReferralList, ReferralStats, type ReferralMember } from "@/components/xora/CreatorReferral";
 
 export const Route = createFileRoute("/creator-studio")({ component: ChannelPage });
 
@@ -375,31 +376,21 @@ function ChannelPage(){
         {(dashboard?.links||[]).filter((link:any)=>link.service==="special-prize").length?<div className="mt-4 space-y-2 border-t border-border pt-3"><p className="text-xs font-semibold">Your saved promotion links</p>{(dashboard?.links||[]).filter((link:any)=>link.service==="special-prize").map((link:any)=><div key={link.token} className="flex items-center gap-2 rounded-xl bg-background p-3"><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{link.label}</p><p className="mt-1 text-[10px] text-muted-foreground">{Number(link.clicks||0).toLocaleString()} clicks</p></div><button type="button" onClick={()=>void copyPromotionLink(link.token)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-[10px] font-semibold"><Copy className="size-3"/>{copiedPromotion===link.token?"Copied":"Copy link"}</button></div>)}</div>:null}
       </div>
     </section>;
-    if(section==="referrals")return <section className="space-y-4">
-      <PanelTitle eyebrow="Audience growth" title="Creator referral links" text="Invite people to create a XoraTV account. Your link opens account registration—not a data purchase. A referral earns ₦50 after the new member's first successful data-reward delivery."/>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Metric label="Clicks (not registered)" value={Number(dashboard?.referralTracking?.clicks||0).toLocaleString()}/>
-        <Metric label="Pending referrals" value={Number(dashboard?.referralTracking?.pending||0).toLocaleString()}/>
-        <Metric label="Eligible referrals" value={Number(dashboard?.referralTracking?.eligible||0).toLocaleString()}/>
-        <Metric label="Referral earnings" value={"₦"+Number(dashboard?.referralEarnings?.balance||0).toLocaleString("en-NG")}/>
-        <Metric label="Active audience (3 claims)" value={Number(dashboard?.referralEarnings?.activeAudience||0).toLocaleString()}/>
+    if(section==="referrals")return <section className="w-full min-w-0 max-w-full space-y-4">
+      <div className="min-w-0">
+        <h2 className="text-[22px] font-semibold tracking-tight">Invite friends</h2>
+        <p className="mt-2 max-w-[60ch] break-words text-[15px] leading-[1.5] text-muted-foreground">Share your link and earn ₦50 for every friend who joins and gets their first free data.</p>
       </div>
-      <div className="rounded-[26px] border border-primary/20 bg-surface p-5 shadow-card sm:p-6">
-        <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Users className="size-5"/></span><div><h3 className="text-base font-semibold">Your Xora invite link</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Create one personal link and share it anywhere. New visitors will be taken to XoraTV sign-up with your referral attribution attached.</p></div></div>
-        <button type="button" onClick={()=>void createDataRewardReferralLink()} disabled={referralLinkBusy} className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50">{referralLinkBusy?<Loader2 className="size-4 animate-spin"/>:<Plus className="size-4"/>}{referralLinkBusy?"Creating link…":"Create referral link"}</button>
-        {referralShareUrl?<div className="mt-4 rounded-2xl border border-border bg-background p-3"><label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Shareable sign-up URL</label><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input readOnly value={referralShareUrl} className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 text-xs"/><button type="button" onClick={()=>void copyReferralLink()} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 text-xs font-semibold text-primary"><Copy className="size-4"/>{copiedPromotion==="creator-referral"?"Copied":"Copy link"}</button></div><p className="mt-2 text-[10px] text-muted-foreground">Destination: XoraTV account registration</p></div>:<p className="mt-4 rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">Your referral link will appear here after you create it.</p>}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-surface p-5">
-          <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold">Pending referrals</h3><p className="mt-1 text-[10px] text-muted-foreground">Members who registered through your link and have not completed their first successful data reward.</p></div><span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-700">{Number(dashboard?.referralTracking?.pending||0)}</span></div>
-          {dashboard?.referralTracking?.pendingMembers?.length?<div className="mt-4 space-y-2">{dashboard.referralTracking.pendingMembers.map((item:any)=><div key={item.referredUserId} className="flex items-center justify-between gap-3 rounded-xl bg-background p-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">Member · {String(item.referredUserId).slice(-6)}</p><p className="mt-1 text-[10px] text-muted-foreground">Registered {item.registeredAt?new Date(item.registeredAt).toLocaleDateString():"date unavailable"}</p></div><span className="shrink-0 rounded-full border border-amber-500/30 px-2.5 py-1 text-[10px] font-semibold text-amber-700">Pending</span></div>)}</div>:<p className="mt-4 rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">No pending referrals yet. New sign-ups will appear here.</p>}
-        </div>
-        <div className="rounded-2xl border border-border bg-surface p-5">
-          <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold">Eligible referrals</h3><p className="mt-1 text-[10px] text-muted-foreground">Members whose first data-reward delivery succeeded. Each earns ₦50.</p></div><span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700">{Number(dashboard?.referralTracking?.eligible||0)}</span></div>
-          {dashboard?.referralTracking?.eligibleMembers?.length?<div className="mt-4 space-y-2">{dashboard.referralTracking.eligibleMembers.map((item:any)=><div key={item.referredUserId} className="flex items-center justify-between gap-3 rounded-xl bg-background p-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">Member · {String(item.referredUserId).slice(-6)}</p><p className="mt-1 text-[10px] text-muted-foreground">Qualified {item.qualifiedAt?new Date(item.qualifiedAt).toLocaleDateString():"date unavailable"} · {Number(item.successfulClaims||0)} successful claims</p></div><span className="shrink-0 rounded-full border border-emerald-500/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">₦{Number(item.amount||50)}</span></div>)}</div>:<p className="mt-4 rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">No eligible referrals yet. They will appear after a first successful data-reward delivery.</p>}
-        </div>
-      </div>
-      <div className="rounded-2xl border border-border bg-surface p-5"><h3 className="text-sm font-semibold">How creator referrals work</h3><ol className="mt-3 space-y-3 text-xs leading-5 text-muted-foreground"><li><b className="text-foreground">1. Share your link.</b> The visitor opens XoraTV registration and creates an account.</li><li><b className="text-foreground">2. First successful data reward.</b> When the referred member receives their first data reward successfully, you earn ₦50 once.</li><li><b className="text-foreground">3. Engagement signal.</b> Three successful data-reward claims mark that audience member as active; this is separate from the first ₦50 qualification.</li></ol><p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">Minimum referral withdrawal: <b className="text-foreground">₦500</b>.</p></div>
+      <InviteLinkCard url={referralShareUrl} busy={referralLinkBusy} onCreate={()=>void createDataRewardReferralLink()}/>
+      <ReferralStats
+        visits={Number(dashboard?.referralTracking?.clicks||0)}
+        pending={Number(dashboard?.referralTracking?.pending||0)}
+        eligible={Number(dashboard?.referralTracking?.eligible||0)}
+        earned={"₦"+Number(dashboard?.referralEarnings?.balance||0).toLocaleString("en-NG")}
+        activeMembers={Number(dashboard?.referralEarnings?.activeAudience||0)}
+      />
+      <ReferralList pending={(dashboard?.referralTracking?.pendingMembers||[]) as ReferralMember[]} eligible={(dashboard?.referralTracking?.eligibleMembers||[]) as ReferralMember[]}/>
+      <HowItWorks/>
     </section>;
     if(section==="payout"){
       const referralBalance=Number(dashboard?.referralEarnings?.balance||0);
@@ -495,7 +486,7 @@ function ChannelPage(){
   };
 
   return <AppShell wide>
-    <div className="xora-channel-page space-y-5 pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+24px)]" >
+    <div className="xora-channel-page min-w-0 max-w-full space-y-5 pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+24px)]">
       <div className="xora-channel-tab-scope">
         <ChannelHeader channel={editChannel} isOwner={isOwner} onEdit={onEdit} onOpenStudio={onOpenStudio} onShare={onShare}/>
         <ChannelTabs tabs={publicTabs} activeTab={publicTabs.some(([id])=>id===section)?section as TabId:"shorts"} onChange={setSection}/>
