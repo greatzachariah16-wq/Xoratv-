@@ -2169,8 +2169,8 @@ export async function getCreatorDashboard(userId: string) {
     .filter((item) => !legacyReferredIds.has(String(item.referredUserId)))
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const pendingVasBalance = pendingVasCommissions
-    .filter((item: any) => !legacyReferredIds.has(String(item.referredUserId)))
-    .reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+    .filter((item) => !legacyReferredIds.has(String(item.referredUserId)))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const referralEarnings = {
     balance: Math.round((legacyReferralBalance + eligibleVasBalance) * 100) / 100,
     pendingBalance: Math.round(pendingVasBalance * 100) / 100,
