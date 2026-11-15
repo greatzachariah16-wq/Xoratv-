@@ -439,7 +439,7 @@ export function AppShell({
           aria-current={(pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? "page" : undefined}
           onClick={() => setMobileMenuOpen((open) => !open)}
           className={cn(
-            "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 pb-[env(safe-area-inset-bottom)] text-[10px] font-semibold leading-none transition-colors",
+            "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold leading-none transition-colors",
             mobileMenuOpen || (pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? "text-primary" : "text-muted-foreground hover:text-foreground",
           )}
         >
