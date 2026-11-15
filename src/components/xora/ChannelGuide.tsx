@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Clock3 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type Programme = {
   id: string;
