@@ -641,16 +641,17 @@ export function NativeVideoPlayer({
   return (
     <div
       className={cn(
-        "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
+        "group relative w-full max-w-full overflow-hidden bg-ink",
+        cinemaMode ? "rounded-none" : "rounded-xl",
         nativeVlcOnly && nativeVlcActive ? "hidden" : aspect,
         className,
       )}
     >
-      <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
+      {!cinemaMode ? <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
         <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
           4K HD
         </span>
-      </div>
+      </div> : null}
       {!cinemaMode && !playerClosed ? (
         <button type="button" onClick={() => {
           videoRef.current?.pause();
