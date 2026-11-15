@@ -350,7 +350,6 @@ function XTvSeriesPage() {
                     {allItems.length > 0 && count > 0 ? (
                       <span
                         className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none",
                           "xsl-category-count",
                         )}
                       >
