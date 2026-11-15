@@ -211,7 +211,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
       </nav>
 
       <div className="xsc-main-column">
-        <section className="xsc-player-card" aria-label="Live channel player">
+        <section className={cn("xsc-player-card", selected && "is-playing")} aria-label="Live channel player">
           <div className={cn("xsc-player-sticky", selected && "is-playing")}>
             <div className="xsc-player-frame">
               {selected ? (
