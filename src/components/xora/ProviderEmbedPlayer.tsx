@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Play, X } from "lucide-react";
+import { Play, Pause, Maximize2, Minimize2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/events";
 import { useDataSaver } from "@/lib/data-saver";
@@ -17,6 +17,7 @@ export interface ProviderEmbedPlayerProps {
   authorId?: string | null;
   genre?: string | null;
   feed?: FeedType;
+  cinemaMode?: boolean;
   onClose?: () => void;
 }
 
@@ -30,9 +31,12 @@ export function ProviderEmbedPlayer({
   authorId,
   genre,
   feed,
+  cinemaMode = false,
   onClose,
 }: ProviderEmbedPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerRootRef = useRef<HTMLDivElement>(null);
+  const [cinemaFullscreen, setCinemaFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
   const [hasStarted, setHasStarted] = useState<boolean>(Boolean(autoPlay));
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -280,8 +284,27 @@ export function ProviderEmbedPlayer({
     [isPlaying],
   );
 
+  const toggleCinemaFullscreen = () => {
+    if (!cinemaMode) return;
+    if (!document.fullscreenElement) {
+      const request = playerRootRef.current?.requestFullscreen?.();
+      if (request) void request.then(() => setCinemaFullscreen(true)).catch(() => {});
+    } else {
+      const exit = document.exitFullscreen?.();
+      if (exit) void exit.then(() => setCinemaFullscreen(false)).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    if (!cinemaMode) return;
+    const syncFullscreen = () => setCinemaFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, [cinemaMode]);
+
   return (
     <div
+      ref={playerRootRef}
       className={cn(
         "group relative overflow-hidden bg-black flex items-center justify-center select-none transition-all duration-300",
         vertical
@@ -383,6 +406,29 @@ export function ProviderEmbedPlayer({
             <Play className="ml-0.5 size-6 fill-current" aria-hidden="true" />
           </span>
         </button>
+      {cinemaMode && !playerClosed ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex items-center justify-between bg-gradient-to-t from-black/90 via-black/45 to-transparent px-3 pb-3 pt-10">
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={togglePlayState}
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+              className="grid size-9 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
+            >
+              {isPlaying ? <Pause className="size-4 fill-current" /> : <Play className="ml-0.5 size-4 fill-current" />}
+            </button>
+            <span className="text-[10px] font-semibold text-white/75">Xora Cinema</span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleCinemaFullscreen}
+            aria-label={cinemaFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="pointer-events-auto grid size-9 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
+          >
+            {cinemaFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+          </button>
+        </div>
+      ) : null}
       ) : null}
     </div>
   );
