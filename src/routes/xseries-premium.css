@@ -5,11 +5,11 @@
   --xsp-card-shadow:0 10px 24px -6px rgba(120,60,40,.18),0 2px 6px rgba(120,60,40,.08),inset 0 1px 0 rgba(255,255,255,.82);
   width:100%; min-width:0; max-width:none; margin:0; padding:0 0 8px; color:var(--xsp-ink); background:transparent; overflow:visible; isolation:isolate;
 }
-html:has(.xseries-page),body:has(.xseries-page),#root:has(.xseries-page){background:linear-gradient(180deg,#faf5f0 0%,#f3e8df 100%)}
+/* The AppShell wrapper owns the continuous page canvas; no :has selector is required. */
 .xseries-page,.xseries-page *,.xseries-page *::before,.xseries-page *::after{box-sizing:border-box}
 .xseries-page button,.xseries-page input{font:inherit}
 .xseries-page button:focus-visible,.xseries-page a:focus-visible,.xseries-page input:focus-visible{outline:3px solid rgba(181,80,46,.42);outline-offset:3px}
-.xora-series-shell{background:transparent!important}
+.xora-series-shell{background:linear-gradient(180deg,#faf5f0 0%,#f3e8df 100%)!important}
 .xora-series-topbar{background:#faf5f0!important;border-bottom:1px solid rgba(75,49,34,.10)!important;box-shadow:0 4px 14px rgba(63,39,26,.035);backdrop-filter:none!important}
 .xora-series-bottom-nav{left:16px!important;right:16px!important}
 .xsp-page-header{display:flex;min-width:0;align-items:center;justify-content:space-between;gap:10px;margin:0 0 13px}
@@ -61,6 +61,7 @@ html:has(.xseries-page),body:has(.xseries-page),#root:has(.xseries-page){backgro
 .xsp-card-rail{display:flex;width:calc(100% + 32px);gap:12px;overflow-x:auto;overflow-y:visible;margin:0 -16px;padding:5px 16px 16px;scroll-padding-inline:16px;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 .xsp-card{width:72vw;max-width:320px;min-width:0;flex:0 0 72vw;scroll-snap-align:start}
 .xsp-card-link{display:block;min-width:0;color:inherit;text-decoration:none}
+.xsp-card-image>.xsp-thumb-fallback{width:100%;height:100%}
 .xsp-card-image{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:20px;background:linear-gradient(145deg,#e8d9ce,#cbb5a6);box-shadow:var(--xsp-card-shadow)}
 .xsp-duration{position:absolute;right:8px;bottom:8px;padding:4px 7px;border-radius:7px;background:rgba(25,17,13,.78);color:#fffaf6;font-size:9px;font-weight:750;line-height:1}
 .xsp-card-copy{min-width:0;padding:9px 2px 0}
