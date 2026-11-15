@@ -380,7 +380,7 @@ export function ProviderEmbedPlayer({
               className="h-full w-full object-cover"
               style={{ aspectRatio: "16 / 9" }}
             />
-          ) : externalPoster ? (
+          ) : !youtubeVideoId && externalPoster ? (
             <img src={externalPoster} alt="" className="h-full w-full object-cover" loading="eager" />
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-[#5A382B] via-[#2A1F1A] to-[#17120F]" />
