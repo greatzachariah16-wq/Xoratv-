@@ -3,15 +3,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  CalendarDays,
-  ExternalLink,
+  Clapperboard,
   Film,
-  Layers3,
-  Loader2,
   Maximize2,
   Minimize2,
   Play,
   RotateCw,
+  Search,
+  Sparkles,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { LargeBannerPopupAd } from "@/components/ads/LargeBannerPopupAd";
@@ -21,10 +20,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/watch")({
   head: () => ({
     meta: [
-      { title: "Watch Full Movie — Xora Cinema" },
+      { title: "Xora Cinema — Watch Movies & Series" },
       {
         name: "description",
-        content: "Watch full sovereign cinema and movies on Xora.",
+        content: "Discover and watch movies and series in the Xora Cinema experience.",
       },
     ],
   }),
@@ -49,9 +48,7 @@ async function fetchMovieStream(id: string): Promise<{
   streamUrl: string;
   sourceType: string;
   title: string;
-  originalUrl?: string;
 }> {
-  // 1. Try XTv Series stream resolver
   try {
     const res = await fetch(`/api/xtv-series/stream?id=${encodeURIComponent(id)}`);
     if (res.ok) {
@@ -59,22 +56,19 @@ async function fetchMovieStream(id: string): Promise<{
         ok: boolean;
         streamUrl?: string;
         provider?: string;
-        item?: { title?: string; videoUrl?: string };
       };
       if (data.ok && data.streamUrl) {
         return {
           streamUrl: data.streamUrl,
           sourceType: data.provider || "hls",
-          title: data.item?.title || "Cinema Stream",
-          originalUrl: data.item?.videoUrl,
+          title: "Xora Cinema",
         };
       }
     }
-  } catch (error) {
-    void error;
+  } catch {
+    // Continue to the catalog playback resolver.
   }
 
-  // 2. Try catalog playback resolution
   try {
     const res = await fetch(`/api/catalog/${encodeURIComponent(id)}/playback`);
     if (res.ok) {
@@ -86,20 +80,31 @@ async function fetchMovieStream(id: string): Promise<{
         return {
           streamUrl: data.playback.url,
           sourceType: data.playback.provider || "embed",
-          title: "Cinema Stream",
+          title: "Xora Cinema",
         };
       }
     }
-  } catch (error) {
-    void error;
+  } catch {
+    // Use the existing stream proxy as the final fallback.
   }
 
-  // 3. Fallback to direct proxy embed
   return {
     streamUrl: `/api/stream/embed/${encodeURIComponent(id)}`,
     sourceType: "embed",
-    title: "Cinema Stream",
+    title: "Xora Cinema",
   };
+}
+
+function isSeriesTitle(item: XTvSeriesItem): boolean {
+  const metadata = [item.tag, item.genre, ...(item.categories || [])]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return Boolean(
+    (item.seasons || 0) > 0 ||
+      (item.episodesCount || 0) > 0 ||
+      /\b(series|season|episodic|tv show|mini-series|docuseries)\b/.test(metadata),
+  );
 }
 
 function WatchPage() {
@@ -107,23 +112,20 @@ function WatchPage() {
   const { id } = Route.useSearch();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [adTriggerKey, setAdTriggerKey] = useState(0);
+  const [search, setSearch] = useState("");
 
-  // Load all movies
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
     queryKey: ["xtv-series-items-all"],
     queryFn: fetchAllMovies,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Target item from catalog if already loaded
-  const activeMovie = useMemo(() => {
-    if (!id && allMovies.length > 0) return allMovies[0];
-    return allMovies.find((m) => m.id === id) || null;
-  }, [allMovies, id]);
-
+  const activeMovie = useMemo(
+    () => allMovies.find((movie) => movie.id === id) || null,
+    [allMovies, id],
+  );
   const activeId = activeMovie?.id || id || "";
 
-  // Stream Resolution Query
   const {
     data: streamData,
     isLoading: isStreamLoading,
@@ -141,342 +143,270 @@ function WatchPage() {
     streamData?.streamUrl ||
     activeMovie?.streamUrl ||
     activeMovie?.videoUrl ||
-    (activeId ? `/api/stream/embed/${encodeURIComponent(activeId)}` : "");
+    "";
 
-  // Other movies for "Up Next" shelf
-  const upNextMovies = useMemo(() => {
-    return allMovies.filter((m) => m.id !== activeId);
-  }, [allMovies, activeId]);
+  const series = useMemo(() => allMovies.filter(isSeriesTitle), [allMovies]);
+  const movies = useMemo(() => allMovies.filter((item) => !isSeriesTitle(item)), [allMovies]);
+  const recommendations = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allMovies
+      .filter((item) => item.id !== activeId)
+      .filter((item) =>
+        !q ||
+        [item.title, item.description, item.genre, item.tag, ...(item.categories || [])]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      )
+      .slice(0, 18);
+  }, [allMovies, activeId, search]);
+
+  function selectTitle(nextId: string) {
+    void navigate({ to: "/watch", search: { id: nextId } });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function toggleFullscreen() {
-    setAdTriggerKey((prev) => prev + 1);
-
-    const el = document.getElementById("cinema-stage-wrapper");
-    if (!el) return;
+    setAdTriggerKey((previous) => previous + 1);
+    const stage = document.getElementById("xora-cinema-stage");
+    if (!stage) return;
     if (!document.fullscreenElement) {
-      el.requestFullscreen?.()
-        .then(() => setIsFullscreen(true))
-        .catch(() => {});
+      const request = stage.requestFullscreen?.();
+      if (request) void request.then(() => setIsFullscreen(true)).catch(() => {});
     } else {
-      document
-        .exitFullscreen?.()
-        .then(() => setIsFullscreen(false))
-        .catch(() => {});
+      const exit = document.exitFullscreen?.();
+      if (exit) void exit.then(() => setIsFullscreen(false)).catch(() => {});
     }
   }
 
-  const title = activeMovie?.title || "Movie Theater";
-  const durationMin = activeMovie?.durationSeconds
-    ? Math.round(activeMovie.durationSeconds / 60)
-    : 90;
+  const isSeries = activeMovie ? isSeriesTitle(activeMovie) : false;
+  const titleKind = isSeries ? "Series" : "Movie";
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-[#f1f5f9] selection:bg-primary/30">
-      {/* Top Cinema Bar */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07090e]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3 sm:gap-4">
+    <div className="min-h-screen overflow-x-clip bg-[#100d0c] text-[#fffaf5] selection:bg-[#b65a3c]/30">
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#100d0c]/90 backdrop-blur-2xl">
+        <div className="mx-auto flex h-[62px] max-w-[1480px] items-center justify-between gap-3 px-4 sm:px-7">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/xtv-series"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-white/90 shadow-sm transition hover:border-white/30 hover:bg-white/15 hover:text-white"
-              title="Return to X Series Collection"
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.055] text-white/80 transition hover:border-[#c8795b]/50 hover:bg-white/10"
+              aria-label="Back to X-Series"
+              title="Back to X-Series"
             >
-              <ArrowLeft className="size-3.5" />
-              <span className="hidden sm:inline">Back to X Series</span>
-              <span className="sm:hidden">Back</span>
+              <ArrowLeft className="size-4" />
             </Link>
-
-            <div className="h-4 w-px bg-white/15" />
-
-            <div className="flex items-center gap-2 overflow-hidden">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                <Film className="size-3" /> Cinema
-              </span>
-              <h1 className="truncate text-sm font-semibold text-white sm:text-base">{title}</h1>
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-[#d69a7c]">XORA ORIGINAL EXPERIENCE</p>
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-sm font-semibold tracking-tight sm:text-base">Xora Cinema</h1>
+                <span className="hidden rounded-full border border-white/10 px-2 py-0.5 text-[9px] font-semibold text-white/45 sm:inline-flex">WATCH</span>
+              </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {streamUrl ? (
-              <a
-                href={streamUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white sm:inline-flex"
-                title="Open stream in isolated window"
-              >
-                <ExternalLink className="size-3" />
-                <span>Popout</span>
-              </a>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white"
-              aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-            </button>
-          </div>
+          <Link
+            to="/xtv-series"
+            className="shrink-0 rounded-full border border-[#c8795b]/30 bg-[#b65a3c]/10 px-3.5 py-2 text-[11px] font-semibold text-[#e7b29a] transition hover:bg-[#b65a3c]/20"
+          >
+            Browse X-Series
+          </Link>
         </div>
       </header>
 
-      {/* Main Cinema Theater Stage - Large YouTube-Grade Viewport */}
-      <main className="mx-auto max-w-[1680px] px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        <div className="relative mx-auto w-full max-w-[1720px]">
-          {!isFullscreen ? (
-            <>
-              <div className="pointer-events-none absolute -inset-x-3 -inset-y-3 rounded-[2rem] border border-white/[0.08] bg-white/[0.015] shadow-[0_0_90px_rgba(255,255,255,0.035)] backdrop-blur-md sm:-inset-x-5 sm:-inset-y-5 sm:rounded-[2.4rem]" />
-              <div className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 -translate-x-full flex-col items-center gap-5 text-[9px] font-semibold uppercase tracking-[0.35em] text-white/25 lg:flex">
-                <span className="[writing-mode:vertical-rl]">Xora Cinema</span>
-                <span className="h-16 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
-                <span className="[writing-mode:vertical-rl]">Now Playing</span>
+      <main className="mx-auto w-full max-w-[1480px] px-3 pb-16 pt-5 sm:px-7 sm:pt-8">
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px] xl:items-start">
+          <div className="min-w-0">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                <Clapperboard className="size-3.5 text-[#d18a69]" />
+                Now showing
               </div>
-              <div className="pointer-events-none absolute -right-2 top-1/2 hidden translate-x-full -translate-y-1/2 flex-col items-center gap-5 text-[9px] font-semibold uppercase tracking-[0.35em] text-white/25 lg:flex">
-                <span className="[writing-mode:vertical-rl]">Xora Cinema</span>
-                <span className="h-16 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
-                <span className="[writing-mode:vertical-rl]">Feature Film</span>
-              </div>
-            </>
-          ) : null}
-
-          <div
-            id="cinema-stage-wrapper"
-            className={cn(
-              "relative mx-auto w-full overflow-hidden bg-black transition-all duration-300 shadow-[0_30px_100px_rgba(0,0,0,0.55)]",
-              isFullscreen
-                ? "h-screen w-screen rounded-none border-none"
-                : "aspect-video max-h-[88vh] rounded-[1.35rem] border border-white/15 ring-1 ring-white/10 sm:rounded-[1.75rem] md:rounded-[2rem]",
-            )}
-          >
-            {!isFullscreen ? (
-              <>
-                <div className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] ring-1 ring-inset ring-white/[0.08]" />
-                <div className="pointer-events-none absolute left-4 top-4 z-20 h-8 w-8 border-l border-t border-primary/60 sm:left-5 sm:top-5 sm:h-10 sm:w-10" />
-                <div className="pointer-events-none absolute right-4 top-4 z-20 h-8 w-8 border-r border-t border-primary/60 sm:right-5 sm:top-5 sm:h-10 sm:w-10" />
-                <div className="pointer-events-none absolute bottom-4 left-4 z-20 h-8 w-8 border-b border-l border-primary/35 sm:bottom-5 sm:left-5 sm:h-10 sm:w-10" />
-                <div className="pointer-events-none absolute bottom-4 right-4 z-20 h-8 w-8 border-b border-r border-primary/35 sm:bottom-5 sm:right-5 sm:h-10 sm:w-10" />
-                <div className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2 rounded-b-full border-x border-b border-white/10 bg-black/30 px-5 py-1 text-[8px] font-bold uppercase tracking-[0.4em] text-white/35 backdrop-blur-md">
-                  Xora Cinema
-                </div>
-              </>
-            ) : null}
-            {isStreamLoading && !streamUrl ? (
-            <div className="grid h-full w-full place-items-center bg-gradient-to-b from-[#0c0e17] to-black">
-              <div className="text-center">
-                <Loader2 className="mx-auto size-10 animate-spin text-primary" />
-                <p className="mt-4 font-display text-base font-semibold tracking-tight text-white">
-                  Preparing Full-Page Cinema Playback
-                </p>
-                <p className="mt-1 text-xs text-white/50">
-                  Connecting to high-definition sovereign stream...
-                </p>
-              </div>
-            </div>
-          ) : streamError && !streamUrl ? (
-            <div className="grid h-full w-full place-items-center bg-gradient-to-b from-[#140c0c] to-black px-6 text-center">
-              <div className="max-w-md">
-                <Film className="mx-auto size-10 text-primary" />
-                <h3 className="mt-3 font-display text-lg font-semibold text-white">
-                  Playback stream temporarily unavailable
-                </h3>
-                <p className="mt-2 text-xs text-white/60">
-                  {streamError instanceof Error
-                    ? streamError.message
-                    : "The video stream could not be loaded."}
-                </p>
-                <div className="mt-5 flex justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void refetchStream()}
-                    className="rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
-                  >
-                    Retry Stream
-                  </button>
-                  <Link
-                    to="/xtv-series"
-                    className="rounded-full border border-white/20 px-5 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
-                  >
-                    Back to X Series
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : streamUrl ? (
-            <VideoPlayer
-              streamUrl={streamUrl}
-              externalPoster={activeMovie?.thumbnailUrl}
-              title={activeMovie?.title || "Cinema"}
-              autoPlay
-              vertical={false}
-              className="h-full w-full"
-              postId={activeId || "cinema-stream"}
-              authorId={activeMovie?.director || "xora-cinema"}
-              genre={activeMovie?.genre}
-            />
-          ) : (
-            <div className="grid h-full w-full place-items-center bg-black text-center text-xs text-white/50">
-              No stream configured for this title.
-            </div>
-          )}
-
-          {/* Floating Exit Cinema Mode Pill on Fullscreen */}
-          {isFullscreen && (
-            <div className="absolute top-4 right-4 z-50">
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-4 py-2 text-xs font-semibold text-white shadow-2xl backdrop-blur-md transition hover:bg-black hover:border-primary/60 hover:text-primary active:scale-95"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3 py-2 text-[10px] font-semibold text-white/75 transition hover:bg-white/10"
               >
-                <Minimize2 className="size-4 text-primary" />
-                <span>Exit Fullscreen</span>
+                {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+                {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               </button>
             </div>
-          )}
-          </div>
-        </div>
 
-        {/* Dynamic Promotional Sponsor Ad Popup triggered on Full Screen Portrait toggle */}
-        <LargeBannerPopupAd placement="cinema_popup" triggerKey={adTriggerKey} />
-
-        {/* Movie Information & Details */}
-        {activeMovie ? (
-          <section className="mt-8 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-md sm:p-8">
-            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full bg-primary/20 px-3 py-1 font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30">
-                    {activeMovie.genre || "Feature"}
-                  </span>
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-white/75">
-                    {activeMovie.year || "2026"}
-                  </span>
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-white/75">
-                    {durationMin} min
-                  </span>
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-medium text-emerald-400">
-                    4K Ultra HD
-                  </span>
-                </div>
-
-                <h2 className="mt-4 font-display text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                  {activeMovie.title}
-                </h2>
-
-                <p className="mt-4 text-sm leading-7 text-white/70 sm:text-base">
-                  {activeMovie.description ||
-                    "Full-length cinematic experience streaming in sovereign high-definition master audio and video."}
-                </p>
-
-                {activeMovie.categories && activeMovie.categories.length > 0 ? (
-                  <div className="mt-6 flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                      Genres:
-                    </span>
-                    {activeMovie.categories.map((c) => (
-                      <span
-                        key={c}
-                        className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/80"
-                      >
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="shrink-0">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:w-64">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">
-                    Audio & Stream
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-white/90">
-                    Dolby 5.1 / Master Stereo
-                  </p>
-
-                  <p className="mt-4 text-[10px] font-bold uppercase tracking-wider text-white/50">
-                    Sovereign Provider
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-white/90">
-                    {streamData?.sourceType === "youtube"
-                      ? "YouTube HD Stream"
-                      : streamData?.sourceType === "dailymotion"
-                        ? "Dailymotion HD Stream"
-                        : streamData?.sourceType === "vimeo"
-                          ? "Vimeo Stream"
-                          : "Xora Direct Edge CDN"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {/* Up Next / Recommended Cinema Shelf */}
-        <section className="mt-12">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h3 className="font-display text-lg font-bold text-white sm:text-xl">
-                More Feature Films
-              </h3>
-              <p className="mt-1 text-xs text-white/50">
-                Continue watching from the sovereign collection
-              </p>
-            </div>
-            <Link
-              to="/xtv-series"
-              className="text-xs font-semibold text-primary transition hover:underline"
+            <div
+              id="xora-cinema-stage"
+              className={cn(
+                "relative isolate aspect-video w-full overflow-hidden rounded-[18px] border border-white/[0.11] bg-black shadow-[0_28px_90px_rgba(0,0,0,0.5),0_4px_18px_rgba(173,91,61,0.10)] sm:rounded-[24px]",
+                isFullscreen && "h-screen w-screen max-h-screen rounded-none",
+              )}
             >
-              View all ({allMovies.length})
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {upNextMovies.slice(0, 10).map((movie) => (
-              <button
-                key={movie.id}
-                type="button"
-                onClick={() => {
-                  void navigate({ to: "/watch", search: { id: movie.id } });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group flex flex-col text-left transition focus:outline-none"
-              >
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg transition duration-300 group-hover:border-primary/50 group-hover:shadow-primary/10">
-                  {movie.thumbnailUrl ? (
-                    <img
-                      src={movie.thumbnailUrl}
-                      alt={movie.title}
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-black/40 text-xs text-white/30">
-                      <Film className="size-8" />
+              {activeMovie && streamUrl ? (
+                <VideoPlayer
+                  key={activeId}
+                  streamUrl={streamUrl}
+                  externalPoster={activeMovie.thumbnailUrl}
+                  title={activeMovie.title}
+                  autoPlay={false}
+                  cinemaMode
+                  vertical={false}
+                  className="h-full w-full !rounded-none"
+                  postId={activeId}
+                  authorId="xora-cinema"
+                  genre={activeMovie.genre}
+                />
+              ) : isStreamLoading || isLoadingMovies ? (
+                <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_center,rgba(177,91,60,0.16),transparent_58%),#090807] px-5 text-center">
+                  <div>
+                    <div className="mx-auto grid size-14 place-items-center rounded-full border border-[#c8795b]/25 bg-[#b65a3c]/10 text-[#e5a486]">
+                      <Clapperboard className="size-6" />
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 transition group-hover:opacity-80" />
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                    <span className="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm">
-                      {movie.year || "2026"}
-                    </span>
-                    <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition group-hover:scale-110 sm:size-10">
-                      <Play className="size-3.5 fill-current sm:size-4" />
-                    </span>
+                    <p className="mt-4 text-sm font-semibold text-white">Preparing your cinema</p>
+                    <p className="mt-1 text-xs text-white/45">Loading the selected title and stream.</p>
                   </div>
                 </div>
-                <h4 className="mt-2.5 truncate font-display text-xs font-bold text-white group-hover:text-primary sm:text-sm">
-                  {movie.title}
-                </h4>
-                <p className="truncate text-[11px] text-white/50">
-                  {movie.genre || "Feature Film"}
-                </p>
-              </button>
-            ))}
+              ) : activeMovie && streamError ? (
+                <div className="absolute inset-0 grid place-items-center px-5 text-center">
+                  <div>
+                    <Film className="mx-auto size-8 text-[#d18a69]" />
+                    <p className="mt-3 text-sm font-semibold">This stream is taking a break</p>
+                    <p className="mt-1 text-xs text-white/50">Try resolving the stream again.</p>
+                    <button
+                      type="button"
+                      onClick={() => void refetchStream()}
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#b65a3c] px-4 py-2 text-xs font-semibold text-white hover:bg-[#c66b4b]"
+                    >
+                      <RotateCw className="size-3.5" /> Retry playback
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_center,rgba(177,91,60,0.16),transparent_58%),#090807] px-5 text-center">
+                  <div className="max-w-sm">
+                    <div className="mx-auto grid size-14 place-items-center rounded-full border border-[#c8795b]/25 bg-[#b65a3c]/10 text-[#e5a486]">
+                      <Play className="ml-0.5 size-6 fill-current" />
+                    </div>
+                    <p className="mt-4 text-sm font-semibold text-white">Choose something to watch</p>
+                    <p className="mt-1 text-xs leading-5 text-white/45">Select a movie or series below. Your video will load right here.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <LargeBannerPopupAd placement="cinema_popup" triggerKey={adTriggerKey} />
+
+            {activeMovie ? (
+              <section className="mt-5 rounded-[20px] border border-white/[0.09] bg-[linear-gradient(135deg,rgba(255,248,241,0.075),rgba(255,248,241,0.025))] p-4 shadow-[0_12px_35px_rgba(0,0,0,0.18)] sm:mt-6 sm:rounded-[24px] sm:p-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-[#c8795b]/25 bg-[#b65a3c]/15 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-[#e5a486]">{titleKind}</span>
+                  {activeMovie.genre ? <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[10px] text-white/65">{activeMovie.genre}</span> : null}
+                  {activeMovie.year ? <span className="text-[10px] text-white/45">{activeMovie.year}</span> : null}
+                  {activeMovie.durationSeconds ? <span className="text-[10px] text-white/45">{Math.round(activeMovie.durationSeconds / 60)} min</span> : null}
+                </div>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 max-w-3xl">
+                    <h2 className="text-xl font-semibold tracking-tight text-[#fff8f1] sm:text-2xl">{activeMovie.title}</h2>
+                    <p className="mt-2 text-xs leading-6 text-white/60 sm:text-sm">{activeMovie.description || "A curated Xora entertainment experience."}</p>
+                  </div>
+                  {isSeries ? (
+                    <div className="flex shrink-0 gap-2">
+                      {activeMovie.seasons ? <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-base font-semibold text-white">{activeMovie.seasons}</p><p className="text-[9px] uppercase tracking-wider text-white/40">Seasons</p></div> : null}
+                      {activeMovie.episodesCount ? <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-base font-semibold text-white">{activeMovie.episodesCount}</p><p className="text-[9px] uppercase tracking-wider text-white/40">Episodes</p></div> : null}
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
           </div>
+
+          <aside className="min-w-0 rounded-[20px] border border-white/[0.09] bg-white/[0.035] p-4 sm:p-5 xl:sticky xl:top-[82px]">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-[#d18a69]" />
+              <h2 className="text-sm font-semibold text-white">Your next watch</h2>
+            </div>
+            <p className="mt-1 text-[11px] leading-5 text-white/45">A hand-picked path through the Xora collection.</p>
+            <div className="mt-4 space-y-3">
+              {allMovies.filter((item) => item.id !== activeId).slice(0, 5).map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => selectTitle(item.id)}
+                  className="group flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-white/[0.06]"
+                >
+                  <span className="w-4 shrink-0 text-xs tabular-nums text-white/25">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-lg bg-white/10">
+                    {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <span className="grid h-full place-items-center"><Film className="size-4 text-white/30" /></span>}
+                    <span className="absolute inset-0 grid place-items-center bg-black/20 opacity-0 transition group-hover:opacity-100"><Play className="size-4 fill-current text-white" /></span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold text-white/85 group-hover:text-[#e5a486]">{item.title}</span>
+                    <span className="mt-1 block truncate text-[10px] text-white/40">{isSeriesTitle(item) ? "Series" : item.genre || "Movie"}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </aside>
+        </section>
+
+        <section className="mt-10 sm:mt-14">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#d69a7c]">DISCOVER YOUR NEXT STORY</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-[#fff8f1] sm:text-2xl">Explore the collection</h2>
+            </div>
+            <label className="flex h-10 w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 text-white/40 sm:max-w-[280px]">
+              <Search className="size-4 shrink-0" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a movie or series" className="min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/35" />
+            </label>
+          </div>
+
+          {series.length > 0 ? (
+            <div className="mb-9">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Series worth settling into</h3>
+                <span className="text-[10px] text-white/35">{series.length} titles</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                {series.filter((item) => item.id !== activeId && (!search || recommendations.some((candidate) => candidate.id === item.id))).slice(0, 10).map((item) => (
+                  <TitleCard key={item.id} item={item} onSelect={selectTitle} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {movies.length > 0 ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Movies & more</h3>
+                <span className="text-[10px] text-white/35">{movies.length} titles</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                {recommendations.filter((item) => !isSeriesTitle(item)).slice(0, 10).map((item) => (
+                  <TitleCard key={item.id} item={item} onSelect={selectTitle} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {!allMovies.length && !isLoadingMovies ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center text-xs text-white/45">The Xora collection is being prepared. Please check back soon.</div>
+          ) : null}
         </section>
       </main>
     </div>
   );
 }
+
+function TitleCard({ item, onSelect }: { item: XTvSeriesItem; onSelect: (id: string) => void }) {
+  const isSeries = isSeriesTitle(item);
+  return (
+    <button type="button" onClick={() => onSelect(item.id)} className="group min-w-0 text-left">
+      <div className="relative aspect-[16/10] overflow-hidden rounded-[15px] border border-white/[0.09] bg-white/[0.06] shadow-[0_8px_22px_rgba(0,0,0,0.18)] transition duration-300 group-hover:-translate-y-0.5 group-hover:border-[#c8795b]/45 group-hover:shadow-[0_14px_30px_rgba(0,0,0,0.28)]">
+        {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt={item.title} loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" /> : <div className="grid h-full place-items-center"><Film className="size-7 text-white/25" /></div>}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        <span className="absolute bottom-2 left-2 rounded-full border border-white/15 bg-black/45 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-white/80 backdrop-blur">{isSeries ? "Series" : item.genre || "Movie"}</span>
+        <span className="absolute right-2 top-2 grid size-8 place-items-center rounded-full border border-white/25 bg-black/35 text-white opacity-0 backdrop-blur transition group-hover:opacity-100"><Play className="ml-0.5 size-3 fill-current" /></span>
+      </div>
+      <span className="mt-2 block truncate text-xs font-semibold text-white/85 transition group-hover:text-[#e5a486]">{item.title}</span>
+      <span className="mt-1 block truncate text-[10px] text-white/40">{item.year || (isSeries ? "Series" : "Xora collection")}</span>
+    </button>
+  );
+}
+
+export default WatchPage;

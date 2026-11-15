@@ -9,6 +9,9 @@ import {
   Gauge,
   Loader2,
   Play,
+  Pause,
+  Maximize2,
+  Minimize2,
   Smartphone,
   Volume2,
   VolumeX,
@@ -54,6 +57,8 @@ type Props = {
   feed?: FeedType;
   /** Use the more forgiving buffering/recovery profile for live TV HLS streams. */
   liveTv?: boolean;
+  /** Premium cinema controls; leaves every other feed player unchanged. */
+  cinemaMode?: boolean;
   onClose?: () => void;
 };
 
@@ -74,9 +79,11 @@ export function NativeVideoPlayer({
   genre,
   feed,
   liveTv = false,
+  cinemaMode = false,
   onClose,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerRootRef = useRef<HTMLDivElement | null>(null);
   const { config: dataSaver } = useDataSaver();
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
@@ -109,6 +116,7 @@ export function NativeVideoPlayer({
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
+  const [cinemaFullscreen, setCinemaFullscreen] = useState(false);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
 
   // Tracking refs to ensure events fire at most once per playback session
@@ -521,6 +529,24 @@ export function NativeVideoPlayer({
     }
   };
 
+  const toggleCinemaFullscreen = () => {
+    if (!cinemaMode) return;
+    if (!document.fullscreenElement) {
+      const request = playerRootRef.current?.requestFullscreen?.();
+      if (request) void request.then(() => setCinemaFullscreen(true)).catch(() => {});
+    } else {
+      const exit = document.exitFullscreen?.();
+      if (exit) void exit.then(() => setCinemaFullscreen(false)).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    if (!cinemaMode) return;
+    const syncFullscreen = () => setCinemaFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, [cinemaMode]);
+
   const handleEnded = () => {
     setPlaying(false);
     if (!trackedComplete.current && postId) {
@@ -637,6 +663,7 @@ export function NativeVideoPlayer({
 
   return (
     <div
+      ref={playerRootRef}
       className={cn(
         "group relative w-full max-w-full overflow-hidden rounded-xl bg-ink",
         nativeVlcOnly && nativeVlcActive ? "hidden" : aspect,
@@ -813,13 +840,47 @@ export function NativeVideoPlayer({
       <div
         className={cn(
           "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 transition-opacity duration-200",
-          playing
+          playing && !cinemaMode
             ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
             : "opacity-100",
         )}
       >
+        {cinemaMode ? (
+          <div className="mb-3">
+            <input
+              aria-label="Seek video"
+              type="range"
+              min={0}
+              max={Math.max(total, 0)}
+              step={0.1}
+              value={Math.min(current, total || current)}
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => {
+                const video = videoRef.current;
+                if (video) {
+                  video.currentTime = Number(event.currentTarget.value);
+                  setCurrent(video.currentTime);
+                }
+              }}
+              className="xora-cinema-seek h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/30 accent-[#c8795b]"
+            />
+          </div>
+        ) : null}
         {/* Bottom buttons row */}
         <div className="flex items-center gap-2 text-xs font-medium text-background">
+          {cinemaMode ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                toggle();
+              }}
+              aria-label={playing ? "Pause video" : "Play video"}
+              className="press grid size-9 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
+            >
+              {playing ? <Pause className="size-4 fill-current" /> : <Play className="ml-0.5 size-4 fill-current" />}
+            </button>
+          ) : null}
           <span className="tabular-nums">
             {fmtDuration(Math.round(current))} / {fmtDuration(Math.round(total))}
           </span>
@@ -835,6 +896,19 @@ export function NativeVideoPlayer({
             <span>{dataSaver.maxBitrateKbps <= 667 ? "300MB/h Max" : "HD"}</span>
           </div>
 
+          {cinemaMode ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleCinemaFullscreen();
+              }}
+              aria-label={cinemaFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="press grid size-9 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
+            >
+              {cinemaFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -884,6 +958,7 @@ export function VideoPlayer(props: Props) {
       genre={props.genre}
       feed={props.feed}
       onClose={props.onClose}
+      cinemaMode={props.cinemaMode}
     />
   ) : (
     <NativeVideoPlayer {...props} />
