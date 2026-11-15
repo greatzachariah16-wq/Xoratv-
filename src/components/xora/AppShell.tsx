@@ -434,19 +434,18 @@ export function AppShell({
         })}
         <button
           type="button"
-          aria-label={(pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? "X Channel navigation" : "More navigation"}
+          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={mobileMenuOpen}
-          aria-current={(pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? "page" : undefined}
           onClick={() => setMobileMenuOpen((open) => !open)}
           className={cn(
             "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold leading-none transition-colors",
-            mobileMenuOpen || (pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            mobileMenuOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", (mobileMenuOpen || (pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/"))) && "bg-primary/12")}>
-            {mobileMenuOpen ? <X className="size-[20px]" aria-hidden="true" /> : (pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? <RadioTower className="size-[20px] fill-current stroke-[2.35]" aria-hidden="true" /> : <Menu className="size-[20px]" aria-hidden="true" />}
+          <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", mobileMenuOpen && "bg-primary/12")}>
+            {mobileMenuOpen ? <X className="size-[20px]" aria-hidden="true" /> : <Menu className="size-[20px]" aria-hidden="true" />}
           </span>
-          <span>{(pathname.startsWith("/creator-studio") || pathname.startsWith("/channel/")) ? "X Channel" : "More"}</span>
+          <span>{mobileMenuOpen ? "Close" : "More"}</span>
         </button>
       </nav>
       ) : null}
