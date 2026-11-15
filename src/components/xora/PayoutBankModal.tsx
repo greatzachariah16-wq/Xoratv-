@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
 
@@ -81,6 +81,8 @@ export function PayoutBankModal({ open, onClose, initialValues, onSave }: Props)
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const selectBank = useCallback((bank: BankOption) => setBankName(bank.name), []);
 
   useEffect(() => {
     if (!open) return;
@@ -112,7 +114,7 @@ export function PayoutBankModal({ open, onClose, initialValues, onSave }: Props)
           <button type="button" onClick={async () => { setSaving(true); setError(""); try { await onSave({ accountName: accountName.trim(), accountNumber, bankName }); onClose(); } catch (cause) { setError(cause instanceof Error ? "Couldn't save. Try again." : "Couldn't save. Try again."); } finally { setSaving(false); } }} disabled={!valid || saving} className="h-14 rounded-full bg-gradient-to-r from-[var(--channel-accent)] to-[color-mix(in_oklab,var(--channel-accent),var(--channel-text-strong)_22%)] px-6 text-sm font-semibold text-white shadow-[0_7px_18px_color-mix(in_oklab,var(--channel-accent)_22%,transparent)] transition active:scale-[.98] disabled:scale-100 disabled:opacity-45 disabled:shadow-none">{saving ? <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin"/>Saving…</span> : "Save bank details"}</button>
         </div>
       </section>
-      <BankSheet open={sheetOpen} selected={bankName} onSelect={bank => setBankName(bank.name)} onClose={() => setSheetOpen(false)}/>
+      <BankSheet open={sheetOpen} selected={bankName} onSelect={selectBank} onClose={closeSheet}/>
     </div>, document.body
   );
 }
