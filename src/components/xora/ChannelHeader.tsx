@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, Bell, PenLine, Radio, Settings2, Share2, Users } from "lucide-react";
 import { UserAvatar } from "@/components/xora/UserAvatar";
 import type { Channel } from "@/components/xora/EditChannelSheet";
-import { CompactBar } from "@/components/xora/CompactBar";
-import { useInView } from "@/hooks/useInView";
 
 export type ChannelHeaderProps = {
   channel: Channel;
@@ -14,35 +11,10 @@ export type ChannelHeaderProps = {
 };
 
 export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare }: ChannelHeaderProps) {
-  const nameRowRef = useRef<HTMLDivElement>(null!);
-  const [headerOffset, setHeaderOffset] = useState(56);
-
-  // AppShell only has a fixed 56px header below the desktop breakpoint.
-  // Keep the observer threshold aligned when the viewport crosses that breakpoint.
-  useEffect(() => {
-    const updateHeaderOffset = () => {
-      setHeaderOffset(window.matchMedia("(min-width: 1024px)").matches ? 0 : 56);
-    };
-    updateHeaderOffset();
-    window.addEventListener("resize", updateHeaderOffset, { passive: true });
-    return () => window.removeEventListener("resize", updateHeaderOffset);
-  }, []);
-
-  const observerOptions = useMemo<IntersectionObserverInit>(
-    () => ({ threshold: 0, rootMargin: headerOffset ? `-${headerOffset}px 0px 0px 0px` : "0px" }),
-    [headerOffset],
-  );
-  const nameRowInView = useInView(nameRowRef, observerOptions);
-  const compactVisible = !nameRowInView;
-  useEffect(() => {
-    document.documentElement.dataset.channelCompact = String(compactVisible);
-    return () => { delete document.documentElement.dataset.channelCompact; };
-  }, [compactVisible]);
   const followers = Number(channel.followerCount || 0);
   const followerLabel = followers === 0 ? "New channel" : new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(followers) + " followers";
 
   return (
-    <>
     <header className="xora-channel-hero">
       <div className="xora-channel-cover" style={channel.bannerUrl ? { backgroundImage: 'linear-gradient(180deg,rgba(38,23,17,.05),rgba(38,23,17,.4)),url("' + channel.bannerUrl + '")' } : undefined}>
         <span className="xora-channel-pill"><Radio className="size-3"/>X CHANNEL</span>
@@ -54,7 +26,7 @@ export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare 
             {channel.verified ? <span className="xora-channel-verified" aria-label="Verified channel"><BadgeCheck className="size-4"/></span> : null}
           </div>
           <div className="xora-channel-copy">
-            <div ref={nameRowRef} className="xora-channel-name-row"><h1 className="xora-channel-name">{channel.displayName}</h1></div>
+            <h1 className="xora-channel-name">{channel.displayName}</h1>
             <p className="xora-channel-handle">@{channel.handle}</p>
             <p className="xora-channel-followers">{followerLabel}</p>
           </div>
@@ -82,7 +54,5 @@ export function ChannelHeader({ channel, isOwner, onEdit, onOpenStudio, onShare 
         </div>
       </div>
     </header>
-    <CompactBar channel={channel} visible={compactVisible} onEdit={onEdit}/>
-    </>
   );
 }

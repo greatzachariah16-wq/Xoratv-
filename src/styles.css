@@ -107,9 +107,9 @@ body,
   --channel-hairline: #d9cec4;
   --channel-accent: #a94424;
   --channel-accent-contrast: #ffffff;
-  --header-h: 56px;
+  --header-h: calc(56px + env(safe-area-inset-top, 0px));
   --compact-h: 56px;
-  --tabs-h: 48px;
+  --tabs-h: 56px;
   --nav-h: 64px;
 }
 @media (prefers-color-scheme: dark) {
@@ -2480,7 +2480,15 @@ section[aria-label="X-Series live channels"] {
   min-width: 0;
   margin-inline: auto;
   color: var(--channel-ink);
-  scroll-padding-top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + var(--tabs-h, 52px) + 12px);
+  scroll-padding-top: calc(var(--header-h) + var(--tabs-h, 56px));
+}
+.xora-channel-tab-scope {
+  position: relative;
+  min-width: 0;
+}
+.xora-channel-management-content {
+  min-width: 0;
+  scroll-margin-top: var(--header-h);
 }
 /* Portal-based sheets and app chrome use the same route-scoped Chat tokens. */
 html.xora-channel-route {
@@ -2781,9 +2789,8 @@ html.xora-channel-route header.fixed {
 }
 .xora-channel-tabs {
   position: sticky;
-  /* Reserve the compact-bar lane so the tabs never jump when it appears. */
-  top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + 8px);
-  z-index: 40;
+  top: var(--header-h);
+  z-index: 30;
   display: flex;
   width: 100%;
   min-width: 0;
@@ -2795,7 +2802,7 @@ html.xora-channel-route header.fixed {
   padding: 5px;
   border: 1px solid var(--channel-line);
   border-radius: 17px;
-  background: rgba(245, 239, 231, .96);
+  background: var(--channel-surface-solid, #FFFDFA);
   box-shadow: 0 2px 8px rgba(42, 31, 26, .045);
   backdrop-filter: blur(16px);
 }
@@ -3037,7 +3044,7 @@ html.xora-channel-route header.fixed {
   to { background-position-x: -200%; }
 }
 html.xora-channel-route {
-  scroll-padding-top: calc(var(--header-h, 56px) + var(--compact-h, 52px) + var(--tabs-h, 56px));
+  scroll-padding-top: calc(var(--header-h) + var(--tabs-h, 56px));
 }
 html.xora-channel-route .xora-floating-nav {
   border: 1px solid rgba(62, 43, 31, .12);
@@ -3085,6 +3092,7 @@ html.xora-channel-route .ad-slot::before {
   line-height: 16px;
 }
 @media (max-width: 639px) {
+  html.xora-channel-route { --tabs-h: 53px; }
   .xora-channel-page { max-width: none; }
   .xora-channel-hero { border-radius: 20px; }
   .xora-channel-cover { height: 144px; border-radius: 19px 19px 0 0; }
@@ -3125,7 +3133,7 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-stats strong { font-size: 14px; }
   .xora-channel-stats small { font-size: 9px; }
   .xora-channel-tabs {
-    top: calc(var(--header-h, 56px) + var(--compact-h, 56px));
+    top: var(--header-h);
     height: 53px;
     --tab-padding: 4px;
     padding: 4px;
@@ -3138,8 +3146,7 @@ html.xora-channel-route .ad-slot::before {
 /* Desktop AppShell has no fixed mobile header. Keep sticky offsets in sync. */
 @media (min-width: 1024px) {
   html.xora-channel-route { --header-h: 0px; }
-  .xora-channel-compact { top: 0; }
-  .xora-channel-tabs { top: var(--compact-h, 56px); }
+  .xora-channel-tabs { top: var(--header-h); }
 }
 @media (max-width: 380px) {
   .xora-channel-card { padding-right: 12px; padding-left: 12px; }
