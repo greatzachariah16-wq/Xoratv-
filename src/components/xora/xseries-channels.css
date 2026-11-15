@@ -942,3 +942,19 @@
 @media (min-width: 520px) {
   .xsc-channel-title { font-size: 15px; }
 }
+
+
+/* Shared flow gives the selected player a containing block spanning the guide and lineup. */
+.xsc-page-flow {
+  display: grid;
+  min-width: 0;
+  gap: 0;
+}
+
+.xsc-main-column {
+  display: contents;
+}
+
+.xsc-browse-section {
+  margin-top: 22px;
+}
