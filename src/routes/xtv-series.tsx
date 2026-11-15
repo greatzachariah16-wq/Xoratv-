@@ -188,7 +188,7 @@ function XTvSeriesPage() {
   const { user } = useAuth();
   const [genre, setGenre] = useState<string>("All");
   const [search, setSearch] = useState("");
-  const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
+  const [activeSection, setActiveSection] = useState<"library" | "channels">("library");
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
 
   const { data: userSignals } = useQuery({
@@ -271,7 +271,7 @@ function XTvSeriesPage() {
   const shelves = filtered.filter((item) => item.id !== featured?.id && !isSeriesTitle(item));
 
   return (
-    <AppShell wide extraWide immersive={activeSection === "cinema"}>
+    <AppShell wide extraWide immersive={activeSection === "channels"}>
       <div className={cn("w-full max-w-full", activeSection === "library" ? "xseries-library space-y-6 pb-10" : "overflow-x-clip space-y-0 pb-0")}>
         {activeSection === "library" ? (
           <>
@@ -280,9 +280,17 @@ function XTvSeriesPage() {
           <button type="button" onClick={() => setActiveSection("library")} aria-pressed={activeSection === "library"} className={cn("xsl-section-tab", activeSection === "library" && "is-active")}>
             Movies &amp; Series
           </button>
-          <button type="button" onClick={() => setActiveSection("cinema")} aria-pressed={activeSection === "cinema"} className={cn("xsl-section-tab", activeSection === "cinema" && "is-active")}>
+          <button type="button" onClick={() => setActiveSection("channels")} aria-pressed={activeSection === "channels"} className={cn("xsl-section-tab", activeSection === "channels" && "is-active")}>
             Channels
           </button>
+          <Link
+            to="/watch"
+            search={featured ? { id: featured.id } : {}}
+            className="xsl-section-tab"
+            aria-label="Open Xora Cinema player"
+          >
+            Cinema
+          </Link>
             </nav>
           </>
         ) : null}
