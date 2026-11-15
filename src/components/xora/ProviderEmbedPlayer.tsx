@@ -406,6 +406,7 @@ export function ProviderEmbedPlayer({
             <Play className="ml-0.5 size-6 fill-current" aria-hidden="true" />
           </span>
         </button>
+      ) : null}
       {cinemaMode && !playerClosed ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex items-center justify-between bg-gradient-to-t from-black/90 via-black/45 to-transparent px-3 pb-3 pt-10">
           <div className="pointer-events-auto flex items-center gap-2">
@@ -428,7 +429,6 @@ export function ProviderEmbedPlayer({
             {cinemaFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
           </button>
         </div>
-      ) : null}
       ) : null}
     </div>
   );
