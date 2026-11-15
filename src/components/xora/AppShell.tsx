@@ -160,7 +160,7 @@ export function AppShell({
       : null);
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background">
+    <div className="min-h-screen w-full max-w-full bg-background">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -384,7 +384,7 @@ export function AppShell({
         </div>
       ) : null}
 
-      <main id="main" className={immersive ? "min-h-screen w-full" : "lg:pl-[248px] xl:pr-[320px]"}>
+      <main id="main" className={immersive ? "min-h-screen w-full overflow-x-clip" : "overflow-x-clip lg:pl-[248px] xl:pr-[320px]"}>
         <div
           className={cn(
             immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-14" : "pt-18"),
