@@ -45,7 +45,7 @@ async function fetchMovieStream(id: string): Promise<{
   originalUrl?: string;
 }> {
   try {
-    const res = await fetch(\`/api/xtv-series/stream?id=\${encodeURIComponent(id)}\`);
+    const res = await fetch(`/api/xtv-series/stream?id=${encodeURIComponent(id)}`);
     if (res.ok) {
       const data = (await res.json()) as {
         ok: boolean;
@@ -67,7 +67,7 @@ async function fetchMovieStream(id: string): Promise<{
   }
 
   try {
-    const res = await fetch(\`/api/catalog/\${encodeURIComponent(id)}/playback\`);
+    const res = await fetch(`/api/catalog/${encodeURIComponent(id)}/playback`);
     if (res.ok) {
       const data = (await res.json()) as {
         ok: boolean;
@@ -86,7 +86,7 @@ async function fetchMovieStream(id: string): Promise<{
   }
 
   return {
-    streamUrl: \`/api/stream/embed/\${encodeURIComponent(id)}\`,
+    streamUrl: `/api/stream/embed/${encodeURIComponent(id)}`,
     sourceType: "embed",
     title: "Cinema Stream",
   };
@@ -99,7 +99,7 @@ function cleanTitle(value: string): string {
     .replace(/\b(?:4K|8K|ULTRA\s*HD|FULL\s*HD|1080P|720P|HD)\b/gi, " ")
     .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, " ")
     .replace(/\s+/g, " ")
-    .replace(/[\s|:–—-]+$/g, "")
+    .replace(/[.…\s|:–—-]+$/g, "")
     .trim();
 
   if (!title) return value.replace(/\s+/g, " ").trim();
@@ -159,12 +159,11 @@ function WatchPage() {
     streamData?.streamUrl ||
     activeMovie?.streamUrl ||
     activeMovie?.videoUrl ||
-    (activeId ? \`/api/stream/embed/\${encodeURIComponent(activeId)}\` : "");
+    (activeId ? `/api/stream/embed/${encodeURIComponent(activeId)}` : "");
   const originalUrl = streamData?.originalUrl || activeMovie?.videoUrl || streamUrl;
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
   const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
   const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
-  const youtubeUrl = youtubeId ? \`https://www.youtube.com/watch?v=\${youtubeId}\` : undefined;
   const title = activeMovie?.title || streamData?.title || "Now Playing";
   const displayTitle = cleanTitle(title);
   const description = activeMovie?.description?.trim() || "";
@@ -174,7 +173,7 @@ function WatchPage() {
   const meta = [
     activeMovie?.year ? String(activeMovie.year) : null,
     activeMovie?.durationSeconds && activeMovie.durationSeconds > 0
-      ? \`\${Math.round(activeMovie.durationSeconds / 60)} min\`
+      ? `${Math.round(activeMovie.durationSeconds / 60)} min`
       : null,
   ].filter(Boolean);
   const upNextMovies = useMemo(
@@ -188,7 +187,7 @@ function WatchPage() {
       return;
     }
     try {
-      setSaved(window.localStorage.getItem(\`xora:saved-movie:\${activeId}\`) === "1");
+      setSaved(window.localStorage.getItem(`xora:saved-movie:${activeId}`) === "1");
     } catch {
       setSaved(false);
     }
@@ -198,8 +197,8 @@ function WatchPage() {
     const nextSaved = !saved;
     setSaved(nextSaved);
     try {
-      if (nextSaved) window.localStorage.setItem(\`xora:saved-movie:\${activeId}\`, "1");
-      else window.localStorage.removeItem(\`xora:saved-movie:\${activeId}\`);
+      if (nextSaved) window.localStorage.setItem(`xora:saved-movie:${activeId}`, "1");
+      else window.localStorage.removeItem(`xora:saved-movie:${activeId}`);
     } catch {
       setShareMessage("Saving is unavailable on this device.");
     }
@@ -280,7 +279,7 @@ function WatchPage() {
 
         <section className="xora-watch-details" aria-label="Movie details">
           {meta.length > 0 ? <p className="xora-watch-meta">{meta.join(" · ")}</p> : null}
-          <h2 className={\`xora-watch-title\${titleExpanded ? " is-expanded" : ""}\`} aria-label={title}>
+          <h2 className={`xora-watch-title${titleExpanded ? " is-expanded" : ""}`} aria-label={title}>
             {titleExpanded ? title : displayTitle}
           </h2>
           {displayTitle !== title ? (
@@ -302,7 +301,7 @@ function WatchPage() {
           ) : null}
 
           <div className="xora-watch-actions">
-            <button type="button" className={\`xora-watch-action\${saved ? " is-active" : ""}\`} onClick={handleSave} aria-pressed={saved}>
+            <button type="button" className={`xora-watch-action${saved ? " is-active" : ""}`} onClick={handleSave} aria-pressed={saved}>
               {saved ? <Check size={17} /> : <Bookmark size={17} />}
               <span>{saved ? "Saved" : "Save"}</span>
             </button>
@@ -315,7 +314,7 @@ function WatchPage() {
 
           {description ? (
             <div className="xora-watch-description-wrap">
-              <p className={\`xora-watch-description\${descriptionExpanded ? " is-expanded" : ""}\`}>
+              <p className={`xora-watch-description${descriptionExpanded ? " is-expanded" : ""}`}>
                 {description}
               </p>
               {description.length > 150 ? (
