@@ -1087,6 +1087,7 @@ export async function recordVasReferralBillingEvent(params: {
   });
   // Continue after duplicate event delivery: if a previous attempt stored the
   // event but failed before creating its referral claim, this retry repairs it.
+  if (!paymentIsCurrent) return { accepted: true, duplicate: !savedEvent.created, referralCreated: false, reason: "billing-event-precedes-cancellation" };
 
   const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
   const creatorId = String(attribution?.creatorId || "");
