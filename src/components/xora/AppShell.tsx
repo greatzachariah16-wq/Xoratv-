@@ -125,6 +125,7 @@ export function AppShell({
   extraWide = false,
   immersive = false,
   hideTopBanner = false,
+  onSearchClick,
 }: {
   children: ReactNode;
   rail?: ReactNode;
@@ -132,6 +133,7 @@ export function AppShell({
   extraWide?: boolean;
   immersive?: boolean;
   hideTopBanner?: boolean;
+  onSearchClick?: () => void;
 }) {
   usePresenceTracker();
   const { user, profile, isAdmin } = useAuth();
@@ -158,7 +160,7 @@ export function AppShell({
       : null);
 
   return (
-    <div className="min-h-screen w-full max-w-full bg-background">
+    <div className={cn("min-h-screen w-full max-w-full", pathname === "/xtv-series" ? "xora-series-shell" : "bg-background")}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -289,14 +291,20 @@ export function AppShell({
       ) : null}
 
       {!immersive ? (
-      <header className="fixed inset-x-0 top-0 z-50 flex h-[var(--header-h)] items-center justify-between border-b border-border bg-background/95 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:px-4 lg:hidden">
+      <header className={cn("fixed inset-x-0 top-0 z-50 flex h-[var(--header-h)] items-center justify-between border-b border-border bg-background/95 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:px-4 lg:hidden", pathname === "/xtv-series" && "xora-series-topbar")}>
         <Link to="/" className="press">
           <Logo />
         </Link>
         <div className="flex items-center gap-0.5 sm:gap-1">
-          <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <Search className="size-[21px] stroke-[1.8]" aria-hidden="true" />
-          </Link>
+          {pathname === "/xtv-series" && onSearchClick ? (
+            <button type="button" onClick={onSearchClick} aria-label="Search Series" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
+              <Search className="size-[21px] stroke-[1.8]" aria-hidden="true" />
+            </button>
+          ) : (
+            <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
+              <Search className="size-[21px] stroke-[1.8]" aria-hidden="true" />
+            </Link>
+          )}
           <Link to="/wallet" aria-label="Xora Wallet" className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
             <WalletCards className="size-[21px] stroke-[1.8]" aria-hidden="true" />
             {user && Number(walletData?.wallet?.balance || 0) > 0 ? <span className="absolute right-1 top-1 min-w-2 rounded-full bg-primary px-1 text-[8px] font-bold leading-3 text-primary-foreground">{Number(walletData?.wallet?.balance || 0) >= 1000 ? "₦+" : "₦"}</span> : null}
@@ -404,7 +412,7 @@ export function AppShell({
       </main>
 
       {!immersive ? (
-      <nav aria-label="Primary mobile navigation" className="xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-[28px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-card lg:hidden">
+      <nav aria-label="Primary mobile navigation" className={cn("xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-[28px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-card lg:hidden", pathname === "/xtv-series" && "xora-series-bottom-nav")}>
         {[
           { to: "/", label: "Home", icon: House },
           { to: "/shorts", label: "Shorts", icon: Clapperboard },
