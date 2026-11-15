@@ -996,6 +996,19 @@ async function recordSuccessfulDataRewardQualification(claim: any, completedAt: 
   return { referralQualified: false, reason: "paid-vas-subscription-required" as const };
 }
 
+type VasBillingReferenceRecord = { userId?: string; status?: string; createdAt?: string };
+type VasSubscriptionRecord = {
+  userId?: string; status?: string; firstPaidAt?: string; lastPaidAt?: string; lastTransactionId?: string;
+  cancelledAt?: string; successfulBillingEvents?: number;
+};
+type VasReferralClaimRecord = {
+  creatorId?: string; status?: string; eligibleAt?: string; referredUserId?: string; amount?: number;
+  earnedAt?: string; billingEventId?: string;
+};
+type CreatorReferralAttributionRecord = {
+  creatorId?: string; creatorStatusAttribution?: string; clickId?: string; status?: string;
+};
+
 export async function createVasBillingReference(userId: string) {
   const cleanUserId = String(userId || "").trim();
   if (!cleanUserId) throw new Error("Sign in before starting a VAS subscription.");
@@ -1010,7 +1023,7 @@ export async function createVasBillingReference(userId: string) {
 export async function getVasBillingReferenceUserId(reference: string) {
   const cleanReference = String(reference || "").trim();
   if (!cleanReference || cleanReference.length > 180) return null;
-  const record = await queryRtdb(`commerce/vasBillingReferences/${encodeURIComponent(cleanReference)}`) as any;
+  const record = await queryRtdb(`commerce/vasBillingReferences/${encodeURIComponent(cleanReference)}`) as VasBillingReferenceRecord | null;
   return record?.userId ? String(record.userId) : null;
 }
 
@@ -1030,7 +1043,7 @@ export async function recordVasReferralCancellation(params: {
   };
   await putRtdbRecordOnce(`commerce/vasBillingEvents/${encodeURIComponent(eventId)}`, event);
   const subscriptionPath = `commerce/vasSubscriptions/${encodeURIComponent(userId)}`;
-  const currentSubscription = await queryRtdb(subscriptionPath) as any;
+  const currentSubscription = await queryRtdb(subscriptionPath) as VasSubscriptionRecord | null;
   const laterSuccessfulPayment = Boolean(currentSubscription?.lastPaidAt && Date.parse(String(currentSubscription.lastPaidAt)) > Date.parse(occurredAt));
   if (!laterSuccessfulPayment) {
     await queryRtdb(subscriptionPath, {
@@ -1038,7 +1051,7 @@ export async function recordVasReferralCancellation(params: {
       body: JSON.stringify({ status: "cancelled", cancelledAt: occurredAt, cancellationEventId: eventId, updatedAt: new Date().toISOString() }),
     });
   }
-  const claim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as any;
+  const claim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as VasReferralClaimRecord | null;
   if (laterSuccessfulPayment || !claim || claim.status !== "pending" || Date.parse(String(claim.eligibleAt || "")) <= Date.parse(occurredAt)) {
     return { accepted: true, commissionReversed: false, reason: "no-pending-commission-to-reverse" };
   }
@@ -1073,7 +1086,7 @@ export async function recordVasReferralBillingEvent(params: {
   };
   const savedEvent = await putRtdbRecordOnce(eventPath, event);
   const subscriptionPath = `commerce/vasSubscriptions/${encodeURIComponent(userId)}`;
-  const previousSubscription = await queryRtdb(subscriptionPath) as any;
+  const previousSubscription = await queryRtdb(subscriptionPath) as VasSubscriptionRecord | null;
   const paymentIsCurrent = !previousSubscription?.cancelledAt || Date.parse(occurredAt) >= Date.parse(String(previousSubscription.cancelledAt));
   const subscription = {
     userId, status: paymentIsCurrent ? "active" : String(previousSubscription?.status || "cancelled"), firstPaidAt: previousSubscription?.firstPaidAt || occurredAt,
@@ -1089,12 +1102,12 @@ export async function recordVasReferralBillingEvent(params: {
   // event but failed before creating its referral claim, this retry repairs it.
   if (!paymentIsCurrent) return { accepted: true, duplicate: !savedEvent.created, referralCreated: false, reason: "billing-event-precedes-cancellation" };
 
-  const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
+  const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as CreatorReferralAttributionRecord | null;
   const creatorId = String(attribution?.creatorId || "");
   if (!creatorId || creatorId === userId || attribution?.creatorStatusAttribution !== "active") {
     return { accepted: true, duplicate: false, referralCreated: false, reason: "no-eligible-creator-attribution" };
   }
-  const existingClaim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as any;
+  const existingClaim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as VasReferralClaimRecord | null;
   if (existingClaim) return { accepted: true, duplicate: false, referralCreated: false, reason: "referral-already-credited" };
   const creator = await getCreator(creatorId);
   if (!creator || creator.userId === userId) {
@@ -1127,7 +1140,7 @@ export async function recordVasReferralBillingEvent(params: {
 }
 
 async function settleMaturedVasReferralClaims(creatorId?: string) {
-  const raw = await queryRtdb("commerce/creatorReferralClaims") as Record<string, any> | null;
+  const raw = await queryRtdb("commerce/creatorReferralClaims") as Record<string, VasReferralClaimRecord> | null;
   const now = Date.now();
   const matured = Object.entries(raw || {}).filter(([userId, claim]) =>
     claim?.status === "pending" && (!creatorId || claim?.creatorId === creatorId) &&
