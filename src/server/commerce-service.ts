@@ -957,6 +957,12 @@ export type VasBillingEventInput = {
   occurredAt?: string;
 };
 
+type VasBillingEventRecord = { eventId: string; eventType: "payment.succeeded" | "payment.reversed" | "subscription.cancelled"; userId: string; subscriptionId: string; amount: number; currency: string; provider: string; occurredAt: string; receivedAt: string; };
+type CreatorVasCommissionRecord = { creatorId: string; creatorUserId: string; referredUserId: string; subscriptionId: string; firstPaymentEventId: string; provider: string; grossAmount: number; amount: number; commissionRateBps: number; currency: "NGN"; status: "pending" | "eligible" | "reversed"; paidAt: string; eligibleAt: string; createdAt: string; updatedAt: string; };
+type CreatorReferralAttributionRecord = { creatorId?: string; creatorUserId?: string; creatorStatusAttribution?: string; status?: string; referredUserId?: string; registeredAt?: string; createdAt?: string; clickId?: string; };
+type CreatorReferralClaimRecord = { creatorId?: string; referredUserId?: string; status?: string; amount?: number; earnedAt?: string; };
+type CreatorPayoutRequestRecord = { creatorId?: string; payoutType?: string; status?: string; amount?: number; createdAt?: string; };
+type CreatorPayoutBankDetails = { bankName?: string; accountNumber?: string; accountName?: string; };
 const VAS_REFERRAL_HOLD_DAYS = 7;
 
 export async function recordVasBillingEvent(input: VasBillingEventInput) {
@@ -980,7 +986,7 @@ export async function recordVasBillingEvent(input: VasBillingEventInput) {
     eventId, eventType, userId, subscriptionId, amount: Math.round(amount * 100) / 100,
     currency, provider: String(input.provider || "vas-provider").slice(0, 80), occurredAt, receivedAt: new Date().toISOString(),
   };
-  const existingEvent = await queryRtdb(eventPath) as any;
+  const existingEvent = await queryRtdb(eventPath) as VasBillingEventRecord | null;
   if (existingEvent && (
     existingEvent.eventId !== eventId || existingEvent.eventType !== eventType ||
     existingEvent.userId !== userId || existingEvent.subscriptionId !== subscriptionId ||
@@ -990,7 +996,7 @@ export async function recordVasBillingEvent(input: VasBillingEventInput) {
   const commissionPath = `commerce/creatorVasCommissions/${encodeURIComponent(userId)}`;
 
   if (eventType === "payment.reversed" || eventType === "subscription.cancelled") {
-    const commission = await queryRtdb(commissionPath) as any;
+    const commission = await queryRtdb(commissionPath) as CreatorVasCommissionRecord | null;
     const holdIsOver = Boolean(commission?.eligibleAt && Date.parse(String(commission.eligibleAt)) <= Date.now());
     if (commission?.subscriptionId === subscriptionId && commission.status === "pending" && !holdIsOver) {
       await queryRtdb(commissionPath, {
@@ -1006,13 +1012,13 @@ export async function recordVasBillingEvent(input: VasBillingEventInput) {
   const rateBps = Number(rawRate);
   if (!rawRate || !Number.isInteger(rateBps) || rateBps < 1 || rateBps > 10000) throw new Error("VAS commission configuration is not enabled.");
 
-  const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as any;
+  const attribution = await queryRtdb(`commerce/creatorReferralAttributions/${encodeURIComponent(userId)}`) as CreatorReferralAttributionRecord | null;
   if (!attribution?.creatorId || attribution.creatorId === userId) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "not-attributed" as const };
   const creator = await getCreator(String(attribution.creatorId));
   const wasActiveWhenReferred = attribution.creatorStatusAttribution === "active";
   if ((!creator || creator.status !== "active") && !wasActiveWhenReferred) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "creator-inactive" as const };
   if (creator?.userId === userId || attribution.creatorUserId === userId) return { accepted: true, duplicate: !eventWrite.created, attributed: false, commissionStatus: "self-referral" as const };
-  const legacyClaim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as any;
+  const legacyClaim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as CreatorReferralClaimRecord | null;
   if (legacyClaim?.creatorId === attribution.creatorId && legacyClaim?.status === "confirmed") {
     return { accepted: true, duplicate: true, attributed: true, commissionStatus: "legacy-eligible" as const };
   }
@@ -2022,8 +2028,8 @@ export async function getCreatorPayoutRequests(userId: string) {
 }
 
 async function getCreatorVasCommissions(creatorId: string) {
-  const raw = await queryRtdb("commerce/creatorVasCommissions") as Record<string, any> | null;
-  const entries = Object.values(raw || {}).filter((item: any) => item?.creatorId === creatorId && item?.referredUserId);
+  const raw = await queryRtdb("commerce/creatorVasCommissions") as Record<string, CreatorVasCommissionRecord> | null;
+  const entries = Object.values(raw || {}).filter((item) => item.creatorId === creatorId && item.referredUserId);
   const now = Date.now();
   for (const item of entries) {
     if (item.status !== "pending" || !item.eligibleAt || Date.parse(String(item.eligibleAt)) > now) continue;
@@ -2039,13 +2045,13 @@ async function getCreatorVasCommissions(creatorId: string) {
     item.status = "eligible";
     item.updatedAt = updatedAt;
   }
-  return entries.sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return entries.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
 export async function createCreatorPayoutRequest(userId: string, payoutType: "referral") {
   const creator = await getCreator(userId);
   if (!creator || creator.status !== "active") throw new Error("Only active X Channel creators can request a payout.");
-  const bank = await getPayoutDetails(userId) as any;
+  const bank = await getPayoutDetails(userId) as CreatorPayoutBankDetails | null;
   if (!bank?.bankName || !/^[0-9]{10}$/.test(String(bank.accountNumber || "")) || !String(bank.accountName || "").trim()) {
     throw new Error("Save complete bank details before requesting a payout.");
   }
