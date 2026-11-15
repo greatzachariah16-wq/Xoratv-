@@ -69,6 +69,7 @@ export function cleanTitle(value: string): string {
     .replace(/\s*(?:\||[-–—])\s*(?:CLIP|4K|8K|HD|UHD|FULL\s*HD|OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|TRAILER|TEASER)\b.*$/i, "")
     .replace(/\s*[\[(](?:OFFICIAL(?:\s+(?:VIDEO|MUSIC\s*VIDEO))?|MUSIC\s*VIDEO|4K|8K|HD|UHD|CLIP|TRAILER|TEASER)[^\])]*[\])]/gi, "")
     .replace(/\b(?:4K|8K)\b/gi, "")
+    .replace(/(?:\.{2,}|…)+$/g, "")
     .replace(/\s+/g, " ")
     .replace(/[\s|·:–—-]+$/g, "")
     .trim();
