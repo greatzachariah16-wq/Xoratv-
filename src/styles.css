@@ -3288,3 +3288,349 @@ html.xora-channel-route .ad-slot::before {
   padding: 16px !important;
 }
 
+
+
+/* Premium dark cinema variant — scoped to the Watch route only. */
+.xora-watch-page {
+  --watch-bg: #14100E;
+  --watch-surface: #1E1713;
+  --watch-surface-soft: #241B16;
+  --watch-line: rgba(255, 235, 220, .08);
+  --watch-text: #FFF8F1;
+  --watch-muted: #C5B6AA;
+  --watch-accent-start: #C0583A;
+  --watch-accent-end: #9C3F27;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  background: var(--watch-bg);
+  color: var(--watch-text);
+}
+.xora-watch-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: calc(56px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  background: #14100E;
+  border-bottom: 1px solid var(--watch-line);
+}
+.xora-watch-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 780px;
+  height: 56px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+.xora-watch-back {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--watch-surface);
+  color: var(--watch-text);
+  box-shadow: 0 1px 0 rgba(255,255,255,.07) inset, 0 5px 16px rgba(0,0,0,.2);
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.xora-watch-back:active,
+.xora-watch-action:active,
+.xora-watch-primary:active,
+.xora-watch-settings-trigger:active,
+.xora-watch-next-card:active { transform: scale(.98); }
+.xora-watch-header-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  margin: 0;
+  color: var(--watch-text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xora-watch-main {
+  width: 100%;
+  max-width: 780px;
+  margin-inline: auto;
+  padding: 12px 16px 28px;
+}
+.xora-watch-player-sticky {
+  position: sticky;
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  z-index: 30;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.xora-watch-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #000;
+  box-shadow: 0 18px 44px rgba(0,0,0,.42), 0 1px 0 rgba(255,255,255,.07) inset;
+  isolation: isolate;
+}
+.xora-watch-player > * { width: 100%; height: 100%; }
+.xora-watch-player-loading,
+.xora-watch-player-message {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  background: #000;
+  color: var(--watch-muted);
+  text-align: center;
+  font-size: 13px;
+}
+.xora-watch-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,.18);
+  border-top-color: #C0583A;
+  border-radius: 999px;
+  animation: xora-watch-spin .8s linear infinite;
+}
+@keyframes xora-watch-spin { to { transform: rotate(360deg); } }
+.xora-watch-details {
+  position: relative;
+  margin-top: 18px;
+  padding: 18px 16px 16px;
+  border-radius: 28px;
+  background: var(--watch-surface);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 14px 34px rgba(0,0,0,.2);
+}
+.xora-watch-meta {
+  margin: 0 0 8px;
+  color: var(--watch-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.xora-watch-title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--watch-text);
+  font-size: 23px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.xora-watch-title.is-expanded { display: block; }
+.xora-watch-text-toggle {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 0 2px;
+  color: #E49A7E;
+  font-size: 13px;
+  font-weight: 650;
+}
+.xora-watch-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.xora-watch-genres span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: var(--watch-surface-soft);
+  color: #E8D9CF;
+  font-size: 12px;
+}
+.xora-watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+.xora-watch-action {
+  display: inline-flex;
+  min-width: 92px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border-radius: 999px;
+  background: var(--watch-surface-soft);
+  color: var(--watch-text);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 5px 14px rgba(0,0,0,.15);
+  font-size: 13px;
+  font-weight: 650;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.xora-watch-action.is-active {
+  background: rgba(192,88,58,.18);
+  color: #F2B39A;
+}
+.xora-watch-feedback {
+  margin: 8px 0 0;
+  color: #E9AA91;
+  font-size: 12px;
+}
+.xora-watch-description-wrap { margin-top: 14px; }
+.xora-watch-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #D7C9BF;
+  font-size: 13px;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.xora-watch-description.is-expanded { display: block; }
+.xora-watch-settings {
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--watch-surface);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 8px 24px rgba(0,0,0,.16);
+}
+.xora-watch-settings-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--watch-text);
+  text-align: left;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.xora-watch-settings-trigger > span { display: grid; gap: 3px; }
+.xora-watch-settings-title { font-size: 14px; font-weight: 700; }
+.xora-watch-settings-subtitle { color: var(--watch-muted); font-size: 11px; }
+.xora-watch-settings-content {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 15px;
+  color: var(--watch-muted);
+  font-size: 12px;
+}
+.xora-watch-settings-content > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.xora-watch-settings-content strong { color: var(--watch-text); font-weight: 600; }
+.xora-watch-up-next { margin-top: 25px; }
+.xora-watch-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.xora-watch-section-heading h3 {
+  margin: 0;
+  color: var(--watch-text);
+  font-size: 16px;
+  font-weight: 750;
+}
+.xora-watch-section-heading a {
+  color: #E49A7E;
+  font-size: 12px;
+  font-weight: 650;
+}
+.xora-watch-rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  margin-inline: -16px;
+  padding: 2px 16px 14px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+}
+.xora-watch-rail::-webkit-scrollbar { display: none; }
+.xora-watch-next-card {
+  display: flex;
+  flex: 0 0 min(72vw, 250px);
+  min-width: 0;
+  flex-direction: column;
+  text-align: left;
+  scroll-snap-align: start;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.xora-watch-next-image {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--watch-surface-soft);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 8px 20px rgba(0,0,0,.2);
+}
+.xora-watch-next-image img { width: 100%; height: 100%; object-fit: cover; }
+.xora-watch-next-placeholder { display: grid; width: 100%; height: 100%; place-items: center; color: #8C7668; }
+.xora-watch-next-play {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #C0583A, #9C3F27);
+  color: white;
+  box-shadow: 0 4px 14px rgba(0,0,0,.32);
+}
+.xora-watch-next-title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 9px;
+  color: var(--watch-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.xora-watch-next-meta { overflow: hidden; margin-top: 4px; color: var(--watch-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.xora-watch-primary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #C0583A, #9C3F27);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.xora-watch-primary:active { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) {
+  .xora-watch-page *, .xora-watch-page *::before, .xora-watch-page *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
