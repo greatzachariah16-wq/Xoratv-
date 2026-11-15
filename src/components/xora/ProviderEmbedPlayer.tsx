@@ -313,7 +313,7 @@ export function ProviderEmbedPlayer({
         "group relative overflow-hidden bg-black flex items-center justify-center select-none",
         vertical
           ? "aspect-[9/16] max-h-[85vh] mx-auto w-full max-w-sm rounded-2xl"
-          : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
+          : cinemaMode ? "h-full w-full rounded-none" : "aspect-video w-full h-full rounded-2xl md:rounded-3xl",
         className,
       )}
     >
@@ -338,7 +338,7 @@ export function ProviderEmbedPlayer({
           <X className="size-4" aria-hidden="true" />
         </button>
       ) : null}
-      {playerClosed ? (
+      {!cinemaMode && playerClosed ? (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black p-4 text-center text-white">
           <div>
             <p className="font-semibold">Player closed</p>
