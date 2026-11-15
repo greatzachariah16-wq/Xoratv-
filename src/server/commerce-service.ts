@@ -1031,14 +1031,15 @@ export async function recordVasReferralCancellation(params: {
   await putRtdbRecordOnce(`commerce/vasBillingEvents/${encodeURIComponent(eventId)}`, event);
   const subscriptionPath = `commerce/vasSubscriptions/${encodeURIComponent(userId)}`;
   const currentSubscription = await queryRtdb(subscriptionPath) as any;
-  if (!currentSubscription?.lastPaidAt || Date.parse(occurredAt) >= Date.parse(String(currentSubscription.lastPaidAt))) {
+  const laterSuccessfulPayment = Boolean(currentSubscription?.lastPaidAt && Date.parse(String(currentSubscription.lastPaidAt)) > Date.parse(occurredAt));
+  if (!laterSuccessfulPayment) {
     await queryRtdb(subscriptionPath, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "cancelled", cancelledAt: occurredAt, cancellationEventId: eventId, updatedAt: new Date().toISOString() }),
     });
   }
   const claim = await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`) as any;
-  if (!claim || claim.status !== "pending" || Date.parse(String(claim.eligibleAt || "")) <= Date.parse(occurredAt)) {
+  if (laterSuccessfulPayment || !claim || claim.status !== "pending" || Date.parse(String(claim.eligibleAt || "")) <= Date.parse(occurredAt)) {
     return { accepted: true, commissionReversed: false, reason: "no-pending-commission-to-reverse" };
   }
   await queryRtdb(`commerce/creatorReferralClaims/${encodeURIComponent(userId)}`, {
@@ -1073,9 +1074,11 @@ export async function recordVasReferralBillingEvent(params: {
   const savedEvent = await putRtdbRecordOnce(eventPath, event);
   const subscriptionPath = `commerce/vasSubscriptions/${encodeURIComponent(userId)}`;
   const previousSubscription = await queryRtdb(subscriptionPath) as any;
+  const paymentIsCurrent = !previousSubscription?.cancelledAt || Date.parse(occurredAt) >= Date.parse(String(previousSubscription.cancelledAt));
   const subscription = {
-    userId, status: "active", firstPaidAt: previousSubscription?.firstPaidAt || occurredAt,
-    lastPaidAt: occurredAt, lastTransactionId: eventId,
+    userId, status: paymentIsCurrent ? "active" : String(previousSubscription?.status || "cancelled"), firstPaidAt: previousSubscription?.firstPaidAt || occurredAt,
+    lastPaidAt: previousSubscription?.lastPaidAt && Date.parse(String(previousSubscription.lastPaidAt)) > Date.parse(occurredAt) ? previousSubscription.lastPaidAt : occurredAt,
+    lastTransactionId: eventId,
     successfulBillingEvents: Number(previousSubscription?.successfulBillingEvents || 0) + (savedEvent.created ? 1 : 0),
     updatedAt: new Date().toISOString(),
   };
@@ -2148,7 +2151,7 @@ export async function getCreatorDashboard(userId: string) {
     .filter((event) => event?.creatorId === userId && event?.referredUserId);
   const eligibleUserIds = new Set(referralClaims.map((event) => String(event.referredUserId || "")));
   const pendingAttributions = referralAttributions
-    .filter((event) => event.status !== "eligible" && !eligibleUserIds.has(String(event.referredUserId)))
+    .filter((event) => event.status !== "eligible" && event.status !== "billing_cancelled" && !eligibleUserIds.has(String(event.referredUserId)))
     .map((event) => ({ referredUserId: event.referredUserId, status: "pending", registeredAt: event.registeredAt || event.createdAt }));
   const eligibleAttributions = referralClaims.map((event) => ({
     referredUserId: event.referredUserId, status: "eligible", registeredAt: referralAttributions.find((item) => item.referredUserId === event.referredUserId)?.registeredAt || null,
@@ -2169,7 +2172,7 @@ export async function getCreatorDashboard(userId: string) {
   const referralEarnings = {
     balance: referralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0),
     pendingBalance: pendingReferralClaims.reduce((sum, event) => sum + Number(event.amount || 0), 0),
-    successfulReferrals: referralClaims.length,
+    successfulReferrals: referralClaims.length + pendingReferralClaims.length,
     activeAudience: [...successfulClaimsByUser.values()].filter((count) => count >= 3).length,
     minimumWithdrawal: 500,
     currency: "NGN" as const,
