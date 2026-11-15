@@ -914,3 +914,31 @@
   background-size: 200% 100%;
   animation: xsc-shimmer 1.35s ease-in-out infinite;
 }
+
+
+/* The whole player surface sticks for the duration of the channel-list scroll. */
+.xsc-player-card.is-playing {
+  position: sticky;
+  top: max(8px, env(safe-area-inset-top));
+  z-index: 30;
+}
+
+.xsc-player-sticky.is-playing {
+  position: relative;
+  top: auto;
+}
+
+.xsc-play-button {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+}
+
+.xsc-channel-title {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+@media (min-width: 520px) {
+  .xsc-channel-title { font-size: 15px; }
+}
