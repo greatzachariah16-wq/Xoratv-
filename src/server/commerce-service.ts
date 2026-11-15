@@ -2075,7 +2075,7 @@ export async function createCreatorPayoutRequest(userId: string, payoutType: "re
   const creator = await getCreator(userId);
   if (!creator || creator.status !== "active") throw new Error("Only active X Channel creators can request a payout.");
   const bank = await getPayoutDetails(userId) as any;
-  if (!bank?.bankName || !/^\\d{10}$/.test(String(bank.accountNumber || "")) || !String(bank.accountName || "").trim()) {
+  if (!bank?.bankName || !/^\d{10}$/.test(String(bank.accountNumber || "")) || !String(bank.accountName || "").trim()) {
     throw new Error("Save complete bank details before requesting a payout.");
   }
   const [requestsRaw, referralRaw] = await Promise.all([
