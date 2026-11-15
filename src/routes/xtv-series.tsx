@@ -364,7 +364,7 @@ function XTvSeriesPage() {
           </div>
         </section>
 
-        {libraryAdAvailable ? <div className="xsl-sponsored"><span>Sponsored</span><XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} /></div> : <XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} />}
+        <div className={cn("xsl-sponsored", !libraryAdAvailable && "is-empty")}>{libraryAdAvailable ? <span>Sponsored</span> : null}<XoraInHouseAd placement="xseries_feed" variant="banner" className="xsl-sponsored-ad" collapseWhenEmpty onAvailabilityChange={setLibraryAdAvailable} /></div>
 
         {featured ? (
           <section id="featured-movie-section">
