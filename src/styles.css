@@ -3171,3 +3171,100 @@ html.xora-channel-route .ad-slot::before {
     scroll-behavior: auto !important;
   }
 }
+
+/* Creator Studio: one compact card rhythm, using the shared cream-and-clay shadows. */
+.xora-channel-page {
+  --shadow-card: var(--channel-shadow-sm);
+}
+.xora-channel-management-content {
+  --studio-card-radius: 18px;
+  --studio-card-shadow: var(--channel-shadow-sm);
+}
+.xora-channel-management-content > :is(div, section),
+.xora-channel-panel > :is(div, section) {
+  min-width: 0;
+}
+.xora-channel-management-content :is(.space-y-4, .space-y-5, .space-y-8) > :not([hidden]) ~ :not([hidden]),
+.xora-channel-panel :is(.space-y-4, .space-y-5, .space-y-8) > :not([hidden]) ~ :not([hidden]) {
+  margin-block-start: 12px !important;
+}
+.xora-channel-management-content :is(.gap-4, .gap-5, .gap-6),
+.xora-channel-panel :is(.gap-4, .gap-5, .gap-6) {
+  gap: 12px !important;
+}
+.xora-channel-management-content :is(section, article, div)[class*="rounded-"][class~="border"][class~="bg-surface"] {
+  border-color: var(--channel-line) !important;
+  border-radius: var(--studio-card-radius) !important;
+  box-shadow: var(--studio-card-shadow) !important;
+}
+.xora-channel-management-content :is(div, article, section)[class*="rounded-"][class~="border"][class~="bg-background"] {
+  border-color: var(--channel-line) !important;
+  border-radius: 14px !important;
+  background: var(--channel-panel-soft) !important;
+  box-shadow: none !important;
+}
+.xora-channel-management-content :is(section, article, div)[class~="shadow-card"],
+.xora-channel-management-content :is(section, article, div)[class~="shadow-sm"],
+.xora-channel-management-content :is(section, article, div)[class~="shadow-lg"] {
+  box-shadow: var(--studio-card-shadow) !important;
+}
+.xora-channel-management-content :is(section, article, div)[class~="p-5"] {
+  padding: 14px !important;
+}
+.xora-channel-management-content :is(section, article, div)[class~="p-6"] {
+  padding: 16px !important;
+}
+.xora-channel-management-content :is(section, article, div)[class~="p-4"] {
+  padding: 12px !important;
+}
+.xora-channel-management-content h2.font-display {
+  font-size: clamp(18px, 2.8vw, 21px) !important;
+  line-height: 1.2 !important;
+}
+.xora-channel-management-content h3.font-display {
+  font-size: 18px !important;
+  line-height: 1.25 !important;
+}
+.xora-channel-management-content .text-5xl {
+  font-size: clamp(28px, 5vw, 34px) !important;
+  line-height: 1.08 !important;
+}
+.xora-channel-management-content .text-4xl {
+  font-size: clamp(25px, 4vw, 30px) !important;
+  line-height: 1.1 !important;
+}
+.xora-channel-management-content .text-3xl {
+  font-size: clamp(22px, 3.5vw, 26px) !important;
+  line-height: 1.15 !important;
+}
+.xora-channel-management-content input:not([type="checkbox"]):not([type="file"]),
+.xora-channel-management-content select {
+  min-height: 42px;
+  border-radius: 12px;
+}
+.xora-channel-management-content textarea {
+  border-radius: 12px;
+}
+.xora-channel-management-content .shadow-xl {
+  box-shadow: var(--channel-shadow-md) !important;
+}
+.xora-channel-management-content :is(.rounded-2xl, .rounded-\[20px\], .rounded-\[22px\], .rounded-\[24px\], .rounded-\[28px\]) {
+  scroll-margin-top: calc(var(--header-h) + 12px);
+}
+@media (min-width: 640px) {
+  .xora-channel-management-content [class~="sm:p-6"] {
+    padding: 16px !important;
+  }
+  .xora-channel-management-content [class~="sm:p-7"] {
+    padding: 18px !important;
+  }
+}
+@media (max-width: 639px) {
+  .xora-channel-management-content .grid {
+    min-width: 0;
+  }
+  .xora-channel-management-content .grid-cols-3 > * {
+    min-width: 0;
+  }
+}
+
