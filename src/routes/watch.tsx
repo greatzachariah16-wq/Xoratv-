@@ -245,6 +245,7 @@ function WatchPage() {
                   externalPoster={activeMovie.thumbnailUrl}
                   title={activeMovie.title}
                   autoPlay={false}
+                  cinemaMode
                   vertical={false}
                   className="h-full w-full !rounded-none"
                   postId={activeId}
