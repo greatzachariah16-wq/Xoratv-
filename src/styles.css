@@ -2589,7 +2589,7 @@ html.xora-channel-route header.fixed {
   grid-area: identity;
   display: flex;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   margin-top: -42px;
 }
@@ -2634,7 +2634,7 @@ html.xora-channel-route header.fixed {
 .xora-channel-copy {
   min-width: 0;
   flex: 1;
-  padding: 8px 0 0;
+  padding: 46px 0 0;
 }
 .xora-channel-name {
   margin: 0;
@@ -2759,13 +2759,15 @@ html.xora-channel-route header.fixed {
   position: sticky;
   /* Reserve the compact-bar lane so the tabs never jump when it appears. */
   top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + 8px);
-  z-index: 55;
+  z-index: 40;
   display: flex;
   width: 100%;
   min-width: 0;
   height: 56px;
   align-items: stretch;
   gap: 3px;
+  --tab-padding: 5px;
+  --tab-gap: 3px;
   padding: 5px;
   border: 1px solid var(--channel-line);
   border-radius: 17px;
@@ -2800,12 +2802,14 @@ html.xora-channel-route header.fixed {
   position: absolute;
   top: 5px;
   bottom: 5px;
-  left: 5px;
+  left: var(--tab-padding, 5px);
   z-index: 0;
+  width: calc((100% - 2 * var(--tab-padding, 5px) - (var(--tab-count, 4) - 1) * var(--tab-gap, 3px)) / var(--tab-count, 4));
   height: auto;
   border-radius: 12px;
   background: linear-gradient(145deg, #B5502E, #9F4A2D);
   box-shadow: 0 3px 9px rgba(159, 74, 45, .22), inset 0 1px 0 rgba(255,255,255,.16);
+  transform: translateX(calc(var(--tab-index, 0) * (100% + var(--tab-gap, 3px))));
   transition: transform 240ms cubic-bezier(.2,.8,.2,1), width 180ms ease;
   pointer-events: none;
 }
@@ -2900,7 +2904,7 @@ html.xora-channel-route header.fixed {
 .xora-channel-empty-action:hover { background: var(--channel-accent-dark); }
 .xora-channel-compact {
   position: fixed;
-  z-index: 60;
+  z-index: 45;
   top: var(--header-h, 56px);
   left: 0;
   display: flex;
@@ -3032,6 +3036,11 @@ html.xora-channel-route .ad-slot {
   border-radius: 13px;
   background: #F5EFE7;
 }
+html.xora-channel-route .ad-slot > * {
+  max-width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
 html.xora-channel-route .ad-slot::before {
   position: absolute;
   top: -9px;
@@ -3054,6 +3063,7 @@ html.xora-channel-route .ad-slot::before {
     padding: 0 16px 17px;
   }
   .xora-channel-identity {
+    align-items: flex-start;
     gap: 12px;
     margin-top: -37px;
   }
@@ -3066,7 +3076,7 @@ html.xora-channel-route .ad-slot::before {
     width: 72px !important;
     height: 72px !important;
   }
-  .xora-channel-copy { padding-top: 13px; }
+  .xora-channel-copy { padding-top: 41px; }
   .xora-channel-name { font-size: clamp(19px, 5.4vw, 23px); }
   .xora-channel-handle { font-size: 12px; }
   .xora-channel-followers { margin-top: 5px; font-size: 10px; }
@@ -3085,11 +3095,12 @@ html.xora-channel-route .ad-slot::before {
   .xora-channel-tabs {
     top: calc(var(--header-h, 56px) + var(--compact-h, 56px) + 5px);
     height: 53px;
+    --tab-padding: 4px;
     padding: 4px;
     border-radius: 15px;
   }
   .xora-channel-tab { height: 43px; min-height: 43px; padding: 0 4px; font-size: 11px; }
-  .xora-channel-tab-indicator { top: 4px; bottom: 4px; left: 4px; border-radius: 11px; }
+  .xora-channel-tab-indicator { top: 4px; bottom: 4px; left: var(--tab-padding, 4px); border-radius: 11px; }
   .xora-channel-panel { padding-top: 0; }
 }
 /* Desktop AppShell has no fixed mobile header. Keep sticky offsets in sync. */
