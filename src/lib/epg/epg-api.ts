@@ -26,7 +26,10 @@ export async function refreshEpg(options: EpgRefreshOptions = {}) {
     const isGzip = /\\.gz(?:$|[?#])/i.test(url) || response.headers.get("X-EPG-Gzip") === "1";
     let count = 0;
     if (!response.body) throw new Error("EPG source returned no readable stream.");
-    for await (const batch of parseXmltvStream(response.body, { gzip: isGzip })) {
+    for await (const batch of parseXmltvStream(response.body, {
+      gzip: isGzip,
+      onChannels: async (channels) => { await saveChannels(channels); },
+    })) {
       await writeProgrammeBatch(batch);
       count += batch.length;
     }
@@ -58,11 +61,12 @@ export async function syncEpgChannels(channels: MatchableChannel[]) {
 }
 
 async function getAllEpgChannels(): Promise<EpgChannel[]> {
-  return (await getMeta<EpgChannel[]>("xmltvChannels")) || [];
+  const { getAllChannels } = await import("./epg-store");
+  return getAllChannels();
 }
 
 export async function saveXmltvChannels(channels: EpgChannel[]) {
-  await setMeta("xmltvChannels", channels);
+  await saveChannels(channels);
 }
 
 export async function setEpgChannelMapping(channelId: string, epgId: string) {
