@@ -38,7 +38,6 @@ import okhttp3.ResponseBody;
  * A rolling window remains stored locally while the playlist refreshes in the background.
  */
 final class LocalHlsBuffer {
-    static final long TARGET_BUFFER_MS = 0L;
     private static final long RETAIN_WINDOW_MS = 300_000L;
     private static final long MAX_CACHE_BYTES = 256L * 1024L * 1024L;
     private static final long STARTUP_TIMEOUT_MS = 180_000L;
@@ -53,7 +52,6 @@ final class LocalHlsBuffer {
 
     static final class Progress {
         final long bufferedMillis;
-        final long targetMillis;
         final int downloadedSegments;
         final int percent;
         final double speedRatio;
@@ -66,7 +64,6 @@ final class LocalHlsBuffer {
         Progress(long bufferedMillis, int downloadedSegments, double speedRatio,
                  boolean healthy, boolean ready, boolean failed, String error, int httpCode) {
             this.bufferedMillis = bufferedMillis;
-            this.targetMillis = TARGET_BUFFER_MS;
             this.downloadedSegments = downloadedSegments;
             this.percent = ready ? 100 : 0;
             this.speedRatio = speedRatio;
