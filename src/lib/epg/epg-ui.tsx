@@ -42,6 +42,8 @@ export function EpgRefreshButton(props: EpgRefreshOptions) {
 
 export function EpgTimelineGrid({ channels, startTime, endTime }: { channels: Array<{id:string;name:string}>; startTime:number; endTime:number }) {
   const [rows, setRows] = useState<Array<{channelId:string;programmes:EpgProgramme[]}>>([]);
+  const [scrollTop, setScrollTop] = useState(0);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     let active = true;
     void import("./epg-api").then(({getGridWindow}) => getGridWindow(channels.map((c) => c.id), startTime, endTime)).then((value) => { if(active) setRows(value); });
@@ -49,10 +51,17 @@ export function EpgTimelineGrid({ channels, startTime, endTime }: { channels: Ar
   }, [channels, startTime, endTime]);
   const byId = useMemo(() => new Map(rows.map((row) => [row.channelId, row.programmes])), [rows]);
   const span = Math.max(1, endTime - startTime);
-  return <div className="xora-epg-grid" role="table" aria-label="Programme timeline">
-    {channels.map((channel) => <div className="xora-epg-grid-row" role="row" key={channel.id}>
+  const rowHeight = 54;
+  const virtualized = channels.length > 20;
+  const first = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 4) : 0;
+  const last = virtualized ? Math.min(channels.length, first + 18) : channels.length;
+  return <div ref={viewportRef} className="xora-epg-grid-viewport" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)} role="table" aria-label="Programme timeline">
+    <div className="xora-epg-grid-hours"><span>Channel</span>{[0,6,12,18,24].map((hour) => <time key={hour}>{hour === 24 ? "00:00" : String(hour).padStart(2,"0")+":00"}</time>)}</div>
+    {virtualized ? <div style={{height:first*rowHeight}} aria-hidden="true" /> : null}
+    {channels.slice(first,last).map((channel) => <div className="xora-epg-grid-row" role="row" key={channel.id} style={{height:rowHeight}}>
       <strong role="rowheader">{channel.name}</strong><div className="xora-epg-grid-track">{(byId.get(channel.id) || []).map((programme) => <span key={programme.id} title={programme.title} style={{left: ((programme.start-startTime)/span*100)+"%",width: (Math.max(0,Math.min(endTime,programme.stop)-Math.max(startTime,programme.start))/span*100)+"%"}}>{programme.title}</span>)}</div>
     </div>)}
+    {virtualized ? <div style={{height:(channels.length-last)*rowHeight}} aria-hidden="true" /> : null}
   </div>;
 }
 
