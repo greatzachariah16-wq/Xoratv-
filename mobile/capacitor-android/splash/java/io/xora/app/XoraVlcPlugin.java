@@ -981,6 +981,7 @@ public class XoraVlcPlugin extends Plugin {
         int overlayWidth;
 
         if (pipMode || isActivityInPipMode()) {
+            if (adPanel != null) adPanel.setVisibility(View.GONE);
             setWebViewVisibility(View.GONE);
             if (controls != null) controls.setVisibility(View.GONE);
             if (topBar != null) topBar.setVisibility(View.GONE);
@@ -998,6 +999,7 @@ public class XoraVlcPlugin extends Plugin {
             return;
         }
 
+        if (mode != PlayerMode.CINEMA && adPanel != null) adPanel.setVisibility(View.GONE);
         if (controls != null) controls.setVisibility(controlsVisible ? View.VISIBLE : View.GONE);
         if (topBar != null) topBar.setVisibility(controlsVisible ? View.VISIBLE : View.GONE);
         if (topScrim != null) topScrim.setVisibility(controlsVisible ? View.VISIBLE : View.GONE);
@@ -1034,6 +1036,25 @@ public class XoraVlcPlugin extends Plugin {
                 setWebViewRegion(panelWidth, 0, Math.max(1, width - panelWidth), height);
                 break;
 
+            case CINEMA:
+                // Landscape cinema: native video on the left, reserved ad surface on the right.
+                // Keep the web app hidden while native playback owns the screen.
+                panelWidth = Math.min(dp(320), Math.max(dp(220), Math.round(width * 0.38f)));
+                panelWidth = Math.min(panelWidth, Math.max(dp(180), width / 2));
+                overlayWidth = width;
+                overlayHeight = height;
+                videoHeight = height;
+                setWebViewVisibility(View.GONE);
+                if (adPanel != null) {
+                    adPanel.setVisibility(View.VISIBLE);
+                    FrameLayout.LayoutParams adParams = new FrameLayout.LayoutParams(
+                        panelWidth, height - dp(20), Gravity.END | Gravity.CENTER_VERTICAL
+                    );
+                    adParams.setMargins(0, dp(10), dp(10), dp(10));
+                    adPanel.setLayoutParams(adParams);
+                }
+                break;
+
             case PINNED:
             default:
                 if (width > height && height <= dp(500)) {
@@ -1059,14 +1080,15 @@ public class XoraVlcPlugin extends Plugin {
             Gravity.TOP | Gravity.START
         ));
 
+        int renderedVideoWidth = mode == PlayerMode.CINEMA ? Math.max(1, width - panelWidth - dp(20)) : overlayWidth;
         FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
-            overlayWidth,
+            renderedVideoWidth,
             videoHeight,
             mode == PlayerMode.TABLET ? Gravity.TOP | Gravity.CENTER_HORIZONTAL : Gravity.TOP | Gravity.START
         );
         videoFrame.setLayoutParams(videoParams);
 
-        if (mode == PlayerMode.FULLSCREEN) {
+        if (mode == PlayerMode.FULLSCREEN || mode == PlayerMode.CINEMA) {
             enterImmersiveSystemUi();
         } else {
             restoreSystemUi();
