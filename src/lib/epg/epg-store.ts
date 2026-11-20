@@ -151,7 +151,6 @@ export async function getProgrammesForChannels(channelIds: string[], startTime: 
       const tx = db.transaction(PROGRAMMES, "readonly");
       const index = tx.objectStore(PROGRAMMES).index("channelStart");
       const groups: EpgProgramme[][] = [];
-      let remaining = uniqueIds.length;
       for (const id of uniqueIds) {
         const request = index.getAll(IDBKeyRange.bound([id, 0], [id, endTime]));
         request.onsuccess = () => {
@@ -162,12 +161,12 @@ export async function getProgrammesForChannels(channelIds: string[], startTime: 
             const next = sorted[itemIndex + 1];
             return next && next.start < item.stop ? { ...item, stop: next.start } : item;
           }).filter((item) => item.stop > item.start));
-          remaining--;
-          if (!remaining) resolve(groups.flat().sort((a, b) => a.start - b.start));
         };
         request.onerror = () => reject(request.error);
       }
+      tx.oncomplete = () => resolve(groups.flat().sort((a, b) => a.start - b.start));
       tx.onerror = () => reject(tx.error || new Error("Could not read EPG timeline."));
+      tx.onabort = () => reject(tx.error || new Error("EPG timeline read was aborted."));
     });
   } finally { db.close(); }
 }
