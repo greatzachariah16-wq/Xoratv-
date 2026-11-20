@@ -35,7 +35,7 @@ import {
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
 import { useLandscapeMode } from "@/hooks/useOrientation";
 import { rankLiveTvChannels } from "@/lib/epg/country-ranking";
-import { EpgDayGuide, EpgNowNext, EpgSettings } from "@/lib/epg/epg-ui";
+import { EpgDayGuide, EpgNowNext, EpgSettings, EpgTimelineGrid } from "@/lib/epg/epg-ui";
 import { refreshEpg, startEpgRefreshScheduler, syncEpgChannels } from "@/lib/epg/epg-api";
 import "@/styles/tv-live.css";
 
@@ -673,6 +673,10 @@ function LiveTvPage() {
             <div className="xora-tv-guide-heading"><CalendarClock aria-hidden="true" /><div><h2>Programme guide</h2><p>Now, next and the full day schedule</p></div></div>
             <EpgSettings />
             {selected ? <div className="xora-tv-guide-body"><EpgNowNext channelId={selected.id} /><EpgDayGuide channelId={selected.id} /></div> : <p className="xora-tv-guide-empty">Choose a channel to view its programme schedule.</p>}
+            <details className="xora-epg-settings">
+              <summary>Open 24-hour channel timeline</summary>
+              <EpgTimelineGrid channels={visibleChannels.slice(0, 120).map((channel) => ({ id: channel.id, name: channel.name }))} startTime={new Date().setHours(0, 0, 0, 0)} endTime={new Date().setHours(24, 0, 0, 0)} />
+            </details>
           </section>
 
 
