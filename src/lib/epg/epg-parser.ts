@@ -1,4 +1,4 @@
-import type { EpgProgramme } from "./epg-store";
+import type { EpgChannel, EpgProgramme } from "./epg-store";
 
 const WINDOW_PAST_MS = 2 * 60 * 60 * 1000;
 const WINDOW_FUTURE_MS = 48 * 60 * 60 * 1000;
@@ -45,7 +45,7 @@ async function* chunks(stream: ReadableStream<Uint8Array>): AsyncGenerator<Uint8
 
 export async function* parseXmltvStream(
   input: ReadableStream<Uint8Array>,
-  options: { gzip?: boolean; batchSize?: number; now?: number } = {},
+  options: { gzip?: boolean; batchSize?: number; now?: number; onChannels?: (channels: EpgChannel[]) => Promise<void> | void } = {},
 ): AsyncGenerator<EpgProgramme[]> {
   let stream: ReadableStream<Uint8Array> = input;
   if (options.gzip) {
@@ -64,6 +64,20 @@ export async function* parseXmltvStream(
 
   for await (const bytes of chunks(stream)) {
     buffer += decoder.decode(bytes, { stream: true });
+    let channelEnd: number;
+    while ((channelEnd = buffer.indexOf("</channel>")) >= 0) {
+      const closeEnd = channelEnd + "</channel>".length;
+      const block = buffer.slice(0, closeEnd);
+      buffer = buffer.slice(closeEnd);
+      const open = block.lastIndexOf("<channel");
+      if (open < 0) continue;
+      const xml = block.slice(open);
+      const opening = xml.slice(0, xml.indexOf(">") + 1);
+      const id = attr(opening, "id");
+      const name = tagText(xml, "display-name") || id;
+      const icon = xml.match(/<icon[^>]*src="([^"]+)"/i)?.[1];
+      if (id && name) await options.onChannels?.([{ id, name, logo: icon }]);
+    }
     let end: number;
     while ((end = buffer.indexOf("</programme>")) >= 0) {
       const closeEnd = end + "</programme>".length;
