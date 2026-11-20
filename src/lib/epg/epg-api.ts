@@ -75,6 +75,7 @@ export async function syncEpgChannels(channels: MatchableChannel[]) {
   const result = matchEpgChannels(channels, epgChannels, overrides);
   await setMeta("channelMatches", result.matches);
   await setMeta("unmatchedChannels", result.unmatched);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("xora-epg-updated"));
   return result;
 }
 
