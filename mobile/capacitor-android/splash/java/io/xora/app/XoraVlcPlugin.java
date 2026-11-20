@@ -1732,14 +1732,12 @@ public class XoraVlcPlugin extends Plugin {
         bufferHealthy = progress.healthy;
         if (startupBufferActive && statusText != null) {
             statusText.setText(!progress.healthy
-                ? "Slow internet connection · building stream buffer"
+                ? "Slow internet connection · caching stream segments"
                 : "Preparing your live stream on this device");
         }
         if (bufferProgressBar != null) bufferProgressBar.setProgress(progress.percent);
         if (bufferProgressText != null) {
-            long seconds = Math.max(0L, Math.min(60L, Math.round(progress.bufferedMillis / 1000.0)));
-            bufferProgressText.setText("Downloaded " + seconds + " / 60 seconds  ·  "
-                + progress.downloadedSegments + " segments");
+            bufferProgressText.setText("Preparing stream · " + progress.downloadedSegments + " segments cached");
         }
         if (bufferHealthBanner != null) {
             if (!progress.healthy) {

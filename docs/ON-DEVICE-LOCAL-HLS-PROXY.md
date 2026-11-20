@@ -8,16 +8,16 @@ Live TV, XSports and Xora Kids use the same Android \`XoraVlcPlugin\`, \`LocalHl
 
 If port 8787 is occupied, the native proxy tries ports 8788 through 8797. It binds explicitly to 127.0.0.1 and is not exposed on the device LAN.
 
-## 60-second Android segment buffer
+## Android rolling segment cache with immediate startup
 
 - On channel selection, Android fetches the HLS playlist and resolves the selected media variant.
 - It downloads complete HLS media segments into that app's private cache directory.
-- The player does not start until at least 60 seconds of media segments are stored locally. Short finite playlists may start after all available media is cached.
-- The generated live playlist starts about 60 seconds behind the live edge, then refreshes as new segments arrive.
-- The cache keeps a rolling window of up to 5 minutes and is capped at 256 MB; older segments are removed as newer segments are saved.
-- A startup progress bar reports downloaded media seconds and segment count.
+- Playback can start as soon as the first complete media segment is stored locally; it no longer waits for a 60-second prebuffer.
+- The generated live playlist starts from the oldest complete segment currently cached, without a forced 60-second seek behind the live edge, then refreshes as new segments arrive.
+- The cache remains active during playback, keeps a rolling window of up to 5 minutes and is capped at 256 MB; older segments are removed as newer segments are saved.
+- Startup status reports segment caching rather than a 60-second countdown.
 - Recent segment download speed is compared with each segment's playback duration. A sustained rate below real time shows “Slow internet connection” during startup or playback.
-- A startup that cannot fill the 60-second buffer within 3 minutes reports a slow connection rather than starting with an empty buffer.
+- If the first media segment cannot be downloaded within 3 minutes, startup reports a slow connection.
 
 The segment cache is local to Android. Render still relays the stream for these proxy-routed pages, so this change does not eliminate Render transfer; it makes the player's playback read from locally stored segments after they have been fetched.
 
@@ -47,8 +47,8 @@ Both modes use the same Android segment cache and LibVLC loopback URL. Live TV, 
 ## Device verification required
 
 Before merging, test on the Honor 8X:
-1. Confirm playback does not start before the local cache reaches 60 seconds for a live stream.
-2. Confirm progress moves as actual segments are saved, then LibVLC begins without changing the existing player controls.
+1. Confirm playback starts after the first complete segment is cached, without waiting for 60 seconds.
+2. Confirm the rolling segment cache continues saving new segments during playback without changing the existing player controls.
 3. Confirm the generated playlist stays current while new segments arrive.
 4. Test encrypted HLS with \`EXT-X-KEY\` and \`EXT-X-MAP\`.
 5. Test segments using \`EXT-X-BYTERANGE\`, including implicit continuation offsets.
