@@ -44,12 +44,12 @@ export async function handleEpgSourceRoute(request: Request, url: URL): Promise<
       return Response.json({ ok: false, error: "EPG source returned HTTP " + upstream.status }, { status: 502 });
     }
     const responseHeaders = new Headers();
-    for (const name of ["content-type", "content-encoding", "content-length", "etag", "last-modified", "cache-control"]) {
+    for (const name of ["content-type", "etag", "last-modified", "cache-control"]) {
       const value = upstream.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }
     responseHeaders.set("Cache-Control", "no-store");
-    responseHeaders.set("X-EPG-Gzip", /\.gz(?:$|[?#])/i.test(target.toString()) ? "1" : "0");
+    responseHeaders.set("X-EPG-Gzip", /\.gz(?:$|[?#])/i.test(target.toString()) || /\.gz(?:$|[?#])/i.test(upstream.url) ? "1" : "0");
     return new Response(upstream.body, { status: 200, headers: responseHeaders });
   } catch (error) {
     const message = error instanceof Error ? error.message : "EPG source could not be reached";
