@@ -34,6 +34,8 @@ export async function refreshEpg(options: EpgRefreshOptions = {}) {
       count += batch.length;
     }
     await deleteExpiredProgrammes();
+    const currentChannels = await getMeta<MatchableChannel[]>("liveChannels");
+    if (currentChannels?.length) await syncEpgChannels(currentChannels);
     if (result.etag) await setMeta("epgEtag", result.etag);
     if (result.lastModified) await setMeta("epgLastModified", result.lastModified);
     await setMeta("epgUrl", url);
@@ -58,6 +60,7 @@ export async function getEpgSettings() {
 }
 
 export async function syncEpgChannels(channels: MatchableChannel[]) {
+  await setMeta("liveChannels", channels);
   const epgChannels = await getAllEpgChannels();
   await saveChannels(epgChannels);
   const overrides = await getManualMappings();
@@ -78,6 +81,8 @@ export async function saveXmltvChannels(channels: EpgChannel[]) {
 
 export async function setEpgChannelMapping(channelId: string, epgId: string) {
   await setManualMapping(channelId, epgId);
+  const channels = await getMeta<MatchableChannel[]>("liveChannels");
+  if (channels?.length) await syncEpgChannels(channels);
 }
 
 export async function getNowAndNext(channelId: string) {
@@ -90,7 +95,9 @@ export async function getNowAndNext(channelId: string) {
 }
 
 export async function getDayGuide(channelId: string, date: Date | string) {
-  const day = typeof date === "string" ? new Date(date) : date;
+  const day = typeof date === "string"
+    ? (() => { const [year, month, dayOfMonth] = date.split("-").map(Number); return new Date(year, month - 1, dayOfMonth); })()
+    : date;
   const start = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
   const stop = start + 24 * 60 * 60_000;
   const matches = (await getMeta<Record<string,string>>("channelMatches")) || {};
