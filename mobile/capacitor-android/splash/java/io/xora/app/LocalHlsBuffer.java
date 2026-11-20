@@ -34,12 +34,11 @@ import okhttp3.ResponseBody;
 /**
  * Android-only rolling HLS segment cache.
  *
- * The first frame is not handed to LibVLC until 60 seconds of playable media
- * have been downloaded into the app cache directory. A small rolling window is
- * retained locally while the playlist is refreshed in the background.
+ * Playback can start as soon as the first complete media segment is cached.
+ * A rolling window remains stored locally while the playlist refreshes in the background.
  */
 final class LocalHlsBuffer {
-    static final long TARGET_BUFFER_MS = 60_000L;
+    static final long TARGET_BUFFER_MS = 0L;
     private static final long RETAIN_WINDOW_MS = 300_000L;
     private static final long MAX_CACHE_BYTES = 256L * 1024L * 1024L;
     private static final long STARTUP_TIMEOUT_MS = 180_000L;
@@ -69,7 +68,7 @@ final class LocalHlsBuffer {
             this.bufferedMillis = bufferedMillis;
             this.targetMillis = TARGET_BUFFER_MS;
             this.downloadedSegments = downloadedSegments;
-            this.percent = (int) Math.min(100L, Math.round(bufferedMillis * 100L / TARGET_BUFFER_MS));
+            this.percent = ready ? 100 : 0;
             this.speedRatio = speedRatio;
             this.healthy = healthy;
             this.ready = ready;
@@ -221,7 +220,7 @@ final class LocalHlsBuffer {
 
             while (running) {
                 if (System.currentTimeMillis() - startedAt > STARTUP_TIMEOUT_MS && !ready) {
-                    fail("slow", 0, "Slow internet connection. The 60-second stream buffer could not fill.");
+                    fail("slow", 0, "The first stream segment could not be downloaded in time.");
                     return;
                 }
 
@@ -288,16 +287,16 @@ final class LocalHlsBuffer {
                 synchronized (lock) {
                     recalculateBufferedDuration();
                     rebuildPlaylist(parsed.globalTags);
-                    if (!ready && bufferedMillis >= TARGET_BUFFER_MS) ready = true;
+                    if (!ready && bufferedMillis > 0L) ready = true;
                     if (!ready && parsed.endList && bufferedMillis > 0L) {
-                        // Short VOD/event playlists cannot publish 60 seconds.
+                        // Finite playlists can start as soon as their first segment is cached.
                         ready = true;
                     }
                 }
                 notifyListener();
 
                 if (parsed.endList) {
-                    if (!ready && bufferedMillis < TARGET_BUFFER_MS) {
+                    if (!ready && bufferedMillis <= 0L) {
                         sleep(1000L);
                     } else {
                         return;
@@ -315,7 +314,7 @@ final class LocalHlsBuffer {
             Thread.currentThread().interrupt();
         } catch (Exception exception) {
             Log.w(TAG, "HLS segment prebuffer failed: " + exception.getClass().getSimpleName());
-            fail("slow", 0, "Slow internet connection. The stream could not maintain its download buffer.");
+            fail("slow", 0, "The stream could not download its first media segment.");
         }
     }
 
@@ -558,7 +557,8 @@ final class LocalHlsBuffer {
         for (Segment segment : snapshot) actualTargetDuration = Math.max(actualTargetDuration, (int) Math.ceil(segment.duration));
         output.append("#EXT-X-TARGETDURATION:").append(actualTargetDuration).append('\n');
         output.append("#EXT-X-MEDIA-SEQUENCE:").append(snapshot.get(0).sequence).append('\n');
-        if (!endList) output.append("#EXT-X-START:TIME-OFFSET=-60,PRECISE=YES\n");
+        // Do not seek 60 seconds behind the live edge: playback now starts from the
+        // oldest complete segment currently held in the rolling local cache.
         for (Segment segment : snapshot) {
             for (String tag : segment.tags) {
                 if (tag.startsWith("#EXT-X-BYTERANGE:") || tag.startsWith("#EXTINF:")) continue;
