@@ -50,3 +50,6 @@ It prints unique M3U tvg-id values, XMLTV channel IDs, exact matches, missing ID
 The repository cannot prove that a private provider playlist and guide match until those files/URLs are supplied. Verify the ID match report, direct/proxy reachability, redirects, gzip, conditional 304 responses, local-time/DST display, duplicate/overlap handling, unmatched-channel mapping, IndexedDB storage and performance on a low-memory Android phone before declaring the EPG production-ready.
 
 The Live TV LibVLC playback path is deliberately unchanged in this EPG change.
+
+
+Implementation note: Android downloads are streamed to the app cache and read in 48 KB blocks; no whole-guide JavaScript buffer or localStorage is used.
