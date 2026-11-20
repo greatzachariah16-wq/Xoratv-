@@ -1396,6 +1396,13 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
+        if (directPlaybackOnly && currentStreamIndex < streamHeaders.size()) {
+            JSONObject headers = streamHeaders.get(currentStreamIndex);
+            String userAgent = headers.optString("User-Agent", headers.optString("user-agent", ""));
+            String referer = headers.optString("Referer", headers.optString("referer", headers.optString("referrer", "")));
+            if (!userAgent.isEmpty()) media.addOption(":http-user-agent=" + userAgent);
+            if (!referer.isEmpty()) media.addOption(":http-referrer=" + referer);
+        }
         // Direct-only mode gives LibVLC the origin URL; other modes use the loopback proxy.
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
