@@ -86,8 +86,23 @@ export function EpgSettings() {
   const loadMappings = () => void getEpgMappingOptions().then((data) => { setUnmatched(data.unmatched); setEpgChannels(data.epgChannels); });
   useEffect(() => {
     let active = true;
-    void getEpgSettings().then((settings) => {
-      if (active) { setUrl(settings.url); setProxyUrl(settings.proxyUrl); }
+    void getEpgSettings().then(async (settings) => {
+      if (!active) return;
+      setUrl(settings.url);
+      setProxyUrl(settings.proxyUrl);
+      if (!settings.url) {
+        try {
+          const response = await fetch("/api/tv/epg-config", { cache: "no-store" });
+          const data = response.ok ? await response.json() as { epgUrl?: string | null } : null;
+          if (active && data?.epgUrl) {
+            setUrl(data.epgUrl);
+            await configureEpg(data.epgUrl);
+            void refreshEpg({ url: data.epgUrl }).catch((error) => console.info("[Xora EPG] Default source refresh failed:", error));
+          }
+        } catch {
+          // The manual URL field remains available when the M3U has no EPG header.
+        }
+      }
     });
     void getEpgMappingOptions().then((data) => {
       if (active) { setUnmatched(data.unmatched); setEpgChannels(data.epgChannels); }
