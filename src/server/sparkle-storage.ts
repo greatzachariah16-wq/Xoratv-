@@ -78,7 +78,8 @@ export async function handleSparkleStorageRoute(request: Request, url: URL): Pro
           "Cache-Control": "31536000",
           "x-upsert": "false",
         },
-        // File is a Blob; pass it directly so fetch can stream it without creating a second 250MB ArrayBuffer.\n        body: file,
+        // File is a Blob; pass it directly so fetch can stream it without creating a second 250MB ArrayBuffer.
+        body: file,
         signal: AbortSignal.timeout(180000),
       });
 
