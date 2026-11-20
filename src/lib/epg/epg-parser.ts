@@ -4,20 +4,19 @@ const WINDOW_PAST_MS = 2 * 60 * 60 * 1000;
 const WINDOW_FUTURE_MS = 48 * 60 * 60 * 1000;
 
 function decodeXml(value: string): string {
-  return value.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1")
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&apos;|&#39;/g, "'")
-    .replace(/&#(\\d+);/g, (_m, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_m, n) => String.fromCodePoint(parseInt(n, 16))).trim();
 }
 
 function attr(tag: string, key: string): string {
-  const escaped = key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&");
-  return tag.match(new RegExp("\\b" + escaped + "=[\\\"']([^\\\"']*)[\\\"']", "i"))?.[1] || "";
+  return tag.match(new RegExp("\\b" + key + "=[\\\"']([^\\\"']*)[\\\"']", "i"))?.[1] || "";
 }
 
 function xmltvTimestamp(raw: string): number | null {
-  const match = raw.trim().match(/^(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})?(?:\\s*([+-])(\\d{2})(\\d{2}))?/);
+  const match = raw.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?(?:\s*([+-])(\d{2})(\d{2}))?/);
   if (!match) return null;
   const [, y, mo, d, h, mi, sec = "00", sign, offH = "00", offM = "00"] = match;
   const utc = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(sec));
