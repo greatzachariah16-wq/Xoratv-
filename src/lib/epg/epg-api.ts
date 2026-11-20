@@ -19,6 +19,7 @@ export async function refreshEpg(options: EpgRefreshOptions = {}) {
     const lastModified = await getMeta<string>("epgLastModified");
     const result = await downloadEpg({ url, proxyUrl: options.proxyUrl || await getMeta<string>("epgProxyUrl"), etag, lastModified, force: options.force });
     if (result.unchanged) {
+      await deleteExpiredProgrammes();
       await setMeta("epgLastCheckedAt", Date.now());
       return { unchanged: true, count: 0 };
     }
