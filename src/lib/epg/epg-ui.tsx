@@ -17,7 +17,8 @@ export function EpgNowNext({ channelId }: { channelId: string }) {
     const load = () => void getNowAndNext(channelId).then((value) => { if (active) { setData(value); setFailed(false); } }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); });
     load();
     const timer = window.setInterval(load, 60_000);
-    return () => { active = false; window.clearInterval(timer); };
+    window.addEventListener("xora-epg-updated", load);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener("xora-epg-updated", load); };
   }, [channelId]);
   if (loading) return <p className="xora-epg-muted">Loading programme guide…</p>;
   if (failed) return <p className="xora-epg-muted">Programme guide could not be loaded. Try refreshing.</p>;
@@ -36,7 +37,8 @@ export function EpgNowNextCompact({ channelId }: { channelId: string }) {
     const load = () => void getNowAndNext(channelId).then((value) => { if (active) setData(value); }).catch(() => {});
     load();
     const timer = window.setInterval(load, 90_000);
-    return () => { active = false; window.clearInterval(timer); };
+    window.addEventListener("xora-epg-updated", load);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener("xora-epg-updated", load); };
   }, [channelId]);
   if (!data.now && !data.next) return <span className="xora-epg-compact-empty">No guide data</span>;
   return <span className="xora-epg-compact">
@@ -47,11 +49,24 @@ export function EpgNowNextCompact({ channelId }: { channelId: string }) {
 }
 
 export function EpgDayGuide({ channelId }: { channelId: string }) {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    return [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+  });
   const [programmes, setProgrammes] = useState<EpgProgramme[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { let active = true; setLoading(true); void getDayGuide(channelId, date).then((items) => { if (active) { setProgrammes(items); setFailed(false); } }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [channelId, date]);
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      setLoading(true);
+      void getDayGuide(channelId, date).then((items) => { if (active) { setProgrammes(items); setFailed(false); } })
+        .catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); });
+    };
+    load();
+    window.addEventListener("xora-epg-updated", load);
+    return () => { active = false; window.removeEventListener("xora-epg-updated", load); };
+  }, [channelId, date]);
   return <section className="xora-epg-day">
     <label><CalendarDays size={15}/> Full-day guide <input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
     {loading ? <p className="xora-epg-muted">Loading daily schedule…</p> : failed ? <p className="xora-epg-muted">Daily schedule could not be loaded.</p> : programmes.length ? programmes.map((item) => <article key={item.id}><time>{time(item.start)} – {time(item.stop)}</time><strong>{item.title}</strong>{item.description ? <p>{item.description}</p> : null}</article>) : <p className="xora-epg-muted">No guide data</p>}
