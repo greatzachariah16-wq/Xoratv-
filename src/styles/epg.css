@@ -34,3 +34,11 @@
 .xora-epg-grid-track{position:relative;overflow:hidden;border-left:1px solid #493b57}
 .xora-epg-grid-track>span{position:absolute;top:6px;bottom:6px;overflow:hidden;border:1px solid rgba(199,168,232,.25);border-radius:6px;background:#38294b;color:#f5effb;padding:7px 5px;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:420px){.xora-epg-now-next{grid-template-columns:1fr}.xora-epg-day article{grid-template-columns:88px minmax(0,1fr)}}
+
+.xora-epg-compact{display:grid;min-width:0;gap:2px;color:#8e849a;font-size:8px;line-height:1.2}
+.xora-epg-compact>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xora-epg-compact b{color:#a98bc9;font-size:7px;letter-spacing:.08em}
+.xora-epg-compact>i{display:block;height:2px;overflow:hidden;margin-top:2px;border-radius:99px;background:#d9d0e2}
+.xora-epg-compact>i em{display:block;height:100%;border-radius:inherit;background:#a98bc9}
+.xora-epg-compact-empty{display:block;color:#a99eb8;font-size:8px}
+.xora-tv-row-copy .xora-epg-compact{max-width:100%}
