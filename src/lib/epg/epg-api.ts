@@ -3,7 +3,7 @@ import { matchEpgChannels } from "./epg-matcher";
 import type { M3uChannel } from "./m3u-parser";
 import { parseXmltv } from "./epg-parser";
 import {
-  deleteExpiredProgrammes, getEpgChannels, getMappings, getMeta, getProgrammesForChannel,
+  clearEpgData, deleteExpiredProgrammes, getEpgChannels, getMappings, getMeta, getProgrammesForChannel,
   getProgrammesForChannels, putChannels, putProgrammes, saveManualMapping, saveMappings, setMeta,
   type EpgProgramme,
 } from "./epg-store";
@@ -25,12 +25,13 @@ export async function refreshEpg(options: { force?: boolean } = {}) {
   if (refreshTask) return refreshTask;
   refreshTask = (async () => {
     if (!sourceUrl) throw new Error("No XMLTV URL was found in the M3U header. Configure VITE_XORA_EPG_URL to supply one manually.");
-    const previous = await getMeta<{ etag?: string; lastModified?: string }>("source");
+    const previous = await getMeta<{ url?: string; etag?: string; lastModified?: string }>("source");
+    const sameSource = previous?.url === sourceUrl;
     const downloaded = await downloadEpg({
       url: sourceUrl,
       proxyUrl,
-      etag: previous?.etag,
-      lastModified: previous?.lastModified,
+      etag: sameSource ? previous?.etag : undefined,
+      lastModified: sameSource ? previous?.lastModified : undefined,
       force: options.force,
     });
     if (downloaded.status === "not-modified") {
@@ -38,6 +39,8 @@ export async function refreshEpg(options: { force?: boolean } = {}) {
       await setMeta("lastRefreshAt", Date.now());
       return { unchanged: true, channelCount: 0, programmeCount: 0, unmatchedCount: unmatchedChannels.length };
     }
+
+    if (previous?.url && !sameSource) await clearEpgData();
 
     let channelBatch: Array<{ id: string; displayName?: string; logo?: string }> = [];
     let programmeBatch: EpgProgramme[] = [];

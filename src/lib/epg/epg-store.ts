@@ -171,6 +171,21 @@ export async function getProgrammesForChannels(channelIds: string[], startTime: 
   } finally { db.close(); }
 }
 
+
+export async function clearEpgData(): Promise<void> {
+  const db = await openDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([CHANNELS, PROGRAMMES], "readwrite");
+      tx.objectStore(CHANNELS).clear();
+      tx.objectStore(PROGRAMMES).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+
 export async function deleteExpiredProgrammes(now = Date.now()): Promise<number> {
   const db = await openDatabase();
   let deleted = 0;
