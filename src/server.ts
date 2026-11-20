@@ -462,7 +462,7 @@ async function handleUpload(request: Request): Promise<Response> {
     const ext = path.extname(originalName) || ".bin";
     let relativePath = "";
     if (customKey && !customKey.includes("..")) {
-      relativePath = customKey.replace(/^\\/+/, "");
+      relativePath = customKey.replace(/^\/+/, "");
     } else {
       const fileId = crypto.randomUUID();
       relativePath = `${bucket}/${userId}/${fileId}${ext}`;
@@ -486,7 +486,7 @@ async function handleUpload(request: Request): Promise<Response> {
     await fs.promises.rename(temporaryPath, targetFilePath);
     temporaryPath = null;
 
-    const baseUrl = PUBLIC_MEDIA_BASE_URL.replace(/\\/+$/, "");
+    const baseUrl = PUBLIC_MEDIA_BASE_URL.replace(/\/+$/, "");
     const publicUrl = baseUrl ? `${baseUrl}/${relativePath}` : `/${relativePath}`;
 
     return new Response(
