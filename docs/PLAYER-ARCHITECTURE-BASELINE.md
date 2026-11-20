@@ -51,3 +51,26 @@ Android LibVLC
 - `mobile/capacitor-android/splash/java/io/xora/app/XoraVlcPlugin.java`
 
 This baseline is historical documentation. The hybrid implementation is documented separately and is being developed on its own feature branch; it does not rewrite this record.
+
+
+## Native landscape cinema player work (feature branch)
+
+The native Android LibVLC overlay now has a dedicated landscape cinema presentation in
+`feat/native-landscape-player-ad-panel`:
+
+- Opening the native Live TV player requests sensor landscape and restores the prior
+  orientation when the player closes.
+- The video surface occupies the left side of the landscape screen.
+- A separate native advertising surface is reserved on the right, sized responsively
+  up to approximately 320 dp wide.
+- The underlying app WebView is hidden during this cinema presentation; it is not used
+  as the video surface.
+- The existing LibVLC instance, local HLS proxy, first-segment cache and playback
+  controls remain the playback path.
+
+Important scope boundary: this change creates the native ad *host surface*, not a live
+ad-network renderer. Existing web-script ad tags cannot be assumed to run inside a
+native Android View. Adsterra/Monetag/Aidzap integration, approved refresh intervals,
+and creative rendering need a separate verified adapter. This branch also does not yet
+convert Shorts or every on-demand media source to LibVLC; those paths must be migrated
+and tested independently before claiming one native player across all XoraTV content.
