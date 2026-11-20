@@ -29,6 +29,23 @@ export function EpgNowNext({ channelId }: { channelId: string }) {
   </div>;
 }
 
+export function EpgNowNextCompact({ channelId }: { channelId: string }) {
+  const [data, setData] = useState<{now:EpgProgramme|null;next:EpgProgramme|null}>({now:null,next:null});
+  useEffect(() => {
+    let active = true;
+    const load = () => void getNowAndNext(channelId).then((value) => { if (active) setData(value); }).catch(() => {});
+    load();
+    const timer = window.setInterval(load, 90_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [channelId]);
+  if (!data.now && !data.next) return <span className="xora-epg-compact-empty">No guide data</span>;
+  return <span className="xora-epg-compact">
+    <span><b>NOW</b> {data.now?.title || "—"}</span>
+    <span><b>NEXT</b> {data.next?.title || "—"}</span>
+    {data.now ? <i><em style={{width:getProgress(data.now)+"%"}} /></i> : null}
+  </span>;
+}
+
 export function EpgDayGuide({ channelId }: { channelId: string }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [programmes, setProgrammes] = useState<EpgProgramme[]>([]);
