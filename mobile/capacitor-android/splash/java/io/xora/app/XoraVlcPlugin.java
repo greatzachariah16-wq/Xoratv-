@@ -481,8 +481,9 @@ public class XoraVlcPlugin extends Plugin {
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
 
-        if (!isSecureUrl(url)) {
-            call.reject("A secure stream URL is required.");
+        boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -548,8 +549,9 @@ public class XoraVlcPlugin extends Plugin {
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
 
-        if (!isSecureUrl(url)) {
-            call.reject("A secure stream URL is required.");
+        boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
