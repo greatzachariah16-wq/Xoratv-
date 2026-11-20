@@ -45,7 +45,7 @@ public class XoraEpgPlugin extends Plugin {
         final String proxyUrl = call.getString("proxyUrl");
         final String etag = call.getString("etag");
         final String lastModified = call.getString("lastModified");
-        final boolean force = call.getBoolean("force", false);
+        final boolean force = call.getData().optBoolean("force", false);
         if (url == null || !(url.startsWith("https://") || url.startsWith("http://"))) {
             call.reject("A valid HTTP or HTTPS XMLTV URL is required.");
             return;
@@ -92,8 +92,8 @@ public class XoraEpgPlugin extends Plugin {
             if (response.code() == 304) {
                 JSObject unchanged = new JSObject();
                 unchanged.put("status", "not-modified");
-                unchanged.put("etag", response.header("ETag", etag));
-                unchanged.put("lastModified", response.header("Last-Modified", lastModified));
+                unchanged.put("etag", response.header("ETag") == null ? etag : response.header("ETag"));
+                unchanged.put("lastModified", response.header("Last-Modified") == null ? lastModified : response.header("Last-Modified"));
                 unchanged.put("finalUrl", response.request().url().toString());
                 return unchanged;
             }
@@ -154,8 +154,8 @@ public class XoraEpgPlugin extends Plugin {
     @PluginMethod
     public void readChunk(PluginCall call) {
         String fileName = call.getString("fileName");
-        long offset = call.getLong("offset", 0L);
-        int length = call.getInt("length", READ_CHUNK_MAX);
+        long offset = call.getData().optLong("offset", 0L);
+        int length = call.getData().optInt("length", READ_CHUNK_MAX);
         if (!FILE_NAME.equals(fileName) || offset < 0 || length < 1 || length > READ_CHUNK_MAX) {
             call.reject("Invalid XMLTV chunk request.");
             return;
