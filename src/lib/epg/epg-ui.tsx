@@ -82,6 +82,7 @@ export function EpgSettings() {
   const [message, setMessage] = useState("");
   const [unmatched, setUnmatched] = useState<Array<{id:string;name:string}>>([]);
   const [epgChannels, setEpgChannels] = useState<Array<{id:string;name:string}>>([]);
+  const [mappingSearch, setMappingSearch] = useState<Record<string,string>>({});
   const loadMappings = () => void getEpgMappingOptions().then((data) => { setUnmatched(data.unmatched); setEpgChannels(data.epgChannels); });
   useEffect(() => {
     let active = true;
@@ -114,7 +115,11 @@ export function EpgSettings() {
       <small>Use {"{url}"} where the encoded XMLTV URL should be inserted. Leave blank to fetch through Xora's streaming endpoint.</small>
       <button type="button" onClick={() => void save()} disabled={busy}>{busy ? "Updating..." : "Save & refresh guide"}</button>
       {message ? <p role="status">{message}</p> : null}
-      {unmatched.length ? <div className="xora-epg-mappings"><strong>Unmatched channels ({unmatched.length})</strong>{unmatched.slice(0, 30).map((channel) => <label key={channel.id}>{channel.name}<select defaultValue="" onChange={(event) => { if (event.target.value) void setEpgChannelMapping(channel.id, event.target.value).then(loadMappings); }}><option value="">Choose guide channel</option>{epgChannels.map((epg) => <option key={epg.id} value={epg.id}>{epg.name} · {epg.id}</option>)}</select></label>)}</div> : null}
+      {unmatched.length ? <div className="xora-epg-mappings"><strong>Unmatched channels ({unmatched.length})</strong>{unmatched.slice(0, 20).map((channel) => {
+        const search = mappingSearch[channel.id] || "";
+        const options = epgChannels.filter((epg) => !search || (epg.name + " " + epg.id).toLowerCase().includes(search.toLowerCase())).slice(0, 30);
+        return <label key={channel.id}>{channel.name}<input value={search} onChange={(event) => setMappingSearch((previous) => ({...previous, [channel.id]: event.target.value}))} placeholder="Search guide channels" /><select defaultValue="" onChange={(event) => { if (event.target.value) void setEpgChannelMapping(channel.id, event.target.value).then(loadMappings); }}><option value="">Choose guide channel</option>{options.map((epg) => <option key={epg.id} value={epg.id}>{epg.name} · {epg.id}</option>)}</select></label>;
+      })}</div> : null}
     </div>
   </details>;
 }
