@@ -47,6 +47,7 @@ type NativeVlcPlugin = {
     url: string;
     title?: string;
     channelId?: string;
+    directOnly?: boolean;
     fallbackUrl1?: string;
     fallbackUrl2?: string;
     candidates?: NativeVlcCandidate[];
@@ -57,6 +58,7 @@ type NativeVlcPlugin = {
     url: string;
     title?: string;
     channelId?: string;
+    directOnly?: boolean;
     fallbackUrl1?: string;
     fallbackUrl2?: string;
     candidates?: NativeVlcCandidate[];
