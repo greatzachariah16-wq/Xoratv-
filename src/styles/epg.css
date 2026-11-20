@@ -42,3 +42,5 @@
 .xora-epg-compact>i em{display:block;height:100%;border-radius:inherit;background:#a98bc9}
 .xora-epg-compact-empty{display:block;color:#a99eb8;font-size:8px}
 .xora-tv-row-copy .xora-epg-compact{max-width:100%}
+
+.xora-epg-grid-hours{grid-template-columns:104px repeat(5,minmax(96px,1fr))}
