@@ -127,8 +127,10 @@ export async function openNativeVlc(options: {
   }
 
   const absoluteUrl = new URL(options.url, window.location.origin);
-  if (absoluteUrl.protocol !== "https:") {
-    throw new Error("A secure stream URL is required.");
+  if (options.directOnly
+    ? absoluteUrl.protocol !== "https:" && absoluteUrl.protocol !== "http:"
+    : absoluteUrl.protocol !== "https:") {
+    throw new Error(options.directOnly ? "An HTTP(S) stream URL is required." : "A secure stream URL is required.");
   }
 
   await NativeVlc.open({
@@ -181,8 +183,10 @@ export async function switchNativeVlcChannel(options: {
   }
 
   const absoluteUrl = new URL(options.url, window.location.origin);
-  if (absoluteUrl.protocol !== "https:") {
-    throw new Error("A secure stream URL is required.");
+  if (options.directOnly
+    ? absoluteUrl.protocol !== "https:" && absoluteUrl.protocol !== "http:"
+    : absoluteUrl.protocol !== "https:") {
+    throw new Error(options.directOnly ? "An HTTP(S) stream URL is required." : "A secure stream URL is required.");
   }
 
   await NativeVlc.switchChannel({
