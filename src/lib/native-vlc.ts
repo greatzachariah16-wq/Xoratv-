@@ -116,6 +116,7 @@ export async function openNativeVlc(options: {
   title?: string;
   channelId?: string;
   directOnly?: boolean;
+  headers?: Record<string, string>;
   candidates?: NativeVlcCandidate[];
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
@@ -169,6 +170,7 @@ export async function switchNativeVlcChannel(options: {
   title?: string;
   channelId?: string;
   directOnly?: boolean;
+  headers?: Record<string, string>;
   candidates?: NativeVlcCandidate[];
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
