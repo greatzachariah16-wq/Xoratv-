@@ -23,7 +23,9 @@ export async function refreshEpg(options: EpgRefreshOptions = {}) {
       return { unchanged: true, count: 0 };
     }
     const response = result.response;
-    const isGzip = /\\.gz(?:$|[?#])/i.test(url) || response.headers.get("X-EPG-Gzip") === "1";
+    const isGzip = /\.gz(?:$|[?#])/i.test(url)
+      || response.headers.get("X-EPG-Gzip") === "1"
+      || /application\/gzip/i.test(response.headers.get("Content-Type") || "");
     let count = 0;
     if (!response.body) throw new Error("EPG source returned no readable stream.");
     for await (const batch of parseXmltvStream(response.body, {
