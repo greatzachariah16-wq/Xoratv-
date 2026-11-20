@@ -78,7 +78,7 @@ export function EpgTimelineGrid({ channels, startTime, endTime }: { channels: Ar
   const span = Math.max(1, endTime - startTime);
   const rowHeight = 54;
   const virtualized = channels.length > 20;
-  const first = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 4) : 0;
+  const first = virtualized ? Math.min(channels.length, Math.max(0, Math.floor(scrollTop / rowHeight) - 4)) : 0;
   const last = virtualized ? Math.min(channels.length, first + 18) : channels.length;
   if (loading) return <p className="xora-epg-muted">Loading channel timeline…</p>;
   return <div ref={viewportRef} className="xora-epg-grid-viewport" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)} role="table" aria-label="Programme timeline">
