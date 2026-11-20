@@ -105,8 +105,10 @@ export async function getDayGuide(channelId: string, date: Date | string) {
   const day = typeof date === "string"
     ? (() => { const [year, month, dayOfMonth] = date.split("-").map(Number); return new Date(year, month - 1, dayOfMonth); })()
     : date;
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
-  const stop = start + 24 * 60 * 60_000;
+  const startDate = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const nextDate = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+  const start = startDate.getTime();
+  const stop = nextDate.getTime();
   const matches = (await getMeta<Record<string,string>>("channelMatches")) || {};
   return getProgrammes(matches[channelId] || channelId, start, stop);
 }
