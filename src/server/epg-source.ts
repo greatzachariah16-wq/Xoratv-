@@ -5,8 +5,8 @@ function isPublicHttpUrl(value: string): URL | null {
     if (url.username || url.password) return null;
     const host = url.hostname.toLowerCase();
     if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return null;
-    if (/^(127|10|0)\\./.test(host) || /^192\\.168\\./.test(host) || /^169\\.254\\./.test(host)) return null;
-    const private172 = host.match(/^172\\.(\\d+)\\./);
+    if (/^(127|10|0)\./.test(host) || /^192\.168\./.test(host) || /^169\.254\./.test(host)) return null;
+    const private172 = host.match(/^172\.(\d+)\./);
     if (private172 && Number(private172[1]) >= 16 && Number(private172[1]) <= 31) return null;
     return url;
   } catch {
@@ -49,7 +49,7 @@ export async function handleEpgSourceRoute(request: Request, url: URL): Promise<
       if (value) responseHeaders.set(name, value);
     }
     responseHeaders.set("Cache-Control", "no-store");
-    responseHeaders.set("X-EPG-Gzip", /\\.gz(?:$|[?#])/i.test(target.toString()) ? "1" : "0");
+    responseHeaders.set("X-EPG-Gzip", /\.gz(?:$|[?#])/i.test(target.toString()) ? "1" : "0");
     return new Response(upstream.body, { status: 200, headers: responseHeaders });
   } catch (error) {
     const message = error instanceof Error ? error.message : "EPG source could not be reached";
