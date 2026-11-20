@@ -13,7 +13,7 @@ export type ParsedM3u = { epgUrl?: string; channels: M3uChannel[] };
 
 function attributes(line: string): Record<string, string> {
   const result: Record<string, string> = {};
-  const expression = /([\\w-]+)=(?:"([^"]*)"|'([^']*)'|([^\\s,]+))/g;
+  const expression = /([\w-]+)=(?:"([^"]*)"|'([^']*)'|([^\s,]+))/g;
   let match: RegExpExecArray | null;
   while ((match = expression.exec(line))) {
     result[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4] ?? "";
@@ -22,7 +22,7 @@ function attributes(line: string): Record<string, string> {
 }
 
 export function parseM3u(input: string): ParsedM3u {
-  const lines = input.replace(/^\\uFEFF/, "").split(/\\r?\\n/);
+  const lines = input.replace(/^\uFEFF/, "").split(/\r?\n/);
   const header = lines.find((line) => line.trim().startsWith("#EXTM3U")) || "";
   const headerAttrs = attributes(header);
   const epgUrl = headerAttrs["url-tvg"] || headerAttrs["x-tvg-url"] || headerAttrs["tvg-url"] || undefined;
@@ -46,7 +46,7 @@ export function parseM3u(input: string): ParsedM3u {
       continue;
     }
     if (line.startsWith("#")) continue;
-    if (pending && /^https?:\\/\\//i.test(line)) {
+    if (pending && /^https?:\/\//i.test(line)) {
       const tvgId = pending["tvg-id"]?.trim() || "";
       const name = displayName || pending["tvg-name"] || tvgId || line;
       channels.push({
