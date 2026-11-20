@@ -1,7 +1,7 @@
 import { downloadEpg } from "./epg-downloader";
 import { parseXmltvStream } from "./epg-parser";
 import {
-  deleteExpiredProgrammes, getManualMappings, getMeta, getProgrammes,
+  clearEpgContent, deleteExpiredProgrammes, getManualMappings, getMeta, getProgrammes,
   saveChannels, setMeta, setManualMapping, writeProgrammeBatch,
   type EpgChannel, type EpgProgramme,
 } from "./epg-store";
@@ -47,6 +47,12 @@ export async function refreshEpg(options: EpgRefreshOptions = {}) {
 }
 
 export async function configureEpg(url: string, proxyUrl?: string) {
+  const previousUrl = await getMeta<string>("epgUrl");
+  if (previousUrl && previousUrl !== url.trim()) {
+    await clearEpgContent();
+    await setMeta("epgEtag", "");
+    await setMeta("epgLastModified", "");
+  }
   await setMeta("epgUrl", url.trim());
   if (proxyUrl) await setMeta("epgProxyUrl", proxyUrl.trim());
   else await setMeta("epgProxyUrl", "");
