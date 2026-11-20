@@ -270,9 +270,9 @@ public class XoraVlcPlugin extends Plugin {
             .writeTimeout(4, TimeUnit.SECONDS)
             .callTimeout(4, TimeUnit.SECONDS);
 
-        // The stream URL is already XoraTV's /api/tv/stream reverse-proxy URL.
-        // Optional HTTP transport-proxy settings can be supplied in Android manifest
-        // metadata without placing proxy credentials in JavaScript or the repository.
+        // Proxied playback uses XoraTV's stream endpoint; direct-only Live TV probes
+        // the original provider URL. Optional device-level HTTP proxy settings can be
+        // supplied in Android manifest metadata without exposing credentials in JS.
         try {
             ApplicationInfo info = getContext().getPackageManager().getApplicationInfo(
                 getContext().getPackageName(),
