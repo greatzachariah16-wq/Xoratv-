@@ -1393,7 +1393,56 @@ export default {
         }
 
         if (isHls) {
-          const body = await upstream.text();
+          // HLS manifests are small text documents. Reject abnormal responses
+          // before reading/parsing them so a bad upstream cannot consume the
+          // Live service's limited memory. Media segments follow the untouched
+          // streaming/range path below.
+          const MAX_HLS_PLAYLIST_BYTES = 1024 * 1024; // 1 MiB
+          const declaredPlaylistLength = Number(upstream.headers.get("content-length") || 0);
+          if (Number.isFinite(declaredPlaylistLength) && declaredPlaylistLength > MAX_HLS_PLAYLIST_BYTES) {
+            console.warn("[IPTV Proxy] Rejected oversized HLS playlist", {
+              channelId,
+              contentLength: declaredPlaylistLength,
+              limit: MAX_HLS_PLAYLIST_BYTES,
+            });
+            return new Response(JSON.stringify({ ok: false, error: "The channel returned an unusually large HLS playlist." }), {
+              status: 502,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+            });
+          }
+          if (!upstream.body) {
+            return new Response(JSON.stringify({ ok: false, error: "The channel returned an empty HLS playlist." }), {
+              status: 502,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+            });
+          }
+          const playlistReader = upstream.body.getReader();
+          const playlistChunks: Uint8Array[] = [];
+          let playlistBytes = 0;
+          try {
+            while (true) {
+              const { done, value } = await playlistReader.read();
+              if (done) break;
+              playlistBytes += value.byteLength;
+              if (playlistBytes > MAX_HLS_PLAYLIST_BYTES) {
+                await playlistReader.cancel("HLS playlist exceeded size limit").catch(() => {});
+                return new Response(JSON.stringify({ ok: false, error: "The channel returned an unusually large HLS playlist." }), {
+                  status: 502,
+                  headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+                });
+              }
+              playlistChunks.push(value);
+            }
+          } finally {
+            playlistReader.releaseLock();
+          }
+          const playlistBuffer = new Uint8Array(playlistBytes);
+          let playlistOffset = 0;
+          for (const chunk of playlistChunks) {
+            playlistBuffer.set(chunk, playlistOffset);
+            playlistOffset += chunk.byteLength;
+          }
+          const body = new TextDecoder().decode(playlistBuffer);
           const playlistLines = body.split(/\r?\n/);
           const codecProfiles = [...body.matchAll(/CODECS="([^"]+)"/g)]
             .map((match) => match[1])
