@@ -64,7 +64,7 @@ import okhttp3.Response;
 @CapacitorPlugin(name = "XoraVlc")
 public class XoraVlcPlugin extends Plugin {
     private enum PlayerMode {
-        PINNED, THEATER, FULLSCREEN, TABLET
+        PINNED, THEATER, FULLSCREEN, TABLET, CINEMA
     }
 
     private enum PlaybackState {
@@ -94,6 +94,7 @@ public class XoraVlcPlugin extends Plugin {
     private FrameLayout rootContainer;
     private FrameLayout playerOverlay;
     private FrameLayout videoFrame;
+    private FrameLayout adPanel;
     private VLCVideoLayout videoLayout;
     private LinearLayout controls;
     private LinearLayout topBar;
@@ -121,6 +122,7 @@ public class XoraVlcPlugin extends Plugin {
     private ViewGroup.LayoutParams originalWebViewParams;
     private int originalWebViewVisibility = View.VISIBLE;
     private int originalSystemUiVisibility = -1;
+    private int originalRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
@@ -677,10 +679,12 @@ public class XoraVlcPlugin extends Plugin {
         originalWebViewParams = copyLayoutParams(webView.getLayoutParams());
         originalWebViewVisibility = webView.getVisibility();
 
+        originalRequestedOrientation = getActivity().getRequestedOrientation();
+        getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         if (getContext().getResources().getConfiguration().smallestScreenWidthDp >= 600) {
             mode = PlayerMode.TABLET;
         } else {
-            mode = PlayerMode.PINNED;
+            mode = PlayerMode.CINEMA;
         }
 
         playerOverlay = new FrameLayout(getContext());
@@ -870,6 +874,22 @@ public class XoraVlcPlugin extends Plugin {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ));
+
+        adPanel = new FrameLayout(getContext());
+        adPanel.setBackground(roundedBackground(0xFF171311, dp(16)));
+        adPanel.setVisibility(View.GONE);
+        TextView sponsoredLabel = new TextView(getContext());
+        sponsoredLabel.setText("SPONSORED");
+        sponsoredLabel.setTextColor(0xFFEEDFD4);
+        sponsoredLabel.setTextSize(10);
+        sponsoredLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+        sponsoredLabel.setGravity(Gravity.CENTER);
+        adPanel.addView(sponsoredLabel, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+        playerOverlay.addView(adPanel);
+
         rootContainer.addView(playerOverlay, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -1912,6 +1932,10 @@ public class XoraVlcPlugin extends Plugin {
 
         restoreWebViewForNormalMode();
         restoreSystemUi();
+        if (getActivity() != null) {
+            getActivity().setRequestedOrientation(originalRequestedOrientation);
+        }
+        originalRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
 
         if (playerOverlay != null && playerOverlay.getParent() instanceof ViewGroup) {
             ((ViewGroup) playerOverlay.getParent()).removeView(playerOverlay);
@@ -1920,6 +1944,7 @@ public class XoraVlcPlugin extends Plugin {
         rootContainer = null;
         playerOverlay = null;
         videoFrame = null;
+        adPanel = null;
         videoLayout = null;
         topBar = null;
         controls = null;
