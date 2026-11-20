@@ -31,6 +31,7 @@ import {
   fetchNexusChannels,
   getNexusChannel,
   getNexusGuide,
+  getNexusEpgUrl,
   getNexusPlaybackCandidates,
 } from "./integrations/providers/iptv-nexus";
 import { runShortsVerification } from "./server/shorts-verification";
@@ -1445,6 +1446,23 @@ export default {
         const msg = err instanceof Error ? err.message : "IPTV playback proxy error";
         console.error("[IPTV Proxy] Playback error:", msg);
         return new Response(JSON.stringify({ ok: false, error: msg }), {
+          status: 502,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Default XMLTV URL declared by the active IPTV Nexus M3U header, if present.
+    if (url.pathname === "/api/tv/epg-config" && request.method === "GET") {
+      try {
+        const epgUrl = await getNexusEpgUrl();
+        return new Response(JSON.stringify({ ok: true, epgUrl: epgUrl || null }), {
+          status: 200,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not read the M3U EPG header";
+        return new Response(JSON.stringify({ ok: false, epgUrl: null, error: message }), {
           status: 502,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
