@@ -278,7 +278,11 @@ final class LocalHlsBuffer {
                             while (recentSpeedRatios.size() > 5) recentSpeedRatios.removeFirst();
                             recalculateHealth();
                             pruneCache();
+                            recalculateBufferedDuration();
                             rebuildPlaylist(parsed.globalTags);
+                            // Publish the first complete cached segment immediately so
+                            // LibVLC can start while the rolling cache keeps filling.
+                            if (!ready && bufferedMillis > 0L) ready = true;
                         }
                     }
                     notifyListener();
