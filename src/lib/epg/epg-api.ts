@@ -79,6 +79,13 @@ export async function saveXmltvChannels(channels: EpgChannel[]) {
   await saveChannels(channels);
 }
 
+export async function getEpgMappingOptions() {
+  return {
+    unmatched: (await getMeta<MatchableChannel[]>("unmatchedChannels")) || [],
+    epgChannels: await getAllEpgChannels(),
+  };
+}
+
 export async function setEpgChannelMapping(channelId: string, epgId: string) {
   await setManualMapping(channelId, epgId);
   const channels = await getMeta<MatchableChannel[]>("liveChannels");
