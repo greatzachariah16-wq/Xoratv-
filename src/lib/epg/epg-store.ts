@@ -106,6 +106,16 @@ export async function setManualMapping(channelId: string, epgId: string): Promis
   await transactionDone(tx);
 }
 
+export async function clearEpgContent(): Promise<void> {
+  const db = await database();
+  const tx = db.transaction(["channels", "programmes", "meta"], "readwrite");
+  tx.objectStore("channels").clear();
+  tx.objectStore("programmes").clear();
+  tx.objectStore("meta").delete("channelMatches");
+  tx.objectStore("meta").delete("unmatchedChannels");
+  await transactionDone(tx);
+}
+
 export async function deleteExpiredProgrammes(now = Date.now()): Promise<void> {
   const db = await database();
   const tx = db.transaction("programmes", "readwrite");
