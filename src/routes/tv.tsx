@@ -46,6 +46,8 @@ type Channel = {
   country?: string;
   categories: string[];
   streamUrl: string;
+  referrer?: string | null;
+  userAgent?: string | null;
   quality?: string | null;
   labels: string[];
   score?: number;
@@ -398,6 +400,10 @@ function LiveTvPage() {
         title: getChannelDisplayName(selected),
         channelId: selected.id,
         directOnly: true,
+        headers: {
+          ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}),
+          ...(selected.referrer ? { Referer: selected.referrer } : {}),
+        },
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
