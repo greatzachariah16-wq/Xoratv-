@@ -144,8 +144,32 @@ export async function getProgrammesForChannel(channelId: string, endTime = Date.
 
 export async function getProgrammesForChannels(channelIds: string[], startTime: number, endTime: number): Promise<EpgProgramme[]> {
   const uniqueIds = Array.from(new Set(channelIds)).slice(0, 150);
-  const groups = await Promise.all(uniqueIds.map((id) => getProgrammesForChannel(id, endTime)));
-  return groups.flat().filter((item) => item.stop > startTime && item.start < endTime).sort((a, b) => a.start - b.start);
+  if (!uniqueIds.length) return [];
+  const db = await openDatabase();
+  try {
+    return await new Promise<EpgProgramme[]>((resolve, reject) => {
+      const tx = db.transaction(PROGRAMMES, "readonly");
+      const index = tx.objectStore(PROGRAMMES).index("channelStart");
+      const groups: EpgProgramme[][] = [];
+      let remaining = uniqueIds.length;
+      for (const id of uniqueIds) {
+        const request = index.getAll(IDBKeyRange.bound([id, 0], [id, endTime]));
+        request.onsuccess = () => {
+          const sorted = (request.result as EpgProgramme[])
+            .filter((item) => item.stop > startTime && item.start < endTime)
+            .sort((a, b) => a.start - b.start);
+          groups.push(sorted.map((item, itemIndex) => {
+            const next = sorted[itemIndex + 1];
+            return next && next.start < item.stop ? { ...item, stop: next.start } : item;
+          }).filter((item) => item.stop > item.start));
+          remaining--;
+          if (!remaining) resolve(groups.flat().sort((a, b) => a.start - b.start));
+        };
+        request.onerror = () => reject(request.error);
+      }
+      tx.onerror = () => reject(tx.error || new Error("Could not read EPG timeline."));
+    });
+  } finally { db.close(); }
 }
 
 export async function deleteExpiredProgrammes(now = Date.now()): Promise<number> {

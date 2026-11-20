@@ -38,7 +38,6 @@
 .xora-epg-row-next{display:block;max-width:100%;overflow:hidden;color:#827a91;font-size:7px;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
 .xora-tv-channel-row{min-height:88px;flex-basis:88px}
 .xora-tv-channel-select{min-height:86px}
-.xora-tv-channel-list-viewport{gap:7px}
 @media(prefers-reduced-motion:reduce){.xora-epg-refresh svg{animation:none!important}}
 
 .xora-epg-mapping{margin:0 12px 12px;border:1px solid rgba(220,210,255,.12);border-radius:13px;background:rgba(255,255,255,.025);padding:10px}
