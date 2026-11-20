@@ -50,6 +50,13 @@ export async function configureEpg(url: string, proxyUrl?: string) {
   else await setMeta("epgProxyUrl", "");
 }
 
+export async function getEpgSettings() {
+  return {
+    url: (await getMeta<string>("epgUrl")) || "",
+    proxyUrl: (await getMeta<string>("epgProxyUrl")) || "",
+  };
+}
+
 export async function syncEpgChannels(channels: MatchableChannel[]) {
   const epgChannels = await getAllEpgChannels();
   await saveChannels(epgChannels);
