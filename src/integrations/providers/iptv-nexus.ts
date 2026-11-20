@@ -1,3 +1,4 @@
+import { parseM3uHeader } from "../../lib/epg/m3u-parser";
 /**
  * IPTV Nexus provider for XoraTV Live TV.
  *
@@ -58,6 +59,7 @@ export type NexusProgramme = {
 
 let channelsCache: { channels: NexusChannel[]; expiresAt: number } | null = null;
 let channelsLoading: Promise<NexusChannel[]> | null = null;
+let playlistEpgUrl = "";
 const guideCache = new Map<string, { xml: string; expiresAt: number }>();
 
 function decodeXml(value: string): string {
@@ -103,6 +105,8 @@ async function loadChannels(): Promise<NexusChannel[]> {
       if (!response.ok) throw new Error("IPTV Nexus playlist request failed: " + response.status);
       const text = await response.text();
       const lines = text.split(/\r?\n/);
+      const headerLine = lines.find((line) => /^#EXTM3U\b/i.test(line.trim())) || "";
+      playlistEpgUrl = parseM3uHeader(headerLine) || NEXUS_BASE + "/epg/guide.xml";
       const channels: NexusChannel[] = [];
       const channelsById = new Map<string, NexusChannel>();
       let pending: Record<string, string> | null = null;
@@ -210,7 +214,7 @@ export async function fetchNexusChannels(options?: {
   country?: string;
   category?: string;
   limit?: number;
-}): Promise<{ ok: boolean; total: number; channels: NexusTvChannel[]; error?: string }> {
+}): Promise<{ ok: boolean; total: number; channels: NexusTvChannel[]; epgUrl?: string; error?: string }> {
   try {
     const all = await loadChannels();
     const query = options?.query?.trim().toLowerCase() || "";
@@ -231,7 +235,7 @@ export async function fetchNexusChannels(options?: {
       .sort((a, b) => (b.score || 0) - (a.score || 0) || a.name.localeCompare(b.name))
       .slice(0, limit);
 
-    return { ok: true, total: filtered.length, channels: result };
+    return { ok: true, total: filtered.length, channels: result, epgUrl: playlistEpgUrl || NEXUS_BASE + "/epg/guide.xml" };
   } catch (error) {
     return { ok: false, total: 0, channels: [], error: error instanceof Error ? error.message : "Unable to load IPTV Nexus" };
   }
