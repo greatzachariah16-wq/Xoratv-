@@ -58,6 +58,7 @@ export async function* parseXmltvStream(
   const batchSize = Math.max(50, Math.min(options.batchSize || 400, 1000));
   let buffer = "";
   let batch: EpgProgramme[] = [];
+  let channelBatch: EpgChannel[] = [];
   const seen = new Set<string>();
   const overlapByChannel = new Map<string, number>();
 
@@ -75,7 +76,13 @@ export async function* parseXmltvStream(
       const id = attr(opening, "id");
       const name = tagText(xml, "display-name") || id;
       const icon = xml.match(/<icon[^>]*src="([^"]+)"/i)?.[1];
-      if (id && name) await options.onChannels?.([{ id, name, logo: icon }]);
+      if (id && name) {
+        channelBatch.push({ id, name, logo: icon });
+        if (channelBatch.length >= 100) {
+          await options.onChannels?.(channelBatch);
+          channelBatch = [];
+        }
+      }
     }
     let end: number;
     while ((end = buffer.indexOf("</programme>")) >= 0) {
@@ -131,5 +138,6 @@ export async function* parseXmltvStream(
       }
     }
   }
+  if (channelBatch.length) await options.onChannels?.(channelBatch);
   if (batch.length) yield batch;
 }
