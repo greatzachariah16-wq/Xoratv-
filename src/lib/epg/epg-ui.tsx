@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown, Clock3, RefreshCw } from "lucide-react";
-import { getDayGuide, getNowAndNext, getProgress, refreshEpg, type EpgRefreshOptions } from "./epg-api";
+import { configureEpg, getDayGuide, getEpgSettings, getNowAndNext, getProgress, refreshEpg, type EpgRefreshOptions } from "./epg-api";
 import type { EpgProgramme } from "./epg-store";
 
 function time(value: number) {
@@ -54,4 +54,41 @@ export function EpgTimelineGrid({ channels, startTime, endTime }: { channels: Ar
       <strong role="rowheader">{channel.name}</strong><div className="xora-epg-grid-track">{(byId.get(channel.id) || []).map((programme) => <span key={programme.id} title={programme.title} style={{left: ((programme.start-startTime)/span*100)+"%",width: (Math.max(0,Math.min(endTime,programme.stop)-Math.max(startTime,programme.start))/span*100)+"%"}}>{programme.title}</span>)}</div>
     </div>)}
   </div>;
+}
+
+
+export function EpgSettings() {
+  const [url, setUrl] = useState("");
+  const [proxyUrl, setProxyUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    let active = true;
+    void getEpgSettings().then((settings) => {
+      if (active) { setUrl(settings.url); setProxyUrl(settings.proxyUrl); }
+    });
+    return () => { active = false; };
+  }, []);
+  const save = async () => {
+    if (!url.trim()) { setMessage("Enter your XMLTV URL first."); return; }
+    setBusy(true);
+    setMessage("Saving guide source...");
+    try {
+      await configureEpg(url, proxyUrl || undefined);
+      const result = await refreshEpg({ force: true, url, proxyUrl: proxyUrl || undefined });
+      setMessage(result.unchanged ? "Guide is already up to date." : "Guide updated: " + result.count.toLocaleString() + " programmes.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update the guide.");
+    } finally { setBusy(false); }
+  };
+  return <details className="xora-epg-settings">
+    <summary><ChevronDown size={14}/> EPG source settings</summary>
+    <div className="xora-epg-settings-fields">
+      <label>XMLTV URL<input type="url" inputMode="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://provider.example/guide.xml.gz" /></label>
+      <label>Optional proxy URL template<input type="url" inputMode="url" value={proxyUrl} onChange={(event) => setProxyUrl(event.target.value)} placeholder="https://your-proxy.example/?url={url}" /></label>
+      <small>Use {"{url}"} where the encoded XMLTV URL should be inserted. Leave blank to fetch through Xora's streaming endpoint.</small>
+      <button type="button" onClick={() => void save()} disabled={busy}>{busy ? "Updating..." : "Save & refresh guide"}</button>
+      {message ? <p role="status">{message}</p> : null}
+    </div>
+  </details>;
 }
