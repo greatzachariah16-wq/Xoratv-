@@ -106,7 +106,7 @@ async function loadChannels(): Promise<NexusChannel[]> {
       const text = await response.text();
       const lines = text.split(/\r?\n/);
       const headerLine = lines.find((line) => /^#EXTM3U\b/i.test(line.trim())) || "";
-      playlistEpgUrl = parseM3uHeader(headerLine) || NEXUS_BASE + "/epg/guide.xml";
+      playlistEpgUrl = parseM3uHeader(headerLine) || "";
       const channels: NexusChannel[] = [];
       const channelsById = new Map<string, NexusChannel>();
       let pending: Record<string, string> | null = null;

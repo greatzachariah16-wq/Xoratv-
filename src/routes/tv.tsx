@@ -491,7 +491,7 @@ function LiveTvPage() {
     }));
     const epgOptions = {
       channels: epgChannels,
-      epgUrl: discoveredEpgUrl || import.meta.env.VITE_XORA_EPG_URL || "",
+      epgUrl: discoveredEpgUrl || import.meta.env.VITE_XORA_EPG_URL || "https://dearbulut.github.io/iptv/epg/guide.xml",
       proxyUrl: import.meta.env.VITE_XORA_EPG_PROXY_URL || "",
     };
     configureEpg(epgOptions);
