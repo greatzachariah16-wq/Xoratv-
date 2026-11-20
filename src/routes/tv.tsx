@@ -391,8 +391,8 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
-      // Match Xora Kids and XSports: Android fetches the Render stream endpoint,
-      // then its on-device LocalHlsBuffer stores the rolling HLS segments locally.
+      // Live TV direct-play experiment: send the provider URL straight to LibVLC.
+      // This route intentionally does not use Render streaming or LocalHlsBuffer.
       if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
