@@ -577,7 +577,7 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc, liveTv, startNativePlayback]);
+  }, [activeSrc, nativeVlcOnly, startNativePlayback]);
 
   // Selecting an IPTV channel opens LibVLC immediately. There is no inline/web player
   // or extra Play button in front of the native cinema player.
