@@ -35,7 +35,7 @@ import {
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
 import { useLandscapeMode } from "@/hooks/useOrientation";
 import { rankLiveTvChannels } from "@/lib/epg/country-ranking";
-import { EpgDayGuide, EpgNowNext, EpgSettings, EpgTimelineGrid } from "@/lib/epg/epg-ui";
+import { EpgDayGuide, EpgNowNext, EpgNowNextCompact, EpgSettings, EpgTimelineGrid } from "@/lib/epg/epg-ui";
 import { refreshEpg, startEpgRefreshScheduler, syncEpgChannels } from "@/lib/epg/epg-api";
 import "@/styles/tv-live.css";
 
@@ -182,6 +182,7 @@ const ChannelRow = memo(function ChannelRow({ channel, selected, favorite, onSel
         <span className="xora-tv-row-copy">
           <strong>{getChannelDisplayName(channel)}</strong>
           <small>{getCountryFlag(channel.country)} {getCountryName(channel.country)}</small>
+          <EpgNowNextCompact channelId={channel.id} />
         </span>
         <span className="xora-tv-live-pill"><i /> LIVE</span>
         {quality ? <span className="xora-tv-quality-pill">{quality}</span> : null}
@@ -204,7 +205,7 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
   const [scrollTop, setScrollTop] = useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const virtualized = channels.length > 60;
-  const rowHeight = 72;
+  const rowHeight = 92;
   const start = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 6) : 0;
   const end = virtualized ? Math.min(channels.length, Math.ceil((scrollTop + 600) / rowHeight) + 6) : channels.length;
 
