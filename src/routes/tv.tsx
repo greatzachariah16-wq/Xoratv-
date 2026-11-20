@@ -285,6 +285,20 @@ function LiveTvPage() {
     retry: (failureCount) => isOnline && nativeState.state !== "OFFLINE" && failureCount < 3,
   });
 
+  useEffect(() => {
+    const stop = startEpgRefreshScheduler();
+    void refreshEpg().catch((error) => console.info("[Xora EPG] Waiting for an XMLTV URL:", error));
+    return stop;
+  }, []);
+
+  useEffect(() => {
+    if (!query.data?.length) return;
+    void syncEpgChannels(query.data.map((channel) => ({
+      id: channel.id, name: channel.name, tvgId: channel.id, tvgName: channel.name,
+      logo: channel.logo, country: channel.country,
+    }))).catch((error) => console.warn("[Xora EPG] Channel matching failed:", error));
+  }, [query.data]);
+
   const selected = useMemo(
     () => activeChannelId ? query.data?.find((item) => item.id === activeChannelId) || null : null,
     [query.data, activeChannelId],
@@ -693,43 +707,7 @@ function LiveTvPage() {
             {selected ? <div className="xora-tv-guide-body"><EpgNowNext channelId={selected.id} /><EpgDayGuide channelId={selected.id} /></div> : <p className="xora-tv-guide-empty">Choose a channel to view its programme schedule.</p>}
           </section>
 
-          {selected ? (
-            <section className="xora-tv-guide">
-              <div className="xora-tv-guide-heading">
-                <CalendarClock aria-hidden="true" />
-                <div>
-                  <h2>TV Guide</h2>
-                  <p>What’s playing now and what’s coming next</p>
-                </div>
-              </div>
-              {nowProgramme ? (
-                <div className="xora-tv-guide-body">
-                  <article className="xora-tv-now-programme">
-                    <span className="xora-tv-programme-kicker">Now playing</span>
-                    <h3>{nowProgramme.title}</h3>
-                    <p>{formatTime(nowProgramme.start)} – {formatTime(nowProgramme.stop)}</p>
-                    {nowProgramme.description ? <p>{nowProgramme.description}</p> : null}
-                  </article>
-                  {upcomingProgrammes.length ? (
-                    <div className="xora-tv-up-next">
-                      <strong><Clock3 aria-hidden="true" /> Up next</strong>
-                      {upcomingProgrammes.map((programme) => (
-                        <div key={programme.id}>
-                          <time>{formatTime(programme.start)}</time>
-                          <span>{programme.title}</span>
-                          <time>{formatTime(programme.stop)}</time>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="xora-tv-guide-empty">
-                  {isOffline ? "The TV guide will refresh when you're back online." : guide.isLoading ? "Loading programme schedule..." : "No EPG schedule is available for this channel right now."}
-                </p>
-              )}
-            </section>
-          ) : null}
+
         </div>
       </CpxLiveTvGate>
     </AppShell>
