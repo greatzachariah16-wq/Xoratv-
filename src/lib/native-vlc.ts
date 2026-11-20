@@ -15,7 +15,7 @@ export type NativeVlcStateChangedEvent = {
   state: NativeVlcStatus;
   channelId: string;
   message: string;
-  transport?: "local" | "proxy";
+  transport?: "local" | "proxy" | "direct";
 };
 
 export type NativeVlcPlaybackState = {
@@ -113,6 +113,7 @@ export async function openNativeVlc(options: {
   url: string;
   title?: string;
   channelId?: string;
+  directOnly?: boolean;
   candidates?: NativeVlcCandidate[];
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
@@ -165,6 +166,7 @@ export async function switchNativeVlcChannel(options: {
   url: string;
   title?: string;
   channelId?: string;
+  directOnly?: boolean;
   candidates?: NativeVlcCandidate[];
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
