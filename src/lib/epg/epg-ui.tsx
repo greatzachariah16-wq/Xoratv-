@@ -10,13 +10,17 @@ function time(value: number) {
 
 export function EpgNowNext({ channelId }: { channelId: string }) {
   const [data, setData] = useState<{now:EpgProgramme|null;next:EpgProgramme|null}>({now:null,next:null});
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     let active = true;
-    const load = () => void getNowAndNext(channelId).then((value) => { if (active) setData(value); }).catch(() => {});
+    const load = () => void getNowAndNext(channelId).then((value) => { if (active) { setData(value); setFailed(false); } }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); });
     load();
     const timer = window.setInterval(load, 60_000);
     return () => { active = false; window.clearInterval(timer); };
   }, [channelId]);
+  if (loading) return <p className="xora-epg-muted">Loading programme guide…</p>;
+  if (failed) return <p className="xora-epg-muted">Programme guide could not be loaded. Try refreshing.</p>;
   if (!data.now && !data.next) return <p className="xora-epg-muted">No guide data</p>;
   return <div className="xora-epg-now-next">
     {data.now ? <div><span className="xora-epg-kicker">NOW</span><strong>{data.now.title}</strong><small>{time(data.now.start)} – {time(data.now.stop)}</small>
@@ -28,10 +32,12 @@ export function EpgNowNext({ channelId }: { channelId: string }) {
 export function EpgDayGuide({ channelId }: { channelId: string }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [programmes, setProgrammes] = useState<EpgProgramme[]>([]);
-  useEffect(() => { let active = true; void getDayGuide(channelId, date).then((items) => { if (active) setProgrammes(items); }); return () => { active = false; }; }, [channelId, date]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { let active = true; setLoading(true); void getDayGuide(channelId, date).then((items) => { if (active) { setProgrammes(items); setFailed(false); } }).catch(() => { if (active) setFailed(true); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [channelId, date]);
   return <section className="xora-epg-day">
     <label><CalendarDays size={15}/> Full-day guide <input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-    {programmes.length ? programmes.map((item) => <article key={item.id}><time>{time(item.start)} – {time(item.stop)}</time><strong>{item.title}</strong>{item.description ? <p>{item.description}</p> : null}</article>) : <p className="xora-epg-muted">No guide data</p>}
+    {loading ? <p className="xora-epg-muted">Loading daily schedule…</p> : failed ? <p className="xora-epg-muted">Daily schedule could not be loaded.</p> : programmes.length ? programmes.map((item) => <article key={item.id}><time>{time(item.start)} – {time(item.stop)}</time><strong>{item.title}</strong>{item.description ? <p>{item.description}</p> : null}</article>) : <p className="xora-epg-muted">No guide data</p>}
   </section>;
 }
 
@@ -44,10 +50,11 @@ export function EpgRefreshButton(props: EpgRefreshOptions) {
 export function EpgTimelineGrid({ channels, startTime, endTime }: { channels: Array<{id:string;name:string}>; startTime:number; endTime:number }) {
   const [rows, setRows] = useState<Array<{channelId:string;programmes:EpgProgramme[]}>>([]);
   const [scrollTop, setScrollTop] = useState(0);
+  const [loading, setLoading] = useState(true);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     let active = true;
-    void import("./epg-api").then(({getGridWindow}) => getGridWindow(channels.map((c) => c.id), startTime, endTime)).then((value) => { if(active) setRows(value); });
+    void import("./epg-api").then(({getGridWindow}) => getGridWindow(channels.map((c) => c.id), startTime, endTime)) .then((value) => { if(active) setRows(value); }).finally(() => { if(active) setLoading(false); });
     return () => { active = false; };
   }, [channels, startTime, endTime]);
   const byId = useMemo(() => new Map(rows.map((row) => [row.channelId, row.programmes])), [rows]);
@@ -56,6 +63,7 @@ export function EpgTimelineGrid({ channels, startTime, endTime }: { channels: Ar
   const virtualized = channels.length > 20;
   const first = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 4) : 0;
   const last = virtualized ? Math.min(channels.length, first + 18) : channels.length;
+  if (loading) return <p className="xora-epg-muted">Loading channel timeline…</p>;
   return <div ref={viewportRef} className="xora-epg-grid-viewport" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)} role="table" aria-label="Programme timeline">
     <div className="xora-epg-grid-hours"><span>Channel</span>{[0,6,12,18,24].map((hour) => <time key={hour}>{hour === 24 ? "00:00" : String(hour).padStart(2,"0")+":00"}</time>)}</div>
     {virtualized ? <div style={{height:first*rowHeight}} aria-hidden="true" /> : null}
