@@ -35,6 +35,9 @@ import {
 } from "@/lib/native-vlc";
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
 import { useLandscapeMode } from "@/hooks/useOrientation";
+import { rankLiveTvChannels } from "@/lib/epg/country-ranking";
+import { EpgDayGuide, EpgNowNext, EpgSettings } from "@/lib/epg/epg-ui";
+import { refreshEpg, startEpgRefreshScheduler, syncEpgChannels } from "@/lib/epg/epg-api";
 import "@/styles/tv-live.css";
 
 type Channel = {
@@ -384,15 +387,13 @@ function LiveTvPage() {
       if (cancelled) return;
       // Match Xora Kids and XSports: Android fetches the Render stream endpoint,
       // then its on-device LocalHlsBuffer stores the rolling HLS segments locally.
-      const streamUrl = new URL("/api/tv/stream", window.location.origin);
-      streamUrl.searchParams.set("provider", selected.provider || "nexus");
-      streamUrl.searchParams.set("channel", selected.id);
       if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: streamUrl.toString(),
+        url: selected.streamUrl,
         title: getChannelDisplayName(selected),
         channelId: selected.id,
+        directOnly: true,
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
@@ -505,7 +506,7 @@ function LiveTvPage() {
   );
   const visibleChannels = useMemo(() => {
     const normalizedQuery = (q || "").trim().toLowerCase();
-    return allChannels.filter((channel) => {
+    return rankLiveTvChannels(allChannels.filter((channel) => {
       const matchesText = !normalizedQuery
         || channel.name.toLowerCase().includes(normalizedQuery)
         || (channel.country || "").toLowerCase().includes(normalizedQuery)
@@ -519,7 +520,7 @@ function LiveTvPage() {
           ? playerPrefs.recent.includes(channel.id)
           : true;
       return matchesText && matchesCategory && matchesCountry && matchesMode;
-    });
+    }));
   }, [allChannels, q, category, country, filter, playerPrefs.favorites, playerPrefs.recent]);
 
   const favoriteChannels = useMemo(
@@ -684,6 +685,12 @@ function LiveTvPage() {
                 ) : "No channels match these filters. Try another category or country."}
               </div>
             )}
+          </section>
+
+          <section className="xora-tv-guide">
+            <div className="xora-tv-guide-heading"><CalendarClock aria-hidden="true" /><div><h2>Programme guide</h2><p>Now, next and the full day schedule</p></div></div>
+            <EpgSettings />
+            {selected ? <div className="xora-tv-guide-body"><EpgNowNext channelId={selected.id} /><EpgDayGuide channelId={selected.id} /></div> : <p className="xora-tv-guide-empty">Choose a channel to view its programme schedule.</p>}
           </section>
 
           {selected ? (
