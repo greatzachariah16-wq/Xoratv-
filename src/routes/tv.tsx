@@ -3,7 +3,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarClock,
-  Clock3,
   Radio,
   RefreshCw,
   Search,
@@ -51,15 +50,6 @@ type Channel = {
   labels: string[];
   score?: number;
   provider?: "nexus" | "iptv-org";
-};
-
-type Programme = {
-  id: string;
-  title: string;
-  description?: string;
-  start: string;
-  stop: string;
-  isLive: boolean;
 };
 
 type CachedChannelList = {
@@ -488,22 +478,6 @@ function LiveTvPage() {
     };
   }, []);
 
-  const guide = useQuery({
-    queryKey: ["iptv-nexus-guide", selected?.id],
-    queryFn: async () => {
-      if (!selected) return [] as Programme[];
-      const response = await fetch(`/api/tv/guide?channel=${encodeURIComponent(selected.id)}&hours=12`);
-      if (!response.ok) return [] as Programme[];
-      const data = (await response.json()) as { programmes?: Programme[] };
-      return Array.isArray(data.programmes) ? data.programmes : [];
-    },
-    enabled: Boolean(selected) && isOnline,
-    staleTime: 5 * 60_000,
-    refetchInterval: isOnline ? 5 * 60_000 : false,
-  });
-
-  const nowProgramme = guide.data?.find((item) => item.isLive) || guide.data?.[0] || null;
-  const upcomingProgrammes = (guide.data || []).filter((item) => item.id !== nowProgramme?.id).slice(0, 8);
   const state = nativeState.channelId === selected?.id ? nativeState.state : isOffline ? "OFFLINE" : "CONNECTING";
   const stateMessage = nativeState.channelId === selected?.id
     ? nativeState.message || STATE_LABELS[nativeState.state]
@@ -583,13 +557,7 @@ function LiveTvPage() {
     }
   }, [selected]);
 
-  const formatTime = (value: string) => {
-    try {
-      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
-    } catch {
-      return value;
-    }
-  };
+
 
   return (
     <AppShell>
