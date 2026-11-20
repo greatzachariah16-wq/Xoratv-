@@ -28,7 +28,7 @@ import okhttp3.ResponseBody;
 @CapacitorPlugin(name = "XoraEpg")
 public class XoraEpgPlugin extends Plugin {
     private static final String FILE_NAME = "xora-epg.xml";
-    private static final int READ_CHUNK_MAX = 64 * 1024;
+    private static final int READ_CHUNK_MAX = 256 * 1024;
     private static final long MAX_EXPANDED_BYTES = 1024L * 1024L * 1024L;
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private final OkHttpClient client = new OkHttpClient.Builder()

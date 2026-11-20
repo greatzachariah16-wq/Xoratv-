@@ -17,7 +17,7 @@ type NativeEpgPlugin = {
 };
 
 const NativeEpg = registerPlugin<NativeEpgPlugin>("XoraEpg");
-const CHUNK_SIZE = 48 * 1024;
+const CHUNK_SIZE = 256 * 1024;
 
 export type EpgDownload = {
   status: "downloaded" | "not-modified";
