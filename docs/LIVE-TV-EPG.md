@@ -53,3 +53,5 @@ The Live TV LibVLC playback path is deliberately unchanged in this EPG change.
 
 
 Implementation note: Android downloads are streamed to the app cache and read in 48 KB blocks; no whole-guide JavaScript buffer or localStorage is used.
+
+The native bridge uses bounded 256 KB reads to reduce bridge-call overhead while keeping memory use controlled.
