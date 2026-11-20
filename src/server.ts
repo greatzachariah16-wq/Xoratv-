@@ -18,6 +18,7 @@ import { handleContentVideoUpload } from "./server/content-media-controller";
 import { getCpaOffers, getCpaWallet, recordCpaClick, handleCpaPostback, createOfferPromotionLink, settleCpaRevenue, markCpaCreatorPaid } from "./server/offerwall-service";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
 import { handleStreamProxyRoute } from "./server/stream-proxy";
+import { handleEpgSourceRoute } from "./server/epg-source";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import {
@@ -580,6 +581,10 @@ export default {
       const response = await handleSurveyWalletRoute(request, url);
       if (response) return response;
     }
+
+    // Stream XMLTV from its public source or configured proxy without buffering the file.
+    const epgSourceResponse = await handleEpgSourceRoute(request, url);
+    if (epgSourceResponse) return epgSourceResponse;
 
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
