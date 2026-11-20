@@ -57,3 +57,5 @@ Implementation note: Android downloads are streamed to the app cache and read in
 The native bridge uses bounded 256 KB reads to reduce bridge-call overhead while keeping memory use controlled.
 
 When the configured XMLTV source changes, the previous cached guide rows are cleared after the new file has downloaded successfully; validators are never reused across different source URLs.
+
+The native plugin uses Capacitor's JSON option payload for numeric chunk offsets and limits.
