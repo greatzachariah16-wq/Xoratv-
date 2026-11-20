@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -380,28 +381,48 @@ function readImageDimensions(buffer: Buffer, mimeType: string): { width: number;
 }
 
 async function handleUpload(request: Request): Promise<Response> {
+  let temporaryPath: string | null = null;
   try {
+    // Reject obviously oversized multipart requests before parsing their body.
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    const maxRequestBytes = 251 * 1024 * 1024; // 250 MiB file plus multipart overhead
+    if (Number.isFinite(declaredLength) && declaredLength > maxRequestBytes) {
+      return new Response(JSON.stringify({ ok: false, error: "Upload is larger than the 250MB limit." }), {
+        status: 413,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
     const formData = await request.formData();
-    const file = formData.get("file");
+    const rawFile = formData.get("file");
     const bucket = (formData.get("bucket") as string) || "videos";
     const customKey = (formData.get("key") as string) || "";
     const userId = (formData.get("userId") as string) || "creator";
 
-    if (!file || typeof file === "string") {
+    if (!rawFile || typeof rawFile === "string") {
       return new Response(JSON.stringify({ error: "Missing file in multipart upload" }), {
         status: 400,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
 
-    const fileBuffer = Buffer.from(await (file as File).arrayBuffer());
-    const originalName = (file as File).name || "upload.bin";
+    const uploadFile = rawFile as File;
+    if (uploadFile.size > 250 * 1024 * 1024) {
+      return new Response(JSON.stringify({ ok: false, error: "Upload is larger than the 250MB limit." }), {
+        status: 413,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const originalName = uploadFile.name || "upload.bin";
+    let imageBuffer: Buffer | null = null;
+
     if (bucket === "profile-avatar") {
       const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
-      if (!allowed.has((file as File).type)) {
+      if (!allowed.has(uploadFile.type)) {
         return new Response(JSON.stringify({ ok: false, error: "Use JPG, PNG or WebP for your profile photo." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
-      if (fileBuffer.length > 3 * 1024 * 1024) {
+      if (uploadFile.size > 3 * 1024 * 1024) {
         return new Response(JSON.stringify({ ok: false, error: "Profile photo must be 3MB or smaller." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
       if (!userId || userId === "creator") {
@@ -411,18 +432,17 @@ async function handleUpload(request: Request): Promise<Response> {
       if (!creator || creator.status !== "active") {
         return new Response(JSON.stringify({ ok: false, error: "Creator account is not active." }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
+      // This is deliberately buffered only after the strict 3MB image limit.
+      imageBuffer = Buffer.from(await uploadFile.arrayBuffer());
     }
+
     if (bucket === "channel-featured") {
       const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
-      if (!allowed.has((file as File).type)) {
+      if (!allowed.has(uploadFile.type)) {
         return new Response(JSON.stringify({ ok: false, error: "Use JPG, PNG or WebP for the Featured image." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
-      if (fileBuffer.length > 5 * 1024 * 1024) {
+      if (uploadFile.size > 5 * 1024 * 1024) {
         return new Response(JSON.stringify({ ok: false, error: "Featured image must be 5MB or smaller." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
-      }
-      const dimensions = readImageDimensions(fileBuffer, (file as File).type);
-      if (!dimensions || dimensions.width !== 1920 || dimensions.height !== 1080) {
-        return new Response(JSON.stringify({ ok: false, error: "Featured image must be exactly 1920 × 1080 pixels (16:9)." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
       if (!userId || userId === "creator") {
         return new Response(JSON.stringify({ ok: false, error: "Creator account is required." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
@@ -431,9 +451,15 @@ async function handleUpload(request: Request): Promise<Response> {
       if (!creator || creator.status !== "active") {
         return new Response(JSON.stringify({ ok: false, error: "Creator account is not active." }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
       }
+      // Keep the existing dimension validation, but allocate only after size checks.
+      imageBuffer = Buffer.from(await uploadFile.arrayBuffer());
+      const dimensions = readImageDimensions(imageBuffer, uploadFile.type);
+      if (!dimensions || dimensions.width !== 1920 || dimensions.height !== 1080) {
+        return new Response(JSON.stringify({ ok: false, error: "Featured image must be exactly 1920 × 1080 pixels (16:9)." }), { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
     }
-    const ext = path.extname(originalName) || ".bin";
 
+    const ext = path.extname(originalName) || ".bin";
     let relativePath = "";
     if (customKey && !customKey.includes("..")) {
       relativePath = customKey.replace(/^\/+/, "");
@@ -444,7 +470,21 @@ async function handleUpload(request: Request): Promise<Response> {
 
     const targetFilePath = path.resolve(MEDIA_ROOT, relativePath);
     await fs.promises.mkdir(path.dirname(targetFilePath), { recursive: true });
-    await fs.promises.writeFile(targetFilePath, fileBuffer);
+    temporaryPath = `${targetFilePath}.${crypto.randomUUID()}.uploading`;
+
+    if (imageBuffer) {
+      // Small, validated profile/featured images are safe to write from memory.
+      await fs.promises.writeFile(temporaryPath, imageBuffer, { flag: "wx" });
+    } else {
+      // Stream other files to disk instead of making an additional full-size Buffer copy.
+      await pipeline(
+        Readable.fromWeb(uploadFile.stream()),
+        fs.createWriteStream(temporaryPath, { flags: "wx" }),
+      );
+    }
+
+    await fs.promises.rename(temporaryPath, targetFilePath);
+    temporaryPath = null;
 
     const baseUrl = PUBLIC_MEDIA_BASE_URL.replace(/\/+$/, "");
     const publicUrl = baseUrl ? `${baseUrl}/${relativePath}` : `/${relativePath}`;
@@ -454,7 +494,7 @@ async function handleUpload(request: Request): Promise<Response> {
         ok: true,
         path: relativePath,
         url: publicUrl,
-        size: fileBuffer.length,
+        size: uploadFile.size,
         bucket,
       }),
       { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
@@ -466,6 +506,10 @@ async function handleUpload(request: Request): Promise<Response> {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
+  } finally {
+    if (temporaryPath) {
+      await fs.promises.unlink(temporaryPath).catch(() => {});
+    }
   }
 }
 
@@ -1349,7 +1393,56 @@ export default {
         }
 
         if (isHls) {
-          const body = await upstream.text();
+          // HLS manifests are small text documents. Reject abnormal responses
+          // before reading/parsing them so a bad upstream cannot consume the
+          // Live service's limited memory. Media segments follow the untouched
+          // streaming/range path below.
+          const MAX_HLS_PLAYLIST_BYTES = 1024 * 1024; // 1 MiB
+          const declaredPlaylistLength = Number(upstream.headers.get("content-length") || 0);
+          if (Number.isFinite(declaredPlaylistLength) && declaredPlaylistLength > MAX_HLS_PLAYLIST_BYTES) {
+            console.warn("[IPTV Proxy] Rejected oversized HLS playlist", {
+              channelId,
+              contentLength: declaredPlaylistLength,
+              limit: MAX_HLS_PLAYLIST_BYTES,
+            });
+            return new Response(JSON.stringify({ ok: false, error: "The channel returned an unusually large HLS playlist." }), {
+              status: 502,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+            });
+          }
+          if (!upstream.body) {
+            return new Response(JSON.stringify({ ok: false, error: "The channel returned an empty HLS playlist." }), {
+              status: 502,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+            });
+          }
+          const playlistReader = upstream.body.getReader();
+          const playlistChunks: Uint8Array[] = [];
+          let playlistBytes = 0;
+          try {
+            while (true) {
+              const { done, value } = await playlistReader.read();
+              if (done) break;
+              playlistBytes += value.byteLength;
+              if (playlistBytes > MAX_HLS_PLAYLIST_BYTES) {
+                await playlistReader.cancel("HLS playlist exceeded size limit").catch(() => {});
+                return new Response(JSON.stringify({ ok: false, error: "The channel returned an unusually large HLS playlist." }), {
+                  status: 502,
+                  headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+                });
+              }
+              playlistChunks.push(value);
+            }
+          } finally {
+            playlistReader.releaseLock();
+          }
+          const playlistBuffer = new Uint8Array(playlistBytes);
+          let playlistOffset = 0;
+          for (const chunk of playlistChunks) {
+            playlistBuffer.set(chunk, playlistOffset);
+            playlistOffset += chunk.byteLength;
+          }
+          const body = new TextDecoder().decode(playlistBuffer);
           const playlistLines = body.split(/\r?\n/);
           const codecProfiles = [...body.matchAll(/CODECS="([^"]+)"/g)]
             .map((match) => match[1])
