@@ -123,9 +123,14 @@ export async function getDayGuide(channelId: string, date: Date | string) {
 
 export async function getGridWindow(channelIds: string[], startTime: number, endTime: number) {
   const matches = (await getMeta<Record<string,string>>("channelMatches")) || {};
-  const result = await Promise.all(channelIds.map(async (channelId) => ({
-    channelId, programmes: await getProgrammes(matches[channelId] || channelId, startTime, endTime),
-  })));
+  const result: Array<{channelId:string;programmes:EpgProgramme[]}> = [];
+  for (let offset = 0; offset < channelIds.length; offset += 10) {
+    const group = channelIds.slice(offset, offset + 10);
+    const rows = await Promise.all(group.map(async (channelId) => ({
+      channelId, programmes: await getProgrammes(matches[channelId] || channelId, startTime, endTime),
+    })));
+    result.push(...rows);
+  }
   return result;
 }
 
