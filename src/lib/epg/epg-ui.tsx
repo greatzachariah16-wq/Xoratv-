@@ -97,7 +97,9 @@ export function EpgSettings() {
           if (active && data?.epgUrl) {
             setUrl(data.epgUrl);
             await configureEpg(data.epgUrl);
-            void refreshEpg({ url: data.epgUrl }).catch((error) => console.info("[Xora EPG] Default source refresh failed:", error));
+            void refreshEpg({ url: data.epgUrl }).then(() => getEpgMappingOptions()).then((mappingData) => {
+              if (active) { setUnmatched(mappingData.unmatched); setEpgChannels(mappingData.epgChannels); }
+            }).catch((error) => console.info("[Xora EPG] Default source refresh failed:", error));
           }
         } catch {
           // The manual URL field remains available when the M3U has no EPG header.
