@@ -133,6 +133,7 @@ public class XoraVlcPlugin extends Plugin {
     private boolean resumeAfterFocusGain;
     private boolean playingBeforeAppPause;
     private boolean startupBufferActive;
+    private boolean directPlaybackOnly;
     private boolean bufferHealthKnown;
     private boolean bufferHealthy = true;
 
@@ -422,6 +423,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void refreshLocalPlaybackSessions() throws IOException {
+        if (directPlaybackOnly) return;
         if (upstreamStreamUrls.isEmpty()) throw new IOException("No upstream playback candidates are available.");
         if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient(), getContext().getCacheDir());
         localHlsProxy.clearSessions();
@@ -439,6 +441,17 @@ public class XoraVlcPlugin extends Plugin {
         directCandidateCount = 0;
         lastReportedTransport = "";
         if (localHlsProxy != null) localHlsProxy.clearSessions();
+
+        directPlaybackOnly = call.getBoolean("directOnly", false);
+        if (directPlaybackOnly) {
+            if (!isHttpUrl(url)) throw new IOException("A valid direct stream URL is required.");
+            streamUrls.add(url);
+            upstreamStreamUrls.add(url);
+            streamHeaders.add(call.getObject("headers") == null ? new JSONObject() : call.getObject("headers"));
+            streamTransports.add("direct");
+            directCandidateCount = 0;
+            return;
+        }
 
         JSONArray candidates = call.getArray("candidates");
         if (candidates != null && candidates.length() > 0) {
@@ -1303,11 +1316,11 @@ public class XoraVlcPlugin extends Plugin {
         clearBufferingWatchdog();
         clearRetry();
         final String selectedUrl = streamUrls.get(currentStreamIndex);
-        if (!isLocalProxyUrl(selectedUrl)) {
+        if (directPlaybackOnly ? !isHttpUrl(selectedUrl) : !isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
             return;
         }
-        if (localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
+        if (!directPlaybackOnly && localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
             final long bufferPlayerGeneration = playerGeneration;
             final long bufferAttemptGeneration = ++playbackAttemptGeneration;
             startupBufferActive = true;
@@ -1347,8 +1360,9 @@ public class XoraVlcPlugin extends Plugin {
         setBufferProgressVisible(false);
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
-        // Enforce the core invariant: LibVLC must never receive an origin or Render URL.
-        if (!isLocalProxyUrl(selectedUrl)) {
+        // Direct-only Live TV test bypasses LocalHlsProxy. Existing playback paths
+        // continue to enforce the loopback-only transport invariant.
+        if (directPlaybackOnly ? !isHttpUrl(selectedUrl) : !isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
             return;
         }
