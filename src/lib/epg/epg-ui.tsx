@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronDown, Clock3, RefreshCw } from "lucide-react";
+import { CalendarDays, ChevronDown, RefreshCw } from "lucide-react";
 import { configureEpg, getDayGuide, getEpgMappingOptions, getEpgSettings, getNowAndNext, getProgress, refreshEpg, setEpgChannelMapping, type EpgRefreshOptions } from "./epg-api";
 import type { EpgProgramme } from "./epg-store";
+import "@/styles/epg.css";
 
 function time(value: number) {
   return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
