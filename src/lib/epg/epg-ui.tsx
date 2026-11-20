@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronDown, Clock3, RefreshCw } from "lucide-react";
-import { configureEpg, getDayGuide, getEpgSettings, getNowAndNext, getProgress, refreshEpg, type EpgRefreshOptions } from "./epg-api";
+import { configureEpg, getDayGuide, getEpgMappingOptions, getEpgSettings, getNowAndNext, getProgress, refreshEpg, setEpgChannelMapping, type EpgRefreshOptions } from "./epg-api";
 import type { EpgProgramme } from "./epg-store";
 
 function time(value: number) {
@@ -62,10 +62,16 @@ export function EpgSettings() {
   const [proxyUrl, setProxyUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [unmatched, setUnmatched] = useState<Array<{id:string;name:string}>>([]);
+  const [epgChannels, setEpgChannels] = useState<Array<{id:string;name:string}>>([]);
+  const loadMappings = () => void getEpgMappingOptions().then((data) => { setUnmatched(data.unmatched); setEpgChannels(data.epgChannels); });
   useEffect(() => {
     let active = true;
     void getEpgSettings().then((settings) => {
       if (active) { setUrl(settings.url); setProxyUrl(settings.proxyUrl); }
+    });
+    void getEpgMappingOptions().then((data) => {
+      if (active) { setUnmatched(data.unmatched); setEpgChannels(data.epgChannels); }
     });
     return () => { active = false; };
   }, []);
@@ -77,6 +83,7 @@ export function EpgSettings() {
       await configureEpg(url, proxyUrl || undefined);
       const result = await refreshEpg({ force: true, url, proxyUrl: proxyUrl || undefined });
       setMessage(result.unchanged ? "Guide is already up to date." : "Guide updated: " + result.count.toLocaleString() + " programmes.");
+      loadMappings();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not update the guide.");
     } finally { setBusy(false); }
@@ -89,6 +96,7 @@ export function EpgSettings() {
       <small>Use {"{url}"} where the encoded XMLTV URL should be inserted. Leave blank to fetch through Xora's streaming endpoint.</small>
       <button type="button" onClick={() => void save()} disabled={busy}>{busy ? "Updating..." : "Save & refresh guide"}</button>
       {message ? <p role="status">{message}</p> : null}
+      {unmatched.length ? <div className="xora-epg-mappings"><strong>Unmatched channels ({unmatched.length})</strong>{unmatched.slice(0, 30).map((channel) => <label key={channel.id}>{channel.name}<select defaultValue="" onChange={(event) => { if (event.target.value) void setEpgChannelMapping(channel.id, event.target.value).then(loadMappings); }}><option value="">Choose guide channel</option>{epgChannels.map((epg) => <option key={epg.id} value={epg.id}>{epg.name} · {epg.id}</option>)}</select></label>)}</div> : null}
     </div>
   </details>;
 }
