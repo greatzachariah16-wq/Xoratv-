@@ -11,7 +11,7 @@ export type EpgRefreshOptions = { force?: boolean; url?: string; proxyUrl?: stri
 let refreshTask: Promise<{ unchanged: boolean; count: number }> | null = null;
 
 export async function refreshEpg(options: EpgRefreshOptions = {}) {
-  if (refreshTask && !options.force) return refreshTask;
+  if (refreshTask) return refreshTask;
   const task = (async () => {
     const url = options.url || await getMeta<string>("epgUrl");
     if (!url) throw new Error("No XMLTV URL configured. Add an EPG URL in Live TV settings.");
