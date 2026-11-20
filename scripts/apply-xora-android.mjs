@@ -31,6 +31,7 @@ for (const name of [
   "MainActivity.java",
   "XoraStartupPlugin.java",
   "XoraVlcPlugin.java",
+  "XoraEpgPlugin.java",
   "LocalHlsProxy.java",
   "LocalHlsBuffer.java",
 ]) {

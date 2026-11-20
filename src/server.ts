@@ -1127,6 +1127,7 @@ export default {
           ok,
           total: Math.max(result.total, channels.length),
           channels,
+          epgUrl: result.epgUrl,
           ...(!ok && result.error ? { error: result.error } : {}),
         }), {
           status: ok ? 200 : 502,

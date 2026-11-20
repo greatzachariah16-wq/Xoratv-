@@ -57,6 +57,7 @@ public class MainActivity extends BridgeActivity {
 
         registerPlugin(XoraStartupPlugin.class);
         registerPlugin(XoraVlcPlugin.class);
+        registerPlugin(XoraEpgPlugin.class);
         super.onCreate(savedInstanceState);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         applyXoraSystemBars();

@@ -558,7 +558,7 @@ export function NativeVideoPlayer({
   }, [activeSrc, nativeStreamUrl, nativeVlcOnly, title]);
 
   const toggle = useCallback(() => {
-    if (liveTv && isNativeVlcPlatform()) {
+    if (nativeVlcOnly) {
       void startNativePlayback();
       return;
     }
@@ -577,15 +577,18 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc, liveTv, startNativePlayback]);
+  }, [activeSrc, nativeVlcOnly, startNativePlayback]);
+
+  // Selecting an IPTV channel opens LibVLC immediately. There is no inline/web player
+  // or extra Play button in front of the native cinema player.
+  useEffect(() => {
+    if (!nativeVlcOnly || !activeSrc || playerClosed) return;
+    void startNativePlayback();
+  }, [nativeVlcOnly, activeSrc, playerClosed, startNativePlayback]);
 
   // Autoplay-in-view (shorts): starts unmuted when in view, and paused when out of view.
   useEffect(() => {
-    if (!autoPlay) return;
-    if (liveTv && isNativeVlcPlatform() && activeSrc) {
-      void startNativePlayback();
-      return;
-    }
+    if (!autoPlay || nativeVlcOnly) return;
     const video = videoRef.current;
     if (!video || !src) return;
     const observer = new IntersectionObserver(
@@ -604,9 +607,13 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc, liveTv, startNativePlayback]);
+  }, [autoPlay, activeSrc, nativeVlcOnly]);
 
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
+
+  // LibVLC owns the entire IPTV viewing experience on Android. Render no web
+  // player surface, placeholder, controls, or embed while it is active.
+  if (nativeVlcOnly) return null;
 
   if (!mediaPath && !externalUrl && !streamUrl) {
     return (
@@ -867,6 +874,11 @@ export function NativeVideoPlayer({
 }
 
 export function VideoPlayer(props: Props) {
+  // IPTV always opens the native player on Android; never route it through embeds.
+  if (props.liveTv) {
+    return <NativeVideoPlayer {...props} autoPlay />;
+  }
+
   // Shorts are Xora-native only. Never send Shorts through provider embeds.
   if (props.feed === "shorts") {
     return <NativeVideoPlayer {...props} autoPlay={props.autoPlay} />;
