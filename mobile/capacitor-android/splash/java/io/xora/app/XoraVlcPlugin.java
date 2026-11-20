@@ -1396,7 +1396,7 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
-        // LibVLC receives loopback URLs only. The local proxy injects provider headers.
+        // Direct-only mode gives LibVLC the origin URL; other modes use the loopback proxy.
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
         media.addOption(":http-reconnect");
@@ -1501,6 +1501,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private boolean touchCurrentLocalSession() {
+        if (directPlaybackOnly) return true;
         return localHlsProxy != null
             && currentStreamIndex >= 0
             && currentStreamIndex < streamUrls.size()
