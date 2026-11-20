@@ -4,8 +4,8 @@ export type MatchableChannel = { id: string; name: string; tvgId?: string; tvgNa
 export type EpgMatchResult = { matches: Record<string, string>; unmatched: MatchableChannel[] };
 
 export function normalizeChannelName(value: string): string {
-  return value.normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "")
-    .toLowerCase().replace(/\\b(hd|fhd|uhd|4k|sd|tv|live)\\b/g, "")
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/\b(hd|fhd|uhd|4k|sd|tv|live)\b/g, "")
     .replace(/[^a-z0-9]/g, "");
 }
 
