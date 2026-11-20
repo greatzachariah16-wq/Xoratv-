@@ -49,7 +49,9 @@ export async function* parseXmltvStream(
   let stream: ReadableStream<Uint8Array> = input;
   if (options.gzip) {
     if (typeof DecompressionStream === "undefined") throw new Error("This Android WebView cannot decompress gzip streams. Supply an uncompressed XMLTV URL or enable a gzip-capable proxy.");
-    stream = stream.pipeThrough(new DecompressionStream("gzip"));
+    stream = stream.pipeThrough(
+      new DecompressionStream("gzip") as unknown as ReadableWritablePair<Uint8Array, Uint8Array>,
+    );
   }
   const decoder = new TextDecoder("utf-8");
   const now = options.now ?? Date.now();
