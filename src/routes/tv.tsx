@@ -655,6 +655,7 @@ function LiveTvPage() {
                 <h2>All channels</h2>
                 <p>{visibleChannels.length} channels available</p>
               </div>
+              {nativeState.channelId === selected?.id && nativeState.state === "PLAYING" && nativeState.transport === "direct" ? <span className="xora-tv-direct-chip" aria-label="Playing directly through LibVLC"><span /> Direct LibVLC</span> : null}
               {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Cached list</span> : null}
             </div>
 
