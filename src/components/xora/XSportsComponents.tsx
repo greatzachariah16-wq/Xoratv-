@@ -252,10 +252,10 @@ export function getCountryRankedGroups<T extends BroadcastChannel>(channels: T[]
 }
 
 export function CountryRankedChannels<T extends BroadcastChannel>({
-  channels, onSelect, selectedId, title = "Explore channels by country", favoriteIds = [], onFavorite,
+  channels, onSelect, selectedId, title = "Explore channels by country", favoriteIds = [], onFavorite, metaMode = "category",
 }: {
   channels: T[]; onSelect: (channel: T) => void; selectedId?: string | null; title?: string;
-  favoriteIds?: string[]; onFavorite?: (channel: T) => void;
+  favoriteIds?: string[]; onFavorite?: (channel: T) => void; metaMode?: "category" | "language";
 }) {
   const [expandedRegions, setExpandedRegions] = useState<CountryRank[]>([]);
   const groups = getCountryRankedGroups(channels);
@@ -282,7 +282,7 @@ export function CountryRankedChannels<T extends BroadcastChannel>({
               {(expandedRegions.includes(region.id) ? items : items.slice(0, 4)).map((channel, index) => (
                 <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id}
                   index={index} onSelect={onSelect} statusMode="live"
-                  favorite={favoriteIds.includes(channel.id)} onFavorite={onFavorite} />
+                  favorite={favoriteIds.includes(channel.id)} onFavorite={onFavorite} metaMode={metaMode} />
               ))}
             </div>
           </div>
