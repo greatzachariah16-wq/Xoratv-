@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Play, RefreshCw, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { CountryRankedChannels } from "@/components/xora/CountryRankedChannels";
 import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChannelCard, CountryRankedChannels, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
+import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
 import { AgeChips, type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
 type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; provider?: "nexus" | "iptv-org"; language?: string; languages?: string[]; ageLabel?: string; userAgent?: string; referrer?: string };
