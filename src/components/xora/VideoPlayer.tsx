@@ -207,7 +207,7 @@ export function NativeVideoPlayer({
         void closeNativeVlc();
       }
     };
-  }, [nativeVlcOnly, src]);
+  }, [nativeVlcOnly]);
 
   // Production-Ready Xora Engagement Handshake & Heartbeat Loop
   useEffect(() => {
@@ -615,7 +615,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc, liveTv, startNativePlayback]);
+  }, [autoPlay, activeSrc, liveTv, nativeVlcOnly, src, startNativePlayback]);
 
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
 
