@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
@@ -75,7 +76,7 @@ function normalizeSportsChannel(value: unknown): SportsChannel | null {
 }
 
 async function loadSportsChannels(): Promise<SportsChannel[]> {
-  const response = await fetch("/api/tv/channels?category=sports&limit=10000");
+  const response = await fetch("/api/tv/channels?category=sports&limit=10000" + (isNativeVlcPlatform() ? "" : "&web=1"));
   if (!response.ok) throw new Error("Unable to load sports channels right now.");
 
   const data: unknown = await response.json();
