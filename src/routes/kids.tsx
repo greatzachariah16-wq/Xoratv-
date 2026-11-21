@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
 import { AgeChips, type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
-type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; provider?: "nexus" | "iptv-org"; language?: string; languages?: string[]; ageLabel?: string };
+type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; provider?: "nexus" | "iptv-org"; language?: string; languages?: string[]; ageLabel?: string; userAgent?: string; referrer?: string };
 type CartoonSeries = { id: string; title: string; year: number; description: string; ageLabel: string; artClass: string; provider: "tmdb" | "anilist"; posterUrl?: string; format?: string; episodes?: number | null; genres?: string[] };
 type AniListMedia = { id: number; title: { english?: string | null; romaji: string }; description?: string | null; coverImage?: { large?: string | null; medium?: string | null } | null; seasonYear?: number | null; format?: string | null; episodes?: number | null; genres?: string[] };
 type AniListResponse = { data?: { Page?: { pageInfo?: { currentPage: number; hasNextPage: boolean }; media?: AniListMedia[] } }; errors?: Array<{ message?: string }> };
@@ -256,7 +256,8 @@ function KidsPage() {
                     <NativeVideoPlayer key={visibleSelected.id}
                       streamUrl={visibleSelected.streamUrl}
                       nativeStreamUrl={"/api/tv/stream?provider=" + (visibleSelected.provider || "nexus") + "&channel=" + encodeURIComponent(visibleSelected.id)}
-                      externalPoster={visibleSelected.logo} title={visibleSelected.name} liveTv
+                      externalPoster={visibleSelected.logo} title={visibleSelected.name} liveTv nativeDirectOnly
+                      nativeHeaders={{ ...(visibleSelected.userAgent ? { "User-Agent": visibleSelected.userAgent } : {}), ...(visibleSelected.referrer ? { Referer: visibleSelected.referrer } : {}) }}
                       className="aspect-video w-full rounded-none" />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
