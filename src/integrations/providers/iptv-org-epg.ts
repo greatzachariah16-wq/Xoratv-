@@ -36,9 +36,9 @@ type GuideRecord = {
 const GUIDES_INDEX_URL = "https://iptv-org.github.io/api/guides.json";
 const INDEX_TTL_MS = 6 * 60 * 60 * 1000;
 const SOURCE_TTL_MS = 20 * 60 * 1000;
-const MAX_GUIDE_BYTES = 30 * 1024 * 1024;
+const MAX_GUIDE_BYTES = 20 * 1024 * 1024;
 const MAX_SOURCES_PER_CHANNEL = 4;
-const MAX_CACHED_GUIDE_SOURCES = 8;
+const MAX_CACHED_GUIDE_SOURCES = 3;
 
 let indexCache: { records: GuideRecord[]; expiresAt: number } | null = null;
 let indexLoading: Promise<GuideRecord[]> | null = null;
@@ -110,7 +110,7 @@ async function loadGuideSource(sourceUrl: string): Promise<string> {
     let xml: string;
     if (isGzip) {
       const { gunzipSync } = await import("node:zlib");
-      xml = gunzipSync(bytes, { maxOutputLength: MAX_GUIDE_BYTES * 4 }).toString("utf8");
+      xml = gunzipSync(bytes, { maxOutputLength: MAX_GUIDE_BYTES * 3 }).toString("utf8");
     } else {
       xml = bytes.toString("utf8");
     }
