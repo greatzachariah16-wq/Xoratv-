@@ -48,6 +48,8 @@ type Channel = {
   labels: string[];
   score?: number;
   provider?: "nexus" | "iptv-org";
+  userAgent?: string;
+  referrer?: string;
 };
 
 type Programme = {
@@ -382,17 +384,19 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
-      // Match Xora Kids and XSports: Android fetches the Render stream endpoint,
-      // then its on-device LocalHlsBuffer stores the rolling HLS segments locally.
-      const streamUrl = new URL("/api/tv/stream", window.location.origin);
-      streamUrl.searchParams.set("provider", selected.provider || "nexus");
-      streamUrl.searchParams.set("channel", selected.id);
+      // Direct IPTV playback: pass the provider stream URL to the shared LibVLC player.
+      // This route intentionally skips Render relay and the local rolling segment cache.
       if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: streamUrl.toString(),
+        url: selected.streamUrl,
         title: getChannelDisplayName(selected),
         channelId: selected.id,
+        directOnly: true,
+        headers: {
+          ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}),
+          ...(selected.referrer ? { Referer: selected.referrer } : {}),
+        },
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
