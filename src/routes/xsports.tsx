@@ -494,7 +494,7 @@ function XSportsPage() {
         ) : null}
 
         {!channelsQuery.isLoading && !channelsQuery.isError && channels.length ? (
-          <CountryRankedChannels channels={channels} onSelect={chooseChannel} selectedId={selectedId} title="Sports channels by country" />
+          <CountryRankedChannels channels={channels} onSelect={chooseChannel} selectedId={selectedId} title="Sports channels by country" favoriteIds={favoriteIds} onFavorite={toggleFavorite} />
         ) : null}
 
         {!channelsQuery.isLoading && !channelsQuery.isError && channels.length ? (
