@@ -1798,7 +1798,10 @@ public class XoraVlcPlugin extends Plugin {
             if (bufferProgressText != null) bufferProgressText.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferHealthBanner != null) {
-                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown;
+                // Live TV direct playback reports its premium status in the
+                // channel-list heading; never place a buffer banner over its video.
+                boolean showHealth = !directPlaybackOnly
+                    && next == PlaybackState.PLAYING && bufferHealthKnown;
                 bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
             }
         }
