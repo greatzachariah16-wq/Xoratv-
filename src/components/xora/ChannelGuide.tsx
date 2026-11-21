@@ -13,7 +13,7 @@ type Programme = {
 export function ChannelGuide({ channelId, variant = "default" }: { channelId: string; variant?: "default" | "cinema" }) {
   const cinema = variant === "cinema";
   const guide = useQuery({
-    queryKey: ["iptv-nexus-guide", channelId],
+    queryKey: ["xoratv-tv-guide", channelId],
     queryFn: async () => {
       const response = await fetch(`/api/tv/guide?channel=${encodeURIComponent(channelId)}&hours=12`);
       if (!response.ok) return [] as Programme[];

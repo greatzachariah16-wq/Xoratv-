@@ -474,7 +474,7 @@ function LiveTvPage() {
   }, []);
 
   const guide = useQuery({
-    queryKey: ["iptv-nexus-guide", selected?.id],
+    queryKey: ["xoratv-tv-guide", selected?.id],
     queryFn: async () => {
       if (!selected) return [] as Programme[];
       const response = await fetch(`/api/tv/guide?channel=${encodeURIComponent(selected.id)}&hours=12`);
