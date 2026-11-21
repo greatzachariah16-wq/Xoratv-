@@ -16,6 +16,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
+import { VideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
@@ -681,29 +682,19 @@ function LiveTvPage() {
             </div>
           </header>
 
-          <section className="xora-tv-ranking" aria-label="Ranked channels by country">
-            <div className="xora-tv-ranking-banner">
-              <span className="xora-tv-ranking-globe"><Globe2 aria-hidden="true" /></span>
-              <div><span>EXPLORE THE WORLD</span><h2>Live TV, ranked by country</h2><p>Start with Nigeria, then discover channels across the globe.</p></div>
-            </div>
-            <div className="xora-tv-region-grid">
-              {rankedRegions.map((region) => (
-                <button key={region.id} type="button" onClick={() => setRankedScope(region.id)} aria-pressed={rankedScope === region.id} className={"xora-tv-region-card" + (rankedScope === region.id ? " is-active" : "") + (region.id === "nigeria" ? " is-priority" : "")}>
-                  {region.id === "nigeria" ? <Crown className="xora-tv-region-crown" aria-hidden="true" /> : null}
-                  <span className="xora-tv-region-flag">{region.flag}</span><strong>{region.title}</strong><small>{region.subtitle}</small><em>{region.count.toLocaleString()} channels</em>
-                </button>
-              ))}
-            </div>
-            {renderRankedRail("Nigeria’s top channels", "nigeria", rankedChannels.nigeria, "🇳🇬")}
-            {renderRankedRail("Other African channels", "africa", rankedChannels.africa, "🌍")}
-            {renderRankedRail("United States channels", "usa", rankedChannels.usa, "🇺🇸")}
-            {renderRankedRail("United Kingdom channels", "uk", rankedChannels.uk, "🇬🇧")}
-            {renderRankedRail("More from around the world", "others", rankedChannels.others, "🌐")}
-          </section>
-
           <div className="xora-tv-notice">
             <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
           </div>
+
+          {selected && !isNativeVlcPlatform() ? (
+
+            <section className="xora-tv-browser-player" aria-label="Live channel player">
+
+              <VideoPlayer key={selected.id} streamUrl={selected.streamUrl} title={getChannelDisplayName(selected)} liveTv autoPlay className="w-full aspect-video rounded-2xl" />
+
+            </section>
+
+          ) : null}
 
           {selected ? (
             <section className="xora-tv-now-card xora-tv-featured-card" aria-label="Selected live channel">
@@ -737,6 +728,27 @@ function LiveTvPage() {
           )}
 
           {renderChannelRail("Recently watched", recentChannels)}
+
+          <section className="xora-tv-ranking" aria-label="Ranked channels by country">
+            <div className="xora-tv-ranking-banner">
+              <span className="xora-tv-ranking-globe"><Globe2 aria-hidden="true" /></span>
+              <div><span>EXPLORE THE WORLD</span><h2>Live TV, ranked by country</h2><p>Start with Nigeria, then discover channels across the globe.</p></div>
+            </div>
+            <div className="xora-tv-region-grid">
+              {rankedRegions.map((region) => (
+                <button key={region.id} type="button" onClick={() => setRankedScope(region.id)} aria-pressed={rankedScope === region.id} className={"xora-tv-region-card" + (rankedScope === region.id ? " is-active" : "") + (region.id === "nigeria" ? " is-priority" : "")}>
+                  {region.id === "nigeria" ? <Crown className="xora-tv-region-crown" aria-hidden="true" /> : null}
+                  <span className="xora-tv-region-flag">{region.flag}</span><strong>{region.title}</strong><small>{region.subtitle}</small><em>{region.count.toLocaleString()} channels</em>
+                </button>
+              ))}
+            </div>
+            {renderRankedRail("Nigeria’s top channels", "nigeria", rankedChannels.nigeria, "🇳🇬")}
+            {renderRankedRail("Other African channels", "africa", rankedChannels.africa, "🌍")}
+            {renderRankedRail("United States channels", "usa", rankedChannels.usa, "🇺🇸")}
+            {renderRankedRail("United Kingdom channels", "uk", rankedChannels.uk, "🇬🇧")}
+            {renderRankedRail("More from around the world", "others", rankedChannels.others, "🌐")}
+          </section>
+
           {renderChannelRail("Favourites", favoriteChannels)}
 
           <section className="xora-tv-channel-section">
