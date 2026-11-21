@@ -7,7 +7,7 @@ import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
+import { ChannelCard, CountryRankedChannels, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
 import { AgeChips, type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
 type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; provider?: "nexus" | "iptv-org"; language?: string; languages?: string[]; ageLabel?: string; userAgent?: string; referrer?: string };
@@ -271,6 +271,10 @@ function KidsPage() {
                     </div>
                   </div>
                 </section>
+              ) : null}
+
+              {channelsByAge.length ? (
+                <CountryRankedChannels channels={channelsByAge} onSelect={selectKidsChannel} selectedId={visibleSelected?.id} title="Kids channels by country" />
               ) : null}
 
               {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length ? (
