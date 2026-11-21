@@ -767,7 +767,7 @@ public class XoraVlcPlugin extends Plugin {
         streamInfoBadge.setSingleLine(true);
         streamInfoBadge.setPadding(dp(8), dp(5), dp(8), dp(5));
         streamInfoBadge.setBackground(roundedBackground(0x88201C1A, dp(20)));
-        streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · CACHE OFF" : "0 SEGMENTS CACHED");
+        streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · 0 CACHED" : "0 SEGMENTS CACHED");
         LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
@@ -817,12 +817,6 @@ public class XoraVlcPlugin extends Plugin {
         bufferHealthBanner.setBackground(roundedBackground(0xDD315847, dp(9)));
         bufferHealthBanner.setText("Stream buffer healthy");
         bufferHealthBanner.setVisibility(View.GONE);
-        FrameLayout.LayoutParams healthParams = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
-        );
-        healthParams.setMargins(dp(12), dp(58), dp(12), 0);
         // Buffer health is represented by the compact streamInfoBadge in the top rail.
         // Never place a full-width status banner over the broadcast picture.
         bufferHealthBanner.setVisibility(View.GONE);
@@ -1825,7 +1819,7 @@ public class XoraVlcPlugin extends Plugin {
             }
         }
         if (streamInfoBadge != null) {
-            streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · CACHE OFF" : (bufferHealthKnown ? streamInfoBadge.getText() : "LIVE STREAM"));
+            streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · 0 CACHED" : (bufferHealthKnown ? streamInfoBadge.getText() : "LIVE STREAM"));
         }
         String transport = currentStreamIndex < streamTransports.size()
             ? streamTransports.get(currentStreamIndex)
