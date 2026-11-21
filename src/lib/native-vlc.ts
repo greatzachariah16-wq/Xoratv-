@@ -15,7 +15,7 @@ export type NativeVlcStateChangedEvent = {
   state: NativeVlcStatus;
   channelId: string;
   message: string;
-  transport?: "local" | "proxy";
+  transport?: "local" | "proxy" | "direct";
 };
 
 export type NativeVlcPlaybackState = {
@@ -51,6 +51,8 @@ type NativeVlcPlugin = {
     fallbackUrl2?: string;
     candidates?: NativeVlcCandidate[];
     proxyFallbackUrl?: string;
+    directOnly?: boolean;
+    headers?: Record<string, string>;
   }): Promise<void>;
   close(): Promise<void>;
   switchChannel(options: {
@@ -61,6 +63,8 @@ type NativeVlcPlugin = {
     fallbackUrl2?: string;
     candidates?: NativeVlcCandidate[];
     proxyFallbackUrl?: string;
+    directOnly?: boolean;
+    headers?: Record<string, string>;
   }): Promise<void>;
   togglePlayback(): Promise<void>;
   toggleMute(): Promise<void>;
@@ -117,6 +121,8 @@ export async function openNativeVlc(options: {
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
   fallbackUrl2?: string;
+  directOnly?: boolean;
+  headers?: Record<string, string>;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
     throw new Error("Native playback is available only in the XoraTV Android app.");
@@ -134,6 +140,8 @@ export async function openNativeVlc(options: {
     proxyFallbackUrl: options.proxyFallbackUrl,
     fallbackUrl1: options.fallbackUrl1,
     fallbackUrl2: options.fallbackUrl2,
+    directOnly: options.directOnly,
+    headers: options.headers,
   });
 }
 
@@ -169,6 +177,8 @@ export async function switchNativeVlcChannel(options: {
   proxyFallbackUrl?: string;
   fallbackUrl1?: string;
   fallbackUrl2?: string;
+  directOnly?: boolean;
+  headers?: Record<string, string>;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
     throw new Error("Native playback is available only in the XoraTV Android app.");
@@ -186,6 +196,8 @@ export async function switchNativeVlcChannel(options: {
     proxyFallbackUrl: options.proxyFallbackUrl,
     fallbackUrl1: options.fallbackUrl1,
     fallbackUrl2: options.fallbackUrl2,
+    directOnly: options.directOnly,
+    headers: options.headers,
   });
 }
 
