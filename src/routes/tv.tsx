@@ -24,7 +24,6 @@ import {
   formatMetadataLabel,
   getChannelCountryCode,
   getChannelDisplayName,
-  getCountryRankedGroups,
   getChannelQuality,
   getCountryFlag,
   getCountryName,
@@ -40,6 +39,7 @@ import {
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
+import { getCountryRankedGroups } from "@/lib/country-ranking";
 import { useLandscapeMode } from "@/hooks/useOrientation";
 import "@/styles/tv-live.css";
 
