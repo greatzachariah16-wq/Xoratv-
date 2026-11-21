@@ -274,7 +274,7 @@ function KidsPage() {
               ) : null}
 
               {channelsByAge.length ? (
-                <CountryRankedChannels channels={channelsByAge} onSelect={selectKidsChannel} selectedId={visibleSelected?.id} title="Kids channels by country" />
+                <CountryRankedChannels channels={channelsByAge} onSelect={selectKidsChannel} selectedId={visibleSelected?.id} title="Kids channels by country" favoriteIds={favoriteChannels} onFavorite={toggleChannelFavorite} />
               ) : null}
 
               {!channelsByAge.length && !query.isLoading && !query.isError
