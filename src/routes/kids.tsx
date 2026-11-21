@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Play, RefreshCw, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
@@ -70,6 +71,7 @@ export const Route = createFileRoute("/kids")({
 async function loadKidsChannels(query: string): Promise<Channel[]> {
   const params = new URLSearchParams({ category: "kids", limit: "10000" });
   if (query.trim()) params.set("q", query.trim());
+  if (!isNativeVlcPlatform()) params.set("web", "1");
   const res = await fetch("/api/tv/channels?" + params.toString());
   if (!res.ok) throw new Error("Unable to load kids channels");
   const data = (await res.json()) as { channels?: Channel[] };
