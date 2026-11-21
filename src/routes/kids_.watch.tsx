@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Film, Play } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { Button } from "@/components/ui/button";
+import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 
 type WatchSearch = {
   id?: string;
@@ -14,6 +15,7 @@ type WatchSearch = {
   format?: string;
   episodes?: string;
   posterUrl?: string;
+  streamUrl?: string;
 };
 
 export const Route = createFileRoute("/kids_/watch")({
@@ -27,6 +29,7 @@ export const Route = createFileRoute("/kids_/watch")({
     format: typeof search.format === "string" ? search.format : undefined,
     episodes: typeof search.episodes === "string" ? search.episodes : undefined,
     posterUrl: typeof search.posterUrl === "string" ? search.posterUrl : undefined,
+    streamUrl: typeof search.streamUrl === "string" ? search.streamUrl : undefined,
   }),
   head: () => ({
     meta: [
@@ -36,6 +39,17 @@ export const Route = createFileRoute("/kids_/watch")({
   }),
   component: KidsCartoonWatchPage,
 });
+
+function isDirectMediaUrl(value?: string | null): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    const path = url.pathname.toLowerCase();
+    return url.protocol === "https:" && [".m3u8", ".mp4", ".m4v", ".mov", ".mpd"].some((ext) => path.endsWith(ext));
+  } catch {
+    return false;
+  }
+}
 
 function KidsCartoonWatchPage() {
   const navigate = useNavigate();
@@ -52,6 +66,7 @@ function KidsCartoonWatchPage() {
   const validSeason = provider === "anilist" || (Number.isInteger(parsedSeason) && parsedSeason >= 1 && parsedSeason <= 30);
   const validEpisode = Number.isInteger(parsedEpisode) && parsedEpisode >= 1 && parsedEpisode <= 500;
   const canLoadEpisode = validSeason && validEpisode;
+  const directStreamUrl = isDirectMediaUrl(item.streamUrl) ? item.streamUrl! : "";
   const playerUrl = item.id
     ? provider === "anilist"
       ? `https://embed.vidrift.net/embed/anilist/${encodeURIComponent(item.id)}/${loadedEpisode}?brand=XoraTV&brandColor=%237C5CFC&showTitle=1&exit=1&autoplay=0&hide=episodes`
@@ -77,7 +92,11 @@ function KidsCartoonWatchPage() {
         </div>
 
         <section className="overflow-hidden rounded-2xl border border-border/70 bg-black shadow-xl sm:rounded-3xl">
-          {playerUrl ? (
+          {directStreamUrl ? (
+            <div className="relative aspect-video w-full bg-black">
+              <NativeVideoPlayer streamUrl={directStreamUrl} title={title} nativeVlc nativeDirectOnly liveTv className="h-full w-full" />
+            </div>
+          ) : playerUrl ? (
             <div className="relative aspect-video w-full bg-black">
               <iframe
                 key={playerUrl}

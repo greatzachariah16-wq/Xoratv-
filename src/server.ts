@@ -1047,6 +1047,7 @@ export default {
     // Keep these separate from the VOD catalogue and preserve the IPTV-org provider ID for playback.
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
       const category = (url.searchParams.get("category") || "").toLowerCase();
+      const webCompatibleOnly = url.searchParams.get("web") === "1";
       if (category === "movies" || category === "series") {
         try {
           const result = await fetchIptvChannels({
@@ -1055,10 +1056,12 @@ export default {
             category,
             limit: Number(url.searchParams.get("limit") || "100"),
           });
-          const channels = result.channels.map((channel) => ({
-            ...channel,
-            provider: "iptv-org" as const,
-          }));
+          const channels = result.channels
+            .filter((channel) => !webCompatibleOnly || (!channel.userAgent && !channel.referrer))
+            .map((channel) => ({
+              ...channel,
+              provider: "iptv-org" as const,
+            }));
           return new Response(JSON.stringify({
             ok: result.ok,
             total: result.total,
@@ -1083,6 +1086,7 @@ export default {
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
       try {
         const query = url.searchParams.get("q") || undefined;
+        const webCompatibleOnly = url.searchParams.get("web") === "1";
         const country = url.searchParams.get("country") || undefined;
         const category = url.searchParams.get("category") || undefined;
         const limit = Number(url.searchParams.get("limit") || "30");
@@ -1122,7 +1126,10 @@ export default {
           }
         }
 
-        const channels = [...merged.values()].slice(0, limit);
+        const eligibleChannels = [...merged.values()].filter(
+          (channel) => !webCompatibleOnly || (!channel.userAgent && !channel.referrer),
+        );
+        const channels = eligibleChannels.slice(0, limit);
         const ok = result.ok || channels.length > 0;
         return new Response(JSON.stringify({
           ok,

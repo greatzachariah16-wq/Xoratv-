@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
@@ -13,6 +14,7 @@ type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
   categories: string[]; streamUrl: string; quality?: string | null;
   labels: string[]; score?: number; provider?: "nexus" | "iptv-org";
+  userAgent?: string; referrer?: string;
 };
 
 const FILTERS = ["All Sports", "Football", "Basketball", "Tennis", "Motorsport", "Rugby", "Cricket", "Boxing", "Other"] as const;
@@ -68,11 +70,13 @@ function normalizeSportsChannel(value: unknown): SportsChannel | null {
     quality: typeof raw.quality === "string" ? raw.quality : null,
     score: typeof raw.score === "number" && Number.isFinite(raw.score) ? raw.score : undefined,
     provider: raw.provider === "nexus" || raw.provider === "iptv-org" ? raw.provider : undefined,
+    userAgent: typeof raw.userAgent === "string" ? raw.userAgent : undefined,
+    referrer: typeof raw.referrer === "string" ? raw.referrer : undefined,
   };
 }
 
 async function loadSportsChannels(): Promise<SportsChannel[]> {
-  const response = await fetch("/api/tv/channels?category=sports&limit=10000");
+  const response = await fetch("/api/tv/channels?category=sports&limit=10000" + (isNativeVlcPlatform() ? "" : "&web=1"));
   if (!response.ok) throw new Error("Unable to load sports channels right now.");
 
   const data: unknown = await response.json();
@@ -481,7 +485,7 @@ function XSportsPage() {
                 nativeStreamUrl={selected.id === "wwe-superstar-central"
                   ? "/api/tv/stream?provider=iptv-org&channel=" + encodeURIComponent(selected.id)
                   : "/api/tv/stream?provider=" + (selected.provider || "nexus") + "&channel=" + encodeURIComponent(selected.id)}
-                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv
+                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv nativeDirectOnly nativeHeaders={{ ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}), ...(selected.referrer ? { Referer: selected.referrer } : {}) }}
                 className="aspect-video w-full rounded-none"
               />
             </div>

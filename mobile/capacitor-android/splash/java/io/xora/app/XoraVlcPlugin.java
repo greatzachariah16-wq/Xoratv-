@@ -106,6 +106,7 @@ public class XoraVlcPlugin extends Plugin {
     private ProgressBar bufferProgressBar;
     private TextView channelTitleText;
     private TextView liveBadge;
+    private TextView streamInfoBadge;
     private TextView playButton;
     private TextView muteButton;
     private TextView fullscreenButton;
@@ -133,6 +134,7 @@ public class XoraVlcPlugin extends Plugin {
     private boolean resumeAfterFocusGain;
     private boolean playingBeforeAppPause;
     private boolean startupBufferActive;
+    private boolean directPlaybackOnly;
     private boolean bufferHealthKnown;
     private boolean bufferHealthy = true;
 
@@ -422,6 +424,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void refreshLocalPlaybackSessions() throws IOException {
+        if (directPlaybackOnly) return;
         if (upstreamStreamUrls.isEmpty()) throw new IOException("No upstream playback candidates are available.");
         if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient(), getContext().getCacheDir());
         localHlsProxy.clearSessions();
@@ -439,6 +442,17 @@ public class XoraVlcPlugin extends Plugin {
         directCandidateCount = 0;
         lastReportedTransport = "";
         if (localHlsProxy != null) localHlsProxy.clearSessions();
+
+        directPlaybackOnly = call.getBoolean("directOnly", false);
+        if (directPlaybackOnly) {
+            if (!isHttpUrl(url)) throw new IOException("A valid direct stream URL is required.");
+            streamUrls.add(url);
+            upstreamStreamUrls.add(url);
+            streamHeaders.add(call.getObject("headers") == null ? new JSONObject() : call.getObject("headers"));
+            streamTransports.add("direct");
+            directCandidateCount = 0;
+            return;
+        }
 
         JSONArray candidates = call.getArray("candidates");
         if (candidates != null && candidates.length() > 0) {
@@ -468,8 +482,9 @@ public class XoraVlcPlugin extends Plugin {
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
 
-        if (!isSecureUrl(url)) {
-            call.reject("A secure stream URL is required.");
+        boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -535,8 +550,9 @@ public class XoraVlcPlugin extends Plugin {
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
 
-        if (!isSecureUrl(url)) {
-            call.reject("A secure stream URL is required.");
+        boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -738,10 +754,26 @@ public class XoraVlcPlugin extends Plugin {
         channelTitleText.setEllipsize(android.text.TextUtils.TruncateAt.END);
         channelTitleText.setMaxWidth(dp(230));
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        topBar.addView(channelTitleText, titleParams);
+
+        streamInfoBadge = new TextView(getContext());
+        streamInfoBadge.setTextColor(0xFFF4E7DF);
+        streamInfoBadge.setTextSize(9);
+        streamInfoBadge.setTypeface(null, android.graphics.Typeface.BOLD);
+        streamInfoBadge.setSingleLine(true);
+        streamInfoBadge.setPadding(dp(8), dp(5), dp(8), dp(5));
+        streamInfoBadge.setBackground(roundedBackground(0x88201C1A, dp(20)));
+        streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · 0 CACHED" : "0 SEGMENTS CACHED");
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        topBar.addView(channelTitleText, titleParams);
+        infoParams.setMargins(0, 0, dp(7), 0);
+        topBar.addView(streamInfoBadge, infoParams);
 
         liveBadge = new TextView(getContext());
         liveBadge.setText("LIVE");
@@ -785,13 +817,9 @@ public class XoraVlcPlugin extends Plugin {
         bufferHealthBanner.setBackground(roundedBackground(0xDD315847, dp(9)));
         bufferHealthBanner.setText("Stream buffer healthy");
         bufferHealthBanner.setVisibility(View.GONE);
-        FrameLayout.LayoutParams healthParams = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
-        );
-        healthParams.setMargins(dp(12), dp(58), dp(12), 0);
-        videoFrame.addView(bufferHealthBanner, healthParams);
+        // Buffer health is represented by the compact streamInfoBadge in the top rail.
+        // Never place a full-width status banner over the broadcast picture.
+        bufferHealthBanner.setVisibility(View.GONE);
 
         statusCard = new LinearLayout(getContext());
         statusCard.setOrientation(LinearLayout.VERTICAL);
@@ -898,17 +926,18 @@ public class XoraVlcPlugin extends Plugin {
         button.setText(symbol);
         button.setTextColor(Color.WHITE);
         button.setTextSize(18);
+        button.setTypeface(null, android.graphics.Typeface.BOLD);
         button.setGravity(Gravity.CENTER);
         button.setContentDescription(description);
         button.setFocusable(true);
         button.setClickable(true);
-        button.setBackground(roundedBackground(0x55FFFFFF, dp(14)));
+        button.setBackground(roundedBackground(0x66221F24, dp(22)));
         button.setOnClickListener(view -> {
             action.run();
             showControls();
         });
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(44), dp(44));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(42), dp(42));
         params.setMargins(dp(4), 0, dp(4), 0);
         parent.addView(button, params);
         return button;
@@ -1303,11 +1332,11 @@ public class XoraVlcPlugin extends Plugin {
         clearBufferingWatchdog();
         clearRetry();
         final String selectedUrl = streamUrls.get(currentStreamIndex);
-        if (!isLocalProxyUrl(selectedUrl)) {
+        if (directPlaybackOnly ? !isHttpUrl(selectedUrl) : !isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
             return;
         }
-        if (localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
+        if (!directPlaybackOnly && localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
             final long bufferPlayerGeneration = playerGeneration;
             final long bufferAttemptGeneration = ++playbackAttemptGeneration;
             startupBufferActive = true;
@@ -1348,7 +1377,7 @@ public class XoraVlcPlugin extends Plugin {
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         // Enforce the core invariant: LibVLC must never receive an origin or Render URL.
-        if (!isLocalProxyUrl(selectedUrl)) {
+        if (directPlaybackOnly ? !isHttpUrl(selectedUrl) : !isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
             return;
         }
@@ -1382,7 +1411,14 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
-        // LibVLC receives loopback URLs only. The local proxy injects provider headers.
+        if (directPlaybackOnly && currentStreamIndex < streamHeaders.size()) {
+            JSONObject headers = streamHeaders.get(currentStreamIndex);
+            String userAgent = headers.optString("User-Agent", headers.optString("user-agent", ""));
+            String referer = headers.optString("Referer", headers.optString("referer", headers.optString("referrer", "")));
+            if (!userAgent.isEmpty()) media.addOption(":http-user-agent=" + userAgent);
+            if (!referer.isEmpty()) media.addOption(":http-referrer=" + referer);
+        }
+        // Direct-only mode sends the origin URL; default mode stays loopback-proxied.
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
         media.addOption(":http-reconnect");
@@ -1487,6 +1523,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private boolean touchCurrentLocalSession() {
+        if (directPlaybackOnly) return true;
         return localHlsProxy != null
             && currentStreamIndex >= 0
             && currentStreamIndex < streamUrls.size()
@@ -1739,6 +1776,9 @@ public class XoraVlcPlugin extends Plugin {
         if (bufferProgressText != null) {
             bufferProgressText.setText("Preparing stream · " + progress.downloadedSegments + " segments cached");
         }
+        if (streamInfoBadge != null && !directPlaybackOnly) {
+            streamInfoBadge.setText(progress.downloadedSegments + " SEGMENTS CACHED");
+        }
         if (bufferHealthBanner != null) {
             if (!progress.healthy) {
                 bufferHealthBanner.setText("Slow internet connection · buffer replenishing slowly");
@@ -1774,9 +1814,12 @@ public class XoraVlcPlugin extends Plugin {
             if (bufferProgressText != null) bufferProgressText.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferHealthBanner != null) {
-                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown;
+                boolean showHealth = !directPlaybackOnly && next == PlaybackState.PLAYING && bufferHealthKnown;
                 bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
             }
+        }
+        if (streamInfoBadge != null) {
+            streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · 0 CACHED" : (bufferHealthKnown ? streamInfoBadge.getText() : "LIVE STREAM"));
         }
         String transport = currentStreamIndex < streamTransports.size()
             ? streamTransports.get(currentStreamIndex)

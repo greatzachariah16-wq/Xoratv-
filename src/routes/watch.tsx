@@ -92,6 +92,17 @@ async function fetchMovieStream(id: string): Promise<{
   };
 }
 
+function isDirectMediaUrl(value?: string | null): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    const path = url.pathname.toLowerCase();
+    return url.protocol === "https:" && [".m3u8", ".mp4", ".m4v", ".mov", ".mpd"].some((ext) => path.endsWith(ext));
+  } catch {
+    return false;
+  }
+}
+
 function cleanTitle(value: string): string {
   let title = value
     .replace(/\s*[-–—|:]\s*(?:CLASSIC AFRICAN EPIC MOVIES|FULL MOVIE|FULL FILM|OFFICIAL(?:\s+VIDEO)?|MOVIE\s+TRAILER).*$/i, "")
@@ -164,6 +175,7 @@ function WatchPage() {
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
   const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
   const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
+  const nativeCinemaDirectUrl = isDirectMediaUrl(originalUrl) ? originalUrl : "";
   const title = activeMovie?.title || streamData?.title || "Now Playing";
   const displayTitle = cleanTitle(title);
   const description = activeMovie?.description?.trim() || "";
@@ -256,7 +268,9 @@ function WatchPage() {
             ) : streamUrl ? (
               <VideoPlayer
                 key={activeId}
-                streamUrl={playerStreamUrl}
+                streamUrl={nativeCinemaDirectUrl || playerStreamUrl}
+                nativeVlc={Boolean(nativeCinemaDirectUrl)}
+                nativeDirectOnly={Boolean(nativeCinemaDirectUrl)}
                 externalPoster={activeMovie?.thumbnailUrl}
                 title={title}
                 autoPlay={false}

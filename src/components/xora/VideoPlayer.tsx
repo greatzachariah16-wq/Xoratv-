@@ -43,6 +43,12 @@ type Props = {
   streamUrl?: string | null;
   /** Android-only proxied URL for LibVLC; web playback keeps using streamUrl. */
   nativeStreamUrl?: string | null;
+  /** Use the shared native LibVLC surface for supported non-live streams. */
+  nativeVlc?: boolean;
+  /** Send the original media URL straight to LibVLC without the local proxy/cache. */
+  nativeDirectOnly?: boolean;
+  /** Provider request headers for direct native playback. */
+  nativeHeaders?: Record<string, string>;
   vertical?: boolean;
   title?: string;
   autoPlay?: boolean;
@@ -66,6 +72,9 @@ export function NativeVideoPlayer({
   externalPoster,
   streamUrl,
   nativeStreamUrl,
+  nativeVlc = false,
+  nativeDirectOnly = false,
+  nativeHeaders,
   vertical = false,
   title = "Video",
   autoPlay = false,
@@ -93,7 +102,7 @@ export function NativeVideoPlayer({
   const originalShortsSrc = feed === "shorts" && src ? getOriginalVideoUrl(src) : null;
   const shortsFallbackSrc = feed === "shorts" && src ? get240pDeliveryUrl(src) : null;
   const activeSrc = feed === "shorts" && src ? (originalShortsSrc || src) : src;
-  const nativeVlcOnly = liveTv && isNativeVlcPlatform();
+  const nativeVlcOnly = (liveTv || nativeVlc) && isNativeVlcPlatform();
   const rawPoster = externalPoster ?? signedPoster;
   const poster = getOptimizedImageUrlWithConfig(rawPoster, 400, dataSaver);
 
@@ -545,8 +554,10 @@ export function NativeVideoPlayer({
     setFailed(false);
     try {
       await openNativeVlc({
-        url: nativeStreamUrl || activeSrc,
+        url: nativeDirectOnly ? activeSrc : (nativeStreamUrl || activeSrc),
         title,
+        directOnly: nativeDirectOnly,
+        headers: nativeHeaders,
       });
       nativeVlcActiveRef.current = true;
       setNativeVlcActive(true);
@@ -555,10 +566,10 @@ export function NativeVideoPlayer({
       setWaiting(false);
       setFailed(true);
     }
-  }, [activeSrc, nativeStreamUrl, nativeVlcOnly, title]);
+  }, [activeSrc, nativeDirectOnly, nativeHeaders, nativeStreamUrl, nativeVlcOnly, title]);
 
   const toggle = useCallback(() => {
-    if (liveTv && isNativeVlcPlatform()) {
+    if (nativeVlcOnly) {
       void startNativePlayback();
       return;
     }
@@ -577,12 +588,12 @@ export function NativeVideoPlayer({
     } else {
       video.pause();
     }
-  }, [activeSrc, liveTv, startNativePlayback]);
+  }, [activeSrc, nativeVlcOnly, startNativePlayback]);
 
   // Autoplay-in-view (shorts): starts unmuted when in view, and paused when out of view.
   useEffect(() => {
     if (!autoPlay) return;
-    if (liveTv && isNativeVlcPlatform() && activeSrc) {
+    if (nativeVlcOnly && activeSrc) {
       void startNativePlayback();
       return;
     }
@@ -604,7 +615,7 @@ export function NativeVideoPlayer({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [autoPlay, activeSrc, liveTv, startNativePlayback]);
+  }, [autoPlay, activeSrc, liveTv, nativeVlcOnly, src, startNativePlayback]);
 
   const aspect = vertical ? "aspect-[9/16]" : "aspect-video";
 
@@ -868,7 +879,7 @@ export function NativeVideoPlayer({
 
 export function VideoPlayer(props: Props) {
   // Shorts are Xora-native only. Never send Shorts through provider embeds.
-  if (props.feed === "shorts") {
+  if (props.feed === "shorts" || props.nativeVlc) {
     return <NativeVideoPlayer {...props} autoPlay={props.autoPlay} />;
   }
 
