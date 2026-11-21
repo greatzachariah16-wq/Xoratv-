@@ -1447,7 +1447,7 @@ export default {
       }
     }
 
-    // XoraTV EPG endpoint: NOW / NEXT / upcoming programmes from IPTV Nexus.
+    // XoraTV EPG endpoint: IPTV-org published XMLTV first, then Nexus fallback.
     if (url.pathname === "/api/tv/guide" && request.method === "GET") {
       try {
         const channelId = url.searchParams.get("channel");
