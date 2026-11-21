@@ -277,19 +277,9 @@ function KidsPage() {
                 <CountryRankedChannels channels={channelsByAge} onSelect={selectKidsChannel} selectedId={visibleSelected?.id} title="Kids channels by country" />
               ) : null}
 
-              {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length ? (
-                <section className="space-y-3" aria-label="More kids channels">
-                  <SectionHeader title="More to explore" subtitle={channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length + " more channels"} />
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).map((channel, index) => (
-                      <ChannelCard key={channel.id} channel={channel} active={false} index={index}
-                        onSelect={selectKidsChannel}
-                        favorite={favoriteChannels.includes(channel.id)} onFavorite={toggleChannelFavorite}
-                        statusMode="live" metaMode="language" />
-                    ))}
-                  </div>
-                </section>
-              ) : !query.isLoading && !query.isError && !visibleSelected ? <KidsEmptyState message="No kids channels match this age group." /> : null}
+              {!channelsByAge.length && !query.isLoading && !query.isError
+                ? <KidsEmptyState message="No kids channels match this age group." />
+                : null}
             </section>
           )}
         </main>
