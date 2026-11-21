@@ -226,3 +226,62 @@ export function ChannelCard<T extends BroadcastChannel>({
     </div>
   );
 }
+
+const AFRICAN_COUNTRY_CODES = new Set(["DZ","AO","BJ","BW","BF","BI","CV","CM","CF","TD","KM","CG","CD","CI","DJ","EG","GQ","ER","SZ","ET","GA","GM","GH","GN","GW","KE","LS","LR","LY","MG","MW","ML","MR","MU","MA","MZ","NA","NE","NG","RW","ST","SN","SC","SL","SO","ZA","SS","SD","TZ","TG","TN","UG","ZM","ZW"]);
+type CountryRank = "nigeria" | "africa" | "usa" | "uk" | "others";
+const COUNTRY_RANKS: { id: CountryRank; title: string; flag: string }[] = [
+  { id: "nigeria", title: "Nigeria", flag: "🇳🇬" },
+  { id: "africa", title: "Other African countries", flag: "🌍" },
+  { id: "usa", title: "United States", flag: "🇺🇸" },
+  { id: "uk", title: "United Kingdom", flag: "🇬🇧" },
+  { id: "others", title: "Others", flag: "🌐" },
+];
+
+export function getCountryRankedGroups<T extends BroadcastChannel>(channels: T[]): Record<CountryRank, T[]> {
+  const groups: Record<CountryRank, T[]> = { nigeria: [], africa: [], usa: [], uk: [], others: [] };
+  const sorted = [...channels].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)
+    || getChannelDisplayName(a).localeCompare(getChannelDisplayName(b)));
+  sorted.forEach((channel) => {
+    const code = getChannelCountryCode(channel.country);
+    const rank: CountryRank = code === "NG" ? "nigeria"
+      : code && AFRICAN_COUNTRY_CODES.has(code) ? "africa"
+      : code === "US" ? "usa" : code === "GB" ? "uk" : "others";
+    groups[rank].push(channel);
+  });
+  return groups;
+}
+
+export function CountryRankedChannels<T extends BroadcastChannel>({
+  channels, onSelect, selectedId, title = "Explore channels by country",
+}: {
+  channels: T[]; onSelect: (channel: T) => void; selectedId?: string | null; title?: string;
+}) {
+  const groups = getCountryRankedGroups(channels);
+  return (
+    <section className="space-y-4" aria-label={title}>
+      <div>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-primary">Explore the world</p>
+        <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Nigeria first, followed by Africa, USA, UK and the rest of the world.</p>
+      </div>
+      {COUNTRY_RANKS.map((region) => {
+        const items = groups[region.id];
+        if (!items.length) return null;
+        return (
+          <div key={region.id} className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><span>{region.flag}</span>{region.title}</h3>
+              <span className="text-[11px] font-semibold text-muted-foreground">{items.length.toLocaleString()} channels</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {items.slice(0, 4).map((channel, index) => (
+                <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id}
+                  index={index} onSelect={onSelect} statusMode="live" />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
