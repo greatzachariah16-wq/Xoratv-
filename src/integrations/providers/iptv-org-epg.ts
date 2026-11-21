@@ -38,6 +38,7 @@ const INDEX_TTL_MS = 6 * 60 * 60 * 1000;
 const SOURCE_TTL_MS = 20 * 60 * 1000;
 const MAX_GUIDE_BYTES = 30 * 1024 * 1024;
 const MAX_SOURCES_PER_CHANNEL = 4;
+const MAX_CACHED_GUIDE_SOURCES = 8;
 
 let indexCache: { records: GuideRecord[]; expiresAt: number } | null = null;
 let indexLoading: Promise<GuideRecord[]> | null = null;
@@ -105,8 +106,7 @@ async function loadGuideSource(sourceUrl: string): Promise<string> {
     });
     if (!response.ok) throw new Error("EPG source returned " + response.status);
     const bytes = await readLimitedBody(response);
-    const isGzip = parsedUrl.pathname.toLowerCase().endsWith(".gz")
-      || response.headers.get("content-type")?.toLowerCase().includes("gzip");
+    const isGzip = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
     let xml: string;
     if (isGzip) {
       const { gunzipSync } = await import("node:zlib");
@@ -118,6 +118,11 @@ async function loadGuideSource(sourceUrl: string): Promise<string> {
       throw new Error("EPG source did not contain XMLTV programme data");
     }
     sourceCache.set(sourceUrl, { xml, expiresAt: Date.now() + SOURCE_TTL_MS });
+    while (sourceCache.size > MAX_CACHED_GUIDE_SOURCES) {
+      const oldestKey = sourceCache.keys().next().value;
+      if (!oldestKey) break;
+      sourceCache.delete(oldestKey);
+    }
     return xml;
   })().finally(() => {
     sourceLoading.delete(sourceUrl);
