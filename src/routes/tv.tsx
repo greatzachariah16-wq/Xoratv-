@@ -227,29 +227,18 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
   onSelect: (channel: Channel) => void;
   onToggleFavorite: (channelId: string) => void;
 }) {
-  const [scrollTop, setScrollTop] = useState(0);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const virtualized = channels.length > 60;
-  const rowHeight = 72;
-  const start = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 6) : 0;
-  const end = virtualized ? Math.min(channels.length, Math.ceil((scrollTop + 600) / rowHeight) + 6) : channels.length;
-
-  useEffect(() => {
-    if (!selectedId || !virtualized) return;
-    const index = channels.findIndex((channel) => channel.id === selectedId);
-    if (index < 0) return;
-    const nextTop = Math.max(0, index * rowHeight - 160);
-    if (viewportRef.current) viewportRef.current.scrollTop = nextTop;
-    setScrollTop(nextTop);
-  }, [channels, selectedId, virtualized]);
-
+  const [visibleCount, setVisibleCount] = useState(36);
+  useEffect(() => { setVisibleCount(36); }, [channels]);
   return (
-    <div ref={viewportRef} className="xora-tv-channel-list-viewport" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)} aria-label="Live TV channels">
-      {virtualized ? <div aria-hidden="true" style={{ height: start * rowHeight }} /> : null}
-      {channels.slice(start, end).map((channel) => (
+    <div className="xora-tv-channel-list-viewport" aria-label="Live TV channels">
+      {channels.slice(0, visibleCount).map((channel) => (
         <ChannelRow key={channel.id} channel={channel} selected={selectedId === channel.id} favorite={favorites.includes(channel.id)} onSelect={onSelect} onToggleFavorite={onToggleFavorite} />
       ))}
-      {virtualized ? <div aria-hidden="true" style={{ height: (channels.length - end) * rowHeight }} /> : null}
+      {visibleCount < channels.length ? (
+        <button type="button" className="xora-tv-load-more" onClick={() => setVisibleCount((count) => Math.min(channels.length, count + 36))}>
+          Show more channels <span>{Math.min(36, channels.length - visibleCount)} more</span>
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -635,7 +624,7 @@ function LiveTvPage() {
   return (
     <AppShell>
       <CpxLiveTvGate>
-        <div className={isLandscape ? "xora-tv-page is-landscape" : "xora-tv-page"}>
+        <div className={isLandscape ? "xora-tv-page xora-tv-redesign is-landscape" : "xora-tv-page xora-tv-redesign"}>
           <header className="xora-tv-heading">
             <div className="xora-tv-heading-title">
               <span className="xora-tv-heading-icon"><Radio aria-hidden="true" /></span>

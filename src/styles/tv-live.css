@@ -208,3 +208,89 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
 .xora-tv-ranked-card strong{width:100%;overflow:hidden;color:var(--xora-ink);font-size:10px;font-weight:750;text-overflow:ellipsis;white-space:nowrap}.xora-tv-ranked-card small{width:100%;overflow:hidden;color:var(--muted-foreground);font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:520px){.xora-tv-region-grid{grid-template-columns:repeat(5,112px)}.xora-tv-ranking-banner{min-height:102px;padding:13px}.xora-tv-ranking-globe{width:46px;height:46px;flex-basis:46px}.xora-tv-ranked-card,.xora-tv-ranked-logo{width:104px;min-width:104px}.xora-tv-ranked-logo{height:72px}}
 @media(prefers-reduced-motion:reduce){.xora-tv-region-card{transition:none}}
+
+
+/* Premium Live TV finishing pass: one natural page scroll, clear hierarchy, and a quieter cinema-led surface. */
+.xora-tv-redesign {
+  --nav-h: 88px;
+  padding: 4px 0 calc(var(--nav-h) + env(safe-area-inset-bottom));
+  max-width: 100%;
+}
+.xora-tv-redesign .xora-tv-heading { gap: 13px; margin-bottom: 16px; }
+.xora-tv-redesign .xora-tv-heading-title { gap: 11px; }
+.xora-tv-redesign .xora-tv-heading-title h1 { font-size: clamp(28px,7vw,36px); line-height: 1; letter-spacing: -.055em; }
+.xora-tv-redesign .xora-tv-heading-title p { margin-top: 5px; font-size: 12px; }
+.xora-tv-redesign .xora-tv-heading-icon { width: 46px; height: 46px; border-radius: 16px; box-shadow: 0 7px 20px rgba(115,67,43,.12),inset 0 1px 0 #fff; }
+.xora-tv-redesign .xora-tv-tools { gap: 7px; }
+.xora-tv-redesign .xora-tv-search { height: 46px; border-radius: 16px; background: color-mix(in oklch,var(--card) 94%,transparent); box-shadow: 0 5px 18px rgba(50,35,25,.045); }
+.xora-tv-redesign .xora-tv-refresh { height: 44px; min-width: 44px; border-radius: 15px; padding-inline: 11px; }
+.xora-tv-redesign .xora-tv-filter-row { flex-wrap: nowrap; overflow-x: auto; gap: 7px; padding: 2px 0 7px; scrollbar-width: none; }
+.xora-tv-redesign .xora-tv-filter-row::-webkit-scrollbar { display:none; }
+.xora-tv-redesign .xora-tv-filter-row button { min-height: 36px; border-radius: 999px; padding-inline: 14px; font-size: 10px; font-weight: 750; }
+.xora-tv-redesign .xora-tv-notice { margin-bottom: 12px; border-radius: 13px; padding: 8px 11px; font-size: 9px; }
+.xora-tv-redesign .xora-tv-browser-player { overflow: hidden; margin: 0 0 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #090909; box-shadow: 0 18px 42px -24px rgba(0,0,0,.65); }
+.xora-tv-redesign .xora-tv-browser-player > * { width: 100%; }
+.xora-tv-redesign .xora-tv-featured-card { height: auto; min-height: 0; margin: 0 0 16px; border-radius: 0 0 20px 20px; border-top: 0; padding: 12px 15px 14px; box-shadow: 0 10px 25px rgba(75,49,35,.055),inset 0 1px 0 rgba(255,255,255,.8); }
+.xora-tv-redesign .xora-tv-now-topline { justify-content: flex-start; }
+.xora-tv-redesign .xora-tv-now-topline .xora-tv-live-pill { margin-left: auto; }
+.xora-tv-redesign .xora-tv-now-content { padding: 9px 0 4px; }
+.xora-tv-redesign .xora-tv-now-copy h2 { font-size: clamp(19px,5vw,24px); }
+.xora-tv-redesign .xora-tv-now-logo { width: 66px; max-height: 66px; }
+.xora-tv-redesign .xora-tv-state-row { margin-top: 8px; }
+.xora-tv-redesign .xora-tv-rail { margin: 17px 0 20px; }
+.xora-tv-redesign .xora-tv-section-heading { margin-bottom: 10px; }
+.xora-tv-redesign .xora-tv-section-heading h2 { font-size: 18px; letter-spacing: -.035em; }
+.xora-tv-redesign .xora-tv-ranking { gap: 13px; margin: 22px 0 26px; }
+.xora-tv-redesign .xora-tv-ranking-banner { min-height: 0; border-radius: 18px; padding: 13px 14px; box-shadow: none; }
+.xora-tv-redesign .xora-tv-ranking-globe { width: 42px; height: 42px; flex-basis: 42px; border-radius: 14px; }
+.xora-tv-redesign .xora-tv-ranking-globe svg { width: 22px; height: 22px; }
+.xora-tv-redesign .xora-tv-ranking-banner>div>span { font-size: 8px; }
+.xora-tv-redesign .xora-tv-ranking-banner h2 { font-size: 17px; }
+.xora-tv-redesign .xora-tv-ranking-banner p { font-size: 10px; }
+.xora-tv-redesign .xora-tv-region-grid { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 6px; overflow: visible; }
+.xora-tv-redesign .xora-tv-region-card { min-width: 0; min-height: 86px; gap: 3px; border-radius: 14px; padding: 8px 4px; }
+.xora-tv-redesign .xora-tv-region-flag { font-size: 19px; }
+.xora-tv-redesign .xora-tv-region-card strong { font-size: 10px; }
+.xora-tv-redesign .xora-tv-region-card small { display:none; }
+.xora-tv-redesign .xora-tv-region-card em { font-size: 8px; }
+.xora-tv-redesign .xora-tv-ranked-section { border-top: 0; padding-top: 5px; }
+.xora-tv-redesign .xora-tv-ranked-heading { margin-bottom: 8px; }
+.xora-tv-redesign .xora-tv-ranked-heading h2 { font-size: 13px; }
+.xora-tv-redesign .xora-tv-ranked-heading p { font-size: 9px; }
+.xora-tv-redesign .xora-tv-ranked-track { gap: 11px; padding-bottom: 5px; }
+.xora-tv-redesign .xora-tv-ranked-card { width: 108px; min-width: 108px; gap: 6px; }
+.xora-tv-redesign .xora-tv-ranked-logo { width: 108px; height: 72px; border-radius: 13px; background: color-mix(in oklch,var(--card) 88%,var(--primary) 4%); }
+.xora-tv-redesign .xora-tv-ranked-card strong { font-size: 10px; }
+.xora-tv-redesign .xora-tv-ranked-card small { font-size: 9px; }
+.xora-tv-redesign .xora-tv-channel-section { margin-top: 25px; }
+.xora-tv-redesign .xora-tv-channel-section .xora-tv-section-heading { margin-bottom: 12px; }
+.xora-tv-redesign .xora-tv-channel-list-viewport { display:grid; max-height:none; height:auto; overflow:visible; gap:8px; padding:0; }
+.xora-tv-redesign .xora-tv-channel-row { min-height:68px; border-radius:16px; background:var(--card); box-shadow:0 4px 15px rgba(55,39,29,.045); }
+.xora-tv-redesign .xora-tv-channel-select { min-height:68px; gap:11px; padding:9px 10px; }
+.xora-tv-redesign .xora-tv-row-logo { width:46px; height:46px; border-radius:13px; }
+.xora-tv-redesign .xora-tv-row-copy strong { font-size:12px; }
+.xora-tv-redesign .xora-tv-row-copy small { margin-top:3px; font-size:9px; }
+.xora-tv-redesign .xora-tv-favorite { width:38px; height:38px; }
+.xora-tv-redesign .xora-tv-load-more { display:flex; min-height:46px; align-items:center; justify-content:center; gap:8px; margin-top:5px; border:1px solid var(--border); border-radius:15px; background:var(--card); color:var(--foreground); font-size:11px; font-weight:800; }
+.xora-tv-redesign .xora-tv-load-more span { color:var(--muted-foreground); font-size:9px; font-weight:650; }
+.xora-tv-redesign .xora-tv-guide { margin-top:22px; border-radius:19px; }
+.xora-tv-redesign .xora-tv-guide-heading { padding:14px 15px; }
+.xora-tv-redesign .xora-tv-guide-body { padding:0 15px 15px; }
+.xora-tv-redesign .xora-tv-no-channels { border-radius:18px; }
+@media(max-width:420px) {
+  .xora-tv-redesign .xora-tv-refresh span { display:none; }
+  .xora-tv-redesign .xora-tv-region-card em { font-size:7px; }
+  .xora-tv-redesign .xora-tv-ranked-card,.xora-tv-redesign .xora-tv-ranked-logo { width:100px; min-width:100px; }
+  .xora-tv-redesign .xora-tv-ranked-logo { height:68px; }
+}
+@media (min-width:760px) {
+  .xora-tv-redesign { max-width:1100px; margin-inline:auto; }
+  .xora-tv-redesign .xora-tv-ranking { display:grid; grid-template-columns:minmax(210px,.75fr) minmax(0,2fr); align-items:start; column-gap:20px; }
+  .xora-tv-redesign .xora-tv-ranking-banner { grid-column:1; grid-row:1; }
+  .xora-tv-redesign .xora-tv-region-grid { grid-column:1; grid-row:2; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .xora-tv-redesign .xora-tv-ranked-section { grid-column:2; }
+  .xora-tv-redesign .xora-tv-channel-list-viewport { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(prefers-reduced-motion:reduce) {
+  .xora-tv-redesign .xora-tv-live-pill i { animation:none; }
+}
