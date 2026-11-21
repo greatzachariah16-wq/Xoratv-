@@ -124,6 +124,7 @@ async function readChannelCache(key: string): Promise<Channel[] | null> {
 
 async function loadChannels(query: string, category: string): Promise<Channel[]> {
   const params = new URLSearchParams({ limit: "10000" });
+  if (!isNativeVlcPlatform()) params.set("web", "1");
   if (query.trim()) params.set("q", query.trim());
   if (category) params.set("category", category);
   const key = cacheKey(query, category);
