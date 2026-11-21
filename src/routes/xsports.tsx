@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { CountryRankedChannels } from "@/components/xora/CountryRankedChannels";
 import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
-import { CategoryChips, CountryRankedChannels, ChannelCard, ChannelStatusBadge, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
+import { CategoryChips, ChannelCard, ChannelStatusBadge, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
 
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
