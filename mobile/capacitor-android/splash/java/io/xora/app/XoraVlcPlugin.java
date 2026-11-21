@@ -106,6 +106,7 @@ public class XoraVlcPlugin extends Plugin {
     private ProgressBar bufferProgressBar;
     private TextView channelTitleText;
     private TextView liveBadge;
+    private TextView streamInfoBadge;
     private TextView playButton;
     private TextView muteButton;
     private TextView fullscreenButton;
@@ -753,10 +754,26 @@ public class XoraVlcPlugin extends Plugin {
         channelTitleText.setEllipsize(android.text.TextUtils.TruncateAt.END);
         channelTitleText.setMaxWidth(dp(230));
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        topBar.addView(channelTitleText, titleParams);
+
+        streamInfoBadge = new TextView(getContext());
+        streamInfoBadge.setTextColor(0xFFF4E7DF);
+        streamInfoBadge.setTextSize(9);
+        streamInfoBadge.setTypeface(null, android.graphics.Typeface.BOLD);
+        streamInfoBadge.setSingleLine(true);
+        streamInfoBadge.setPadding(dp(8), dp(5), dp(8), dp(5));
+        streamInfoBadge.setBackground(roundedBackground(0x88201C1A, dp(20)));
+        streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · CACHE OFF" : "0 SEGMENTS CACHED");
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        topBar.addView(channelTitleText, titleParams);
+        infoParams.setMargins(0, 0, dp(7), 0);
+        topBar.addView(streamInfoBadge, infoParams);
 
         liveBadge = new TextView(getContext());
         liveBadge.setText("LIVE");
@@ -806,7 +823,9 @@ public class XoraVlcPlugin extends Plugin {
             Gravity.TOP
         );
         healthParams.setMargins(dp(12), dp(58), dp(12), 0);
-        videoFrame.addView(bufferHealthBanner, healthParams);
+        // Buffer health is represented by the compact streamInfoBadge in the top rail.
+        // Never place a full-width status banner over the broadcast picture.
+        bufferHealthBanner.setVisibility(View.GONE);
 
         statusCard = new LinearLayout(getContext());
         statusCard.setOrientation(LinearLayout.VERTICAL);
@@ -913,17 +932,18 @@ public class XoraVlcPlugin extends Plugin {
         button.setText(symbol);
         button.setTextColor(Color.WHITE);
         button.setTextSize(18);
+        button.setTypeface(null, android.graphics.Typeface.BOLD);
         button.setGravity(Gravity.CENTER);
         button.setContentDescription(description);
         button.setFocusable(true);
         button.setClickable(true);
-        button.setBackground(roundedBackground(0x55FFFFFF, dp(14)));
+        button.setBackground(roundedBackground(0x66221F24, dp(22)));
         button.setOnClickListener(view -> {
             action.run();
             showControls();
         });
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(44), dp(44));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(42), dp(42));
         params.setMargins(dp(4), 0, dp(4), 0);
         parent.addView(button, params);
         return button;
@@ -1762,6 +1782,9 @@ public class XoraVlcPlugin extends Plugin {
         if (bufferProgressText != null) {
             bufferProgressText.setText("Preparing stream · " + progress.downloadedSegments + " segments cached");
         }
+        if (streamInfoBadge != null && !directPlaybackOnly) {
+            streamInfoBadge.setText(progress.downloadedSegments + " SEGMENTS CACHED");
+        }
         if (bufferHealthBanner != null) {
             if (!progress.healthy) {
                 bufferHealthBanner.setText("Slow internet connection · buffer replenishing slowly");
@@ -1800,6 +1823,9 @@ public class XoraVlcPlugin extends Plugin {
                 boolean showHealth = !directPlaybackOnly && next == PlaybackState.PLAYING && bufferHealthKnown;
                 bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
             }
+        }
+        if (streamInfoBadge != null) {
+            streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · CACHE OFF" : (bufferHealthKnown ? streamInfoBadge.getText() : "LIVE STREAM"));
         }
         String transport = currentStreamIndex < streamTransports.size()
             ? streamTransports.get(currentStreamIndex)
