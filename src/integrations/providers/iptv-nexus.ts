@@ -57,6 +57,7 @@ export type NexusProgramme = {
 };
 
 let channelsCache: { channels: NexusChannel[]; expiresAt: number } | null = null;
+let playlistEpgUrl = "";
 let channelsLoading: Promise<NexusChannel[]> | null = null;
 const guideCache = new Map<string, { xml: string; expiresAt: number }>();
 
@@ -103,6 +104,8 @@ async function loadChannels(): Promise<NexusChannel[]> {
       if (!response.ok) throw new Error("IPTV Nexus playlist request failed: " + response.status);
       const text = await response.text();
       const lines = text.split(/\r?\n/);
+      const header = lines.find((line) => line.trim().startsWith("#EXTM3U")) || "";
+      playlistEpgUrl = header.match(/\b(?:url-tvg|x-tvg-url|tvg-url)=["']([^"']+)["']/i)?.[1] || "";
       const channels: NexusChannel[] = [];
       const channelsById = new Map<string, NexusChannel>();
       let pending: Record<string, string> | null = null;
@@ -255,6 +258,11 @@ export async function getNexusPlaybackCandidates(channelId: string, limit = 3): 
 export async function getNexusChannel(channelId: string): Promise<NexusTvChannel | null> {
   const all = await loadChannels();
   return toChannel(all.find((channel) => channel.id === channelId) || { id: "", name: "" });
+}
+
+export async function getNexusEpgUrl(): Promise<string> {
+  await loadChannels();
+  return playlistEpgUrl;
 }
 
 async function loadGuide(country?: string): Promise<string> {

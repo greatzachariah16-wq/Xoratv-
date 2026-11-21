@@ -3,7 +3,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarClock,
-  Clock3,
   Radio,
   RefreshCw,
   Search,
@@ -35,6 +34,9 @@ import {
 } from "@/lib/native-vlc";
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
 import { useLandscapeMode } from "@/hooks/useOrientation";
+import { rankLiveTvChannels } from "@/lib/epg/country-ranking";
+import { EpgDayGuide, EpgNowNext, EpgNowNextCompact, EpgSettings, EpgTimelineGrid } from "@/lib/epg/epg-ui";
+import { refreshEpg, startEpgRefreshScheduler, syncEpgChannels } from "@/lib/epg/epg-api";
 import "@/styles/tv-live.css";
 
 type Channel = {
@@ -44,19 +46,12 @@ type Channel = {
   country?: string;
   categories: string[];
   streamUrl: string;
+  referrer?: string | null;
+  userAgent?: string | null;
   quality?: string | null;
   labels: string[];
   score?: number;
   provider?: "nexus" | "iptv-org";
-};
-
-type Programme = {
-  id: string;
-  title: string;
-  description?: string;
-  start: string;
-  stop: string;
-  isLive: boolean;
 };
 
 type CachedChannelList = {
@@ -187,6 +182,7 @@ const ChannelRow = memo(function ChannelRow({ channel, selected, favorite, onSel
         <span className="xora-tv-row-copy">
           <strong>{getChannelDisplayName(channel)}</strong>
           <small>{getCountryFlag(channel.country)} {getCountryName(channel.country)}</small>
+          <EpgNowNextCompact channelId={channel.id} />
         </span>
         <span className="xora-tv-live-pill"><i /> LIVE</span>
         {quality ? <span className="xora-tv-quality-pill">{quality}</span> : null}
@@ -209,7 +205,7 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
   const [scrollTop, setScrollTop] = useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const virtualized = channels.length > 60;
-  const rowHeight = 72;
+  const rowHeight = 92;
   const start = virtualized ? Math.max(0, Math.floor(scrollTop / rowHeight) - 6) : 0;
   const end = virtualized ? Math.min(channels.length, Math.ceil((scrollTop + 600) / rowHeight) + 6) : channels.length;
 
@@ -281,6 +277,20 @@ function LiveTvPage() {
     refetchOnWindowFocus: isOnline && nativeState.state !== "OFFLINE",
     retry: (failureCount) => isOnline && nativeState.state !== "OFFLINE" && failureCount < 3,
   });
+
+  useEffect(() => {
+    const stop = startEpgRefreshScheduler();
+    void refreshEpg().catch((error) => console.info("[Xora EPG] Waiting for an XMLTV URL:", error));
+    return stop;
+  }, []);
+
+  useEffect(() => {
+    if (!query.data?.length) return;
+    void syncEpgChannels(query.data.map((channel) => ({
+      id: channel.id, name: channel.name, tvgId: channel.id, tvgName: channel.name,
+      logo: channel.logo, country: channel.country,
+    }))).catch((error) => console.warn("[Xora EPG] Channel matching failed:", error));
+  }, [query.data]);
 
   const selected = useMemo(
     () => activeChannelId ? query.data?.find((item) => item.id === activeChannelId) || null : null,
@@ -382,17 +392,19 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
-      // Match Xora Kids and XSports: Android fetches the Render stream endpoint,
-      // then its on-device LocalHlsBuffer stores the rolling HLS segments locally.
-      const streamUrl = new URL("/api/tv/stream", window.location.origin);
-      streamUrl.searchParams.set("provider", selected.provider || "nexus");
-      streamUrl.searchParams.set("channel", selected.id);
+      // Live TV direct-play experiment: send the provider URL straight to LibVLC.
+      // This route intentionally does not use Render streaming or LocalHlsBuffer.
       if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: streamUrl.toString(),
+        url: selected.streamUrl,
         title: getChannelDisplayName(selected),
         channelId: selected.id,
+        directOnly: true,
+        headers: {
+          ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}),
+          ...(selected.referrer ? { Referer: selected.referrer } : {}),
+        },
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
@@ -473,22 +485,6 @@ function LiveTvPage() {
     };
   }, []);
 
-  const guide = useQuery({
-    queryKey: ["iptv-nexus-guide", selected?.id],
-    queryFn: async () => {
-      if (!selected) return [] as Programme[];
-      const response = await fetch(`/api/tv/guide?channel=${encodeURIComponent(selected.id)}&hours=12`);
-      if (!response.ok) return [] as Programme[];
-      const data = (await response.json()) as { programmes?: Programme[] };
-      return Array.isArray(data.programmes) ? data.programmes : [];
-    },
-    enabled: Boolean(selected) && isOnline,
-    staleTime: 5 * 60_000,
-    refetchInterval: isOnline ? 5 * 60_000 : false,
-  });
-
-  const nowProgramme = guide.data?.find((item) => item.isLive) || guide.data?.[0] || null;
-  const upcomingProgrammes = (guide.data || []).filter((item) => item.id !== nowProgramme?.id).slice(0, 8);
   const state = nativeState.channelId === selected?.id ? nativeState.state : isOffline ? "OFFLINE" : "CONNECTING";
   const stateMessage = nativeState.channelId === selected?.id
     ? nativeState.message || STATE_LABELS[nativeState.state]
@@ -505,7 +501,7 @@ function LiveTvPage() {
   );
   const visibleChannels = useMemo(() => {
     const normalizedQuery = (q || "").trim().toLowerCase();
-    return allChannels.filter((channel) => {
+    return rankLiveTvChannels(allChannels.filter((channel) => {
       const matchesText = !normalizedQuery
         || channel.name.toLowerCase().includes(normalizedQuery)
         || (channel.country || "").toLowerCase().includes(normalizedQuery)
@@ -519,7 +515,7 @@ function LiveTvPage() {
           ? playerPrefs.recent.includes(channel.id)
           : true;
       return matchesText && matchesCategory && matchesCountry && matchesMode;
-    });
+    }));
   }, [allChannels, q, category, country, filter, playerPrefs.favorites, playerPrefs.recent]);
 
   const favoriteChannels = useMemo(
@@ -568,13 +564,7 @@ function LiveTvPage() {
     }
   }, [selected]);
 
-  const formatTime = (value: string) => {
-    try {
-      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
-    } catch {
-      return value;
-    }
-  };
+
 
   return (
     <AppShell>
@@ -665,6 +655,7 @@ function LiveTvPage() {
                 <h2>All channels</h2>
                 <p>{visibleChannels.length} channels available</p>
               </div>
+              {nativeState.channelId === selected?.id && nativeState.state === "PLAYING" && nativeState.transport === "direct" ? <span className="xora-tv-direct-chip" aria-label="Playing directly through LibVLC"><span /> Direct LibVLC</span> : null}
               {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Cached list</span> : null}
             </div>
 
@@ -686,43 +677,17 @@ function LiveTvPage() {
             )}
           </section>
 
-          {selected ? (
-            <section className="xora-tv-guide">
-              <div className="xora-tv-guide-heading">
-                <CalendarClock aria-hidden="true" />
-                <div>
-                  <h2>TV Guide</h2>
-                  <p>What’s playing now and what’s coming next</p>
-                </div>
-              </div>
-              {nowProgramme ? (
-                <div className="xora-tv-guide-body">
-                  <article className="xora-tv-now-programme">
-                    <span className="xora-tv-programme-kicker">Now playing</span>
-                    <h3>{nowProgramme.title}</h3>
-                    <p>{formatTime(nowProgramme.start)} – {formatTime(nowProgramme.stop)}</p>
-                    {nowProgramme.description ? <p>{nowProgramme.description}</p> : null}
-                  </article>
-                  {upcomingProgrammes.length ? (
-                    <div className="xora-tv-up-next">
-                      <strong><Clock3 aria-hidden="true" /> Up next</strong>
-                      {upcomingProgrammes.map((programme) => (
-                        <div key={programme.id}>
-                          <time>{formatTime(programme.start)}</time>
-                          <span>{programme.title}</span>
-                          <time>{formatTime(programme.stop)}</time>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="xora-tv-guide-empty">
-                  {isOffline ? "The TV guide will refresh when you're back online." : guide.isLoading ? "Loading programme schedule..." : "No EPG schedule is available for this channel right now."}
-                </p>
-              )}
-            </section>
-          ) : null}
+          <section className="xora-tv-guide">
+            <div className="xora-tv-guide-heading"><CalendarClock aria-hidden="true" /><div><h2>Programme guide</h2><p>Now, next and the full day schedule</p></div></div>
+            <EpgSettings />
+            {selected ? <div className="xora-tv-guide-body"><EpgNowNext channelId={selected.id} /><EpgDayGuide channelId={selected.id} /></div> : <p className="xora-tv-guide-empty">Choose a channel to view its programme schedule.</p>}
+            <details className="xora-epg-settings">
+              <summary>Open 24-hour channel timeline</summary>
+              <EpgTimelineGrid channels={visibleChannels.slice(0, 120).map((channel) => ({ id: channel.id, name: channel.name }))} startTime={new Date().setHours(0, 0, 0, 0)} endTime={new Date().setHours(24, 0, 0, 0)} />
+            </details>
+          </section>
+
+
         </div>
       </CpxLiveTvGate>
     </AppShell>
