@@ -24,6 +24,7 @@ import {
   formatMetadataLabel,
   getChannelCountryCode,
   getChannelDisplayName,
+  getCountryRankedGroups,
   getChannelQuality,
   getCountryFlag,
   getCountryName,
@@ -555,13 +556,7 @@ function LiveTvPage() {
     [allChannels, playerPrefs.recent],
   );
 
-  const rankedChannels = useMemo(() => {
-    const sorted = [...allChannels].sort((a, b) =>
-      (b.score ?? 0) - (a.score ?? 0) || getChannelDisplayName(a).localeCompare(getChannelDisplayName(b)),
-    );
-    const inScope = (scope: RankedScope) => sorted.filter((channel) => scope === "all" || getRankedScope(channel.country) === scope);
-    return { nigeria: inScope("nigeria"), africa: inScope("africa"), usa: inScope("usa"), uk: inScope("uk"), others: inScope("others") };
-  }, [allChannels]);
+  const rankedChannels = useMemo(() => getCountryRankedGroups(allChannels), [allChannels]);
 
   const rankedRegions: { id: RankedScope; title: string; subtitle: string; flag: string; count: number }[] = [
     { id: "nigeria", title: "Nigeria", subtitle: "Top priority", flag: "🇳🇬", count: rankedChannels.nigeria.length },
