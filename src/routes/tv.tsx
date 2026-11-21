@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
 import {
   formatMetadataLabel,
+  getChannelCountryCode,
   getChannelDisplayName,
   getChannelQuality,
   getCountryFlag,
