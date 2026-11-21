@@ -1,3 +1,5 @@
+.xora-tv-direct-chip{display:inline-flex;min-height:26px;align-items:center;gap:6px;border:1px solid #c9ddce;border-radius:999px;background:linear-gradient(145deg,#f5fbf5,#eaf4eb);color:#326b49;padding:4px 10px;font-size:9px;font-weight:750;letter-spacing:.01em;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.xora-tv-direct-chip>span{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#37865b;box-shadow:0 0 0 3px rgba(55,134,91,.12)}
 .skeleton:empty,
 .ad-slot:empty,
 .adsterra-banner-ad:empty { display: none; }
