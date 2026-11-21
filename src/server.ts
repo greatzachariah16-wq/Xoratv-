@@ -26,6 +26,7 @@ import {
   getIptvPlaybackInfo,
   getIptvPlaybackCandidates,
 } from "./integrations/providers/iptv-org";
+import { getIptvOrgGuide } from "./integrations/providers/iptv-org-epg";
 import {
   fetchNexusChannels,
   getNexusChannel,
@@ -1457,7 +1458,15 @@ export default {
             headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
           });
         }
-        const programmes = await getNexusGuide(channelId, hours);
+        // Prefer IPTV-org's own channel-to-guide directory. Keep Nexus as a
+        // fallback so existing non-IPTV-org channels retain their current guide path.
+        const iptvOrgProgrammes = await getIptvOrgGuide(channelId, hours).catch((error) => {
+          console.warn("[IPTV-org EPG] Guide lookup failed:", error instanceof Error ? error.message : "unknown error");
+          return [];
+        });
+        const programmes = iptvOrgProgrammes.length > 0
+          ? iptvOrgProgrammes
+          : await getNexusGuide(channelId, hours);
         return new Response(JSON.stringify({ ok: true, channelId, programmes }), {
           status: 200,
           headers: {
