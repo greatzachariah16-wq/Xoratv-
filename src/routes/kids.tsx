@@ -7,7 +7,7 @@ import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChannelCard, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
+import { ChannelCard, CountryRankedChannels, SectionHeader, getChannelCountryCode, getChannelLanguage, getCountryFlag, getCountryName, getChannelDisplayName } from "@/components/xora/XSportsComponents";
 import { AgeChips, type AgeFilter, ChannelGridSkeleton, getChannelAgeLabel, KidsEmptyState, KidsHeader, SegmentedControl, ShowCard, ShowGridSkeleton, sortKidsChannels } from "@/components/xora/KidsComponents";
 
 type Channel = { id: string; name: string; logo?: string; country?: string; categories: string[]; streamUrl: string; quality?: string | null; labels: string[]; provider?: "nexus" | "iptv-org"; language?: string; languages?: string[]; ageLabel?: string; userAgent?: string; referrer?: string };
@@ -273,19 +273,13 @@ function KidsPage() {
                 </section>
               ) : null}
 
-              {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length ? (
-                <section className="space-y-3" aria-label="More kids channels">
-                  <SectionHeader title="More to explore" subtitle={channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).length + " more channels"} />
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {channelsByAge.filter((channel) => channel.id !== visibleSelected?.id).map((channel, index) => (
-                      <ChannelCard key={channel.id} channel={channel} active={false} index={index}
-                        onSelect={selectKidsChannel}
-                        favorite={favoriteChannels.includes(channel.id)} onFavorite={toggleChannelFavorite}
-                        statusMode="live" metaMode="language" />
-                    ))}
-                  </div>
-                </section>
-              ) : !query.isLoading && !query.isError && !visibleSelected ? <KidsEmptyState message="No kids channels match this age group." /> : null}
+              {channelsByAge.length ? (
+                <CountryRankedChannels channels={channelsByAge} onSelect={selectKidsChannel} selectedId={visibleSelected?.id} title="Kids channels by country" favoriteIds={favoriteChannels} onFavorite={toggleChannelFavorite} metaMode="language" />
+              ) : null}
+
+              {!channelsByAge.length && !query.isLoading && !query.isError
+                ? <KidsEmptyState message="No kids channels match this age group." />
+                : null}
             </section>
           )}
         </main>

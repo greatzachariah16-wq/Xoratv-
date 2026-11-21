@@ -8,7 +8,7 @@ import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
-import { CategoryChips, ChannelCard, ChannelStatusBadge, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
+import { CategoryChips, CountryRankedChannels, ChannelCard, ChannelStatusBadge, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
 
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
@@ -491,6 +491,10 @@ function XSportsPage() {
             </div>
             <ChannelGuide channelId={selected.id} />
           </section>
+        ) : null}
+
+        {!channelsQuery.isLoading && !channelsQuery.isError && channels.length ? (
+          <CountryRankedChannels channels={channels} onSelect={chooseChannel} selectedId={selectedId} title="Sports channels by country" favoriteIds={favoriteIds} onFavorite={toggleFavorite} />
         ) : null}
 
         {!channelsQuery.isLoading && !channelsQuery.isError && channels.length ? (
