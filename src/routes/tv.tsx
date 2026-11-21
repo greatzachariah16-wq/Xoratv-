@@ -2,8 +2,11 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowRight,
   CalendarClock,
   Clock3,
+  Crown,
+  Globe2,
   Radio,
   RefreshCw,
   Search,
@@ -166,6 +169,16 @@ const STATE_LABELS: Record<NativeVlcStatus, string> = {
 
 
 type TvFilter = "all" | "favourites" | "recent";
+type RankedScope = "all" | "nigeria" | "africa" | "usa" | "uk" | "others";
+const AFRICAN_COUNTRY_CODES = new Set(["DZ","AO","BJ","BW","BF","BI","CV","CM","CF","TD","KM","CG","CD","CI","DJ","EG","GQ","ER","SZ","ET","GA","GM","GH","GN","GW","KE","LS","LR","LY","MG","MW","ML","MR","MU","MA","MZ","NA","NE","NG","RW","ST","SN","SC","SL","SO","ZA","SS","SD","TZ","TG","TN","UG","ZM","ZW"]);
+function getRankedScope(country?: string): Exclude<RankedScope, "all"> {
+  const code = getChannelCountryCode(country);
+  if (code === "NG") return "nigeria";
+  if (code && AFRICAN_COUNTRY_CODES.has(code)) return "africa";
+  if (code === "US") return "usa";
+  if (code === "GB") return "uk";
+  return "others";
+}
 
 type ChannelRowProps = {
   channel: Channel;
@@ -241,6 +254,7 @@ function LiveTvPage() {
   const [search, setSearch] = useState(q || "");
   // A channel in the URL restores navigation/filter context only; playback requires an explicit tap in this page session.
   const [activeChannelId, setActiveChannelId] = useState("");
+  const [rankedScope, setRankedScope] = useState<RankedScope>("all");
   const playerPrefs = usePlayerPrefs();
   const nativePlayerOpenRef = useRef(false);
   const nativePlayerTaskRef = useRef<Promise<void> | null>(null);
@@ -518,9 +532,10 @@ function LiveTvPage() {
         : filter === "recent"
           ? playerPrefs.recent.includes(channel.id)
           : true;
-      return matchesText && matchesCategory && matchesCountry && matchesMode;
+      const matchesRankedScope = rankedScope === "all" || getRankedScope(channel.country) === rankedScope;
+      return matchesText && matchesCategory && matchesCountry && matchesMode && matchesRankedScope;
     });
-  }, [allChannels, q, category, country, filter, playerPrefs.favorites, playerPrefs.recent]);
+  }, [allChannels, q, category, country, filter, rankedScope, playerPrefs.favorites, playerPrefs.recent]);
 
   const favoriteChannels = useMemo(
     () => playerPrefs.favorites.map((id) => allChannels.find((channel) => channel.id === id)).filter((channel): channel is Channel => Boolean(channel)),
@@ -530,6 +545,43 @@ function LiveTvPage() {
     () => playerPrefs.recent.map((id) => allChannels.find((channel) => channel.id === id)).filter((channel): channel is Channel => Boolean(channel)).slice(0, 10),
     [allChannels, playerPrefs.recent],
   );
+
+  const rankedChannels = useMemo(() => {
+    const sorted = [...allChannels].sort((a, b) =>
+      (b.score ?? 0) - (a.score ?? 0) || getChannelDisplayName(a).localeCompare(getChannelDisplayName(b)),
+    );
+    const inScope = (scope: RankedScope) => sorted.filter((channel) => scope === "all" || getRankedScope(channel.country) === scope);
+    return { nigeria: inScope("nigeria"), africa: inScope("africa"), usa: inScope("usa"), uk: inScope("uk"), others: inScope("others") };
+  }, [allChannels]);
+
+  const rankedRegions: { id: RankedScope; title: string; subtitle: string; flag: string; count: number }[] = [
+    { id: "nigeria", title: "Nigeria", subtitle: "Top priority", flag: "🇳🇬", count: rankedChannels.nigeria.length },
+    { id: "africa", title: "Africa", subtitle: "Other African countries", flag: "🌍", count: rankedChannels.africa.length },
+    { id: "usa", title: "USA", subtitle: "United States", flag: "🇺🇸", count: rankedChannels.usa.length },
+    { id: "uk", title: "UK", subtitle: "United Kingdom", flag: "🇬🇧", count: rankedChannels.uk.length },
+    { id: "others", title: "Others", subtitle: "Global channels", flag: "🌐", count: rankedChannels.others.length },
+  ];
+
+  const renderRankedRail = (title: string, scope: RankedScope, channels: Channel[], flag: string) => channels.length ? (
+    <section className="xora-tv-ranked-section" aria-label={title}>
+      <div className="xora-tv-ranked-heading">
+        <div><span>{flag}</span><div><h2>{title}</h2><p>{channels.length} channels</p></div></div>
+        <button type="button" onClick={() => setRankedScope(scope)} aria-label={"View all " + title + " channels"}>View all <ArrowRight aria-hidden="true" /></button>
+      </div>
+      <div className="hide-scrollbar xora-tv-ranked-track">
+        {channels.slice(0, 8).map((channel, index) => (
+          <button key={channel.id} type="button" className="xora-tv-ranked-card" onClick={() => selectChannel(channel)}>
+            <span className="xora-tv-ranked-logo">
+              {channel.logo ? <img src={channel.logo} alt="" loading="lazy" decoding="async" /> : <span>{getChannelDisplayName(channel).slice(0, 3).toUpperCase()}</span>}
+              <span className="xora-tv-ranked-number">{index === 0 ? <><Crown aria-hidden="true" /> 1</> : "#" + (index + 1)}</span>
+            </span>
+            <strong>{getChannelDisplayName(channel)}</strong>
+            <small>{getCountryFlag(channel.country)} {getCountryName(channel.country)}</small>
+          </button>
+        ))}
+      </div>
+    </section>
+  ) : null;
 
   const renderChannelRail = (title: string, channels: Channel[]) => channels.length ? (
     <section className="xora-tv-rail" aria-label={title}>
@@ -621,6 +673,26 @@ function LiveTvPage() {
             </div>
           </header>
 
+          <section className="xora-tv-ranking" aria-label="Ranked channels by country">
+            <div className="xora-tv-ranking-banner">
+              <span className="xora-tv-ranking-globe"><Globe2 aria-hidden="true" /></span>
+              <div><span>EXPLORE THE WORLD</span><h2>Live TV, ranked by country</h2><p>Start with Nigeria, then discover channels across the globe.</p></div>
+            </div>
+            <div className="xora-tv-region-grid">
+              {rankedRegions.map((region) => (
+                <button key={region.id} type="button" onClick={() => setRankedScope(region.id)} aria-pressed={rankedScope === region.id} className={"xora-tv-region-card" + (rankedScope === region.id ? " is-active" : "") + (region.id === "nigeria" ? " is-priority" : "")}>
+                  {region.id === "nigeria" ? <Crown className="xora-tv-region-crown" aria-hidden="true" /> : null}
+                  <span className="xora-tv-region-flag">{region.flag}</span><strong>{region.title}</strong><small>{region.subtitle}</small><em>{region.count.toLocaleString()} channels</em>
+                </button>
+              ))}
+            </div>
+            {renderRankedRail("Nigeria’s top channels", "nigeria", rankedChannels.nigeria, "🇳🇬")}
+            {renderRankedRail("Other African channels", "africa", rankedChannels.africa, "🌍")}
+            {renderRankedRail("United States channels", "usa", rankedChannels.usa, "🇺🇸")}
+            {renderRankedRail("United Kingdom channels", "uk", rankedChannels.uk, "🇬🇧")}
+            {renderRankedRail("More from around the world", "others", rankedChannels.others, "🌐")}
+          </section>
+
           <div className="xora-tv-notice">
             <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
           </div>
@@ -662,7 +734,7 @@ function LiveTvPage() {
           <section className="xora-tv-channel-section">
             <div className="xora-tv-section-heading">
               <div>
-                <h2>All channels</h2>
+                <h2>{rankedScope === "all" ? "All channels" : rankedRegions.find((region) => region.id === rankedScope)?.title + " channels"}</h2>
                 <p>{visibleChannels.length} channels available</p>
               </div>
               {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Cached list</span> : null}
