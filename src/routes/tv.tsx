@@ -127,7 +127,9 @@ async function loadChannels(query: string, category: string): Promise<Channel[]>
   if (!isNativeVlcPlatform()) params.set("web", "1");
   if (query.trim()) params.set("q", query.trim());
   if (category) params.set("category", category);
-  const key = cacheKey(query, category);
+  const cacheMode = isNativeVlcPlatform() ? "native" : "web";
+  const key = cacheKey(query, category) + ":" + cacheMode;
+  const allCacheKey = "all:" + cacheMode;
 
   try {
     const response = await fetch("/api/tv/channels?" + params.toString());
@@ -135,11 +137,11 @@ async function loadChannels(query: string, category: string): Promise<Channel[]>
     const data = (await response.json()) as { ok?: boolean; channels?: Channel[] };
     const channels = Array.isArray(data.channels) ? data.channels : [];
     await writeChannelCache(key, channels);
-    if (!query.trim() && !category) await writeChannelCache("all", channels);
+    if (!query.trim() && !category) await writeChannelCache(allCacheKey, channels);
     return channels;
   } catch (error) {
     const cached = await readChannelCache(key)
-      || await readChannelCache("all");
+      || await readChannelCache(allCacheKey);
     if (!cached) throw error;
 
     const normalizedQuery = query.trim().toLowerCase();
