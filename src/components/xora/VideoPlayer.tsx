@@ -207,7 +207,7 @@ export function NativeVideoPlayer({
         void closeNativeVlc();
       }
     };
-  }, [nativeVlcOnly]);
+  }, [nativeVlcOnly, src]);
 
   // Production-Ready Xora Engagement Handshake & Heartbeat Loop
   useEffect(() => {
