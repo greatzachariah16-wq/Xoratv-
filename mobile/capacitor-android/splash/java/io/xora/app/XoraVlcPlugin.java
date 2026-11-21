@@ -133,6 +133,7 @@ public class XoraVlcPlugin extends Plugin {
     private boolean resumeAfterFocusGain;
     private boolean playingBeforeAppPause;
     private boolean startupBufferActive;
+    private boolean directPlaybackOnly;
     private boolean bufferHealthKnown;
     private boolean bufferHealthy = true;
 
@@ -422,6 +423,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private void refreshLocalPlaybackSessions() throws IOException {
+        if (directPlaybackOnly) return;
         if (upstreamStreamUrls.isEmpty()) throw new IOException("No upstream playback candidates are available.");
         if (localHlsProxy == null) localHlsProxy = LocalHlsProxy.start(buildLocalProxyClient(), getContext().getCacheDir());
         localHlsProxy.clearSessions();
@@ -439,6 +441,17 @@ public class XoraVlcPlugin extends Plugin {
         directCandidateCount = 0;
         lastReportedTransport = "";
         if (localHlsProxy != null) localHlsProxy.clearSessions();
+
+        directPlaybackOnly = call.getBoolean("directOnly", false);
+        if (directPlaybackOnly) {
+            if (!isHttpUrl(url)) throw new IOException("A valid direct stream URL is required.");
+            streamUrls.add(url);
+            upstreamStreamUrls.add(url);
+            streamHeaders.add(call.getObject("headers") == null ? new JSONObject() : call.getObject("headers"));
+            streamTransports.add("direct");
+            directCandidateCount = 0;
+            return;
+        }
 
         JSONArray candidates = call.getArray("candidates");
         if (candidates != null && candidates.length() > 0) {
@@ -468,8 +481,9 @@ public class XoraVlcPlugin extends Plugin {
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
 
-        if (!isSecureUrl(url)) {
-            call.reject("A secure stream URL is required.");
+        boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -535,8 +549,9 @@ public class XoraVlcPlugin extends Plugin {
         String requestedTitle = call.getString("title", "Live TV");
         String requestedChannelId = call.getString("channelId");
 
-        if (!isSecureUrl(url)) {
-            call.reject("A secure stream URL is required.");
+        boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -1303,11 +1318,11 @@ public class XoraVlcPlugin extends Plugin {
         clearBufferingWatchdog();
         clearRetry();
         final String selectedUrl = streamUrls.get(currentStreamIndex);
-        if (!isLocalProxyUrl(selectedUrl)) {
+        if (directPlaybackOnly ? !isHttpUrl(selectedUrl) : !isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
             return;
         }
-        if (localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
+        if (!directPlaybackOnly && localHlsProxy != null && !localHlsProxy.isBufferReady(selectedUrl)) {
             final long bufferPlayerGeneration = playerGeneration;
             final long bufferAttemptGeneration = ++playbackAttemptGeneration;
             startupBufferActive = true;
@@ -1348,7 +1363,7 @@ public class XoraVlcPlugin extends Plugin {
         final long activePlayerGeneration = playerGeneration;
         final long activeAttemptGeneration = ++playbackAttemptGeneration;
         // Enforce the core invariant: LibVLC must never receive an origin or Render URL.
-        if (!isLocalProxyUrl(selectedUrl)) {
+        if (directPlaybackOnly ? !isHttpUrl(selectedUrl) : !isLocalProxyUrl(selectedUrl)) {
             setState(PlaybackState.ERR_UNKNOWN);
             return;
         }
@@ -1382,7 +1397,14 @@ public class XoraVlcPlugin extends Plugin {
 
         Media media = new Media(libVLC, Uri.parse(selectedUrl));
         media.setHWDecoderEnabled(useHardwareDecoder, false);
-        // LibVLC receives loopback URLs only. The local proxy injects provider headers.
+        if (directPlaybackOnly && currentStreamIndex < streamHeaders.size()) {
+            JSONObject headers = streamHeaders.get(currentStreamIndex);
+            String userAgent = headers.optString("User-Agent", headers.optString("user-agent", ""));
+            String referer = headers.optString("Referer", headers.optString("referer", headers.optString("referrer", "")));
+            if (!userAgent.isEmpty()) media.addOption(":http-user-agent=" + userAgent);
+            if (!referer.isEmpty()) media.addOption(":http-referrer=" + referer);
+        }
+        // Direct-only mode sends the origin URL; default mode stays loopback-proxied.
         media.addOption(":network-caching=4000");
         media.addOption(":live-caching=4000");
         media.addOption(":http-reconnect");
@@ -1487,6 +1509,7 @@ public class XoraVlcPlugin extends Plugin {
     }
 
     private boolean touchCurrentLocalSession() {
+        if (directPlaybackOnly) return true;
         return localHlsProxy != null
             && currentStreamIndex >= 0
             && currentStreamIndex < streamUrls.size()
@@ -1774,7 +1797,7 @@ public class XoraVlcPlugin extends Plugin {
             if (bufferProgressText != null) bufferProgressText.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferProgressBar != null) bufferProgressBar.setVisibility(startupBufferActive ? View.VISIBLE : View.GONE);
             if (bufferHealthBanner != null) {
-                boolean showHealth = next == PlaybackState.PLAYING && bufferHealthKnown;
+                boolean showHealth = !directPlaybackOnly && next == PlaybackState.PLAYING && bufferHealthKnown;
                 bufferHealthBanner.setVisibility(showHealth ? View.VISIBLE : View.GONE);
             }
         }
