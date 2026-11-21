@@ -13,6 +13,7 @@ type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
   categories: string[]; streamUrl: string; quality?: string | null;
   labels: string[]; score?: number; provider?: "nexus" | "iptv-org";
+  userAgent?: string; referrer?: string;
 };
 
 const FILTERS = ["All Sports", "Football", "Basketball", "Tennis", "Motorsport", "Rugby", "Cricket", "Boxing", "Other"] as const;
@@ -68,6 +69,8 @@ function normalizeSportsChannel(value: unknown): SportsChannel | null {
     quality: typeof raw.quality === "string" ? raw.quality : null,
     score: typeof raw.score === "number" && Number.isFinite(raw.score) ? raw.score : undefined,
     provider: raw.provider === "nexus" || raw.provider === "iptv-org" ? raw.provider : undefined,
+    userAgent: typeof raw.userAgent === "string" ? raw.userAgent : undefined,
+    referrer: typeof raw.referrer === "string" ? raw.referrer : undefined,
   };
 }
 
@@ -481,7 +484,7 @@ function XSportsPage() {
                 nativeStreamUrl={selected.id === "wwe-superstar-central"
                   ? "/api/tv/stream?provider=iptv-org&channel=" + encodeURIComponent(selected.id)
                   : "/api/tv/stream?provider=" + (selected.provider || "nexus") + "&channel=" + encodeURIComponent(selected.id)}
-                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv
+                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv nativeDirectOnly nativeHeaders={{ ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}), ...(selected.referrer ? { Referer: selected.referrer } : {}) }}
                 className="aspect-video w-full rounded-none"
               />
             </div>
