@@ -976,7 +976,7 @@ export function NativeVideoPlayer(props: Props) {
             type="button"
             onClick={() => void toggleFullscreen()}
             aria-label={full ? "Exit fullscreen" : "Watch in landscape"}
-            className="absolute right-3 top-3 z-50 grid size-11 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-xl transition active:scale-95"
+            className="absolute right-16 top-3 z-50 grid size-11 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-xl transition active:scale-95"
           >
             {full ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
           </button>
