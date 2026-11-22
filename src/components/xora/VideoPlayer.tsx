@@ -18,6 +18,7 @@ import {
   Volume2,
   VolumeX,
   X,
+  Tv,
 } from "lucide-react";
 import { resolveMediaUrl, useSignedUrl } from "@/lib/media";
 import { getOriginalVideoUrl, get240pDeliveryUrl } from "@/lib/cloudinary";
@@ -953,7 +954,7 @@ export function NativeVideoPlayer(props: Props) {
 
   return (
     <section
-      className="relative isolate left-1/2 w-screen max-w-[1280px] -translate-x-1/2 overflow-hidden rounded-none bg-black text-white shadow-none"
+      className="relative isolate left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden rounded-none bg-black text-white shadow-none"
       aria-label="Live channel player"
     >
       <div ref={stageRef} className="relative aspect-video w-full overflow-hidden bg-black">
@@ -1029,6 +1030,26 @@ export function NativeVideoPlayer(props: Props) {
           Some channels may be unavailable in your region or on your device. XoraTV filters channels for the current player platform.
         </p>
       ) : null}
+    </section>
+  );
+}
+
+/** Full-bleed idle state shown before a live channel is selected. */
+export function LiveChannelEmptyStage() {
+  return (
+    <section
+      className="relative left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-black text-white"
+      aria-label="Live channel player"
+    >
+      <div className="relative grid aspect-video w-full place-items-center bg-black">
+        <div className="flex flex-col items-center gap-3 px-6 text-center">
+          <span className="grid size-12 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-white/70">
+            <Tv className="size-5" aria-hidden="true" />
+          </span>
+          <span className="text-[11px] font-extrabold tracking-[0.28em] text-white/65">XORATV</span>
+          <p className="text-sm font-medium text-white/75">Choose a channel to start watching</p>
+        </div>
+      </div>
     </section>
   );
 }
