@@ -390,11 +390,11 @@ export function AppShell({
         </div>
       ) : null}
 
-      <main id="main" className={immersive ? "min-h-screen w-full overflow-x-clip" : "overflow-x-clip lg:pl-[248px] xl:pr-[320px]"}>
+      <main id="main" className={immersive ? "min-h-screen w-full overflow-x-clip" : cn("overflow-x-clip lg:pl-[248px]", rail && "xl:pr-[320px]")}>
         <div
           className={cn(
             immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-[var(--header-h)]" : "pt-[calc(var(--header-h)+16px)]"),
-            !immersive && (extraWide ? "max-w-[1400px]" : wide ? "max-w-5xl" : "max-w-[620px]"),
+            !immersive && (extraWide ? "max-w-[1600px]" : wide ? "max-w-6xl" : "max-w-[620px]"),
           )}
         >
           {!hideTopBanner && !pathname.startsWith("/profile/") ? (

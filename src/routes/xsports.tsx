@@ -294,7 +294,7 @@ function SportsHero({ channel, onWatch, favorite, onFavorite, onTouchPause }: {
 
 function ChannelGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="rounded-[22px] border border-border/70 bg-card p-2.5">
           <div className="shimmer aspect-[16/10] rounded-[16px]" />
@@ -499,7 +499,7 @@ function XSportsPage() {
         {!channelsQuery.isLoading && !channelsQuery.isError && channels.length ? (
           <section className="space-y-4" aria-label="Popular sports channels">
             <SectionHeader title="Popular now" subtitle="A quick pick from the sports lineup" onSeeAll={scrollToChannels} />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
               {popularChannels.map((channel, index) => <ChannelCard key={"popular-" + channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} />)}
             </div>
           </section>
@@ -520,7 +520,7 @@ function XSportsPage() {
               <button type="button" onClick={() => void channelsQuery.refetch()} className="press mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground">Try again</button>
             </div>
           ) : channels.length ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
               {channels.map((channel, index) => <ChannelCard key={channel.id} channel={channel} active={selectedId === channel.id} index={index} onSelect={chooseChannel} />)}
             </div>
           ) : (

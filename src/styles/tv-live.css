@@ -311,3 +311,13 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
 @media(prefers-reduced-motion:reduce) {
   .xora-tv-redesign .xora-tv-live-pill i { animation:none; }
 }
+
+
+/* Desktop browsing: use the available canvas without changing the mobile/native player. */
+@media (min-width: 1280px) {
+  .xora-tv-page { padding-bottom: 28px; }
+  .xora-tv-browser-player { width: min(100%, 1120px); margin-inline: auto; }
+}
+@media (min-width: 1600px) {
+  .xora-tv-channel-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
