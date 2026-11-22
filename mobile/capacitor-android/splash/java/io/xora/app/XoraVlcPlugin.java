@@ -615,8 +615,9 @@ public class XoraVlcPlugin extends Plugin {
             int oldTop = pinnedTop;
             int oldWidth = pinnedWidth;
             int oldHeight = pinnedHeight;
-            hasPinnedBounds = visible && width > 0f && height > 0f;
-            if (hasPinnedBounds && webView != null && rootContainer != null) {
+            hasPinnedBounds = visible && width > 0f && height > 0f
+                && webView != null && rootContainer != null;
+            if (hasPinnedBounds) {
                 float density = getContext().getResources().getDisplayMetrics().density;
                 int[] webLocation = new int[2];
                 int[] rootLocation = new int[2];
