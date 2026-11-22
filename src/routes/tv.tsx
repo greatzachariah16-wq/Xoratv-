@@ -716,14 +716,14 @@ function LiveTvPage() {
               {isOffline ? <p className="xora-tv-web-offline-note">You are offline. Playback resumes automatically.</p> : null}
               {state.startsWith("ERR") ? <div className="xora-tv-error-actions"><strong>Channel unavailable</strong><div><Button type="button" variant="outline" className="min-h-11 rounded-full" onClick={handleRetry}>Retry</Button><Button type="button" className="min-h-11 rounded-full" onClick={handleNextChannel}>Try next channel</Button></div></div> : null}
             </section>
-          ) : (
+          ) : !selected ? (
             <div className="space-y-2">
               <LiveChannelEmptyStage />
               <p className="px-1 text-xs text-muted-foreground">
                 {query.isLoading ? "Loading channels…" : query.isError && !query.data?.length ? "Connect to the internet to refresh the channel list." : "Choose a channel below to begin watching."}
               </p>
             </div>
-          )}
+          ) : null}
 
           {renderChannelRail("Recently watched", recentChannels)}
 
