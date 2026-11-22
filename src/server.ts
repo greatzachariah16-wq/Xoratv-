@@ -1086,7 +1086,7 @@ export default {
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
       try {
         const query = url.searchParams.get("q") || undefined;
-        const webCompatibleOnly = url.searchParams.get("web") === "1";
+        const nativePlatform = url.searchParams.get("platform") === "native";
         const country = url.searchParams.get("country") || undefined;
         const category = url.searchParams.get("category") || undefined;
         const limit = Number(url.searchParams.get("limit") || "30");
@@ -1127,7 +1127,7 @@ export default {
         }
 
         const eligibleChannels = [...merged.values()].filter(
-          (channel) => !webCompatibleOnly || (!channel.userAgent && !channel.referrer),
+          (channel) => nativePlatform || (!channel.userAgent && !channel.referrer),
         );
         const channels = eligibleChannels.slice(0, limit);
         const ok = result.ok || channels.length > 0;
