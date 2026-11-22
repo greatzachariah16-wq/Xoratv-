@@ -223,6 +223,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                   externalPoster={selected.logo}
                   title={selected.name}
                   liveTv
+                  nativeDirectOnly
                   className="aspect-video w-full"
                   onClose={() => setSelectedId(null)}
                 />
