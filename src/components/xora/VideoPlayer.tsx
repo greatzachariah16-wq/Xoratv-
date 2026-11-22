@@ -898,7 +898,7 @@ function NativeVideoPlayerCore({
 export function NativeVideoPlayer(props: Props) {
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [full, setFull] = useState(false);
-  const cardRef = useRef<HTMLElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!props.liveTv || isNativeVlcPlatform()) return;
@@ -939,7 +939,7 @@ export function NativeVideoPlayer(props: Props) {
         await document.exitFullscreen();
         (screen.orientation as ScreenOrientation | undefined)?.unlock?.();
       } else {
-        await cardRef.current?.requestFullscreen?.();
+        await stageRef.current?.requestFullscreen?.();
         try {
           await (screen.orientation as ScreenOrientation | undefined)?.lock?.("landscape");
         } catch {
@@ -953,20 +953,10 @@ export function NativeVideoPlayer(props: Props) {
 
   return (
     <section
-      ref={cardRef}
-      className="relative isolate w-full overflow-hidden rounded-[24px] bg-[#1b120f] text-white shadow-[0_24px_55px_-28px_rgba(55,29,19,0.65)]"
+      className="relative isolate left-1/2 w-screen max-w-[1280px] -translate-x-1/2 overflow-hidden rounded-none bg-black text-white shadow-none"
       aria-label="Live channel player"
     >
-      <div className="relative aspect-video w-full overflow-hidden bg-black">
-        {props.externalPoster ? (
-          <img
-            src={props.externalPoster}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full scale-[2.1] object-cover opacity-35 blur-3xl saturate-150"
-          />
-        ) : null}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,transparent,rgba(18,10,7,0.72))]" />
+      <div ref={stageRef} className="relative aspect-video w-full overflow-hidden bg-black">
         <NativeVideoPlayerCore
           {...props}
           className="!relative !z-10 !h-full !w-full !aspect-auto !rounded-none !bg-transparent"
@@ -983,15 +973,15 @@ export function NativeVideoPlayer(props: Props) {
         ) : null}
       </div>
 
-      <div className="flex items-center gap-3 border-t border-white/10 bg-[rgba(255,250,245,0.10)] p-3.5 backdrop-blur-2xl">
+      <div className="flex min-h-14 items-center gap-2.5 border-b border-white/10 bg-[#171311] px-3 py-2">
         {props.externalPoster ? (
           <img
             src={props.externalPoster}
             alt=""
-            className="size-14 shrink-0 rounded-full bg-white object-contain p-0.5 shadow-md ring-1 ring-white/25"
+            className="size-10 shrink-0 rounded-full bg-white object-contain p-0.5 ring-1 ring-white/20"
           />
         ) : (
-          <div className="grid size-14 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-bold ring-1 ring-white/20">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-base font-bold ring-1 ring-white/20">
             {(props.title || "X").slice(0, 1).toUpperCase()}
           </div>
         )}
