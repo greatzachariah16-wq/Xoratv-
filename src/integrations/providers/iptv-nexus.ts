@@ -175,7 +175,9 @@ async function loadChannels(): Promise<NexusChannel[]> {
     .finally(() => { channelsLoading = null; });
 
   return channelsLoading;
-}function bestStream(channel: NexusChannel, browserOnly = false): NexusStream | null {
+}
+
+function bestStream(channel: NexusChannel, browserOnly = false): NexusStream | null {
   const streams = (channel.streams || []).filter(
     (stream) =>
       stream?.url &&
@@ -227,13 +229,13 @@ export async function fetchNexusChannels(options?: {
       return true;
     });
 
-    const result = filtered
+    const compatible = filtered
       .map((channel) => toChannel(channel, { browserOnly: options?.platform === "web" }))
       .filter((channel): channel is NexusTvChannel => Boolean(channel))
-      .sort((a, b) => (b.score || 0) - (a.score || 0) || a.name.localeCompare(b.name))
-      .slice(0, limit);
+      .sort((a, b) => (b.score || 0) - (a.score || 0) || a.name.localeCompare(b.name));
+    const result = compatible.slice(0, limit);
 
-    return { ok: true, total: filtered.length, channels: result };
+    return { ok: true, total: compatible.length, channels: result };
   } catch (error) {
     return { ok: false, total: 0, channels: [], error: error instanceof Error ? error.message : "Unable to load IPTV Nexus" };
   }
