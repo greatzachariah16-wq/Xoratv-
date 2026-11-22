@@ -480,6 +480,7 @@ function LiveTvPage() {
     const page = dock.closest<HTMLElement>(".xora-tv-page");
     const appHeader = document.querySelector<HTMLElement>("header.fixed.inset-x-0.top-0");
     const native = isNativeVlcPlatform();
+    let frame = 0;
     const update = () => {
       const rect = stage?.getBoundingClientRect();
       if (page) {
@@ -490,23 +491,28 @@ function LiveTvPage() {
         void updateNativeVlcBounds({ x: rect.left, y: rect.top, width: rect.width, height: rect.height }).catch(() => {});
       }
     };
-    const observer = new ResizeObserver(update);
+    const scheduleUpdate = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => { frame = 0; update(); });
+    };
+    const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(dock);
     if (stage) observer.observe(stage);
     if (appHeader) observer.observe(appHeader);
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update, { passive: true });
-    window.addEventListener("orientationchange", update, { passive: true });
-    window.visualViewport?.addEventListener("resize", update, { passive: true });
-    window.visualViewport?.addEventListener("scroll", update, { passive: true });
-    update();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate, { passive: true });
+    window.addEventListener("orientationchange", scheduleUpdate, { passive: true });
+    window.visualViewport?.addEventListener("resize", scheduleUpdate, { passive: true });
+    window.visualViewport?.addEventListener("scroll", scheduleUpdate, { passive: true });
+    scheduleUpdate();
     return () => {
       observer.disconnect();
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("orientationchange", scheduleUpdate);
+      window.visualViewport?.removeEventListener("resize", scheduleUpdate);
+      window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
       if (native) void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
     };
   }, [selected?.id]);
