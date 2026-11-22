@@ -1155,7 +1155,17 @@ public class XoraVlcPlugin extends Plugin {
 
     private void toggleFullscreenInternal() {
         if (playerOverlay == null || pipMode) return;
-        mode = mode == PlayerMode.FULLSCREEN ? PlayerMode.PINNED : PlayerMode.FULLSCREEN;
+        boolean enteringFullscreen = mode != PlayerMode.FULLSCREEN;
+        mode = enteringFullscreen ? PlayerMode.FULLSCREEN : PlayerMode.PINNED;
+        if (getActivity() != null) {
+            // Match the live-player card's landscape viewing behaviour on Android.
+            // Exiting fullscreen or closing the player restores the app's normal orientation.
+            getActivity().setRequestedOrientation(
+                enteringFullscreen
+                    ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            );
+        }
         applyModeLayout();
         updateControlLabels();
         showControls();
@@ -1933,6 +1943,9 @@ public class XoraVlcPlugin extends Plugin {
 
         restoreWebViewForNormalMode();
         restoreSystemUi();
+        if (getActivity() != null) {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        }
 
         if (playerOverlay != null && playerOverlay.getParent() instanceof ViewGroup) {
             ((ViewGroup) playerOverlay.getParent()).removeView(playerOverlay);
