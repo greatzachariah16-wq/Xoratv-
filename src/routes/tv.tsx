@@ -283,6 +283,21 @@ function LiveTvPage() {
     let interval = 0;
     let controller: AbortController | null = null;
     let networkListener: { remove: () => Promise<void> } | null = null;
+    let reachabilityKnown = false;
+    let reachable = true;
+    const markReachable = () => {
+      if (disposed) return;
+      if (reachabilityKnown && !reachable) window.dispatchEvent(new Event("xora:network-online"));
+      reachable = true;
+      reachabilityKnown = true;
+      setIsOnline(true);
+    };
+    const markUnreachable = () => {
+      if (disposed) return;
+      reachable = false;
+      reachabilityKnown = true;
+      setIsOnline(false);
+    };
     const checkReachability = async () => {
       controller?.abort();
       const currentController = new AbortController();
@@ -291,10 +306,7 @@ function LiveTvPage() {
       try {
         // Verify internet reachability independently of WebView navigator.onLine.
         await fetch("https://www.gstatic.com/generate_204", { mode: "no-cors", cache: "no-store", signal: currentController.signal });
-        if (!disposed) {
-          setIsOnline(true);
-          window.dispatchEvent(new Event("xora:network-online"));
-        }
+        markReachable();
       } catch {
         // Some networks block third-party probes; confirm against XoraTV's own health endpoint.
         const fallbackController = new AbortController();
@@ -303,20 +315,18 @@ function LiveTvPage() {
         try {
           const response = await fetch("/api/health", { cache: "no-store", signal: fallbackController.signal });
           if (!response.ok) throw new Error("Reachability probe failed");
-          if (!disposed) {
-            setIsOnline(true);
-            window.dispatchEvent(new Event("xora:network-online"));
-          }
+          markReachable();
         } catch {
-          if (!disposed) setIsOnline(false);
+          markUnreachable();
         } finally { window.clearTimeout(fallbackTimeout); }
       } finally { window.clearTimeout(timeout); }
     };
     const onOnline = () => { void checkReachability(); };
     const onOffline = () => { void checkReachability(); };
     const onCapacitorNetworkChange = (status: { connected: boolean }) => {
+      if (disposed) return;
       if (Capacitor.isNativePlatform() && !status.connected) {
-        setIsOnline(false);
+        markUnreachable();
         return;
       }
       void checkReachability();
