@@ -567,8 +567,14 @@ function LiveTvPage() {
 
   useEffect(() => {
     const root = document.documentElement;
+    const updateHeaderSurface = () => root.classList.toggle("xora-tv-header-scrolled", window.scrollY > 8);
     root.classList.add("xora-tv-page-open");
-    return () => root.classList.remove("xora-tv-page-open", "xora-tv-header-hidden");
+    window.addEventListener("scroll", updateHeaderSurface, { passive: true });
+    updateHeaderSurface();
+    return () => {
+      root.classList.remove("xora-tv-page-open", "xora-tv-header-hidden", "xora-tv-header-scrolled");
+      window.removeEventListener("scroll", updateHeaderSurface);
+    };
   }, []);
 
   const guide = useQuery({
