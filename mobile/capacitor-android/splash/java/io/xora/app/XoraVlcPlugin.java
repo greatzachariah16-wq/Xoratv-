@@ -619,14 +619,16 @@ public class XoraVlcPlugin extends Plugin {
                 && webView != null && rootContainer != null;
             if (hasPinnedBounds) {
                 float density = getContext().getResources().getDisplayMetrics().density;
+                float pixelScale = call.getFloat("devicePixelRatio", density);
+                if (pixelScale <= 0f) pixelScale = density;
                 int[] webLocation = new int[2];
                 int[] rootLocation = new int[2];
                 webView.getLocationOnScreen(webLocation);
                 rootContainer.getLocationOnScreen(rootLocation);
-                pinnedLeft = webLocation[0] - rootLocation[0] + Math.round(x * density);
-                pinnedTop = webLocation[1] - rootLocation[1] + Math.round(y * density);
-                pinnedWidth = Math.max(1, Math.round(width * density));
-                pinnedHeight = Math.max(1, Math.round(height * density));
+                pinnedLeft = webLocation[0] - rootLocation[0] + Math.round(x * pixelScale);
+                pinnedTop = webLocation[1] - rootLocation[1] + Math.round(y * pixelScale);
+                pinnedWidth = Math.max(1, Math.round(width * pixelScale));
+                pinnedHeight = Math.max(1, Math.round(height * pixelScale));
             }
             boolean changed = wasVisible != hasPinnedBounds
                 || oldLeft != pinnedLeft || oldTop != pinnedTop
