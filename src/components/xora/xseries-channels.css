@@ -266,7 +266,7 @@ body:has(.xseries-channels),
 }
 
 .xsc-player-frame > * {
-  max-width: 100%;
+  max-width: none;
 }
 
 .xsc-player-empty {
