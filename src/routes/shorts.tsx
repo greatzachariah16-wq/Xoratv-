@@ -20,13 +20,13 @@ export const Route = createFileRoute("/shorts")({
 
 function Shorts() {
   return (
-    <AppShell rail={<TrendingRail />}>
+    <AppShell rail={<TrendingRail />} wide>
       <header className="mb-5">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Shorts</h1>
         <p className="mt-1 text-sm text-muted-foreground">Vertical, fast, made for the thumb.</p>
       </header>
       <FeedTabs />
-      <FeedList feed="shorts" vertical />
+      <div className="mx-auto w-full max-w-[520px]"><FeedList feed="shorts" vertical /></div>
     </AppShell>
   );
 }
