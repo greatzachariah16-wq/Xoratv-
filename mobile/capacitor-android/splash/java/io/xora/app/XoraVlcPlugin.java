@@ -488,8 +488,7 @@ public class XoraVlcPlugin extends Plugin {
         String requestedChannelId = call.getString("channelId");
 
         boolean directOnlyRequest = call.getBoolean("directOnly", false);
-        debugMode = call.getBoolean("debug", false)
-            || (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        debugMode = call.getBoolean("debug", false);
         if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
             call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
@@ -558,8 +557,7 @@ public class XoraVlcPlugin extends Plugin {
         String requestedChannelId = call.getString("channelId");
 
         boolean directOnlyRequest = call.getBoolean("directOnly", false);
-        debugMode = call.getBoolean("debug", false)
-            || (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        debugMode = call.getBoolean("debug", false);
         if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
             call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
