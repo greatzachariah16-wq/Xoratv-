@@ -7,6 +7,11 @@ import {
 } from "@/lib/native-vlc";
 import {
   Gauge,
+  Heart,
+  Info,
+  Share2,
+  Maximize2,
+  Minimize2,
   Loader2,
   Play,
   Smartphone,
@@ -63,9 +68,16 @@ type Props = {
   onClose?: () => void;
   /** Clean Watch-page facade with native controls and no Xora overlays. */
   cinemaMode?: boolean;
+  /** Optional live-channel metadata for the shared IPTV player card. */
+  channelCountry?: string;
+  channelFlag?: string;
+  channelQuality?: string;
+  favorite?: boolean;
+  onFavorite?: () => void;
+  onShare?: () => void;
 };
 
-export function NativeVideoPlayer({
+function NativeVideoPlayerCore({
   mediaPath,
   posterPath,
   externalUrl,
@@ -658,7 +670,7 @@ export function NativeVideoPlayer({
         className,
       )}
     >
-      {!cinemaMode ? <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
+      {!cinemaMode && !liveTv ? <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
         <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
           4K HD
         </span>
@@ -874,6 +886,160 @@ export function NativeVideoPlayer({
       </div>
       ) : null}
     </div>
+  );
+}
+
+
+/**
+ * Shared IPTV presentation used by Live TV, XSports, XoraKids and X-Series.
+ * The video engine remains NativeVideoPlayerCore: browser HLS.js on web and
+ * the existing native LibVLC surface on Android.
+ */
+export function NativeVideoPlayer(props: Props) {
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [full, setFull] = useState(false);
+  const cardRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!props.liveTv || isNativeVlcPlatform()) return;
+    const syncFullscreen = () => setFull(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      try {
+        (screen.orientation as ScreenOrientation | undefined)?.unlock?.();
+      } catch {
+        // Orientation lock is optional in browsers that do not support it.
+      }
+    };
+  }, [props.liveTv]);
+
+  if (!props.liveTv) return <NativeVideoPlayerCore {...props} />;
+
+  const shareChannel = async () => {
+    if (props.onShare) {
+      props.onShare();
+      return;
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: props.title || "XoraTV Live", url: window.location.href });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href);
+      }
+    } catch {
+      // Sharing may be dismissed by the viewer.
+    }
+  };
+
+  const toggleFullscreen = async () => {
+    if (isNativeVlcPlatform()) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        (screen.orientation as ScreenOrientation | undefined)?.unlock?.();
+      } else {
+        await cardRef.current?.requestFullscreen?.();
+        try {
+          await (screen.orientation as ScreenOrientation | undefined)?.lock?.("landscape");
+        } catch {
+          // Unsupported on some mobile browsers; rotating still works.
+        }
+      }
+    } catch {
+      // Fullscreen is a progressive enhancement.
+    }
+  };
+
+  return (
+    <section
+      ref={cardRef}
+      className="relative isolate w-full overflow-hidden rounded-[24px] bg-[#1b120f] text-white shadow-[0_24px_55px_-28px_rgba(55,29,19,0.65)]"
+      aria-label="Live channel player"
+    >
+      <div className="relative aspect-video w-full overflow-hidden bg-black">
+        {props.externalPoster ? (
+          <img
+            src={props.externalPoster}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full scale-[2.1] object-cover opacity-35 blur-3xl saturate-150"
+          />
+        ) : null}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,transparent,rgba(18,10,7,0.72))]" />
+        <NativeVideoPlayerCore
+          {...props}
+          className="!relative !z-10 !h-full !w-full !aspect-auto !rounded-none !bg-transparent"
+        />
+        {!isNativeVlcPlatform() ? (
+          <button
+            type="button"
+            onClick={() => void toggleFullscreen()}
+            aria-label={full ? "Exit fullscreen" : "Watch in landscape"}
+            className="absolute right-3 top-3 z-50 grid size-11 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-xl transition active:scale-95"
+          >
+            {full ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="flex items-center gap-3 border-t border-white/10 bg-[rgba(255,250,245,0.10)] p-3.5 backdrop-blur-2xl">
+        {props.externalPoster ? (
+          <img
+            src={props.externalPoster}
+            alt=""
+            className="size-14 shrink-0 rounded-full bg-white object-contain p-0.5 shadow-md ring-1 ring-white/25"
+          />
+        ) : (
+          <div className="grid size-14 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-bold ring-1 ring-white/20">
+            {(props.title || "X").slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <span className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-[#b83d32] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="size-1.5 animate-pulse rounded-full bg-white motion-reduce:animate-none" />
+            Live
+          </span>
+          <h2 className="truncate text-base font-semibold leading-tight">{props.title || "Live channel"}</h2>
+          <p className="truncate text-xs text-white/70">
+            {[props.channelFlag, props.channelCountry, props.channelQuality].filter(Boolean).join(" · ") || "Live broadcast"}
+          </p>
+        </div>
+        {props.onFavorite ? (
+          <button
+            type="button"
+            onClick={props.onFavorite}
+            aria-label={props.favorite ? "Remove from favourites" : "Add to favourites"}
+            aria-pressed={Boolean(props.favorite)}
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-95"
+          >
+            <Heart className={cn("size-5", props.favorite && "fill-[#ff806e] text-[#ff806e]")} />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void shareChannel()}
+          aria-label="Share channel"
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-95"
+        >
+          <Share2 className="size-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setNoticeOpen((open) => !open)}
+          aria-label="About live channels"
+          aria-expanded={noticeOpen}
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-95"
+        >
+          <Info className="size-5" />
+        </button>
+      </div>
+      {noticeOpen ? (
+        <p className="border-t border-white/10 px-4 py-3 text-xs leading-relaxed text-white/70">
+          Some channels may be unavailable in your region or on your device. XoraTV filters channels for the current player platform.
+        </p>
+      ) : null}
+    </section>
   );
 }
 
