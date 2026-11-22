@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Tv } from "lucide-react";
-import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { LiveChannelEmptyStage, NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
 import { XSeriesMark } from "@/components/xora/XSeriesMark";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
@@ -224,19 +224,14 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                   title={selected.name}
                   liveTv
                   nativeDirectOnly
+                  autoPlay
                   channelCountry={selected.country || undefined}
                   channelQuality={selected.quality || undefined}
                   className="w-full"
                   onClose={() => setSelectedId(null)}
                 />
               ) : (
-                <div className="xsc-player-empty">
-                  <span className="xsc-player-empty-icon"><Tv className="size-5" aria-hidden="true" /></span>
-                  <div>
-                    <p>Choose a channel to start watching</p>
-                    <span>Select any channel below</span>
-                  </div>
-                </div>
+                <LiveChannelEmptyStage />
               )}
             </div>
 

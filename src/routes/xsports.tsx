@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Loader2, Play, Radio, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { LiveChannelEmptyStage, NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { CountryRankedChannels } from "@/components/xora/CountryRankedChannels";
 import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
@@ -468,35 +468,29 @@ function XSportsPage() {
         />
         <NetworkChips search={search} onSelect={selectNetwork} loading={channelsQuery.isLoading} />
 
-        {selected ? (
-          <section ref={playerRef} className="scroll-mt-[calc(5rem+env(safe-area-inset-top))] space-y-3" aria-label="Sports channel player">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-primary">Now selected</p>
-                <h2 className="truncate font-display text-lg font-bold">{getChannelDisplayName(selected)}</h2>
-              </div>
-              <button type="button" onClick={() => setSelectedId(null)} className="press inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground">
-                <X className="size-3.5" /> Close player
-              </button>
-            </div>
-            <div className="overflow-hidden rounded-[18px] bg-black shadow-[0_18px_44px_-24px_rgba(0,0,0,0.62)]">
+        <section ref={playerRef} className="scroll-mt-[calc(5rem+env(safe-area-inset-top))] space-y-3" aria-label="Sports channel player">
+          {selected ? (
+            <>
               <NativeVideoPlayer
                 key={selected.id}
                 streamUrl={selected.streamUrl}
                 nativeStreamUrl={selected.id === "wwe-superstar-central"
                   ? "/api/tv/stream?provider=iptv-org&channel=" + encodeURIComponent(selected.id)
                   : "/api/tv/stream?provider=" + (selected.provider || "nexus") + "&channel=" + encodeURIComponent(selected.id)}
-                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv nativeDirectOnly
+                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv nativeDirectOnly autoPlay
                 channelCountry={getCountryName(selected.country)} channelFlag={getCountryFlag(selected.country)}
                 channelQuality={getChannelQuality(selected) || undefined}
                 favorite={favoriteIds.includes(selected.id)} onFavorite={() => toggleFavorite(selected)}
                 nativeHeaders={{ ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}), ...(selected.referrer ? { Referer: selected.referrer } : {}) }}
+                onClose={() => setSelectedId(null)}
                 className="w-full"
               />
-            </div>
-            <ChannelGuide channelId={selected.id} />
-          </section>
-        ) : null}
+              <ChannelGuide channelId={selected.id} />
+            </>
+          ) : (
+            <LiveChannelEmptyStage />
+          )}
+        </section>
 
         {!channelsQuery.isLoading && !channelsQuery.isError && channels.length ? (
           <CountryRankedChannels channels={channels} onSelect={chooseChannel} selectedId={selectedId} title="Sports channels by country" favoriteIds={favoriteIds} onFavorite={toggleFavorite} />

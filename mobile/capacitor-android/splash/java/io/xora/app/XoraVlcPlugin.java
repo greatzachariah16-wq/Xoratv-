@@ -703,9 +703,12 @@ public class XoraVlcPlugin extends Plugin {
         playerOverlay.setBackgroundColor(Color.BLACK);
         playerOverlay.setElevation(dp(28));
 
+        // The live video surface must reach the physical viewport edges.
+        // Keep the frame square and unclipped; rounded card corners create visible
+        // gutters on phones even when the native surface itself is MATCH_PARENT.
         videoFrame = new FrameLayout(getContext());
-        videoFrame.setBackground(roundedBackground(Color.BLACK, dp(24)));
-        videoFrame.setClipToOutline(true);
+        videoFrame.setBackgroundColor(Color.BLACK);
+        videoFrame.setClipToOutline(false);
         videoFrame.setClickable(true);
         videoFrame.setOnClickListener(view -> {
             if (!controlsVisible) showControls();

@@ -16,7 +16,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { VideoPlayer } from "@/components/xora/VideoPlayer";
+import { LiveChannelEmptyStage, VideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
@@ -717,11 +717,12 @@ function LiveTvPage() {
               {state.startsWith("ERR") ? <div className="xora-tv-error-actions"><strong>Channel unavailable</strong><div><Button type="button" variant="outline" className="min-h-11 rounded-full" onClick={handleRetry}>Retry</Button><Button type="button" className="min-h-11 rounded-full" onClick={handleNextChannel}>Try next channel</Button></div></div> : null}
             </section>
           ) : (
-            <section className="xora-tv-empty">
-              <Radio aria-hidden="true" />
-              <strong>{query.isLoading ? "Loading your channels" : "No playable channels found"}</strong>
-              <span>{query.isError && !query.data?.length ? "Connect to the internet to refresh the channel list." : "Try another search or category."}</span>
-            </section>
+            <div className="space-y-2">
+              <LiveChannelEmptyStage />
+              <p className="px-1 text-xs text-muted-foreground">
+                {query.isLoading ? "Loading channels…" : query.isError && !query.data?.length ? "Connect to the internet to refresh the channel list." : "Choose a channel below to begin watching."}
+              </p>
+            </div>
           )}
 
           {renderChannelRail("Recently watched", recentChannels)}
