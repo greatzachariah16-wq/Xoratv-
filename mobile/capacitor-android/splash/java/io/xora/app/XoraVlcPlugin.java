@@ -1076,7 +1076,8 @@ public class XoraVlcPlugin extends Plugin {
                     overlayHeight = height;
                     setWebViewRegion(overlayWidth, 0, panelWidth, height);
                 } else {
-                    videoHeight = Math.round(width * 9f / 16f);
+                    // YouTube-like mobile theater stage: full viewport width with a slightly taller-than-16:9 viewing window.
+                    videoHeight = Math.round(width * 0.60f);
                     videoHeight = Math.min(videoHeight, Math.max(1, height));
                     overlayWidth = width;
                     overlayHeight = videoHeight;

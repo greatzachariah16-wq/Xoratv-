@@ -957,7 +957,7 @@ export function NativeVideoPlayer(props: Props) {
       className="relative isolate left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden rounded-none bg-black text-white shadow-none"
       aria-label="Live channel player"
     >
-      <div ref={stageRef} className="relative aspect-video w-full overflow-hidden bg-black">
+      <div ref={stageRef} className="relative aspect-[5/3] w-full overflow-hidden bg-black">
         <NativeVideoPlayerCore
           {...props}
           className="!relative !z-10 !h-full !w-full !aspect-auto !rounded-none !bg-transparent"
@@ -1041,7 +1041,7 @@ export function LiveChannelEmptyStage() {
       className="relative left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-black text-white"
       aria-label="Live channel player"
     >
-      <div className="relative grid aspect-video w-full place-items-center bg-black">
+      <div className="relative grid aspect-[5/3] w-full place-items-center bg-black">
         <div className="flex flex-col items-center gap-3 px-6 text-center">
           <span className="grid size-12 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-white/70">
             <Tv className="size-5" aria-hidden="true" />
