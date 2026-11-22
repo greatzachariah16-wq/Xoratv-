@@ -130,7 +130,7 @@ async function readChannelCache(key: string): Promise<Channel[] | null> {
 
 async function loadChannels(query: string, category: string): Promise<Channel[]> {
   const params = new URLSearchParams({ limit: "10000" });
-  if (!isNativeVlcPlatform()) params.set("web", "1");
+  params.set("platform", isNativeVlcPlatform() ? "native" : "web");
   if (query.trim()) params.set("q", query.trim());
   if (category) params.set("category", category);
   const cacheMode = isNativeVlcPlatform() ? "native" : "web";
