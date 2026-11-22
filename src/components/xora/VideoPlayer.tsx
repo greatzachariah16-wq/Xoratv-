@@ -383,6 +383,22 @@ function NativeVideoPlayerCore({
     // Native Android live TV is rendered only by LibVLC, never the WebView media element.
     if (liveTv && isNativeVlcPlatform()) return;
 
+    let hlsInstance: import("hls.js").default | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let networkRecoveryCount = 0;
+    const onNetworkOnline = () => {
+      if (!liveTv) return;
+      networkRecoveryCount = 0;
+      setFailed(false);
+      if (hlsInstance) {
+        hlsInstance.startLoad();
+      } else if (video.currentSrc || video.src) {
+        video.load();
+        void video.play().catch(() => {});
+      }
+    };
+    if (liveTv) window.addEventListener("online", onNetworkOnline);
+
     const telemetryId = postId || `${title}-${src}`;
     startPlaybackTelemetry(telemetryId, activeSrc);
 
@@ -395,10 +411,7 @@ function NativeVideoPlayerCore({
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = activeSrc;
       } else {
-        let hlsInstance: import("hls.js").default | null = null;
-        let retryTimer: ReturnType<typeof setTimeout> | null = null;
         let recovered = false;
-        let networkRecoveryCount = 0;
 
         import("hls.js")
           .then(({ default: Hls }) => {
@@ -429,13 +442,15 @@ function NativeVideoPlayerCore({
                   return;
                 }
 
-                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsInstance && networkRecoveryCount < 2 && !retryTimer) {
+                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsInstance && networkRecoveryCount < 3 && !retryTimer) {
+                  const retryDelays = [1000, 2000, 4000];
+                  const delay = retryDelays[networkRecoveryCount];
                   networkRecoveryCount += 1;
                   setFailed(false);
                   retryTimer = setTimeout(() => {
                     retryTimer = null;
                     hlsInstance?.startLoad();
-                  }, 1200);
+                  }, delay);
                   return;
                 }
 
@@ -452,6 +467,7 @@ function NativeVideoPlayerCore({
           });
 
         return () => {
+          window.removeEventListener("online", onNetworkOnline);
           if (retryTimer) clearTimeout(retryTimer);
           hlsInstance?.destroy();
           if (timer3sRef.current) clearTimeout(timer3sRef.current);
@@ -465,6 +481,8 @@ function NativeVideoPlayerCore({
     }
 
     return () => {
+      window.removeEventListener("online", onNetworkOnline);
+      if (retryTimer) clearTimeout(retryTimer);
       if (timer3sRef.current) clearTimeout(timer3sRef.current);
       if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
       video.pause();
