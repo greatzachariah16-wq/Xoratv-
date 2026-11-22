@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Play, RefreshCw, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { NativeVideoPlayer } from "@/components/xora/VideoPlayer";
+import { LiveChannelEmptyStage, NativeVideoPlayer } from "@/components/xora/VideoPlayer";
 import { CountryRankedChannels } from "@/components/xora/CountryRankedChannels";
 import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
@@ -253,22 +253,21 @@ function KidsPage() {
               ) : query.isError ? (
                 <KidsEmptyState message="Kids channels could not load. Please try again." />
               ) : visibleSelected ? (
-                <section className="space-y-3" aria-label="Selected kids channel">
-                  <SectionHeader title="Selected channel" subtitle={getChannelDisplayName(visibleSelected)} />
-                  <div className="overflow-hidden rounded-[22px] bg-black shadow-[0_18px_44px_-24px_rgba(0,0,0,0.62)]">
-                    <NativeVideoPlayer key={visibleSelected.id}
-                      streamUrl={visibleSelected.streamUrl}
-                      nativeStreamUrl={"/api/tv/stream?provider=" + (visibleSelected.provider || "nexus") + "&channel=" + encodeURIComponent(visibleSelected.id)}
-                      externalPoster={visibleSelected.logo} title={visibleSelected.name} liveTv nativeDirectOnly
-                      channelCountry={getCountryName(visibleSelected.country)} channelFlag={getCountryFlag(visibleSelected.country)}
-                      channelQuality={visibleSelected.quality || undefined}
-                      favorite={favoriteChannels.includes(visibleSelected.id)}
-                      onFavorite={() => toggleChannelFavorite(visibleSelected)}
-                      nativeHeaders={{ ...(visibleSelected.userAgent ? { "User-Agent": visibleSelected.userAgent } : {}), ...(visibleSelected.referrer ? { Referer: visibleSelected.referrer } : {}) }}
-                      className="w-full" />
-                  </div>
+                <section aria-label="Selected kids channel">
+                  <NativeVideoPlayer key={visibleSelected.id}
+                    streamUrl={visibleSelected.streamUrl}
+                    nativeStreamUrl={"/api/tv/stream?provider=" + (visibleSelected.provider || "nexus") + "&channel=" + encodeURIComponent(visibleSelected.id)}
+                    externalPoster={visibleSelected.logo} title={visibleSelected.name} liveTv nativeDirectOnly autoPlay
+                    channelCountry={getCountryName(visibleSelected.country)} channelFlag={getCountryFlag(visibleSelected.country)}
+                    channelQuality={visibleSelected.quality || undefined}
+                    favorite={favoriteChannels.includes(visibleSelected.id)}
+                    onFavorite={() => toggleChannelFavorite(visibleSelected)}
+                    nativeHeaders={{ ...(visibleSelected.userAgent ? { "User-Agent": visibleSelected.userAgent } : {}), ...(visibleSelected.referrer ? { Referer: visibleSelected.referrer } : {}) }}
+                    className="w-full" />
                 </section>
-              ) : null}
+              ) : (
+                <LiveChannelEmptyStage />
+              )}
 
               {channelsByAge.length ? (
                 <CountryRankedChannels channels={channelsByAge} onSelect={selectKidsChannel} selectedId={visibleSelected?.id} title="Kids channels by country" favoriteIds={favoriteChannels} onFavorite={toggleChannelFavorite} metaMode="language" />
