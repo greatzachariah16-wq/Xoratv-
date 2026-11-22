@@ -83,7 +83,8 @@
     "puppeteer": "^25.10.0",
     "@sparticuz/chromium": "153.0.0",
     "@capacitor/android": "8.6.0",
-    "@capacitor/core": "8.6.0"
+    "@capacitor/core": "8.6.0",
+    "@capacitor/network": "8.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
