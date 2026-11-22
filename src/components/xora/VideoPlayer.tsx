@@ -4,6 +4,7 @@ import {
   closeNativeVlc,
   openNativeVlc,
   isNativeVlcPlatform,
+  updateNativeVlcBounds,
 } from "@/lib/native-vlc";
 import {
   Gauge,
@@ -102,6 +103,7 @@ function NativeVideoPlayerCore({
   cinemaMode = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const nativeStageRef = useRef<HTMLDivElement | null>(null);
   const { config: dataSaver } = useDataSaver();
   const effectiveStream = streamUrl || externalUrl || null;
   const signedSrc = useSignedUrl("videos", effectiveStream ? null : mediaPath);
@@ -219,6 +221,65 @@ function NativeVideoPlayerCore({
         nativeVlcActiveRef.current = false;
         void closeNativeVlc();
       }
+    };
+  }, [nativeVlcOnly]);
+
+  // Shared native stage geometry for every LibVLC-backed section:
+  // Live TV, XSports, XoraKids, and native X-Series cinema playback.
+  useEffect(() => {
+    if (!nativeVlcOnly) return;
+
+    let frame = 0;
+    let disposed = false;
+    const syncBounds = () => {
+      if (disposed) return;
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const stage = nativeStageRef.current;
+        if (!stage) return;
+        const rect = stage.getBoundingClientRect();
+        const viewport = window.visualViewport;
+        const scale = viewport?.scale || 1;
+        const visible = rect.width > 0 && rect.height > 0 &&
+          rect.bottom > 0 && rect.right > 0 &&
+          rect.top < window.innerHeight && rect.left < window.innerWidth;
+        void updateNativeVlcBounds({
+          x: rect.left - (viewport?.offsetLeft || 0),
+          y: rect.top - (viewport?.offsetTop || 0),
+          width: rect.width,
+          height: rect.height,
+          devicePixelRatio: window.devicePixelRatio * scale,
+          visible,
+        }).catch((error) => console.warn("[Xora] Native player bounds sync failed:", error));
+      });
+    };
+
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(syncBounds)
+      : null;
+    if (nativeStageRef.current) observer?.observe(nativeStageRef.current);
+    window.addEventListener("scroll", syncBounds, { passive: true, capture: true });
+    window.addEventListener("resize", syncBounds, { passive: true });
+    window.addEventListener("orientationchange", syncBounds);
+    window.visualViewport?.addEventListener("resize", syncBounds);
+    window.visualViewport?.addEventListener("scroll", syncBounds);
+    syncBounds();
+
+    return () => {
+      disposed = true;
+      if (frame) cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("scroll", syncBounds, true);
+      window.removeEventListener("resize", syncBounds);
+      window.removeEventListener("orientationchange", syncBounds);
+      window.visualViewport?.removeEventListener("resize", syncBounds);
+      window.visualViewport?.removeEventListener("scroll", syncBounds);
+      void updateNativeVlcBounds({
+        x: 0, y: 0, width: 0, height: 0,
+        devicePixelRatio: window.devicePixelRatio,
+        visible: false,
+      }).catch(() => {});
     };
   }, [nativeVlcOnly]);
 
@@ -687,10 +748,11 @@ function NativeVideoPlayerCore({
 
   return (
     <div
+      ref={nativeStageRef}
       className={cn(
         "group relative w-full max-w-full overflow-hidden bg-ink",
         cinemaMode ? "rounded-none" : "rounded-xl",
-        nativeVlcOnly && nativeVlcActive ? "hidden" : aspect,
+        nativeVlcOnly && nativeVlcActive ? "opacity-0" : aspect,
         className,
       )}
     >
