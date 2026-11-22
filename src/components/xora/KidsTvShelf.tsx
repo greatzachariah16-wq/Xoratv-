@@ -2,10 +2,11 @@ import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
+import { getChannelPlatformQuery } from "@/lib/native-vlc";
 import { KidsCarousel } from "@/components/xora/KidsCarousel";
 
 async function loadKidsChannels(): Promise<NexusTvChannel[]> {
-  const res = await fetch("/api/tv/channels?category=kids&limit=12");
+  const res = await fetch("/api/tv/channels?category=kids&limit=12&" + getChannelPlatformQuery());
   if (!res.ok) return [];
   const data = (await res.json()) as { ok?: boolean; channels?: NexusTvChannel[] };
   return Array.isArray(data.channels) ? data.channels : [];
