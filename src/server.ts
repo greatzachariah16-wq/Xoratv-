@@ -474,28 +474,8 @@ async function handleStaticRootFile(request: Request, url: URL): Promise<Respons
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const pathname = url.pathname;
 
-  if (process.env.PREVIEW_ISOLATED === "true" && (
-    pathname.includes("exoclick") || pathname.includes("89cfa11e5cd3529d8d2fee19321fc484") || pathname.includes("4b48232c4ffdb43fa729")
-  )) {
+  if (process.env.PREVIEW_ISOLATED === "true" && pathname.includes("4b48232c4ffdb43fa729")) {
     return new Response("Not found", { status: 404, headers: { ...CORS_HEADERS, "Content-Type": "text/plain" } });
-  }
-
-  if (
-    pathname === "/exoclick.txt" ||
-    pathname === "/89cfa11e5cd3529d8d2fee19321fc484.html" ||
-    pathname === "/89cfa11e5cd3529d8d2fee19321fc484.txt" ||
-    pathname === "/89cfa11e5cd3529d8d2fee19321fc484"
-  ) {
-    return new Response("89cfa11e5cd3529d8d2fee19321fc484", {
-      status: 200,
-      headers: {
-        ...CORS_HEADERS,
-        "Content-Type": "text/plain",
-        "Content-Length": "32",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
   }
 
   if (
