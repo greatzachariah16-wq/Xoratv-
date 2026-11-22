@@ -89,6 +89,11 @@ export function isNativeVlcPlatform(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
+/** Explicitly identify the client when requesting IPTV channel catalogues. */
+export function getChannelPlatformQuery(): string {
+  return "platform=" + (isNativeVlcPlatform() ? "native" : "web");
+}
+
 /** Resolve upstream candidates for LocalHlsProxy plus its emergency server-proxy fallback. */
 export async function resolveNativeVlcPlayback(
   provider: "nexus" | "iptv-org",
