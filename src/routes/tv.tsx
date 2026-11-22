@@ -622,7 +622,7 @@ function LiveTvPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell wide extraWide>
       <CpxLiveTvGate>
         <div className={isLandscape ? "xora-tv-page xora-tv-redesign is-landscape" : "xora-tv-page xora-tv-redesign"}>
           <header className="xora-tv-heading">
