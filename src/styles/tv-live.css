@@ -404,3 +404,8 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
 @media (prefers-reduced-motion: reduce) {
   .xora-tv-native-stage::before { animation: none; background: #100d0b; }
 }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .xora-tv-heading { display: none !important; }
+  .xora-tv-player-dock { max-width: min(100%, 66dvh); }
+}
