@@ -369,15 +369,9 @@ function LiveTvPage() {
     ? selected.id
     : "";
 
-  // On Android, trust the native player's network assessment once it has reported
-  // a state for the selected channel. A failed channel-list/API request is not proof
-  // that the phone itself is offline.
-  const nativeNetworkStatusAvailable = isNativeVlcPlatform()
-    && nativeState.channelId === selected?.id
-    && nativeState.state !== "IDLE";
-  const isOffline = nativeNetworkStatusAvailable
-    ? nativeState.state === "OFFLINE"
-    : !isOnline;
+  // Offline is determined by the Capacitor connection signal plus the independent
+  // reachability probes, never by an individual channel or stream failure.
+  const isOffline = !isOnline;
 
   useEffect(() => {
     let mounted = true;
