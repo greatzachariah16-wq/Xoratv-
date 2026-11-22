@@ -514,42 +514,7 @@ function LiveTvPage() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add("xora-tv-page-open");
-    let lastY = window.scrollY;
-    let accumulatedScroll = 0;
-    let previousDirection = 0;
-    const onScroll = () => {
-      const currentY = window.scrollY;
-      const delta = currentY - lastY;
-      lastY = currentY;
-
-      if (currentY < 24) {
-        accumulatedScroll = 0;
-        previousDirection = 0;
-        root.classList.remove("xora-tv-header-hidden");
-        return;
-      }
-      if (Math.abs(delta) < 1) return;
-
-      const direction = delta > 0 ? 1 : -1;
-      if (direction !== previousDirection) accumulatedScroll = 0;
-      previousDirection = direction;
-      accumulatedScroll += delta;
-
-      // Ignore tiny scroll jitter. Hide only after a meaningful downward gesture
-      // and reveal with a shorter upward gesture so channel browsing feels steady.
-      if (direction > 0 && accumulatedScroll >= 24 && selectedIdRef.current) {
-        root.classList.add("xora-tv-header-hidden");
-        accumulatedScroll = 0;
-      } else if (direction < 0 && accumulatedScroll <= -16) {
-        root.classList.remove("xora-tv-header-hidden");
-        accumulatedScroll = 0;
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      root.classList.remove("xora-tv-page-open", "xora-tv-header-hidden");
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => root.classList.remove("xora-tv-page-open", "xora-tv-header-hidden");
   }, []);
 
   const guide = useQuery({
@@ -720,10 +685,6 @@ function LiveTvPage() {
             </div>
           </header>
 
-          <div className="xora-tv-notice">
-            <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
-          </div>
-
           {selected && !isNativeVlcPlatform() ? (
 
             <section ref={playerDockRef} className="xora-tv-browser-player xora-tv-player-dock" aria-label="Live channel player">
@@ -792,6 +753,10 @@ function LiveTvPage() {
               ))}
               {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span> : null}
             </div>
+          <div className="xora-tv-notice">
+            <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
+          </div>
+
           {renderChannelRail("Recently watched", recentChannels)}
 
           <section className="xora-tv-ranking" aria-label="Ranked channels by country">
