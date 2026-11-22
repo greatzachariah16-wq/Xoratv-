@@ -72,7 +72,7 @@ export const Route = createFileRoute("/kids")({
 async function loadKidsChannels(query: string): Promise<Channel[]> {
   const params = new URLSearchParams({ category: "kids", limit: "10000" });
   if (query.trim()) params.set("q", query.trim());
-  if (!isNativeVlcPlatform()) params.set("web", "1");
+  params.set("platform", isNativeVlcPlatform() ? "native" : "web");
   const res = await fetch("/api/tv/channels?" + params.toString());
   if (!res.ok) throw new Error("Unable to load kids channels");
   const data = (await res.json()) as { channels?: Channel[] };

@@ -77,7 +77,7 @@ function normalizeSportsChannel(value: unknown): SportsChannel | null {
 }
 
 async function loadSportsChannels(): Promise<SportsChannel[]> {
-  const response = await fetch("/api/tv/channels?category=sports&limit=10000" + (isNativeVlcPlatform() ? "" : "&web=1"));
+  const response = await fetch("/api/tv/channels?category=sports&limit=10000&platform=" + (isNativeVlcPlatform() ? "native" : "web"));
   if (!response.ok) throw new Error("Unable to load sports channels right now.");
 
   const data: unknown = await response.json();

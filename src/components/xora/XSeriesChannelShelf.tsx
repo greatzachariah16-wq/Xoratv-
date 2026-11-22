@@ -6,6 +6,7 @@ import { ChannelGuide } from "@/components/xora/ChannelGuide";
 import { XSeriesMark } from "@/components/xora/XSeriesMark";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
+import { getChannelPlatformQuery } from "@/lib/native-vlc";
 import "./xseries-channels.css";
 
 type XSeriesLiveChannel = {
@@ -24,8 +25,8 @@ type ShelfFilter = "All" | "Movies" | "Series" | "Action" | "Romance";
 
 async function loadXSeriesChannels(): Promise<XSeriesLiveChannel[]> {
   const [movies, series] = await Promise.all([
-    fetch("/api/tv/channels?category=movies&limit=100"),
-    fetch("/api/tv/channels?category=series&limit=100"),
+    fetch("/api/tv/channels?category=movies&limit=100&" + getChannelPlatformQuery()),
+    fetch("/api/tv/channels?category=series&limit=100&" + getChannelPlatformQuery()),
   ]);
   if (!movies.ok || !series.ok) throw new Error("Channel catalogue unavailable");
   const [movieData, seriesData] = await Promise.all([
