@@ -437,3 +437,16 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
   .xora-tv-live-pill i { animation: none; }
   .xora-tv-filter-row button { transition: none; }
 }
+
+.xora-tv-now-card .xora-tv-now-logo {
+  width: 52px;
+  height: 52px;
+  max-height: 52px;
+  flex: 0 0 52px;
+  padding: 4px;
+  border: 1px solid color-mix(in oklch, var(--primary) 22%, white);
+  border-radius: 50%;
+  background: rgba(255,255,255,.58);
+  object-fit: contain;
+  box-shadow: 0 3px 10px rgba(64,42,30,.09), inset 0 1px 0 rgba(255,255,255,.8);
+}
