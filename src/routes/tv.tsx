@@ -479,7 +479,13 @@ function LiveTvPage() {
       const stage = nativeStageRef.current;
       if (stage) {
         const rect = stage.getBoundingClientRect();
-        void updateNativeVlcBounds({ x: rect.left, y: rect.top, width: rect.width, height: rect.height }).catch(() => {});
+        void updateNativeVlcBounds({
+          x: rect.left - (window.visualViewport?.offsetLeft ?? 0),
+          y: rect.top - (window.visualViewport?.offsetTop ?? 0),
+          width: rect.width,
+          height: rect.height,
+          devicePixelRatio: window.devicePixelRatio * (window.visualViewport?.scale ?? 1),
+        }).catch(() => {});
       }
     })();
     nativePlayerTaskRef.current = task;
@@ -530,7 +536,13 @@ function LiveTvPage() {
         page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
       }
       if (native && rect && rect.width > 0 && rect.height > 0) {
-        void updateNativeVlcBounds({ x: rect.left, y: rect.top, width: rect.width, height: rect.height }).catch(() => {});
+        void updateNativeVlcBounds({
+          x: rect.left - (window.visualViewport?.offsetLeft ?? 0),
+          y: rect.top - (window.visualViewport?.offsetTop ?? 0),
+          width: rect.width,
+          height: rect.height,
+          devicePixelRatio: window.devicePixelRatio * (window.visualViewport?.scale ?? 1),
+        }).catch(() => {});
       }
     };
     const scheduleUpdate = () => {
