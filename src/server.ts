@@ -1055,9 +1055,9 @@ export default {
             country: url.searchParams.get("country") || undefined,
             category,
             limit: Number(url.searchParams.get("limit") || "100"),
+            platform: nativePlatform ? "native" : "web",
           });
           const channels = result.channels
-            .filter((channel) => nativePlatform || (!channel.userAgent && !channel.referrer))
             .map((channel) => ({
               ...channel,
               provider: "iptv-org" as const,
@@ -1090,7 +1090,13 @@ export default {
         const country = url.searchParams.get("country") || undefined;
         const category = url.searchParams.get("category") || undefined;
         const limit = Number(url.searchParams.get("limit") || "30");
-        const result = await fetchNexusChannels({ query, country, category, limit });
+        const result = await fetchNexusChannels({
+          query,
+          country,
+          category,
+          limit,
+          platform: nativePlatform ? "native" : "web",
+        });
         const fallbackBrands = category?.toLowerCase() === "sports"
           ? ["ESPN", "SuperSport"]
           : query && /espn/i.test(query)
@@ -1099,7 +1105,9 @@ export default {
               ? ["SuperSport"]
               : [];
         const directoryFallbacks = await Promise.all(
-          fallbackBrands.map((brand) => fetchIptvChannels({ query: brand, limit: 100 })),
+          fallbackBrands.map((brand) =>
+            fetchIptvChannels({ query: brand, limit: 100, platform: nativePlatform ? "native" : "web" }),
+          ),
         );
         const directoryChannels = directoryFallbacks.flatMap((item) => item.channels);
 
@@ -1126,10 +1134,10 @@ export default {
           }
         }
 
-        const eligibleChannels = [...merged.values()].filter(
-          (channel) => nativePlatform || (!channel.userAgent && !channel.referrer),
-        );
-        const channels = eligibleChannels.slice(0, limit);
+        // Each provider has already selected a stream suitable for this platform.
+        // Do not discard a channel merely because its native-best stream needs headers:
+        // the provider-level selector can choose an alternate header-free stream.
+        const channels = [...merged.values()].slice(0, limit);
         const ok = result.ok || channels.length > 0;
         return new Response(JSON.stringify({
           ok,
