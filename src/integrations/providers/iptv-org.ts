@@ -169,6 +169,7 @@ export async function fetchIptvChannels(options?: {
   country?: string;
   category?: string;
   limit?: number;
+  platform?: "native" | "web";
 }): Promise<{ ok: boolean; total: number; channels: IptvChannel[]; error?: string }> {
   try {
     const channels = await loadChannels();
@@ -210,7 +211,7 @@ export async function fetchIptvChannels(options?: {
       const results = await Promise.all(
         batch.map(async (channel) => ({
           channel,
-          playback: await getIptvPlaybackInfo(channel.id),
+          playback: await getIptvPlaybackInfo(channel.id, { browserOnly: options?.platform === "web" }),
         })),
       );
 
@@ -361,12 +362,16 @@ const IPTV_HEALTH_CHECK_CONCURRENCY = 8;
 
 export async function getIptvPlaybackCandidates(
   channelId: string,
+  options?: { browserOnly?: boolean },
 ): Promise<IptvPlaybackCandidate[]> {
   try {
     const records = await loadStreamRecords();
+    const channelRecords = records.filter(
+      (record) => record.channel === channelId && /^https?:\/\//i.test(record.url),
+    );
     const seen = new Set<string>();
-    const candidates = records
-      .filter((record) => record.channel === channelId && /^https?:\/\//i.test(record.url))
+    const candidates = channelRecords
+      .filter((record) => !options?.browserOnly || (!record.referrer && !record.user_agent))
       .sort((a, b) => playbackQualityScore(b.quality) - playbackQualityScore(a.quality))
       .filter((record) => {
         if (seen.has(record.url)) return false;
@@ -382,11 +387,16 @@ export async function getIptvPlaybackCandidates(
         labels: record.labels || [],
       }));
 
-    if (candidates.length > 0) return candidates;
+    // If metadata exists for this channel but every stream needs custom headers,
+    // do not fall back to the header-blind M3U entry on browser requests.
+    if (channelRecords.length > 0 || candidates.length > 0) return candidates;
   } catch {
-    // Keep the existing playlist fallback if the metadata endpoint is unavailable.
+    // Native playback may still use the public playlist fallback. Browser requests
+    // fail closed when the header metadata source is unavailable.
+    if (options?.browserOnly) return [];
   }
 
+  if (options?.browserOnly) return [];
   const channels = await loadChannels();
   const channel = channels.find((item) => item.id === channelId);
   if (!channel || !/^https?:\/\//i.test(channel.streamUrl)) return [];
@@ -461,13 +471,16 @@ async function probeIptvStream(candidate: IptvPlaybackCandidate): Promise<boolea
   }
 }
 
-export async function getIptvPlaybackInfo(channelId: string): Promise<{
+export async function getIptvPlaybackInfo(
+  channelId: string,
+  options?: { browserOnly?: boolean },
+): Promise<{
   streamUrl: string;
   referrer: string | null;
   userAgent: string | null;
 } | null> {
   try {
-    const candidates = await getIptvPlaybackCandidates(channelId);
+    const candidates = await getIptvPlaybackCandidates(channelId, options);
     for (const candidate of candidates) {
       if (await probeIptvStream(candidate)) {
         return {
