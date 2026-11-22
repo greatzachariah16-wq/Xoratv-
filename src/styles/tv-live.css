@@ -346,3 +346,34 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
 @media(max-width:430px) { .xora-tv-page { min-width:0; } .xora-tv-player-dock { margin-inline:-2px; } }
 @media(orientation:landscape) and (max-height:520px) { .xora-tv-player-dock { position:relative; top:auto; } .xora-tv-native-stage { max-height:42dvh; } }
 @media(prefers-reduced-motion:reduce) { .xora-tv-player-dock,.xora-tv-filter-row { scroll-behavior:auto; } }
+
+
+/* Landscape remains a normal browsable layout; fullscreen is an explicit player action. */
+@media (orientation: landscape) and (max-height: 520px) {
+  html.xora-tv-page-open #main > div {
+    display: block !important; width: auto; height: auto; min-height: 0; max-width: none;
+    overflow: visible; padding: 0 12px max(16px,env(safe-area-inset-bottom)) !important;
+  }
+  html.xora-tv-page-open.xora-tv-player-open .xora-tv-page {
+    display: block !important; width: auto; height: auto; min-height: 0; overflow: visible;
+    padding: max(8px,env(safe-area-inset-top)) 0 calc(64px + env(safe-area-inset-bottom) + 16px);
+  }
+  html.xora-tv-page-open .xora-tv-heading,
+  html.xora-tv-page-open .xora-tv-notice { display: block !important; }
+  html.xora-tv-page-open .xora-tv-featured-card {
+    grid-column: auto; grid-row: auto; position: relative; margin: 0 auto 12px; padding: 0;
+  }
+  html.xora-tv-page-open.xora-tv-player-open .xora-tv-channel-section {
+    display: block; min-height: 0; height: auto; max-height: none; overflow: visible;
+  }
+  html.xora-tv-page-open.xora-tv-player-open .xora-tv-channel-list-viewport {
+    height: auto; max-height: none; min-height: 0; overflow: visible;
+  }
+  html.xora-tv-page-open.xora-tv-player-open .xora-tv-rail,
+  html.xora-tv-page-open.xora-tv-player-open .xora-tv-guide,
+  html.xora-tv-page-open.xora-tv-player-open .xora-tv-empty { display: block !important; }
+  html.xora-tv-page-open .xora-floating-nav,
+  html.xora-tv-page-open header.fixed.inset-x-0.top-0 { display: flex !important; }
+  .xora-tv-player-dock { max-width: min(100%, 88dvh); margin-inline: auto; }
+  .xora-tv-native-stage { max-height: none; }
+}
