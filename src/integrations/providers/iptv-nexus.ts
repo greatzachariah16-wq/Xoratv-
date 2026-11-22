@@ -175,12 +175,13 @@ async function loadChannels(): Promise<NexusChannel[]> {
     .finally(() => { channelsLoading = null; });
 
   return channelsLoading;
-}function bestStream(channel: NexusChannel): NexusStream | null {
+}function bestStream(channel: NexusChannel, browserOnly = false): NexusStream | null {
   const streams = (channel.streams || []).filter(
     (stream) =>
       stream?.url &&
       /^https?:\/\//i.test(stream.url) &&
-      (stream.health?.status === undefined || stream.health.status === "online"),
+      (stream.health?.status === undefined || stream.health.status === "online") &&
+      (!browserOnly || (!stream.referrer && !stream.user_agent)),
   );
   return streams.sort((a, b) => {
     const scoreA = a.health?.score || 0;
@@ -188,8 +189,8 @@ async function loadChannels(): Promise<NexusChannel[]> {
     return scoreB - scoreA || (b.rank || 0) - (a.rank || 0);
   })[0] || null;
 }
-function toChannel(channel: NexusChannel): NexusTvChannel | null {
-  const stream = bestStream(channel);
+function toChannel(channel: NexusChannel, options?: { browserOnly?: boolean }): NexusTvChannel | null {
+  const stream = bestStream(channel, options?.browserOnly === true);
   if (!stream?.url || !/^https?:\/\//i.test(stream.url)) return null;
   return {
     id: channel.id,
@@ -210,6 +211,7 @@ export async function fetchNexusChannels(options?: {
   country?: string;
   category?: string;
   limit?: number;
+  platform?: "native" | "web";
 }): Promise<{ ok: boolean; total: number; channels: NexusTvChannel[]; error?: string }> {
   try {
     const all = await loadChannels();
@@ -226,7 +228,7 @@ export async function fetchNexusChannels(options?: {
     });
 
     const result = filtered
-      .map(toChannel)
+      .map((channel) => toChannel(channel, { browserOnly: options?.platform === "web" }))
       .filter((channel): channel is NexusTvChannel => Boolean(channel))
       .sort((a, b) => (b.score || 0) - (a.score || 0) || a.name.localeCompare(b.name))
       .slice(0, limit);
