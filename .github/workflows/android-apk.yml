@@ -20,6 +20,7 @@ on:
       - "src/routes/kids.tsx"
       - "src/lib/native-vlc.ts"
       - "src/routeTree.gen.ts"
+      - "src/styles/tv-live.css"
       - ".github/workflows/android-apk.yml"
   push:
     branches: [main]
@@ -34,8 +35,10 @@ on:
       - "src/routes/__root.tsx"
       - "src/routes/download.tsx"
       - "src/components/xora/AppShell.tsx"
+      - "src/components/xora/VideoPlayer.tsx"
       - "src/routes/tv.tsx"
       - "src/routes/kids.tsx"
+      - "src/styles/tv-live.css"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
