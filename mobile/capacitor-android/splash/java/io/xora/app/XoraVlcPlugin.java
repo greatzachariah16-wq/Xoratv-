@@ -22,6 +22,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Rational;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
@@ -935,6 +937,11 @@ public class XoraVlcPlugin extends Plugin {
         controls.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
         controls.setPadding(dp(8), dp(7), dp(10), dp(7));
         playButton = addControl("Ⅱ", "Pause playback", controls, this::togglePlaybackInternal);
+        playButton.setBackground(roundedBackground(0xCCB5532F, dp(26)));
+        LinearLayout.LayoutParams primaryControlParams = (LinearLayout.LayoutParams) playButton.getLayoutParams();
+        primaryControlParams.width = dp(52);
+        primaryControlParams.height = dp(52);
+        playButton.setLayoutParams(primaryControlParams);
         muteButton = addControl("◖))", "Mute", controls, this::toggleMuteInternal);
         fullscreenButton = addControl("⛶", "Enter fullscreen", controls, this::toggleFullscreenInternal);
         pipButton = addControl("▣", "Picture in picture", controls, this::enterPictureInPictureInternal);
@@ -985,11 +992,21 @@ public class XoraVlcPlugin extends Plugin {
         button.setClickable(true);
         button.setBackground(roundedBackground(0x66221F24, dp(22)));
         button.setOnClickListener(view -> {
+            button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
             action.run();
             showControls();
         });
+        button.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                view.animate().cancel();
+                view.animate().scaleX(0.94f).scaleY(0.94f).setDuration(85L).start();
+            } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                view.animate().scaleX(1f).scaleY(1f).setDuration(190L).start();
+            }
+            return false;
+        });
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(42), dp(42));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(48), dp(48));
         params.setMargins(dp(4), 0, dp(4), 0);
         parent.addView(button, params);
         return button;
