@@ -515,7 +515,7 @@ function LiveTvPage() {
       window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
       if (native) void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
     };
-  }, [selected?.id]);
+  }, [selected]);
 
   useEffect(() => {
     const root = document.documentElement;
