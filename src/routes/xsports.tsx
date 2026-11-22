@@ -9,7 +9,7 @@ import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChannelGuide } from "@/components/xora/ChannelGuide";
-import { CategoryChips, ChannelCard, ChannelStatusBadge, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryName } from "@/components/xora/XSportsComponents";
+import { CategoryChips, ChannelCard, ChannelStatusBadge, SectionHeader, formatMetadataLabel, getChannelDisplayName, getChannelQuality, getCountryFlag, getCountryName } from "@/components/xora/XSportsComponents";
 
 type SportsChannel = {
   id: string; name: string; logo?: string; country?: string;
@@ -486,8 +486,12 @@ function XSportsPage() {
                 nativeStreamUrl={selected.id === "wwe-superstar-central"
                   ? "/api/tv/stream?provider=iptv-org&channel=" + encodeURIComponent(selected.id)
                   : "/api/tv/stream?provider=" + (selected.provider || "nexus") + "&channel=" + encodeURIComponent(selected.id)}
-                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv nativeDirectOnly nativeHeaders={{ ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}), ...(selected.referrer ? { Referer: selected.referrer } : {}) }}
-                className="aspect-video w-full rounded-none"
+                externalPoster={selected.logo} title={getChannelDisplayName(selected)} liveTv nativeDirectOnly
+                channelCountry={getCountryName(selected.country)} channelFlag={getCountryFlag(selected.country)}
+                channelQuality={getChannelQuality(selected) || undefined}
+                favorite={favoriteIds.includes(selected.id)} onFavorite={() => toggleFavorite(selected)}
+                nativeHeaders={{ ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}), ...(selected.referrer ? { Referer: selected.referrer } : {}) }}
+                className="w-full"
               />
             </div>
             <ChannelGuide channelId={selected.id} />

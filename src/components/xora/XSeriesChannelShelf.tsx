@@ -224,7 +224,9 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                   title={selected.name}
                   liveTv
                   nativeDirectOnly
-                  className="aspect-video w-full"
+                  channelCountry={selected.country || undefined}
+                  channelQuality={selected.quality || undefined}
+                  className="w-full"
                   onClose={() => setSelectedId(null)}
                 />
               ) : (
@@ -237,20 +239,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                 </div>
               )}
             </div>
-            {selected ? (
-              <div className="xsc-now-playing">
-                {selected.logo ? (
-                  <img src={selected.logo} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="xsc-now-playing-fallback">{selected.name.slice(0, 1).toUpperCase()}</span>
-                )}
-                <div className="xsc-now-playing-copy">
-                  <strong>{selected.name}</strong>
-                  <span>{selected.country || "Live channel"} · {channelType(selected)}</span>
-                </div>
-                <span className="xsc-live-pill"><span className="xsc-live-dot" />LIVE</span>
-              </div>
-            ) : null}
+
           </div>
         </section>
 
