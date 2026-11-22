@@ -409,3 +409,31 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
   .xora-tv-heading { display: none !important; }
   .xora-tv-player-dock { max-width: min(100%, 66dvh); }
 }
+
+
+.xora-tv-filter-row {
+  mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+.xora-tv-filter-row button {
+  transition: transform 180ms ease-out, background-color 180ms ease-out, border-color 180ms ease-out;
+}
+.xora-tv-filter-row button:active { transform: scale(.97); }
+.xora-tv-channel-row.is-selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 28%, transparent), 0 8px 20px rgba(42,31,26,.08);
+}
+.xora-tv-channel-select:focus-visible,
+.xora-tv-favorite:focus-visible,
+.xora-tv-filter-row button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.xora-tv-live-pill i { animation: xora-tv-live-pulse 1.8s ease-in-out infinite; }
+@keyframes xora-tv-live-pulse {
+  0%,100% { opacity: .68; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-tv-live-pill i { animation: none; }
+  .xora-tv-filter-row button { transition: none; }
+}
