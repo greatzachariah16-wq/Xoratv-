@@ -236,9 +236,7 @@ public class XoraVlcPlugin extends Plugin {
      */
     private boolean hasUsableInternet(NetworkCapabilities capabilities) {
         return capabilities != null
-            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M
-                || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     private boolean isNetworkUsable() {
