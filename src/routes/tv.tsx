@@ -474,23 +474,27 @@ function LiveTvPage() {
   }, [nativeState.state]);
 
   useEffect(() => {
-    if (!selected || !isNativeVlcPlatform() || !nativeStageRef.current) return;
+    if (!selected || !playerDockRef.current) return;
+    const dock = playerDockRef.current;
     const stage = nativeStageRef.current;
-    const page = stage.closest<HTMLElement>(".xora-tv-page");
+    const page = dock.closest<HTMLElement>(".xora-tv-page");
     const appHeader = document.querySelector<HTMLElement>("header.fixed.inset-x-0.top-0");
+    const native = isNativeVlcPlatform();
     const update = () => {
-      const rect = stage.getBoundingClientRect();
-      const dock = playerDockRef.current;
+      const rect = stage?.getBoundingClientRect();
       if (page) {
         page.style.setProperty("--xora-tv-header-height", (appHeader?.getBoundingClientRect().height ?? 0) + "px");
-        if (dock) page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
+        page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
       }
-      if (rect.width > 0 && rect.height > 0) void updateNativeVlcBounds({ x: rect.left, y: rect.top, width: rect.width, height: rect.height }).catch(() => {});
+      if (native && rect && rect.width > 0 && rect.height > 0) {
+        void updateNativeVlcBounds({ x: rect.left, y: rect.top, width: rect.width, height: rect.height }).catch(() => {});
+      }
     };
     const observer = new ResizeObserver(update);
-    observer.observe(stage);
-    if (playerDockRef.current) observer.observe(playerDockRef.current);
+    observer.observe(dock);
+    if (stage) observer.observe(stage);
     if (appHeader) observer.observe(appHeader);
+    window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update, { passive: true });
     window.addEventListener("orientationchange", update, { passive: true });
     window.visualViewport?.addEventListener("resize", update, { passive: true });
@@ -498,11 +502,12 @@ function LiveTvPage() {
     update();
     return () => {
       observer.disconnect();
+      window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
       window.removeEventListener("orientationchange", update);
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
-      void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
+      if (native) void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
     };
   }, [selected?.id]);
 
