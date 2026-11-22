@@ -163,6 +163,9 @@ public class XoraVlcPlugin extends Plugin {
     private Runnable retryRunnable;
     private Runnable controlsAutoHide;
     private PlayerMode mode = PlayerMode.PINNED;
+    private boolean hasPinnedBounds;
+    private boolean debugMode;
+    private int pinnedLeft, pinnedTop, pinnedWidth, pinnedHeight;
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusListener = change -> {
         mainHandler.post(() -> handleAudioFocusChange(change));
@@ -231,7 +234,9 @@ public class XoraVlcPlugin extends Plugin {
      */
     private boolean hasUsableInternet(NetworkCapabilities capabilities) {
         return capabilities != null
-            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            && (Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
     }
 
     private boolean isNetworkUsable() {
@@ -483,6 +488,8 @@ public class XoraVlcPlugin extends Plugin {
         String requestedChannelId = call.getString("channelId");
 
         boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        debugMode = call.getBoolean("debug", false)
+            || (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
             call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
@@ -551,6 +558,8 @@ public class XoraVlcPlugin extends Plugin {
         String requestedChannelId = call.getString("channelId");
 
         boolean directOnlyRequest = call.getBoolean("directOnly", false);
+        debugMode = call.getBoolean("debug", false)
+            || (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
             call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
             return;
@@ -588,6 +597,31 @@ public class XoraVlcPlugin extends Plugin {
             } catch (Exception error) {
                 call.reject("Could not switch the live channel.", error);
             }
+        });
+    }
+
+    @PluginMethod
+    public void updateBounds(PluginCall call) {
+        final float x = call.getFloat("x", 0f);
+        final float y = call.getFloat("y", 0f);
+        final float width = call.getFloat("width", 0f);
+        final float height = call.getFloat("height", 0f);
+        final boolean visible = call.getBoolean("visible", width > 0f && height > 0f);
+        getActivity().runOnUiThread(() -> {
+            hasPinnedBounds = visible && width > 0f && height > 0f;
+            if (hasPinnedBounds && webView != null && rootContainer != null) {
+                float density = getContext().getResources().getDisplayMetrics().density;
+                int[] webLocation = new int[2];
+                int[] rootLocation = new int[2];
+                webView.getLocationOnScreen(webLocation);
+                rootContainer.getLocationOnScreen(rootLocation);
+                pinnedLeft = webLocation[0] - rootLocation[0] + Math.round(x * density);
+                pinnedTop = webLocation[1] - rootLocation[1] + Math.round(y * density);
+                pinnedWidth = Math.max(1, Math.round(width * density));
+                pinnedHeight = Math.max(1, Math.round(height * density));
+            }
+            if (playerOverlay != null && mode == PlayerMode.PINNED) applyModeLayout();
+            call.resolve();
         });
     }
 
@@ -700,16 +734,30 @@ public class XoraVlcPlugin extends Plugin {
         }
 
         playerOverlay = new FrameLayout(getContext());
-        playerOverlay.setBackgroundColor(Color.BLACK);
+        playerOverlay.setBackgroundColor(Color.TRANSPARENT);
         playerOverlay.setElevation(dp(28));
+        playerOverlay.setVisibility(View.INVISIBLE);
 
         // The live video surface must reach the physical viewport edges.
         // Keep the frame square and unclipped; rounded card corners create visible
         // gutters on phones even when the native surface itself is MATCH_PARENT.
         videoFrame = new FrameLayout(getContext());
-        videoFrame.setBackgroundColor(Color.BLACK);
-        videoFrame.setClipToOutline(false);
+        GradientDrawable videoBackground = new GradientDrawable();
+        videoBackground.setColor(Color.BLACK);
+        videoBackground.setCornerRadius(dp(22));
+        videoFrame.setBackground(videoBackground);
+        videoFrame.setClipToOutline(true);
         videoFrame.setClickable(true);
+        videoFrame.setOnLongClickListener(view -> {
+            if (streamInfoBadge != null) {
+                boolean show = streamInfoBadge.getVisibility() != View.VISIBLE;
+                streamInfoBadge.setVisibility(show ? View.VISIBLE : View.GONE);
+                if (show) mainHandler.postDelayed(() -> {
+                    if (!debugMode && streamInfoBadge != null) streamInfoBadge.setVisibility(View.GONE);
+                }, 3500L);
+            }
+            return true;
+        });
         videoFrame.setOnClickListener(view -> {
             if (!controlsVisible) showControls();
             else scheduleControlsAutoHide();
@@ -771,6 +819,7 @@ public class XoraVlcPlugin extends Plugin {
         streamInfoBadge.setPadding(dp(8), dp(5), dp(8), dp(5));
         streamInfoBadge.setBackground(roundedBackground(0x88201C1A, dp(20)));
         streamInfoBadge.setText(directPlaybackOnly ? "DIRECT · 0 CACHED" : "0 SEGMENTS CACHED");
+        streamInfoBadge.setVisibility(debugMode ? View.VISIBLE : View.GONE);
         LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1068,22 +1117,22 @@ public class XoraVlcPlugin extends Plugin {
 
             case PINNED:
             default:
-                if (width > height && height <= dp(500)) {
-                    // On a phone in landscape, reserve a fixed right-side channel panel.
-                    panelWidth = Math.min(dp(320), Math.round(width * 0.48f));
-                    overlayWidth = Math.max(1, width - panelWidth);
-                    videoHeight = height;
-                    overlayHeight = height;
-                    setWebViewRegion(overlayWidth, 0, panelWidth, height);
-                } else {
-                    // YouTube-like mobile theater stage: full viewport width with a slightly taller-than-16:9 viewing window.
-                    videoHeight = Math.round(width * 0.60f);
-                    videoHeight = Math.min(videoHeight, Math.max(1, height));
-                    overlayWidth = width;
-                    overlayHeight = videoHeight;
-                    setWebViewRegion(0, overlayHeight, width, Math.max(1, height - overlayHeight));
+                setWebViewVisibility(View.VISIBLE);
+                if (!hasPinnedBounds) {
+                    playerOverlay.setVisibility(View.INVISIBLE);
+                    return;
                 }
-                break;
+                overlayWidth = pinnedWidth;
+                overlayHeight = pinnedHeight;
+                videoHeight = pinnedHeight;
+                playerOverlay.setVisibility(View.VISIBLE);
+                FrameLayout.LayoutParams pinnedParams = new FrameLayout.LayoutParams(overlayWidth, overlayHeight);
+                pinnedParams.leftMargin = pinnedLeft;
+                pinnedParams.topMargin = pinnedTop;
+                playerOverlay.setLayoutParams(pinnedParams);
+                videoFrame.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                restoreSystemUi();
+                return;
         }
 
         playerOverlay.setLayoutParams(new FrameLayout.LayoutParams(
