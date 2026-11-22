@@ -727,6 +727,7 @@ function LiveTvPage() {
                 <div className="xora-tv-now-copy">
                   <h2>{getChannelDisplayName(selected)}</h2>
                   <p>{getCountryFlag(selected.country)} {getCountryName(selected.country)} <span>·</span> {getChannelQuality(selected) || "Live stream"}</p>
+                  <p className="xora-tv-programme-line">{nowProgramme ? "Now playing · " + nowProgramme.title : "Live broadcast"}</p>
                   <div className="xora-tv-state-row" aria-live="polite">
                     <span className={`xora-tv-state-dot state-${state.toLowerCase()}`} />
                     <span>{state === "PLAYING" ? "Playing live" : stateMessage}</span>
