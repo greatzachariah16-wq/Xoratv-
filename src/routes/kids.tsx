@@ -260,16 +260,12 @@ function KidsPage() {
                       streamUrl={visibleSelected.streamUrl}
                       nativeStreamUrl={"/api/tv/stream?provider=" + (visibleSelected.provider || "nexus") + "&channel=" + encodeURIComponent(visibleSelected.id)}
                       externalPoster={visibleSelected.logo} title={visibleSelected.name} liveTv nativeDirectOnly
+                      channelCountry={getCountryName(visibleSelected.country)} channelFlag={getCountryFlag(visibleSelected.country)}
+                      channelQuality={visibleSelected.quality || undefined}
+                      favorite={favoriteChannels.includes(visibleSelected.id)}
+                      onFavorite={() => toggleChannelFavorite(visibleSelected)}
                       nativeHeaders={{ ...(visibleSelected.userAgent ? { "User-Agent": visibleSelected.userAgent } : {}), ...(visibleSelected.referrer ? { Referer: visibleSelected.referrer } : {}) }}
-                      className="aspect-video w-full rounded-none" />
-                    <div className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-primary">READY TO PLAY</p>
-                        <p className="mt-1 truncate font-display text-sm font-semibold text-foreground">{getChannelDisplayName(visibleSelected)}</p>
-                        <p className="mt-1 text-[11px] text-[#6B5F57] dark:text-muted-foreground">{getCountryFlag(visibleSelected.country)} {getCountryName(visibleSelected.country)}{getChannelLanguage(visibleSelected) ? " · " + getChannelLanguage(visibleSelected) : ""}</p>
-                      </div>
-                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#a9342c] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white"><span className="size-1.5 rounded-full bg-white motion-safe:animate-pulse" /> Live</span>
-                    </div>
+                      className="w-full" />
                   </div>
                 </section>
               ) : null}
