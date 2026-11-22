@@ -288,7 +288,10 @@ function LiveTvPage() {
       try {
         // Verify internet reachability independently of WebView navigator.onLine.
         await fetch("https://www.gstatic.com/generate_204", { mode: "no-cors", cache: "no-store", signal: currentController.signal });
-        if (!disposed) setIsOnline(true);
+        if (!disposed) {
+          setIsOnline(true);
+          window.dispatchEvent(new Event("xora:network-online"));
+        }
       } catch {
         // Some networks block third-party probes; confirm against XoraTV's own health endpoint.
         const fallbackController = new AbortController();
@@ -296,7 +299,10 @@ function LiveTvPage() {
         try {
           const response = await fetch("/api/health", { cache: "no-store", signal: fallbackController.signal });
           if (!response.ok) throw new Error("Reachability probe failed");
-          if (!disposed) setIsOnline(true);
+          if (!disposed) {
+            setIsOnline(true);
+            window.dispatchEvent(new Event("xora:network-online"));
+          }
         } catch {
           if (!disposed) setIsOnline(false);
         } finally { window.clearTimeout(fallbackTimeout); }
