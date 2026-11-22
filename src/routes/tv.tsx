@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Capacitor } from "@capacitor/core";
+import { Network } from "@capacitor/network";
 import {
   ArrowRight,
   CalendarClock,
@@ -280,6 +282,7 @@ function LiveTvPage() {
     let disposed = false;
     let interval = 0;
     let controller: AbortController | null = null;
+    let networkListener: { remove: () => Promise<void> } | null = null;
     const checkReachability = async () => {
       controller?.abort();
       const currentController = new AbortController();
@@ -311,6 +314,18 @@ function LiveTvPage() {
     };
     const onOnline = () => { void checkReachability(); };
     const onOffline = () => { void checkReachability(); };
+    const onCapacitorNetworkChange = (status: { connected: boolean }) => {
+      if (Capacitor.isNativePlatform() && !status.connected) {
+        setIsOnline(false);
+        return;
+      }
+      void checkReachability();
+    };
+    void Network.getStatus().then(onCapacitorNetworkChange).catch(() => { void checkReachability(); });
+    void Network.addListener("networkStatusChange", onCapacitorNetworkChange).then((handle) => {
+      if (disposed) void handle.remove();
+      else networkListener = handle;
+    }).catch(() => {});
     void checkReachability();
     interval = window.setInterval(() => { void checkReachability(); }, 25_000);
     window.addEventListener("online", onOnline);
@@ -319,6 +334,7 @@ function LiveTvPage() {
       disposed = true;
       window.clearInterval(interval);
       controller?.abort();
+      if (networkListener) void networkListener.remove();
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
