@@ -397,7 +397,10 @@ function NativeVideoPlayerCore({
         void video.play().catch(() => {});
       }
     };
-    if (liveTv) window.addEventListener("online", onNetworkOnline);
+    if (liveTv) {
+      window.addEventListener("online", onNetworkOnline);
+      window.addEventListener("xora:network-online", onNetworkOnline);
+    }
 
     const telemetryId = postId || `${title}-${src}`;
     startPlaybackTelemetry(telemetryId, activeSrc);
@@ -468,6 +471,8 @@ function NativeVideoPlayerCore({
 
         return () => {
           window.removeEventListener("online", onNetworkOnline);
+      window.removeEventListener("xora:network-online", onNetworkOnline);
+          window.removeEventListener("xora:network-online", onNetworkOnline);
           if (retryTimer) clearTimeout(retryTimer);
           hlsInstance?.destroy();
           if (timer3sRef.current) clearTimeout(timer3sRef.current);
