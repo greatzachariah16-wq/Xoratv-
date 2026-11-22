@@ -2027,6 +2027,8 @@ public class XoraVlcPlugin extends Plugin {
         if (playerOverlay != null && playerOverlay.getParent() instanceof ViewGroup) {
             ((ViewGroup) playerOverlay.getParent()).removeView(playerOverlay);
         }
+        hasPinnedBounds = false;
+        pinnedLeft = pinnedTop = pinnedWidth = pinnedHeight = 0;
 
         rootContainer = null;
         playerOverlay = null;
