@@ -610,6 +610,11 @@ public class XoraVlcPlugin extends Plugin {
         final float height = call.getFloat("height", 0f);
         final boolean visible = call.getBoolean("visible", width > 0f && height > 0f);
         getActivity().runOnUiThread(() -> {
+            boolean wasVisible = hasPinnedBounds;
+            int oldLeft = pinnedLeft;
+            int oldTop = pinnedTop;
+            int oldWidth = pinnedWidth;
+            int oldHeight = pinnedHeight;
             hasPinnedBounds = visible && width > 0f && height > 0f;
             if (hasPinnedBounds && webView != null && rootContainer != null) {
                 float density = getContext().getResources().getDisplayMetrics().density;
@@ -622,7 +627,10 @@ public class XoraVlcPlugin extends Plugin {
                 pinnedWidth = Math.max(1, Math.round(width * density));
                 pinnedHeight = Math.max(1, Math.round(height * density));
             }
-            if (playerOverlay != null && mode == PlayerMode.PINNED) applyModeLayout();
+            boolean changed = wasVisible != hasPinnedBounds
+                || oldLeft != pinnedLeft || oldTop != pinnedTop
+                || oldWidth != pinnedWidth || oldHeight != pinnedHeight;
+            if (changed && playerOverlay != null && mode == PlayerMode.PINNED) applyModeLayout();
             call.resolve();
         });
     }
@@ -740,9 +748,8 @@ public class XoraVlcPlugin extends Plugin {
         playerOverlay.setElevation(dp(28));
         playerOverlay.setVisibility(View.INVISIBLE);
 
-        // The live video surface must reach the physical viewport edges.
-        // Keep the frame square and unclipped; rounded card corners create visible
-        // gutters on phones even when the native surface itself is MATCH_PARENT.
+        // The native surface is constrained to the measured 16:9 DOM stage.
+        // Its rounded background clips the video and native controls to the card.
         videoFrame = new FrameLayout(getContext());
         GradientDrawable videoBackground = new GradientDrawable();
         videoBackground.setColor(Color.BLACK);
@@ -1148,7 +1155,6 @@ public class XoraVlcPlugin extends Plugin {
                 pinnedParams.topMargin = pinnedTop;
                 playerOverlay.setLayoutParams(pinnedParams);
                 videoFrame.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-                restoreSystemUi();
                 return;
         }
 
@@ -1236,6 +1242,7 @@ public class XoraVlcPlugin extends Plugin {
                     : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             );
         }
+        if (!enteringFullscreen) restoreSystemUi();
         applyModeLayout();
         updateControlLabels();
         showControls();
