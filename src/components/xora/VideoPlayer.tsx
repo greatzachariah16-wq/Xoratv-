@@ -471,7 +471,6 @@ function NativeVideoPlayerCore({
 
         return () => {
           window.removeEventListener("online", onNetworkOnline);
-      window.removeEventListener("xora:network-online", onNetworkOnline);
           window.removeEventListener("xora:network-online", onNetworkOnline);
           if (retryTimer) clearTimeout(retryTimer);
           hlsInstance?.destroy();
@@ -487,6 +486,7 @@ function NativeVideoPlayerCore({
 
     return () => {
       window.removeEventListener("online", onNetworkOnline);
+      window.removeEventListener("xora:network-online", onNetworkOnline);
       if (retryTimer) clearTimeout(retryTimer);
       if (timer3sRef.current) clearTimeout(timer3sRef.current);
       if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
