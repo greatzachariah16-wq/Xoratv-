@@ -1047,7 +1047,7 @@ export default {
     // Keep these separate from the VOD catalogue and preserve the IPTV-org provider ID for playback.
     if (url.pathname === "/api/tv/channels" && request.method === "GET") {
       const category = (url.searchParams.get("category") || "").toLowerCase();
-      const webCompatibleOnly = url.searchParams.get("web") === "1";
+      const nativePlatform = url.searchParams.get("platform") === "native";
       if (category === "movies" || category === "series") {
         try {
           const result = await fetchIptvChannels({
@@ -1057,7 +1057,7 @@ export default {
             limit: Number(url.searchParams.get("limit") || "100"),
           });
           const channels = result.channels
-            .filter((channel) => !webCompatibleOnly || (!channel.userAgent && !channel.referrer))
+            .filter((channel) => nativePlatform || (!channel.userAgent && !channel.referrer))
             .map((channel) => ({
               ...channel,
               provider: "iptv-org" as const,
