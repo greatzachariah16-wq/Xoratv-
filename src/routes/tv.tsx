@@ -674,13 +674,26 @@ function LiveTvPage() {
 
             <section className="xora-tv-browser-player" aria-label="Live channel player">
 
-              <VideoPlayer key={selected.id} streamUrl={selected.streamUrl} title={getChannelDisplayName(selected)} liveTv autoPlay className="w-full aspect-video rounded-2xl" />
+              <VideoPlayer
+                key={selected.id}
+                streamUrl={selected.streamUrl}
+                title={getChannelDisplayName(selected)}
+                liveTv
+                autoPlay
+                channelCountry={getCountryName(selected.country)}
+                channelFlag={getCountryFlag(selected.country)}
+                channelQuality={getChannelQuality(selected) || undefined}
+                favorite={playerPrefs.favorites.includes(selected.id)}
+                onFavorite={() => toggleFavorite(selected.id)}
+                onShare={() => void shareSelected()}
+                className="w-full"
+              />
 
             </section>
 
           ) : null}
 
-          {selected ? (
+          {selected && isNativeVlcPlatform() ? (
             <section className="xora-tv-now-card xora-tv-featured-card" aria-label="Selected live channel">
               <div className="xora-tv-now-topline">
                 <span className="xora-tv-now-label">Now selected</span>
