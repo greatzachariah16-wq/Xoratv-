@@ -52,8 +52,10 @@ type NativeVlcPlugin = {
     candidates?: NativeVlcCandidate[];
     proxyFallbackUrl?: string;
     directOnly?: boolean;
+    debug?: boolean;
     headers?: Record<string, string>;
   }): Promise<void>;
+  updateBounds(options: { x: number; y: number; width: number; height: number; visible?: boolean }): Promise<void>;
   close(): Promise<void>;
   switchChannel(options: {
     url: string;
@@ -64,6 +66,7 @@ type NativeVlcPlugin = {
     candidates?: NativeVlcCandidate[];
     proxyFallbackUrl?: string;
     directOnly?: boolean;
+    debug?: boolean;
     headers?: Record<string, string>;
   }): Promise<void>;
   togglePlayback(): Promise<void>;
@@ -146,8 +149,13 @@ export async function openNativeVlc(options: {
     fallbackUrl1: options.fallbackUrl1,
     fallbackUrl2: options.fallbackUrl2,
     directOnly: options.directOnly,
+    debug: options.debug,
     headers: options.headers,
   });
+}
+
+export async function updateNativeVlcBounds(options: { x: number; y: number; width: number; height: number; visible?: boolean }): Promise<void> {
+  if (isNativeVlcPlatform()) await NativeVlc.updateBounds(options);
 }
 
 export async function closeNativeVlc(): Promise<void> {
@@ -202,6 +210,7 @@ export async function switchNativeVlcChannel(options: {
     fallbackUrl1: options.fallbackUrl1,
     fallbackUrl2: options.fallbackUrl2,
     directOnly: options.directOnly,
+    debug: options.debug,
     headers: options.headers,
   });
 }
