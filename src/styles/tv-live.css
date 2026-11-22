@@ -407,7 +407,7 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
 
 @media (orientation: landscape) and (max-height: 520px) {
   .xora-tv-heading { display: none !important; }
-  .xora-tv-player-dock { max-width: min(100%, 66dvh); }
+  .xora-tv-player-dock { max-width: min(100%, 66vh); max-width: min(100%, 66dvh); }
 }
 
 
