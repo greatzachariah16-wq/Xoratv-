@@ -55,7 +55,7 @@ type NativeVlcPlugin = {
     debug?: boolean;
     headers?: Record<string, string>;
   }): Promise<void>;
-  updateBounds(options: { x: number; y: number; width: number; height: number; visible?: boolean }): Promise<void>;
+  updateBounds(options: { x: number; y: number; width: number; height: number; devicePixelRatio?: number; visible?: boolean }): Promise<void>;
   close(): Promise<void>;
   switchChannel(options: {
     url: string;
@@ -155,7 +155,7 @@ export async function openNativeVlc(options: {
   });
 }
 
-export async function updateNativeVlcBounds(options: { x: number; y: number; width: number; height: number; visible?: boolean }): Promise<void> {
+export async function updateNativeVlcBounds(options: { x: number; y: number; width: number; height: number; devicePixelRatio?: number; visible?: boolean }): Promise<void> {
   if (isNativeVlcPlatform()) await NativeVlc.updateBounds(options);
 }
 
