@@ -130,6 +130,7 @@ export async function openNativeVlc(options: {
   fallbackUrl1?: string;
   fallbackUrl2?: string;
   directOnly?: boolean;
+  debug?: boolean;
   headers?: Record<string, string>;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
@@ -191,6 +192,7 @@ export async function switchNativeVlcChannel(options: {
   fallbackUrl1?: string;
   fallbackUrl2?: string;
   directOnly?: boolean;
+  debug?: boolean;
   headers?: Record<string, string>;
 }): Promise<void> {
   if (!isNativeVlcPlatform()) {
