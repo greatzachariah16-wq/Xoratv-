@@ -281,20 +281,20 @@ function LiveTvPage() {
     let interval = 0;
     let controller: AbortController | null = null;
     const checkReachability = async () => {
-      if (!navigator.onLine) { setIsOnline(false); return; }
       controller?.abort();
-      controller = new AbortController();
-      const timeout = window.setTimeout(() => controller?.abort(), 6000);
+      const currentController = new AbortController();
+      controller = currentController;
+      const timeout = window.setTimeout(() => currentController.abort(), 6000);
       try {
         // Verify internet reachability independently of WebView navigator.onLine.
-        await fetch("https://www.gstatic.com/generate_204", { mode: "no-cors", cache: "no-store", signal: controller.signal });
+        await fetch("https://www.gstatic.com/generate_204", { mode: "no-cors", cache: "no-store", signal: currentController.signal });
         if (!disposed) setIsOnline(true);
       } catch {
         if (!disposed) setIsOnline(false);
       } finally { window.clearTimeout(timeout); }
     };
     const onOnline = () => { void checkReachability(); };
-    const onOffline = () => setIsOnline(false);
+    const onOffline = () => { void checkReachability(); };
     void checkReachability();
     interval = window.setInterval(() => { void checkReachability(); }, 25_000);
     window.addEventListener("online", onOnline);
