@@ -377,3 +377,30 @@ html.xora-tv-page-open.xora-tv-header-hidden header.fixed.inset-x-0.top-0 { tran
   .xora-tv-player-dock { max-width: min(100%, 88dvh); margin-inline: auto; }
   .xora-tv-native-stage { max-height: none; }
 }
+
+
+.xora-tv-native-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, #090807 20%, #17120f 42%, #090807 64%);
+  background-size: 220% 100%;
+  animation: xora-tv-stage-shimmer 1.8s ease-in-out infinite;
+}
+@keyframes xora-tv-stage-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+.xora-tv-programme-line {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  margin-top: 3px;
+  color: color-mix(in oklch, var(--muted-foreground) 88%, #80523f 12%);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-tv-native-stage::before { animation: none; background: #100d0b; }
+}
