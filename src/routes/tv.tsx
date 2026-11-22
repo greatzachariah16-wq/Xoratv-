@@ -295,6 +295,7 @@ function LiveTvPage() {
       } catch {
         // Some networks block third-party probes; confirm against XoraTV's own health endpoint.
         const fallbackController = new AbortController();
+        controller = fallbackController;
         const fallbackTimeout = window.setTimeout(() => fallbackController.abort(), 6000);
         try {
           const response = await fetch("/api/health", { cache: "no-store", signal: fallbackController.signal });
