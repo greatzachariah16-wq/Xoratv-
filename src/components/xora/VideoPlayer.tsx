@@ -1045,7 +1045,7 @@ export function NativeVideoPlayer(props: Props) {
 
 export function VideoPlayer(props: Props) {
   // Shorts are Xora-native only. Never send Shorts through provider embeds.
-  if (props.feed === "shorts" || props.nativeVlc) {
+  if (props.feed === "shorts" || props.nativeVlc || props.liveTv) {
     return <NativeVideoPlayer {...props} autoPlay={props.autoPlay} />;
   }
 
