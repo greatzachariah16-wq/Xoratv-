@@ -224,71 +224,74 @@ function NativeVideoPlayerCore({
     };
   }, [nativeVlcOnly]);
 
-  // Shared native stage geometry for every LibVLC-backed section:
-  // Live TV, XSports, XoraKids, and native X-Series cinema playback.
+  // Keep the native LibVLC surface aligned with its DOM stage. Crucially,
+  // bounds must be sent again AFTER openNativeVlc creates the Android surface;
+  // the initial mount measurement alone can happen too early and leave video hidden.
+  const syncNativeStageBounds = useCallback(() => {
+    const stage = nativeStageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const viewportLeft = viewport?.offsetLeft ?? 0;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
+    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+    const left = Math.max(rect.left, viewportLeft);
+    const top = Math.max(rect.top, viewportTop);
+    const right = Math.min(rect.right, viewportRight);
+    const bottom = Math.min(rect.bottom, viewportBottom);
+    const visible = right > left && bottom > top;
+    void updateNativeVlcBounds({
+      x: visible ? left - viewportLeft : 0,
+      y: visible ? top - viewportTop : 0,
+      width: visible ? right - left : 0,
+      height: visible ? bottom - top : 0,
+      devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
+      visible,
+    }).catch((error) => console.warn("[Xora] Native player bounds sync failed:", error));
+  }, []);
+
   useEffect(() => {
     if (!nativeVlcOnly) return;
 
     let frame = 0;
     let disposed = false;
-    const syncBounds = () => {
+    const scheduleSync = () => {
       if (disposed) return;
       if (frame) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         frame = 0;
-        const stage = nativeStageRef.current;
-        if (!stage) return;
-        const rect = stage.getBoundingClientRect();
-        const viewport = window.visualViewport;
-        const viewportLeft = viewport?.offsetLeft ?? 0;
-        const viewportTop = viewport?.offsetTop ?? 0;
-        const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
-        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
-        const left = Math.max(rect.left, viewportLeft);
-        const top = Math.max(rect.top, viewportTop);
-        const right = Math.min(rect.right, viewportRight);
-        const bottom = Math.min(rect.bottom, viewportBottom);
-        const visible = right > left && bottom > top;
-        // The Android LibVLC surface is a separate native overlay, so DOM overflow
-        // cannot clip it. Pass only the visible intersection to keep it inside its frame.
-        void updateNativeVlcBounds({
-          x: visible ? left - viewportLeft : 0,
-          y: visible ? top - viewportTop : 0,
-          width: visible ? right - left : 0,
-          height: visible ? bottom - top : 0,
-          devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
-          visible,
-        }).catch((error) => console.warn("[Xora] Native player bounds sync failed:", error));
+        syncNativeStageBounds();
       });
     };
 
     const observer = typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(syncBounds)
+      ? new ResizeObserver(scheduleSync)
       : null;
     if (nativeStageRef.current) observer?.observe(nativeStageRef.current);
-    window.addEventListener("scroll", syncBounds, { passive: true, capture: true });
-    window.addEventListener("resize", syncBounds, { passive: true });
-    window.addEventListener("orientationchange", syncBounds);
-    window.visualViewport?.addEventListener("resize", syncBounds);
-    window.visualViewport?.addEventListener("scroll", syncBounds);
-    syncBounds();
+    window.addEventListener("scroll", scheduleSync, { passive: true, capture: true });
+    window.addEventListener("resize", scheduleSync, { passive: true });
+    window.addEventListener("orientationchange", scheduleSync);
+    window.visualViewport?.addEventListener("resize", scheduleSync);
+    window.visualViewport?.addEventListener("scroll", scheduleSync);
+    scheduleSync();
 
     return () => {
       disposed = true;
       if (frame) cancelAnimationFrame(frame);
       observer?.disconnect();
-      window.removeEventListener("scroll", syncBounds, true);
-      window.removeEventListener("resize", syncBounds);
-      window.removeEventListener("orientationchange", syncBounds);
-      window.visualViewport?.removeEventListener("resize", syncBounds);
-      window.visualViewport?.removeEventListener("scroll", syncBounds);
+      window.removeEventListener("scroll", scheduleSync, true);
+      window.removeEventListener("resize", scheduleSync);
+      window.removeEventListener("orientationchange", scheduleSync);
+      window.visualViewport?.removeEventListener("resize", scheduleSync);
+      window.visualViewport?.removeEventListener("scroll", scheduleSync);
       void updateNativeVlcBounds({
         x: 0, y: 0, width: 0, height: 0,
         devicePixelRatio: window.devicePixelRatio,
         visible: false,
       }).catch(() => {});
     };
-  }, [nativeVlcOnly]);
+  }, [nativeVlcOnly, syncNativeStageBounds]);
 
   // Production-Ready Xora Engagement Handshake & Heartbeat Loop
   useEffect(() => {
@@ -665,12 +668,18 @@ function NativeVideoPlayerCore({
       });
       nativeVlcActiveRef.current = true;
       setNativeVlcActive(true);
+      // Android creates the native video surface during open(). Reapply the
+      // measured stage bounds after creation, otherwise the surface can remain
+      // at its initial zero/hidden bounds while audio/state reports playback.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => syncNativeStageBounds());
+      });
     } catch (error) {
       console.error("[Xora] Native playback failed:", error);
       setWaiting(false);
       setFailed(true);
     }
-  }, [activeSrc, nativeDirectOnly, nativeHeaders, nativeStreamUrl, nativeVlcOnly, title]);
+  }, [activeSrc, nativeDirectOnly, nativeHeaders, nativeStreamUrl, nativeVlcOnly, syncNativeStageBounds, title]);
 
   const toggle = useCallback(() => {
     if (nativeVlcOnly) {
