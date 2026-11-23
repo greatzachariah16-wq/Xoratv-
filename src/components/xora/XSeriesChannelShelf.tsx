@@ -6,7 +6,7 @@ import { ChannelGuide } from "@/components/xora/ChannelGuide";
 import { XSeriesMark } from "@/components/xora/XSeriesMark";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
-import { getChannelPlatformQuery } from "@/lib/native-vlc";
+import { getChannelPlatformQuery, isNativeVlcPlatform } from "@/lib/native-vlc";
 import "./xseries-channels.css";
 
 type XSeriesLiveChannel = {
@@ -99,6 +99,7 @@ function ChannelCardSkeleton() {
 }
 
 export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () => void }) {
+  const isNativeApp = isNativeVlcPlatform();
   const [filter, setFilter] = useState<ShelfFilter>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -109,6 +110,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
   const query = useQuery({
     queryKey: ["xseries-iptv-movie-series-channels"],
     queryFn: loadXSeriesChannels,
+    enabled: isNativeApp,
     staleTime: 5 * 60_000,
     refetchInterval: 10 * 60_000,
     refetchOnWindowFocus: true,
@@ -158,6 +160,18 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
     observer.observe(target);
     return () => observer.disconnect();
   }, [shownChannels.length, visible.length]);
+
+  if (!isNativeApp) {
+    return (
+      <section className="xseries-channels" aria-label="X-Series unavailable in browser">
+        <div className="xsc-empty-state" role="status">
+          <span className="xsc-empty-icon"><Tv className="size-4" aria-hidden="true" /></span>
+          <p>This section is unavailable because your browser is not compatible with all X-Series live-channel features.</p>
+          <p>Use the XoraTV app to access all features.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="xseries-channels" aria-label="X-Series live channels">
@@ -223,6 +237,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                   externalPoster={selected.logo}
                   title={selected.name}
                   liveTv
+                  nativeDirectOnly
                   autoPlay
                   channelCountry={selected.country || undefined}
                   channelQuality={selected.quality || undefined}
