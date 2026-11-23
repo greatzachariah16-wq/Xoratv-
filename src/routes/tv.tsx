@@ -799,7 +799,7 @@ function LiveTvPage() {
           ) : null}
 
           {selected && isNativeVlcPlatform() ? (
-            <section ref={playerDockRef} className="xora-tv-now-card xora-tv-featured-card xora-tv-player-dock" aria-label="Selected live channel">
+            <section ref={playerDockRef} className="xora-tv-now-card xora-tv-featured-card xora-tv-player-dock xora-player-flow" aria-label="Selected live channel">
               <div ref={nativeStageRef} className="xora-tv-native-stage" aria-label="Live video surface" />
               <div className="xora-tv-now-topline">
                 <span className="xora-tv-now-label">Now selected</span>
