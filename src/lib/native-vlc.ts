@@ -138,8 +138,16 @@ export async function openNativeVlc(options: {
   }
 
   const absoluteUrl = new URL(options.url, window.location.origin);
-  if (absoluteUrl.protocol !== "https:") {
-    throw new Error("A secure stream URL is required.");
+  const directProtocols = new Set([
+    "http:", "https:", "rtsp:", "rtmp:", "rtp:", "udp:", "srt:", "mms:", "mmsh:", "ftp:",
+  ]);
+  const allowed = options.directOnly
+    ? directProtocols.has(absoluteUrl.protocol)
+    : absoluteUrl.protocol === "https:";
+  if (!allowed) {
+    throw new Error(options.directOnly
+      ? "This stream uses a protocol that LibVLC does not accept."
+      : "A secure HTTPS stream URL is required.");
   }
 
   await NativeVlc.open({
@@ -200,8 +208,16 @@ export async function switchNativeVlcChannel(options: {
   }
 
   const absoluteUrl = new URL(options.url, window.location.origin);
-  if (absoluteUrl.protocol !== "https:") {
-    throw new Error("A secure stream URL is required.");
+  const directProtocols = new Set([
+    "http:", "https:", "rtsp:", "rtmp:", "rtp:", "udp:", "srt:", "mms:", "mmsh:", "ftp:",
+  ]);
+  const allowed = options.directOnly
+    ? directProtocols.has(absoluteUrl.protocol)
+    : absoluteUrl.protocol === "https:";
+  if (!allowed) {
+    throw new Error(options.directOnly
+      ? "This stream uses a protocol that LibVLC does not accept."
+      : "A secure HTTPS stream URL is required.");
   }
 
   await NativeVlc.switchChannel({
