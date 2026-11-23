@@ -251,7 +251,7 @@ body:has(.xseries-channels),
 }
 
 
- .xsc-player-frame {
+.xsc-player-frame {
   position: relative;
   left: 50%;
   width: 100vw;
