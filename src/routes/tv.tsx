@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Capacitor } from "@capacitor/core";
+import { Network } from "@capacitor/network";
 import {
   ArrowRight,
   CalendarClock,
@@ -35,6 +37,7 @@ import {
   openNativeVlc,
   switchNativeVlcChannel,
   retryNativeVlc,
+  updateNativeVlcBounds,
   type NativeVlcStateChangedEvent,
   type NativeVlcStatus,
 } from "@/lib/native-vlc";
@@ -255,6 +258,8 @@ function LiveTvPage() {
   const playerPrefs = usePlayerPrefs();
   const nativePlayerOpenRef = useRef(false);
   const nativePlayerTaskRef = useRef<Promise<void> | null>(null);
+  const playerDockRef = useRef<HTMLElement | null>(null);
+  const nativeStageRef = useRef<HTMLDivElement | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [nativeState, setNativeState] = useState<NativeVlcStateChangedEvent>({
     state: "IDLE",
@@ -274,13 +279,74 @@ function LiveTvPage() {
   const toggleFavorite = useCallback((channelId: string) => playerPrefs.toggleFavorite(channelId), [playerPrefs.toggleFavorite]);
 
   useEffect(() => {
-    const updateNetwork = () => setIsOnline(navigator.onLine);
-    updateNetwork();
-    window.addEventListener("online", updateNetwork);
-    window.addEventListener("offline", updateNetwork);
+    let disposed = false;
+    let interval = 0;
+    let controller: AbortController | null = null;
+    let networkListener: { remove: () => Promise<void> } | null = null;
+    let reachabilityKnown = false;
+    let reachable = true;
+    const markReachable = () => {
+      if (disposed) return;
+      if (reachabilityKnown && !reachable) window.dispatchEvent(new Event("xora:network-online"));
+      reachable = true;
+      reachabilityKnown = true;
+      setIsOnline(true);
+    };
+    const markUnreachable = () => {
+      if (disposed) return;
+      reachable = false;
+      reachabilityKnown = true;
+      setIsOnline(false);
+    };
+    const checkReachability = async () => {
+      controller?.abort();
+      const currentController = new AbortController();
+      controller = currentController;
+      const timeout = window.setTimeout(() => currentController.abort(), 6000);
+      try {
+        // Verify internet reachability independently of WebView navigator.onLine.
+        await fetch("https://www.gstatic.com/generate_204", { mode: "no-cors", cache: "no-store", signal: currentController.signal });
+        markReachable();
+      } catch {
+        // Some networks block third-party probes; confirm against XoraTV's own health endpoint.
+        const fallbackController = new AbortController();
+        controller = fallbackController;
+        const fallbackTimeout = window.setTimeout(() => fallbackController.abort(), 6000);
+        try {
+          const response = await fetch("/api/health", { cache: "no-store", signal: fallbackController.signal });
+          if (!response.ok) throw new Error("Reachability probe failed");
+          markReachable();
+        } catch {
+          markUnreachable();
+        } finally { window.clearTimeout(fallbackTimeout); }
+      } finally { window.clearTimeout(timeout); }
+    };
+    const onOnline = () => { void checkReachability(); };
+    const onOffline = () => { void checkReachability(); };
+    const onCapacitorNetworkChange = (status: { connected: boolean }) => {
+      if (disposed) return;
+      if (Capacitor.isNativePlatform() && !status.connected) {
+        markUnreachable();
+        return;
+      }
+      void checkReachability();
+    };
+    void Network.getStatus().then(onCapacitorNetworkChange).catch(() => { void checkReachability(); });
+    void Network.addListener("networkStatusChange", onCapacitorNetworkChange).then((handle) => {
+      if (disposed) void handle.remove();
+      else networkListener = handle;
+    }).catch(() => {});
+    void checkReachability();
+    interval = window.setInterval(() => { void checkReachability(); }, 25_000);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
     return () => {
-      window.removeEventListener("online", updateNetwork);
-      window.removeEventListener("offline", updateNetwork);
+      disposed = true;
+      window.clearInterval(interval);
+      controller?.abort();
+      if (networkListener) void networkListener.remove();
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
     };
   }, []);
 
@@ -303,15 +369,9 @@ function LiveTvPage() {
     ? selected.id
     : "";
 
-  // On Android, trust the native player's network assessment once it has reported
-  // a state for the selected channel. A failed channel-list/API request is not proof
-  // that the phone itself is offline.
-  const nativeNetworkStatusAvailable = isNativeVlcPlatform()
-    && nativeState.channelId === selected?.id
-    && nativeState.state !== "IDLE";
-  const isOffline = nativeNetworkStatusAvailable
-    ? nativeState.state === "OFFLINE"
-    : !isOnline;
+  // Offline is determined by the Capacitor connection signal plus the independent
+  // reachability probes, never by an individual channel or stream failure.
+  const isOffline = !isOnline;
 
   useEffect(() => {
     let mounted = true;
@@ -402,6 +462,7 @@ function LiveTvPage() {
         title: getChannelDisplayName(selected),
         channelId: selected.id,
         directOnly: true,
+        debug: new URLSearchParams(window.location.search).get("debug") === "1",
         headers: {
           ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}),
           ...(selected.referrer ? { Referer: selected.referrer } : {}),
@@ -409,6 +470,17 @@ function LiveTvPage() {
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
+      const stage = nativeStageRef.current;
+      if (stage) {
+        const rect = stage.getBoundingClientRect();
+        void updateNativeVlcBounds({
+          x: rect.left - (window.visualViewport?.offsetLeft ?? 0),
+          y: rect.top - (window.visualViewport?.offsetTop ?? 0),
+          width: rect.width,
+          height: rect.height,
+          devicePixelRatio: window.devicePixelRatio * (window.visualViewport?.scale ?? 1),
+        }).catch(() => {});
+      }
     })();
     nativePlayerTaskRef.current = task;
     void task.catch((error: unknown) => {
@@ -440,49 +512,68 @@ function LiveTvPage() {
   }, []);
 
   useEffect(() => {
-    if (nativeState.state === "IDLE") {
-      document.documentElement.classList.remove("xora-tv-header-hidden");
-    }
+    if (nativeState.state === "IDLE") document.documentElement.classList.remove("xora-tv-header-hidden");
   }, [nativeState.state]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.add("xora-tv-page-open");
-    let lastY = window.scrollY;
-    let accumulatedScroll = 0;
-    let previousDirection = 0;
-    const onScroll = () => {
-      const currentY = window.scrollY;
-      const delta = currentY - lastY;
-      lastY = currentY;
-
-      if (currentY < 24) {
-        accumulatedScroll = 0;
-        previousDirection = 0;
-        root.classList.remove("xora-tv-header-hidden");
-        return;
+    if (!selected || !playerDockRef.current) return;
+    const dock = playerDockRef.current;
+    const stage = nativeStageRef.current;
+    const page = dock.closest<HTMLElement>(".xora-tv-page");
+    const appHeader = document.querySelector<HTMLElement>("header.fixed.inset-x-0.top-0");
+    const native = isNativeVlcPlatform();
+    let frame = 0;
+    const update = () => {
+      const rect = stage?.getBoundingClientRect();
+      if (page) {
+        page.style.setProperty("--xora-tv-header-height", (appHeader?.getBoundingClientRect().height ?? 0) + "px");
+        page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
       }
-      if (Math.abs(delta) < 1) return;
-
-      const direction = delta > 0 ? 1 : -1;
-      if (direction !== previousDirection) accumulatedScroll = 0;
-      previousDirection = direction;
-      accumulatedScroll += delta;
-
-      // Ignore tiny scroll jitter. Hide only after a meaningful downward gesture
-      // and reveal with a shorter upward gesture so channel browsing feels steady.
-      if (direction > 0 && accumulatedScroll >= 24 && selectedIdRef.current) {
-        root.classList.add("xora-tv-header-hidden");
-        accumulatedScroll = 0;
-      } else if (direction < 0 && accumulatedScroll <= -16) {
-        root.classList.remove("xora-tv-header-hidden");
-        accumulatedScroll = 0;
+      if (native && rect && rect.width > 0 && rect.height > 0) {
+        void updateNativeVlcBounds({
+          x: rect.left - (window.visualViewport?.offsetLeft ?? 0),
+          y: rect.top - (window.visualViewport?.offsetTop ?? 0),
+          width: rect.width,
+          height: rect.height,
+          devicePixelRatio: window.devicePixelRatio * (window.visualViewport?.scale ?? 1),
+        }).catch(() => {});
       }
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const scheduleUpdate = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => { frame = 0; update(); });
+    };
+    const observer = new ResizeObserver(scheduleUpdate);
+    observer.observe(dock);
+    if (stage) observer.observe(stage);
+    if (appHeader) observer.observe(appHeader);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate, { passive: true });
+    window.addEventListener("orientationchange", scheduleUpdate, { passive: true });
+    window.visualViewport?.addEventListener("resize", scheduleUpdate, { passive: true });
+    window.visualViewport?.addEventListener("scroll", scheduleUpdate, { passive: true });
+    scheduleUpdate();
     return () => {
-      root.classList.remove("xora-tv-page-open", "xora-tv-header-hidden");
-      window.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("orientationchange", scheduleUpdate);
+      window.visualViewport?.removeEventListener("resize", scheduleUpdate);
+      window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
+      if (native) void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
+    };
+  }, [selected]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateHeaderSurface = () => root.classList.toggle("xora-tv-header-scrolled", window.scrollY > 8);
+    root.classList.add("xora-tv-page-open");
+    window.addEventListener("scroll", updateHeaderSurface, { passive: true });
+    updateHeaderSurface();
+    return () => {
+      root.classList.remove("xora-tv-page-open", "xora-tv-header-hidden", "xora-tv-header-scrolled");
+      window.removeEventListener("scroll", updateHeaderSurface);
     };
   }, []);
 
@@ -652,27 +743,11 @@ function LiveTvPage() {
                 <span>Refresh</span>
               </Button>
             </div>
-            <div className="xora-tv-filter-row hide-scrollbar">
-              <Button type="button" size="sm" variant={filter === "all" && !category && !country ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: undefined, category: undefined, country: undefined }), replace: true, resetScroll: false })}>All</Button>
-              <Button type="button" size="sm" variant={filter === "favourites" ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: "favourites" }), replace: true, resetScroll: false })}>Favourites</Button>
-              <Button type="button" size="sm" variant={filter === "recent" ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: "recent" }), replace: true, resetScroll: false })}>Recent</Button>
-              {categoryOptions.map((item) => (
-                <Button key={item} type="button" size="sm" variant={category === item ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, category: category === item ? undefined : item, country: undefined }), replace: true, resetScroll: false })}>{formatMetadataLabel(item)}</Button>
-              ))}
-              {countryOptions.map((item) => (
-                <Button key={item} type="button" size="sm" variant={country === item ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, country: country === item ? undefined : item, category: undefined }), replace: true, resetScroll: false })}>{getCountryName(item)}</Button>
-              ))}
-              {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span> : null}
-            </div>
           </header>
-
-          <div className="xora-tv-notice">
-            <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
-          </div>
 
           {selected && !isNativeVlcPlatform() ? (
 
-            <section className="xora-tv-browser-player" aria-label="Live channel player">
+            <section ref={playerDockRef} className="xora-tv-browser-player xora-tv-player-dock" aria-label="Live channel player">
 
               <VideoPlayer
                 key={selected.id}
@@ -694,7 +769,8 @@ function LiveTvPage() {
           ) : null}
 
           {selected && isNativeVlcPlatform() ? (
-            <section className="xora-tv-now-card xora-tv-featured-card" aria-label="Selected live channel">
+            <section ref={playerDockRef} className="xora-tv-now-card xora-tv-featured-card xora-tv-player-dock" aria-label="Selected live channel">
+              <div ref={nativeStageRef} className="xora-tv-native-stage" aria-label="Live video surface" />
               <div className="xora-tv-now-topline">
                 <span className="xora-tv-now-label">Now selected</span>
                 <span className="xora-tv-live-pill"><i /> LIVE</span>
@@ -705,6 +781,7 @@ function LiveTvPage() {
                 <div className="xora-tv-now-copy">
                   <h2>{getChannelDisplayName(selected)}</h2>
                   <p>{getCountryFlag(selected.country)} {getCountryName(selected.country)} <span>·</span> {getChannelQuality(selected) || "Live stream"}</p>
+                  <p className="xora-tv-programme-line">{nowProgramme ? "Now playing · " + nowProgramme.title : "Live broadcast"}</p>
                   <div className="xora-tv-state-row" aria-live="polite">
                     <span className={`xora-tv-state-dot state-${state.toLowerCase()}`} />
                     <span>{state === "PLAYING" ? "Playing live" : stateMessage}</span>
@@ -725,29 +802,18 @@ function LiveTvPage() {
             </div>
           ) : null}
 
-          {renderChannelRail("Recently watched", recentChannels)}
-
-          <section className="xora-tv-ranking" aria-label="Ranked channels by country">
-            <div className="xora-tv-ranking-banner">
-              <span className="xora-tv-ranking-globe"><Globe2 aria-hidden="true" /></span>
-              <div><span>EXPLORE THE WORLD</span><h2>Live TV, ranked by country</h2><p>Start with Nigeria, then discover channels across the globe.</p></div>
-            </div>
-            <div className="xora-tv-region-grid">
-              {rankedRegions.map((region) => (
-                <button key={region.id} type="button" onClick={() => setRankedScope(region.id)} aria-pressed={rankedScope === region.id} className={"xora-tv-region-card" + (rankedScope === region.id ? " is-active" : "") + (region.id === "nigeria" ? " is-priority" : "")}>
-                  {region.id === "nigeria" ? <Crown className="xora-tv-region-crown" aria-hidden="true" /> : null}
-                  <span className="xora-tv-region-flag">{region.flag}</span><strong>{region.title}</strong><small>{region.subtitle}</small><em>{region.count.toLocaleString()} channels</em>
-                </button>
+            <div className="xora-tv-filter-row hide-scrollbar">
+              <Button type="button" size="sm" variant={filter === "all" && !category && !country ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: undefined, category: undefined, country: undefined }), replace: true, resetScroll: false })}>All</Button>
+              <Button type="button" size="sm" variant={filter === "favourites" ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: "favourites" }), replace: true, resetScroll: false })}>Favourites</Button>
+              <Button type="button" size="sm" variant={filter === "recent" ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, filter: "recent" }), replace: true, resetScroll: false })}>Recent</Button>
+              {categoryOptions.map((item) => (
+                <Button key={item} type="button" size="sm" variant={category === item ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, category: category === item ? undefined : item, country: undefined }), replace: true, resetScroll: false })}>{formatMetadataLabel(item)}</Button>
               ))}
+              {countryOptions.map((item) => (
+                <Button key={item} type="button" size="sm" variant={country === item ? "default" : "outline"} className="rounded-full shrink-0" onClick={() => void navigate({ search: (previous) => ({ ...previous, country: country === item ? undefined : item, category: undefined }), replace: true, resetScroll: false })}>{getCountryName(item)}</Button>
+              ))}
+              {isOffline ? <span className="xora-tv-offline-chip"><WifiOff aria-hidden="true" /> Offline · cached channels</span> : null}
             </div>
-            {renderRankedRail("Nigeria’s top channels", "nigeria", rankedChannels.nigeria, "🇳🇬")}
-            {renderRankedRail("Other African channels", "africa", rankedChannels.africa, "🌍")}
-            {renderRankedRail("United States channels", "usa", rankedChannels.usa, "🇺🇸")}
-            {renderRankedRail("United Kingdom channels", "uk", rankedChannels.uk, "🇬🇧")}
-            {renderRankedRail("More from around the world", "others", rankedChannels.others, "🌐")}
-          </section>
-
-          {renderChannelRail("Favourites", favoriteChannels)}
 
           <section className="xora-tv-channel-section">
             <div className="xora-tv-section-heading">
@@ -775,6 +841,34 @@ function LiveTvPage() {
               </div>
             )}
           </section>
+
+          {renderChannelRail("Recently watched", recentChannels)}
+
+          <section className="xora-tv-ranking" aria-label="Ranked channels by country">
+            <div className="xora-tv-ranking-banner">
+              <span className="xora-tv-ranking-globe"><Globe2 aria-hidden="true" /></span>
+              <div><span>EXPLORE THE WORLD</span><h2>Live TV, ranked by country</h2><p>Start with Nigeria, then discover channels across the globe.</p></div>
+            </div>
+            <div className="xora-tv-region-grid">
+              {rankedRegions.map((region) => (
+                <button key={region.id} type="button" onClick={() => setRankedScope(region.id)} aria-pressed={rankedScope === region.id} className={"xora-tv-region-card" + (rankedScope === region.id ? " is-active" : "") + (region.id === "nigeria" ? " is-priority" : "")}>
+                  {region.id === "nigeria" ? <Crown className="xora-tv-region-crown" aria-hidden="true" /> : null}
+                  <span className="xora-tv-region-flag">{region.flag}</span><strong>{region.title}</strong><small>{region.subtitle}</small><em>{region.count.toLocaleString()} channels</em>
+                </button>
+              ))}
+            </div>
+            {renderRankedRail("Nigeria’s top channels", "nigeria", rankedChannels.nigeria, "🇳🇬")}
+            {renderRankedRail("Other African channels", "africa", rankedChannels.africa, "🌍")}
+            {renderRankedRail("United States channels", "usa", rankedChannels.usa, "🇺🇸")}
+            {renderRankedRail("United Kingdom channels", "uk", rankedChannels.uk, "🇬🇧")}
+            {renderRankedRail("More from around the world", "others", rankedChannels.others, "🌐")}
+          </section>
+
+          {renderChannelRail("Favourites", favoriteChannels)}
+
+          <div className="xora-tv-notice">
+            <strong>Live TV notice:</strong> Some channels may be unavailable in your region or on your device. XoraTV only shows channels with streams compatible with our player.
+          </div>
 
           {selected ? (
             <section className="xora-tv-guide">
