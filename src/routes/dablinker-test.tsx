@@ -21,7 +21,7 @@ function DablinkerTestPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b8067]">XoraTV · Private test</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Dablinker ad test</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-[#74675d]">
-            This isolated test loads one Dablinker text-ad request. The existing XoraTV ad placements are not changed.
+            This isolated test runs your original Dablinker text-ad script. Existing XoraTV ad placements are not changed.
           </p>
         </header>
 
@@ -38,7 +38,7 @@ function DablinkerTestPage() {
             className="block h-[290px] w-full rounded-xl border border-[#eee5da] bg-[#fff9f0]"
           />
           <p className="mt-3 text-xs leading-5 text-[#88796d]">
-            One request is made when this page loads. The test copy does not auto-refresh. Please don't click the ad; clicking records an ad click and opens the advertiser.
+            The original ad unit refreshes on its own 30-second timer. Please don't click the ad; clicking records an ad click and opens the advertiser.
           </p>
         </section>
 
