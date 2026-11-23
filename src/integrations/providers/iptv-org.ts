@@ -170,6 +170,8 @@ export async function fetchIptvChannels(options?: {
   category?: string;
   limit?: number;
   platform?: "native" | "web";
+  /** Return catalogue entries without requiring a successful stream probe first. */
+  includeUnverified?: boolean;
 }): Promise<{ ok: boolean; total: number; channels: IptvChannel[]; error?: string }> {
   try {
     const channels = await loadChannels();
@@ -186,6 +188,27 @@ export async function fetchIptvChannels(options?: {
       if (category && categoryFromGroup(channel.group, channel.playlistCategory, channel.name) !== category) return false;
       return true;
     });
+
+    // X-Series must display the published channel catalogue even when a stream
+    // host temporarily rejects a health probe. Playback is resolved separately
+    // when the user selects a channel.
+    if (options?.includeUnverified) {
+      const listed = filtered.slice(0, limit).map((channel) => ({
+        id: channel.id,
+        name: channel.name,
+        country: channel.country,
+        categories: [categoryFromGroup(channel.group, channel.playlistCategory, channel.name)],
+        network: null,
+        logo: channel.logo,
+        streamUrl: channel.streamUrl,
+        streamTitle: channel.name,
+        quality: channel.quality,
+        referrer: null,
+        userAgent: null,
+        labels: [],
+      }));
+      return { ok: true, total: filtered.length, channels: listed };
+    }
 
     // Sample across the full filtered catalogue instead of checking only the
     // alphabetically first channels. This gives XoraTV a much better chance
