@@ -473,12 +473,23 @@ function LiveTvPage() {
       const stage = nativeStageRef.current;
       if (stage) {
         const rect = stage.getBoundingClientRect();
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport?.offsetLeft ?? 0;
+        const viewportTop = viewport?.offsetTop ?? 0;
+        const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
+        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+        const left = Math.max(rect.left, viewportLeft);
+        const top = Math.max(rect.top, viewportTop);
+        const right = Math.min(rect.right, viewportRight);
+        const bottom = Math.min(rect.bottom, viewportBottom);
+        const visible = right > left && bottom > top;
         void updateNativeVlcBounds({
-          x: rect.left - (window.visualViewport?.offsetLeft ?? 0),
-          y: rect.top - (window.visualViewport?.offsetTop ?? 0),
-          width: rect.width,
-          height: rect.height,
-          devicePixelRatio: window.devicePixelRatio * (window.visualViewport?.scale ?? 1),
+          x: visible ? left - viewportLeft : 0,
+          y: visible ? top - viewportTop : 0,
+          width: visible ? right - left : 0,
+          height: visible ? bottom - top : 0,
+          devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
+          visible,
         }).catch(() => {});
       }
     })();
@@ -529,13 +540,26 @@ function LiveTvPage() {
         page.style.setProperty("--xora-tv-header-height", (appHeader?.getBoundingClientRect().height ?? 0) + "px");
         page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
       }
-      if (native && rect && rect.width > 0 && rect.height > 0) {
+      if (native && rect) {
+        // LibVLC is a native Android overlay, not a DOM child: explicitly clip
+        // its bounds to the visible viewport while the page scrolls.
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport?.offsetLeft ?? 0;
+        const viewportTop = viewport?.offsetTop ?? 0;
+        const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
+        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+        const left = Math.max(rect.left, viewportLeft);
+        const top = Math.max(rect.top, viewportTop);
+        const right = Math.min(rect.right, viewportRight);
+        const bottom = Math.min(rect.bottom, viewportBottom);
+        const visible = right > left && bottom > top;
         void updateNativeVlcBounds({
-          x: rect.left - (window.visualViewport?.offsetLeft ?? 0),
-          y: rect.top - (window.visualViewport?.offsetTop ?? 0),
-          width: rect.width,
-          height: rect.height,
-          devicePixelRatio: window.devicePixelRatio * (window.visualViewport?.scale ?? 1),
+          x: visible ? left - viewportLeft : 0,
+          y: visible ? top - viewportTop : 0,
+          width: visible ? right - left : 0,
+          height: visible ? bottom - top : 0,
+          devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
+          visible,
         }).catch(() => {});
       }
     };
