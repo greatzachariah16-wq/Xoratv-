@@ -223,7 +223,6 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                   externalPoster={selected.logo}
                   title={selected.name}
                   liveTv
-                  nativeDirectOnly
                   autoPlay
                   channelCountry={selected.country || undefined}
                   channelQuality={selected.quality || undefined}
