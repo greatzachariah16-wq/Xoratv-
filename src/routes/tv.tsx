@@ -777,7 +777,7 @@ function LiveTvPage() {
 
           {selected && !isNativeVlcPlatform() ? (
 
-            <section ref={playerDockRef} className="xora-tv-browser-player xora-tv-player-dock" aria-label="Live channel player">
+            <section ref={playerDockRef} className="xora-tv-browser-player xora-tv-player-dock xora-player-flow" aria-label="Live channel player">
 
               <VideoPlayer
                 key={selected.id}
