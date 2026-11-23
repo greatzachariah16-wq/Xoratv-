@@ -571,20 +571,26 @@ function LiveTvPage() {
     observer.observe(dock);
     if (stage) observer.observe(stage);
     if (appHeader) observer.observe(appHeader);
-    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    // Native LibVLC follows WebView scroll deltas on Android's UI thread.
+    // Keep JS bounds sync for initial placement and viewport/layout changes only.
+    if (!native) {
+      window.addEventListener("scroll", scheduleUpdate, { passive: true });
+      window.visualViewport?.addEventListener("scroll", scheduleUpdate, { passive: true });
+    }
     window.addEventListener("resize", scheduleUpdate, { passive: true });
     window.addEventListener("orientationchange", scheduleUpdate, { passive: true });
     window.visualViewport?.addEventListener("resize", scheduleUpdate, { passive: true });
-    window.visualViewport?.addEventListener("scroll", scheduleUpdate, { passive: true });
     scheduleUpdate();
     return () => {
       observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", scheduleUpdate);
+      if (!native) {
+        window.removeEventListener("scroll", scheduleUpdate);
+        window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
+      }
       window.removeEventListener("resize", scheduleUpdate);
       window.removeEventListener("orientationchange", scheduleUpdate);
       window.visualViewport?.removeEventListener("resize", scheduleUpdate);
-      window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
       if (native) void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
     };
   }, [selected]);

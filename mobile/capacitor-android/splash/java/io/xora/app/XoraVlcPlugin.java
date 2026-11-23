@@ -168,6 +168,7 @@ public class XoraVlcPlugin extends Plugin {
     private boolean hasPinnedBounds;
     private boolean debugMode;
     private int pinnedLeft, pinnedTop, pinnedWidth, pinnedHeight;
+    private View.OnScrollChangeListener nativeWebScrollListener;
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusListener = change -> {
         mainHandler.post(() -> handleAudioFocusChange(change));
@@ -1001,6 +1002,20 @@ public class XoraVlcPlugin extends Plugin {
             if (playerOverlay != null) applyModeLayout();
         };
         rootContainer.addOnLayoutChangeListener(rootLayoutListener);
+
+        // The LibVLC surface is a native sibling of the WebView. Follow WebView
+        // scroll deltas directly on Android's UI thread so it stays locked to
+        // the DOM stage instead of lagging behind asynchronous JS scroll events.
+        nativeWebScrollListener = (view, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            if (mode != PlayerMode.PINNED || !hasPinnedBounds || playerOverlay == null) return;
+            int deltaX = scrollX - oldScrollX;
+            int deltaY = scrollY - oldScrollY;
+            if (deltaX == 0 && deltaY == 0) return;
+            pinnedLeft -= deltaX;
+            pinnedTop -= deltaY;
+            applyModeLayout();
+        };
+        webView.setOnScrollChangeListener(nativeWebScrollListener);
 
         ArrayList<String> options = new ArrayList<>();
         options.add("--network-caching=4000");
@@ -2029,6 +2044,10 @@ public class XoraVlcPlugin extends Plugin {
         if (controlsAutoHide != null) mainHandler.removeCallbacks(controlsAutoHide);
         abandonAudioFocus();
 
+        if (webView != null && nativeWebScrollListener != null) {
+            webView.setOnScrollChangeListener(null);
+            nativeWebScrollListener = null;
+        }
         if (rootContainer != null && rootLayoutListener != null) {
             rootContainer.removeOnLayoutChangeListener(rootLayoutListener);
         }
