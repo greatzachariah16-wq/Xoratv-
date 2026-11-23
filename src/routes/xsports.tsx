@@ -316,7 +316,6 @@ function XSportsPage() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  const playerRef = useRef<HTMLElement | null>(null);
   const channelsGridRef = useRef<HTMLDivElement | null>(null);
   const heroCarouselRef = useRef<HTMLDivElement | null>(null);
   const channelsQuery = useQuery({
@@ -387,8 +386,8 @@ function XSportsPage() {
     setHeroIndex(nearestIndex);
   };
   const chooseChannel = (channel: SportsChannel) => {
+    // Selecting a channel must not move the page or pull the player into view.
     setSelectedId(channel.id);
-    requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   };
   const scrollToChannels = () => channelsGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const selectNetwork = (query: string) => { setFilter("All Sports"); setSearch(query); };
@@ -468,7 +467,7 @@ function XSportsPage() {
         />
         <NetworkChips search={search} onSelect={selectNetwork} loading={channelsQuery.isLoading} />
 
-        <section ref={playerRef} className="scroll-mt-[calc(5rem+env(safe-area-inset-top))] space-y-3" aria-label="Sports channel player">
+        <section className="space-y-3" aria-label="Sports channel player">
           {selected ? (
             <>
               <NativeVideoPlayer
