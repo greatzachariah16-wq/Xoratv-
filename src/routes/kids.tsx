@@ -253,7 +253,7 @@ function KidsPage() {
               ) : query.isError ? (
                 <KidsEmptyState message="Kids channels could not load. Please try again." />
               ) : visibleSelected ? (
-                <section aria-label="Selected kids channel">
+                <section className="xora-player-flow" aria-label="Selected kids channel">
                   <NativeVideoPlayer key={visibleSelected.id}
                     streamUrl={visibleSelected.streamUrl}
                     nativeStreamUrl={"/api/tv/stream?provider=" + (visibleSelected.provider || "nexus") + "&channel=" + encodeURIComponent(visibleSelected.id)}
