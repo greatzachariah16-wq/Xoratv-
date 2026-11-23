@@ -467,7 +467,7 @@ function XSportsPage() {
         />
         <NetworkChips search={search} onSelect={selectNetwork} loading={channelsQuery.isLoading} />
 
-        <section className="space-y-3" aria-label="Sports channel player">
+        <section className="xora-player-flow space-y-3" aria-label="Sports channel player">
           {selected ? (
             <>
               <NativeVideoPlayer
