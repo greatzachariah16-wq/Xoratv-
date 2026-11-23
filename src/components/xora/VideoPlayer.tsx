@@ -1046,7 +1046,7 @@ export function NativeVideoPlayer(props: Props) {
 
   return (
     <section
-      className="relative isolate left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden rounded-none bg-black text-white shadow-none"
+      className="xora-player-flow relative isolate left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden rounded-none bg-black text-white shadow-none"
       aria-label="Live channel player"
     >
       <div ref={stageRef} className="relative aspect-video w-full overflow-hidden bg-black">
