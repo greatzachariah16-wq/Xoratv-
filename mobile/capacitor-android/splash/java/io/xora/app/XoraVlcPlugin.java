@@ -747,14 +747,13 @@ public class XoraVlcPlugin extends Plugin {
         playerOverlay.setElevation(dp(28));
         playerOverlay.setVisibility(View.INVISIBLE);
 
-        // The native surface is constrained to the measured 16:9 DOM stage.
-        // Its rounded background clips the video and native controls to the card.
+        // Keep the native LibVLC surface flush with the in-flow DOM video stage.
+        // Do not round or clip the native surface: XoraTV players are edge-to-edge.
         videoFrame = new FrameLayout(getContext());
         GradientDrawable videoBackground = new GradientDrawable();
         videoBackground.setColor(Color.BLACK);
-        videoBackground.setCornerRadius(dp(22));
         videoFrame.setBackground(videoBackground);
-        videoFrame.setClipToOutline(true);
+        videoFrame.setClipToOutline(false);
         videoFrame.setClickable(true);
         videoFrame.setOnLongClickListener(view -> {
             if (streamInfoBadge != null) {

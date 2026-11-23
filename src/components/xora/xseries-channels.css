@@ -250,14 +250,14 @@ body:has(.xseries-channels),
   min-width: 0;
 }
 
-.xsc-player-sticky.is-playing {
-  position: sticky;
-  top: max(8px, env(safe-area-inset-top));
-}
 
 .xsc-player-frame {
-  width: 100%;
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  max-width: 100vw;
   min-width: 0;
+  transform: translateX(-50%);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -967,13 +967,6 @@ body:has(.xseries-channels),
   animation: xsc-shimmer 1.35s ease-in-out infinite;
 }
 
-
-/* The whole player surface sticks for the duration of the channel-list scroll. */
-.xsc-player-card.is-playing {
-  position: sticky;
-  top: max(8px, env(safe-area-inset-top));
-  z-index: 30;
-}
 
 .xsc-player-sticky.is-playing {
   position: relative;

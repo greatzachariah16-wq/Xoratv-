@@ -212,8 +212,8 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
 
       <div className="xsc-page-flow">
       <div className="xsc-main-column">
-        <section className={cn("xsc-player-card", selected && "is-playing")} aria-label="Live channel player">
-          <div className={cn("xsc-player-sticky", selected && "is-playing")}>
+        <section className="xsc-player-card" aria-label="Live channel player">
+          <div className="xsc-player-sticky">
             <div className="xsc-player-frame">
               {selected ? (
                 <NativeVideoPlayer
@@ -278,7 +278,6 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
                     selected={selectedId === channel.id}
                     onSelect={() => {
                       setSelectedId(channel.id);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                   />
                 </div>
