@@ -240,16 +240,23 @@ function NativeVideoPlayerCore({
         if (!stage) return;
         const rect = stage.getBoundingClientRect();
         const viewport = window.visualViewport;
-        const scale = viewport?.scale || 1;
-        const visible = rect.width > 0 && rect.height > 0 &&
-          rect.bottom > 0 && rect.right > 0 &&
-          rect.top < window.innerHeight && rect.left < window.innerWidth;
+        const viewportLeft = viewport?.offsetLeft ?? 0;
+        const viewportTop = viewport?.offsetTop ?? 0;
+        const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
+        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+        const left = Math.max(rect.left, viewportLeft);
+        const top = Math.max(rect.top, viewportTop);
+        const right = Math.min(rect.right, viewportRight);
+        const bottom = Math.min(rect.bottom, viewportBottom);
+        const visible = right > left && bottom > top;
+        // The Android LibVLC surface is a separate native overlay, so DOM overflow
+        // cannot clip it. Pass only the visible intersection to keep it inside its frame.
         void updateNativeVlcBounds({
-          x: rect.left - (viewport?.offsetLeft || 0),
-          y: rect.top - (viewport?.offsetTop || 0),
-          width: rect.width,
-          height: rect.height,
-          devicePixelRatio: window.devicePixelRatio * scale,
+          x: visible ? left - viewportLeft : 0,
+          y: visible ? top - viewportTop : 0,
+          width: visible ? right - left : 0,
+          height: visible ? bottom - top : 0,
+          devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
           visible,
         }).catch((error) => console.warn("[Xora] Native player bounds sync failed:", error));
       });
