@@ -3347,6 +3347,15 @@ html.xora-channel-route .ad-slot::before {
   margin-inline: auto;
   padding: 12px 16px 28px;
 }
+/* Shared player flow contract: keep video stages attached to the document, not pinned to the viewport. */
+.xora-player-flow {
+  position: relative !important;
+  top: auto !important;
+  bottom: auto !important;
+  min-width: 0;
+  align-self: start;
+}
+
 .xora-watch-player-sticky {
   /* Keep the cinema stage in normal document flow: the page scrolls naturally
      and the player never detaches from its surrounding frame. */
