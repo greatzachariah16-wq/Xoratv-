@@ -227,7 +227,7 @@ export function XSeriesChannelShelf({ onBackToLibrary }: { onBackToLibrary?: () 
       <div className="xsc-page-flow">
       <div className="xsc-main-column">
         <section className="xsc-player-card" aria-label="Live channel player">
-          <div className="xsc-player-sticky">
+          <div className="xsc-player-sticky xora-player-flow">
             <div className="xsc-player-frame">
               {selected ? (
                 <NativeVideoPlayer
