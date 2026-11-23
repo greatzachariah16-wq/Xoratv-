@@ -1699,31 +1699,16 @@ body,
 }
 
 
-/* X-Series Cinema Lounge: let the cinema canvas break out of the standard page gutter. */
+/* Keep the X-Series cinema shelf inside its AppShell column.
+   The previous negative-gutter breakout widened the section beyond the
+   mobile viewport and shifted the entire player/shelf horizontally. */
 section[aria-label="X-Series live channels"] {
-  width: calc(100% + 2rem);
-  margin-left: -1rem;
-  margin-right: -1rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-@media (min-width: 640px) {
-  section[aria-label="X-Series live channels"] {
-    width: calc(100% + 3rem);
-    margin-left: -1.5rem;
-    margin-right: -1.5rem;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-}
-@media (min-width: 1024px) {
-  section[aria-label="X-Series live channels"] {
-    width: calc(100% + 4rem);
-    margin-left: -2rem;
-    margin-right: -2rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  padding-inline: 0;
 }
 
 
