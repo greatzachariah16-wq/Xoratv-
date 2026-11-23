@@ -450,7 +450,7 @@ public class XoraVlcPlugin extends Plugin {
 
         directPlaybackOnly = call.getBoolean("directOnly", false);
         if (directPlaybackOnly) {
-            if (!isHttpUrl(url)) throw new IOException("A valid direct stream URL is required.");
+            if (!isDirectStreamUrl(url)) throw new IOException("A valid supported network stream URL is required.");
             streamUrls.add(url);
             upstreamStreamUrls.add(url);
             streamHeaders.add(call.getObject("headers") == null ? new JSONObject() : call.getObject("headers"));
@@ -489,8 +489,8 @@ public class XoraVlcPlugin extends Plugin {
 
         boolean directOnlyRequest = call.getBoolean("directOnly", false);
         debugMode = call.getBoolean("debug", false);
-        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
-            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
+        if (directOnlyRequest ? !isDirectStreamUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid supported network stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -558,8 +558,8 @@ public class XoraVlcPlugin extends Plugin {
 
         boolean directOnlyRequest = call.getBoolean("directOnly", false);
         debugMode = call.getBoolean("debug", false);
-        if (directOnlyRequest ? !isHttpUrl(url) : !isSecureUrl(url)) {
-            call.reject(directOnlyRequest ? "A valid HTTP(S) stream URL is required." : "A secure stream URL is required.");
+        if (directOnlyRequest ? !isDirectStreamUrl(url) : !isSecureUrl(url)) {
+            call.reject(directOnlyRequest ? "A valid supported network stream URL is required." : "A secure stream URL is required.");
             return;
         }
 
@@ -704,6 +704,35 @@ public class XoraVlcPlugin extends Plugin {
         String scheme = uri.getScheme();
         return uri.getHost() != null
             && ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme));
+    }
+
+    /**
+     * Direct LibVLC streams may use supported network protocols beyond HTTP(S).
+     * Keep this allow-list explicit: local files and executable/non-network schemes
+     * must never be accepted from the channel catalogue.
+     */
+    private boolean isDirectStreamUrl(String url) {
+        if (url == null || url.trim().isEmpty()) return false;
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        if (scheme == null) return false;
+        switch (scheme.toLowerCase(java.util.Locale.ROOT)) {
+            case "http":
+            case "https":
+            case "rtsp":
+            case "rtmp":
+            case "rtp":
+            case "srt":
+            case "mms":
+            case "mmsh":
+            case "ftp":
+                return uri.getHost() != null && !uri.getHost().isEmpty();
+            case "udp":
+                // VLC also supports listener-style udp://@:port URLs.
+                return (uri.getHost() != null && !uri.getHost().isEmpty()) || uri.getPort() > 0;
+            default:
+                return false;
+        }
     }
 
     private boolean isLocalProxyUrl(String url) {
