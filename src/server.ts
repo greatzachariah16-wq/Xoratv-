@@ -1036,7 +1036,6 @@ export default {
             category,
             limit: Number(url.searchParams.get("limit") || "100"),
             platform: nativePlatform ? "native" : "web",
-            includeUnverified: true,
           });
           const channels = result.channels
             .map((channel) => ({
