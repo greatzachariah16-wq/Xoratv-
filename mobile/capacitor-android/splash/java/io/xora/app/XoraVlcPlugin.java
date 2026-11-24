@@ -371,7 +371,10 @@ public class XoraVlcPlugin extends Plugin {
             if (mode == PlayerMode.TABLET && newConfig.smallestScreenWidthDp < 600) {
                 mode = PlayerMode.PINNED;
             }
-            mainHandler.post(() -> {\n                applyVideoScaleForCurrentOrientation();\n                applyModeLayout();\n            });
+            mainHandler.post(() -> {
+                applyVideoScaleForCurrentOrientation();
+                applyModeLayout();
+            });
         }
     }
 
