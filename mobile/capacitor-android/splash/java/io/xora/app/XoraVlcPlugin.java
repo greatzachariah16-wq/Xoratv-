@@ -354,6 +354,16 @@ public class XoraVlcPlugin extends Plugin {
         updateControlLabels();
     }
 
+    private void applyVideoScaleForCurrentOrientation() {
+        if (mediaPlayer == null) return;
+        boolean portrait = getContext().getResources().getConfiguration().orientation
+            == Configuration.ORIENTATION_PORTRAIT;
+        MediaPlayer.ScaleType scaleType = directPlaybackOnly && portrait
+            ? MediaPlayer.ScaleType.SURFACE_FIT_SCREEN
+            : MediaPlayer.ScaleType.SURFACE_BEST_FIT;
+        mediaPlayer.setVideoScale(scaleType);
+    }
+
     @Override
     protected void handleOnConfigurationChanged(Configuration newConfig) {
         super.handleOnConfigurationChanged(newConfig);
@@ -361,7 +371,7 @@ public class XoraVlcPlugin extends Plugin {
             if (mode == PlayerMode.TABLET && newConfig.smallestScreenWidthDp < 600) {
                 mode = PlayerMode.PINNED;
             }
-            mainHandler.post(this::applyModeLayout);
+            mainHandler.post(() -> {\n                applyVideoScaleForCurrentOrientation();\n                applyModeLayout();\n            });
         }
     }
 
@@ -1526,6 +1536,11 @@ public class XoraVlcPlugin extends Plugin {
                 // LibVLC may already have stopped the previous media.
             }
         }
+
+        // Keep the live picture filling the portrait stage. LibVLC's default
+        // SURFACE_BEST_FIT can leave unused bars when the stream ratio differs.
+        // VOD/non-direct playback retains the original best-fit behaviour.
+        applyVideoScaleForCurrentOrientation();
 
         boolean preferSoftware = "tna-wrestling-pluto".equals(currentChannelId)
             || "wrestling-legends-tv".equals(currentChannelId);
