@@ -18,7 +18,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
-import { LiveChannelEmptyStage, VideoPlayer } from "@/components/xora/VideoPlayer";
+import { LiveChannelEmptyStage, NativeVideoPlayer, VideoPlayer } from "@/components/xora/VideoPlayer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CpxLiveTvGate } from "@/components/commerce/CpxLiveTvGate";
@@ -31,16 +31,9 @@ import {
   getCountryName,
 } from "@/components/xora/XSportsComponents";
 import {
-  addNativeVlcStateListener,
-  closeNativeVlc,
   isNativeVlcPlatform,
-  openNativeVlc,
   resolveNativeVlcPlayback,
-  switchNativeVlcChannel,
-  retryNativeVlc,
-  updateNativeVlcBounds,
-  type NativeVlcStateChangedEvent,
-  type NativeVlcStatus,
+  type NativeVlcCandidate,
 } from "@/lib/native-vlc";
 import { usePlayerPrefs } from "@/hooks/usePlayerPrefs";
 import { getCountryRankedGroups } from "@/lib/country-ranking";
@@ -167,19 +160,6 @@ async function loadChannels(query: string, category: string): Promise<Channel[]>
   }
 }
 
-const STATE_LABELS: Record<NativeVlcStatus, string> = {
-  IDLE: "Choose a channel to begin",
-  OFFLINE: "You're offline. Playback resumes automatically.",
-  CONNECTING: "Connecting to channel",
-  BUFFERING: "Buffering",
-  PLAYING: "Playing live",
-  ERR_REGION: "Not available in your region",
-  ERR_CHANNEL_DOWN: "Channel is offline",
-  ERR_TIMEOUT: "Network too slow",
-  ERR_UNKNOWN: "Unable to play this channel",
-};
-
-
 type TvFilter = "all" | "favourites" | "recent";
 type RankedScope = "all" | "nigeria" | "africa" | "usa" | "uk" | "others";
 const AFRICAN_COUNTRY_CODES = new Set(["DZ","AO","BJ","BW","BF","BI","CV","CM","CF","TD","KM","CG","CD","CI","DJ","EG","GQ","ER","SZ","ET","GA","GM","GH","GN","GW","KE","LS","LR","LY","MG","MW","ML","MR","MU","MA","MZ","NA","NE","NG","RW","ST","SN","SC","SL","SO","ZA","SS","SD","TZ","TG","TN","UG","ZM","ZW"]);
@@ -258,24 +238,12 @@ function LiveTvPage() {
   const [activeChannelId, setActiveChannelId] = useState("");
   const [rankedScope, setRankedScope] = useState<RankedScope>("all");
   const playerPrefs = usePlayerPrefs();
-  const nativePlayerOpenRef = useRef(false);
-  const nativePlayerTaskRef = useRef<Promise<void> | null>(null);
-  const nativeFallbackRef = useRef<{
-    channelId: string;
-    title: string;
-    attempts: Array<{ url: string; headers?: Record<string, string> }>;
-    index: number;
-    switching: boolean;
-  } | null>(null);
   const playerDockRef = useRef<HTMLElement | null>(null);
-  const nativeStageRef = useRef<HTMLDivElement | null>(null);
   const [isOnline, setIsOnline] = useState(true);
-  const [nativeState, setNativeState] = useState<NativeVlcStateChangedEvent>({
-    state: "IDLE",
-    channelId: "",
-    message: STATE_LABELS.IDLE,
-  });
-  const selectedIdRef = useRef("");
+  const [nativePlaybackResolution, setNativePlaybackResolution] = useState<{
+    channelId: string;
+    candidates: NativeVlcCandidate[];
+  } | null>(null);
   const lastChannelTapAtRef = useRef(0);
   const selectChannel = useCallback((channel: Channel) => {
     const now = Date.now();
@@ -363,81 +331,18 @@ function LiveTvPage() {
     queryKey: ["iptv-org-live-tv-page"],
     queryFn: () => loadChannels("", ""),
     staleTime: 60_000,
-    refetchInterval: isOnline && nativeState.state !== "OFFLINE" ? 5 * 60_000 : false,
-    refetchOnWindowFocus: isOnline && nativeState.state !== "OFFLINE",
-    retry: (failureCount) => isOnline && nativeState.state !== "OFFLINE" && failureCount < 3,
+    refetchInterval: isOnline ? 5 * 60_000 : false,
+    refetchOnWindowFocus: isOnline,
+    retry: (failureCount) => isOnline && failureCount < 3,
   });
 
   const selected = useMemo(
     () => activeChannelId ? query.data?.find((item) => item.id === activeChannelId) || null : null,
     [query.data, activeChannelId],
   );
-  selectedIdRef.current = selected?.id
-    && nativeState.channelId === selected.id
-    && nativeState.state !== "IDLE"
-    ? selected.id
-    : "";
-
   // Offline is determined by the Capacitor connection signal plus the independent
   // reachability probes, never by an individual channel or stream failure.
   const isOffline = !isOnline;
-
-  useEffect(() => {
-    let mounted = true;
-    let listenerHandle: { remove(): Promise<void> } | null = null;
-    void addNativeVlcStateListener((event) => {
-      if (!mounted) return;
-      if (!event.channelId || event.channelId === selectedIdRef.current) {
-        setNativeState(event);
-      }
-      const recovery = nativeFallbackRef.current;
-      const playbackFailed = event.state === "ERR_REGION"
-        || event.state === "ERR_CHANNEL_DOWN"
-        || event.state === "ERR_TIMEOUT"
-        || event.state === "ERR_UNKNOWN";
-      if (
-        recovery
-        && recovery.channelId === event.channelId
-        && playbackFailed
-        && !recovery.switching
-        && recovery.index + 1 < recovery.attempts.length
-      ) {
-        recovery.switching = true;
-        recovery.index += 1;
-        const next = recovery.attempts[recovery.index];
-        void switchNativeVlcChannel({
-          url: next.url,
-          title: recovery.title,
-          channelId: recovery.channelId,
-          directOnly: true,
-          headers: next.headers,
-          debug: new URLSearchParams(window.location.search).get("debug") === "1",
-        }).then(() => {
-          if (nativeFallbackRef.current === recovery) recovery.switching = false;
-        }).catch((error: unknown) => {
-          if (nativeFallbackRef.current === recovery) recovery.switching = false;
-          console.warn("[Xora TV] Native fallback candidate failed:", error);
-        });
-      }
-      if (event.transport === "proxy" && event.channelId) {
-        void fetch("/api/tv/playback-feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ channelId: event.channelId, transport: "proxy" }),
-        }).catch(() => {});
-      }
-    }).then((handle) => {
-      if (!mounted) void handle.remove();
-      else listenerHandle = handle;
-    }).catch((error) => {
-      console.warn("[Xora TV] Native state listener unavailable:", error);
-    });
-
-    return () => {
-      mounted = false;
-      if (listenerHandle) void listenerHandle.remove();
-    };
-  }, []);
 
   useEffect(() => {
     setSearch(q || "");
@@ -459,177 +364,63 @@ function LiveTvPage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!selected) {
-      const closeWhenReady = () => {
-        if (nativePlayerOpenRef.current) {
-          nativePlayerOpenRef.current = false;
-          document.documentElement.classList.remove("xora-tv-player-open");
-          void closeNativeVlc().catch(() => {});
+    if (!selected || !isNativeVlcPlatform()) {
+      setNativePlaybackResolution(null);
+      return () => { cancelled = true; };
+    }
+
+    setNativePlaybackResolution(null);
+    const baseHeaders = {
+      "User-Agent": selected.userAgent || "Mozilla/5.0",
+      ...(selected.referrer ? { Referer: selected.referrer } : {}),
+    };
+    const catalogueCandidate: NativeVlcCandidate = {
+      url: selected.streamUrl,
+      headers: baseHeaders,
+    };
+
+    // Resolve provider URLs only. Stream media itself goes straight to LibVLC.
+    void resolveNativeVlcPlayback(selected.provider || "iptv-org", selected.id)
+      .then((resolution) => {
+        if (cancelled) return;
+        const candidates: NativeVlcCandidate[] = [];
+        const seen = new Set<string>();
+        for (const candidate of resolution.candidates || []) {
+          if (!candidate?.url || !/^https?:\/\//i.test(candidate.url) || seen.has(candidate.url)) continue;
+          seen.add(candidate.url);
+          candidates.push({
+            url: candidate.url,
+            headers: candidate.headers || baseHeaders,
+          });
         }
-      };
-      const pendingTask = nativePlayerTaskRef.current;
-      if (pendingTask) void pendingTask.catch(() => {}).then(closeWhenReady);
-      else closeWhenReady();
-      return () => { cancelled = true; };
-    }
-    if (!isNativeVlcPlatform()) {
-      setNativeState({
-        state: "IDLE",
-        channelId: selected.id,
-        message: "Watch live channels in the XoraTV Android app.",
+        if (!seen.has(selected.streamUrl)) candidates.push(catalogueCandidate);
+        setNativePlaybackResolution({
+          channelId: selected.id,
+          candidates: candidates.length ? candidates : [catalogueCandidate],
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNativePlaybackResolution({
+            channelId: selected.id,
+            candidates: [catalogueCandidate],
+          });
+        }
       });
-      return () => { cancelled = true; };
-    }
 
-    setNativeState({
-      state: isOnline ? "CONNECTING" : "OFFLINE",
-      channelId: selected.id,
-      message: isOnline ? STATE_LABELS.CONNECTING : STATE_LABELS.OFFLINE,
-    });
-
-    const previousTask = nativePlayerTaskRef.current;
-    const task = (async () => {
-      if (previousTask) await previousTask.catch(() => {});
-      if (cancelled) return;
-      // Keep playback on the existing direct native LibVLC path. Resolve the
-      // ranked origin URLs first, then advance to the next origin or server-relay
-      // URL only if LibVLC reports that the current candidate failed.
-      const resolution = await resolveNativeVlcPlayback(
-        selected.provider || "iptv-org",
-        selected.id,
-      );
-      if (cancelled) return;
-      const attempts: Array<{ url: string; headers?: Record<string, string> }> = [];
-      const seenUrls = new Set<string>();
-      for (const candidate of resolution.candidates || []) {
-        if (!/^https?:\/\//i.test(candidate.url) || seenUrls.has(candidate.url)) continue;
-        seenUrls.add(candidate.url);
-        attempts.push({ url: candidate.url, headers: candidate.headers });
-      }
-      for (const fallbackUrl of [
-        resolution.proxyUrl,
-        ...(resolution.proxyFallbackUrls || []),
-      ]) {
-        if (!fallbackUrl || !/^https?:\/\//i.test(fallbackUrl) || seenUrls.has(fallbackUrl)) continue;
-        seenUrls.add(fallbackUrl);
-        attempts.push({ url: fallbackUrl });
-      }
-      if (attempts.length === 0 && resolution.url) {
-        attempts.push({ url: resolution.url, headers: resolution.headers });
-      }
-      if (attempts.length === 0) throw new Error("No playable stream candidates were returned.");
-      const title = getChannelDisplayName(selected);
-      nativeFallbackRef.current = {
-        channelId: selected.id,
-        title,
-        attempts,
-        index: 0,
-        switching: false,
-      };
-      const first = attempts[0];
-      const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
-      await openOrSwitch({
-        url: first.url,
-        title,
-        channelId: selected.id,
-        directOnly: true,
-        debug: new URLSearchParams(window.location.search).get("debug") === "1",
-        headers: first.headers,
-      });
-      nativePlayerOpenRef.current = true;
-      document.documentElement.classList.add("xora-tv-player-open");
-      const stage = nativeStageRef.current;
-      if (stage) {
-        const rect = stage.getBoundingClientRect();
-        const viewport = window.visualViewport;
-        const viewportLeft = viewport?.offsetLeft ?? 0;
-        const viewportTop = viewport?.offsetTop ?? 0;
-        const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
-        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
-        const left = Math.max(rect.left, viewportLeft);
-        const top = Math.max(rect.top, viewportTop);
-        const right = Math.min(rect.right, viewportRight);
-        const bottom = Math.min(rect.bottom, viewportBottom);
-        const visible = right > left && bottom > top;
-        void updateNativeVlcBounds({
-          x: visible ? left - viewportLeft : 0,
-          y: visible ? top - viewportTop : 0,
-          width: visible ? right - left : 0,
-          height: visible ? bottom - top : 0,
-          devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
-          visible,
-        }).catch(() => {});
-      }
-    })();
-    nativePlayerTaskRef.current = task;
-    void task.catch((error: unknown) => {
-      if (cancelled) return;
-      console.error("[Xora TV] Native channel open failed:", error);
-      setNativeState({
-        state: "ERR_UNKNOWN",
-        channelId: selected.id,
-        message: STATE_LABELS.ERR_UNKNOWN,
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selected?.id, selected?.provider, selected?.name, isOnline]);
-
-  useEffect(() => () => {
-    const pendingTask = nativePlayerTaskRef.current;
-    const closePlayer = () => {
-      if (nativePlayerOpenRef.current) {
-        nativePlayerOpenRef.current = false;
-        document.documentElement.classList.remove("xora-tv-player-open");
-        void closeNativeVlc().catch(() => {});
-      }
-    };
-    if (pendingTask) void pendingTask.catch(() => {}).then(closePlayer);
-    else closePlayer();
-  }, []);
-
-  useEffect(() => {
-    if (nativeState.state === "IDLE") document.documentElement.classList.remove("xora-tv-header-hidden");
-  }, [nativeState.state]);
+    return () => { cancelled = true; };
+  }, [selected?.id, selected?.provider, selected?.streamUrl, selected?.userAgent, selected?.referrer]);
 
   useEffect(() => {
     if (!selected || !playerDockRef.current) return;
     const dock = playerDockRef.current;
-    const stage = nativeStageRef.current;
     const page = dock.closest<HTMLElement>(".xora-tv-page");
     const appHeader = document.querySelector<HTMLElement>("header.fixed.inset-x-0.top-0");
-    const native = isNativeVlcPlatform();
     let frame = 0;
     const update = () => {
-      const rect = stage?.getBoundingClientRect();
-      if (page) {
-        page.style.setProperty("--xora-tv-header-height", (appHeader?.getBoundingClientRect().height ?? 0) + "px");
-        page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
-      }
-      if (native && rect) {
-        // LibVLC is a native Android overlay, not a DOM child: explicitly clip
-        // its bounds to the visible viewport while the page scrolls.
-        const viewport = window.visualViewport;
-        const viewportLeft = viewport?.offsetLeft ?? 0;
-        const viewportTop = viewport?.offsetTop ?? 0;
-        const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
-        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
-        const left = Math.max(rect.left, viewportLeft);
-        const top = Math.max(rect.top, viewportTop);
-        const right = Math.min(rect.right, viewportRight);
-        const bottom = Math.min(rect.bottom, viewportBottom);
-        const visible = right > left && bottom > top;
-        void updateNativeVlcBounds({
-          x: visible ? left - viewportLeft : 0,
-          y: visible ? top - viewportTop : 0,
-          width: visible ? right - left : 0,
-          height: visible ? bottom - top : 0,
-          devicePixelRatio: window.devicePixelRatio * (viewport?.scale ?? 1),
-          visible,
-        }).catch(() => {});
-      }
+      if (!page) return;
+      page.style.setProperty("--xora-tv-header-height", (appHeader?.getBoundingClientRect().height ?? 0) + "px");
+      page.style.setProperty("--xora-tv-pinned-height", dock.getBoundingClientRect().height + "px");
     };
     const scheduleUpdate = () => {
       if (frame) cancelAnimationFrame(frame);
@@ -637,29 +428,15 @@ function LiveTvPage() {
     };
     const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(dock);
-    if (stage) observer.observe(stage);
     if (appHeader) observer.observe(appHeader);
-    // Native LibVLC follows WebView scroll deltas on Android's UI thread.
-    // Keep JS bounds sync for initial placement and viewport/layout changes only.
-    if (!native) {
-      window.addEventListener("scroll", scheduleUpdate, { passive: true });
-      window.visualViewport?.addEventListener("scroll", scheduleUpdate, { passive: true });
-    }
     window.addEventListener("resize", scheduleUpdate, { passive: true });
     window.addEventListener("orientationchange", scheduleUpdate, { passive: true });
-    window.visualViewport?.addEventListener("resize", scheduleUpdate, { passive: true });
     scheduleUpdate();
     return () => {
       observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
-      if (!native) {
-        window.removeEventListener("scroll", scheduleUpdate);
-        window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
-      }
       window.removeEventListener("resize", scheduleUpdate);
       window.removeEventListener("orientationchange", scheduleUpdate);
-      window.visualViewport?.removeEventListener("resize", scheduleUpdate);
-      if (native) void updateNativeVlcBounds({ x: 0, y: 0, width: 0, height: 0, visible: false }).catch(() => {});
     };
   }, [selected]);
 
@@ -691,11 +468,6 @@ function LiveTvPage() {
 
   const nowProgramme = guide.data?.find((item) => item.isLive) || guide.data?.[0] || null;
   const upcomingProgrammes = (guide.data || []).filter((item) => item.id !== nowProgramme?.id).slice(0, 8);
-  const state = nativeState.channelId === selected?.id ? nativeState.state : isOffline ? "OFFLINE" : "CONNECTING";
-  const stateMessage = nativeState.channelId === selected?.id
-    ? nativeState.message || STATE_LABELS[nativeState.state]
-    : isOffline ? STATE_LABELS.OFFLINE : STATE_LABELS.CONNECTING;
-
   const allChannels = useMemo(() => query.data ?? [], [query.data]);
   const categoryOptions = useMemo(
     () => Array.from(new Set(allChannels.flatMap((channel) => channel.categories || []))).sort((a, b) => a.localeCompare(b)),
@@ -867,30 +639,32 @@ function LiveTvPage() {
           ) : null}
 
           {selected && isNativeVlcPlatform() ? (
-            <section ref={playerDockRef} className="xora-tv-now-card xora-tv-featured-card xora-tv-player-dock xora-player-flow" aria-label="Selected live channel">
-              <div ref={nativeStageRef} className="xora-tv-native-stage" aria-label="Live video surface" />
-              <div className="xora-tv-now-topline">
-                <span className="xora-tv-now-label">Now selected</span>
-                <span className="xora-tv-live-pill"><i /> LIVE</span>
-                <button type="button" className="xora-tv-favorite" onClick={() => toggleFavorite(selected.id)} aria-label={playerPrefs.favorites.includes(selected.id) ? "Remove from favourites" : "Add to favourites"} aria-pressed={playerPrefs.favorites.includes(selected.id)}><Heart className={playerPrefs.favorites.includes(selected.id) ? "fill-current text-primary" : ""} aria-hidden="true" /></button>
-                <button type="button" className="xora-tv-favorite" onClick={() => void shareSelected()} aria-label="Share channel"><Share2 aria-hidden="true" /></button>
-              </div>
-              <div className="xora-tv-now-content">
-                <div className="xora-tv-now-copy">
-                  <h2>{getChannelDisplayName(selected)}</h2>
-                  <p>{getCountryFlag(selected.country)} {getCountryName(selected.country)} <span>·</span> {getChannelQuality(selected) || "Live stream"}</p>
-                  <p className="xora-tv-programme-line">{nowProgramme ? "Now playing · " + nowProgramme.title : "Live broadcast"}</p>
-                  <div className="xora-tv-state-row" aria-live="polite">
-                    <span className={`xora-tv-state-dot state-${state.toLowerCase()}`} />
-                    <span>{state === "PLAYING" ? "Playing live" : stateMessage}</span>
-                    <span className="sr-only">{state === "PLAYING" ? "Now playing " + getChannelDisplayName(selected) : ""}</span>
-                  </div>
-                </div>
-                {selected.logo ? <img className="xora-tv-now-logo" src={selected.logo} alt="" width={64} height={64} /> : null}
-              </div>
-              {isOffline ? <p className="xora-tv-web-offline-note">You are offline. Playback resumes automatically.</p> : null}
-              {state.startsWith("ERR") ? <div className="xora-tv-error-actions"><strong>Channel unavailable</strong><div><Button type="button" variant="outline" className="min-h-11 rounded-full" onClick={handleRetry}>Retry</Button><Button type="button" className="min-h-11 rounded-full" onClick={handleNextChannel}>Try next channel</Button></div></div> : null}
-            </section>
+            nativePlaybackResolution?.channelId === selected.id ? (
+              <section ref={playerDockRef} className="xora-tv-player-dock xora-player-flow" aria-label="Selected live channel">
+                <NativeVideoPlayer
+                  key={selected.id}
+                  streamUrl={selected.streamUrl}
+                  title={getChannelDisplayName(selected)}
+                  liveTv
+                  nativeDirectOnly
+                  nativeCandidates={nativePlaybackResolution.candidates}
+                  autoPlay
+                  channelCountry={getCountryName(selected.country)}
+                  channelFlag={getCountryFlag(selected.country)}
+                  channelQuality={getChannelQuality(selected) || undefined}
+                  favorite={playerPrefs.favorites.includes(selected.id)}
+                  onFavorite={() => toggleFavorite(selected.id)}
+                  onShare={() => void shareSelected()}
+                  onClose={() => setActiveChannelId("")}
+                  className="w-full"
+                />
+              </section>
+            ) : (
+              <section ref={playerDockRef} className="xora-tv-player-dock xora-player-flow" aria-label="Preparing selected live channel">
+                <LiveChannelEmptyStage />
+                <p className="px-3 py-2 text-xs text-muted-foreground">Preparing direct channel sources…</p>
+              </section>
+            )
           ) : !selected ? (
             <div className="space-y-2">
               <LiveChannelEmptyStage />
