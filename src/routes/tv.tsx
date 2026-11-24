@@ -247,39 +247,6 @@ function ChannelRows({ channels, selectedId, favorites, onSelect, onToggleFavori
 }
 
 // prettier-ignore
-function SelectedChannelArtwork({ channel }: { channel: Channel }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [channel.id, channel.logo]);
-
-  if (channel.logo && !imageFailed) {
-    return (
-      <img
-        className="xora-tv-now-logo"
-        src={channel.logo}
-        alt={getChannelDisplayName(channel) + " channel logo"}
-        width={64}
-        height={64}
-        loading="eager"
-        decoding="async"
-        referrerPolicy="no-referrer"
-        onError={() => setImageFailed(true)}
-      />
-    );
-  }
-
-  return (
-    <div
-      className="xora-tv-now-logo grid place-items-center text-sm font-extrabold text-[#87452d]"
-      role="img"
-      aria-label={getChannelDisplayName(channel) + " channel artwork"}
-    >
-      {getChannelDisplayName(channel).slice(0, 2).toUpperCase()}
-    </div>
-  );
-}
 
 function LiveTvPage() {
   const { channel: requestedChannel, q, filter = "all", category, country } = Route.useSearch();
@@ -816,7 +783,6 @@ function LiveTvPage() {
               <VideoPlayer
                 key={selected.id}
                 streamUrl={selected.streamUrl}
-                externalPoster={selected.logo}
                 title={getChannelDisplayName(selected)}
                 liveTv
                 autoPlay
@@ -853,7 +819,7 @@ function LiveTvPage() {
                     <span className="sr-only">{state === "PLAYING" ? "Now playing " + getChannelDisplayName(selected) : ""}</span>
                   </div>
                 </div>
-                <SelectedChannelArtwork key={selected.id} channel={selected} />
+                {selected.logo ? <img className="xora-tv-now-logo" src={selected.logo} alt="" width={64} height={64} /> : null}
               </div>
               {isOffline ? <p className="xora-tv-web-offline-note">You are offline. Playback resumes automatically.</p> : null}
               {state.startsWith("ERR") ? <div className="xora-tv-error-actions"><strong>Channel unavailable</strong><div><Button type="button" variant="outline" className="min-h-11 rounded-full" onClick={handleRetry}>Retry</Button><Button type="button" className="min-h-11 rounded-full" onClick={handleNextChannel}>Try next channel</Button></div></div> : null}
