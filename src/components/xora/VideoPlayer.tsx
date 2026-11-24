@@ -56,6 +56,8 @@ type Props = {
   nativeDirectOnly?: boolean;
   /** Provider request headers for direct native playback. */
   nativeHeaders?: Record<string, string>;
+  /** Same-provider origin URLs tried directly by LibVLC, in priority order. */
+  nativeCandidates?: Array<{ url: string; headers?: Record<string, string> }>;
   vertical?: boolean;
   title?: string;
   autoPlay?: boolean;
@@ -89,6 +91,7 @@ function NativeVideoPlayerCore({
   nativeVlc = false,
   nativeDirectOnly = false,
   nativeHeaders,
+  nativeCandidates,
   vertical = false,
   title = "Video",
   autoPlay = false,
@@ -665,6 +668,7 @@ function NativeVideoPlayerCore({
         title,
         directOnly: nativeDirectOnly,
         headers: nativeHeaders,
+        candidates: nativeDirectOnly ? nativeCandidates : undefined,
       });
       nativeVlcActiveRef.current = true;
       setNativeVlcActive(true);
@@ -679,7 +683,7 @@ function NativeVideoPlayerCore({
       setWaiting(false);
       setFailed(true);
     }
-  }, [activeSrc, nativeDirectOnly, nativeHeaders, nativeStreamUrl, nativeVlcOnly, syncNativeStageBounds, title]);
+  }, [activeSrc, nativeDirectOnly, nativeHeaders, nativeCandidates, nativeStreamUrl, nativeVlcOnly, syncNativeStageBounds, title]);
 
   const toggle = useCallback(() => {
     if (nativeVlcOnly) {
@@ -749,8 +753,14 @@ function NativeVideoPlayerCore({
 
   const reopenPlayer = () => {
     setPlayerClosed(false);
-    if (nativeVlcOnly && nativeStreamUrl) {
-      void openNativeVlc({ url: nativeStreamUrl, title })
+    if (nativeVlcOnly && (activeSrc || nativeStreamUrl)) {
+      void openNativeVlc({
+        url: nativeDirectOnly ? (activeSrc || "") : (nativeStreamUrl || activeSrc || ""),
+        title,
+        directOnly: nativeDirectOnly,
+        headers: nativeHeaders,
+        candidates: nativeDirectOnly ? nativeCandidates : undefined,
+      })
         .then(() => {
           nativeVlcActiveRef.current = true;
           setNativeVlcActive(true);
