@@ -464,12 +464,30 @@ public class XoraVlcPlugin extends Plugin {
 
         directPlaybackOnly = call.getBoolean("directOnly", false);
         if (directPlaybackOnly) {
-            if (!isDirectStreamUrl(url)) throw new IOException("A valid supported network stream URL is required.");
-            streamUrls.add(url);
-            upstreamStreamUrls.add(url);
-            streamHeaders.add(call.getObject("headers") == null ? new JSONObject() : call.getObject("headers"));
-            streamTransports.add("direct");
-            directCandidateCount = 0;
+            JSONArray directCandidates = call.getArray("candidates");
+            if (directCandidates != null && directCandidates.length() > 0) {
+                for (int i = 0; i < directCandidates.length(); i++) {
+                    JSONObject candidate = directCandidates.optJSONObject(i);
+                    if (candidate == null) continue;
+                    String candidateUrl = candidate.optString("url", "");
+                    if (!isDirectStreamUrl(candidateUrl) || streamUrls.contains(candidateUrl)) continue;
+                    streamUrls.add(candidateUrl);
+                    upstreamStreamUrls.add(candidateUrl);
+                    JSONObject candidateHeaders = candidate.optJSONObject("headers");
+                    streamHeaders.add(candidateHeaders == null ? new JSONObject() : candidateHeaders);
+                    streamTransports.add("direct");
+                }
+            }
+            // Keep the channel catalogue URL as the final same-channel fallback.
+            // Direct-only mode never creates a local or Render proxy candidate.
+            if (isDirectStreamUrl(url) && !streamUrls.contains(url)) {
+                streamUrls.add(url);
+                upstreamStreamUrls.add(url);
+                streamHeaders.add(call.getObject("headers") == null ? new JSONObject() : call.getObject("headers"));
+                streamTransports.add("direct");
+            }
+            if (streamUrls.isEmpty()) throw new IOException("No direct provider URLs are available for this channel.");
+            directCandidateCount = streamUrls.size();
             return;
         }
 
