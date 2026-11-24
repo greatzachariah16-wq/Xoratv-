@@ -35,6 +35,7 @@ import {
   closeNativeVlc,
   isNativeVlcPlatform,
   openNativeVlc,
+  resolveNativeVlcPlayback,
   switchNativeVlcChannel,
   retryNativeVlc,
   updateNativeVlcBounds,
@@ -454,20 +455,25 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
-      // Direct IPTV playback: pass the provider stream URL to the shared LibVLC player.
-      // This route intentionally skips Render relay and the local rolling segment cache.
+      // Resolve ranked origin candidates and emergency relay URLs before opening
+      // the existing native LibVLC player. The Android LocalHlsProxy applies each
+      // candidate's provider headers and rewrites HLS playlists on-device.
+      const resolution = await resolveNativeVlcPlayback(
+        selected.provider || "iptv-org",
+        selected.id,
+      );
       if (cancelled) return;
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: selected.streamUrl,
+        url: resolution.url,
         title: getChannelDisplayName(selected),
         channelId: selected.id,
-        directOnly: true,
+        candidates: resolution.candidates,
+        proxyFallbackUrl: resolution.proxyUrl,
+        fallbackUrl1: resolution.proxyFallbackUrls?.[0],
+        fallbackUrl2: resolution.proxyFallbackUrls?.[1],
         debug: new URLSearchParams(window.location.search).get("debug") === "1",
-        headers: {
-          ...(selected.userAgent ? { "User-Agent": selected.userAgent } : {}),
-          ...(selected.referrer ? { Referer: selected.referrer } : {}),
-        },
+        headers: resolution.headers,
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
