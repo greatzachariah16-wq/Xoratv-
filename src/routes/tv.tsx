@@ -502,7 +502,7 @@ function LiveTvPage() {
       const attempts: Array<{ url: string; headers?: Record<string, string> }> = [];
       const seenUrls = new Set<string>();
       for (const candidate of resolution.candidates || []) {
-        if (!/^https?:\\/\\//i.test(candidate.url) || seenUrls.has(candidate.url)) continue;
+        if (!/^https?:\/\//i.test(candidate.url) || seenUrls.has(candidate.url)) continue;
         seenUrls.add(candidate.url);
         attempts.push({ url: candidate.url, headers: candidate.headers });
       }
@@ -510,7 +510,7 @@ function LiveTvPage() {
         resolution.proxyUrl,
         ...(resolution.proxyFallbackUrls || []),
       ]) {
-        if (!fallbackUrl || !/^https?:\\/\\//i.test(fallbackUrl) || seenUrls.has(fallbackUrl)) continue;
+        if (!fallbackUrl || !/^https?:\/\//i.test(fallbackUrl) || seenUrls.has(fallbackUrl)) continue;
         seenUrls.add(fallbackUrl);
         attempts.push({ url: fallbackUrl });
       }
