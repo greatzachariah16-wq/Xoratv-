@@ -1196,7 +1196,14 @@ export default {
                       : null,
                   );
                 })()
-              : await getIptvPlaybackInfo(channelId));
+              : await (async () => {
+                  const candidates = await getIptvPlaybackCandidates(channelId);
+                  // Each fallback attempt must advance to a different IPTV-org origin.
+                  // Reusing getIptvPlaybackInfo here would select candidate zero every time.
+                  if (candidates.length > 0) return candidates[attempt] || null;
+                  if (attempt > 0) return null;
+                  return await getIptvPlaybackInfo(channelId);
+                })());
         // Resolve origin candidates for the Android LocalHlsProxy. Keep the Render media
         // relay as an emergency upstream fallback; LibVLC itself receives loopback URLs only.
         if (resolveLocalPlayback) {
