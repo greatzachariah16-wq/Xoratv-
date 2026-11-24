@@ -260,6 +260,13 @@ function LiveTvPage() {
   const playerPrefs = usePlayerPrefs();
   const nativePlayerOpenRef = useRef(false);
   const nativePlayerTaskRef = useRef<Promise<void> | null>(null);
+  const nativeFallbackRef = useRef<{
+    channelId: string;
+    title: string;
+    attempts: Array<{ url: string; headers?: Record<string, string> }>;
+    index: number;
+    switching: boolean;
+  } | null>(null);
   const playerDockRef = useRef<HTMLElement | null>(null);
   const nativeStageRef = useRef<HTMLDivElement | null>(null);
   const [isOnline, setIsOnline] = useState(true);
@@ -383,6 +390,35 @@ function LiveTvPage() {
       if (!event.channelId || event.channelId === selectedIdRef.current) {
         setNativeState(event);
       }
+      const recovery = nativeFallbackRef.current;
+      const playbackFailed = event.state === "ERR_REGION"
+        || event.state === "ERR_CHANNEL_DOWN"
+        || event.state === "ERR_TIMEOUT"
+        || event.state === "ERR_UNKNOWN";
+      if (
+        recovery
+        && recovery.channelId === event.channelId
+        && playbackFailed
+        && !recovery.switching
+        && recovery.index + 1 < recovery.attempts.length
+      ) {
+        recovery.switching = true;
+        recovery.index += 1;
+        const next = recovery.attempts[recovery.index];
+        void switchNativeVlcChannel({
+          url: next.url,
+          title: recovery.title,
+          channelId: recovery.channelId,
+          directOnly: true,
+          headers: next.headers,
+          debug: new URLSearchParams(window.location.search).get("debug") === "1",
+        }).then(() => {
+          if (nativeFallbackRef.current === recovery) recovery.switching = false;
+        }).catch((error: unknown) => {
+          if (nativeFallbackRef.current === recovery) recovery.switching = false;
+          console.warn("[Xora TV] Native fallback candidate failed:", error);
+        });
+      }
       if (event.transport === "proxy" && event.channelId) {
         void fetch("/api/tv/playback-feedback", {
           method: "POST",
@@ -455,25 +491,50 @@ function LiveTvPage() {
     const task = (async () => {
       if (previousTask) await previousTask.catch(() => {});
       if (cancelled) return;
-      // Resolve ranked origin candidates and emergency relay URLs before opening
-      // the existing native LibVLC player. The Android LocalHlsProxy applies each
-      // candidate's provider headers and rewrites HLS playlists on-device.
+      // Keep playback on the existing direct native LibVLC path. Resolve the
+      // ranked origin URLs first, then advance to the next origin or server-relay
+      // URL only if LibVLC reports that the current candidate failed.
       const resolution = await resolveNativeVlcPlayback(
         selected.provider || "iptv-org",
         selected.id,
       );
       if (cancelled) return;
+      const attempts: Array<{ url: string; headers?: Record<string, string> }> = [];
+      const seenUrls = new Set<string>();
+      for (const candidate of resolution.candidates || []) {
+        if (!/^https?:\\/\\//i.test(candidate.url) || seenUrls.has(candidate.url)) continue;
+        seenUrls.add(candidate.url);
+        attempts.push({ url: candidate.url, headers: candidate.headers });
+      }
+      for (const fallbackUrl of [
+        resolution.proxyUrl,
+        ...(resolution.proxyFallbackUrls || []),
+      ]) {
+        if (!fallbackUrl || !/^https?:\\/\\//i.test(fallbackUrl) || seenUrls.has(fallbackUrl)) continue;
+        seenUrls.add(fallbackUrl);
+        attempts.push({ url: fallbackUrl });
+      }
+      if (attempts.length === 0 && resolution.url) {
+        attempts.push({ url: resolution.url, headers: resolution.headers });
+      }
+      if (attempts.length === 0) throw new Error("No playable stream candidates were returned.");
+      const title = getChannelDisplayName(selected);
+      nativeFallbackRef.current = {
+        channelId: selected.id,
+        title,
+        attempts,
+        index: 0,
+        switching: false,
+      };
+      const first = attempts[0];
       const openOrSwitch = nativePlayerOpenRef.current ? switchNativeVlcChannel : openNativeVlc;
       await openOrSwitch({
-        url: resolution.url,
-        title: getChannelDisplayName(selected),
+        url: first.url,
+        title,
         channelId: selected.id,
-        candidates: resolution.candidates,
-        proxyFallbackUrl: resolution.proxyUrl,
-        fallbackUrl1: resolution.proxyFallbackUrls?.[0],
-        fallbackUrl2: resolution.proxyFallbackUrls?.[1],
+        directOnly: true,
         debug: new URLSearchParams(window.location.search).get("debug") === "1",
-        headers: resolution.headers,
+        headers: first.headers,
       });
       nativePlayerOpenRef.current = true;
       document.documentElement.classList.add("xora-tv-player-open");
