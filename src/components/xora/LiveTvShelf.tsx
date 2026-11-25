@@ -47,17 +47,7 @@ export function LiveTvShelf() {
         </Pill>
       </div>
 
-      {isLoading ? (
-        <div className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2" aria-label="Loading Live TV channels">
-          {["live-placeholder-1", "live-placeholder-2", "live-placeholder-3", "live-placeholder-4"].map((key) => (
-            <div key={key} className="card-surface w-[150px] min-w-[150px] shrink-0 overflow-hidden p-2">
-              <div className="shimmer aspect-square rounded-[18px]" />
-              <div className="shimmer mt-4 h-3 w-4/5 rounded-full" />
-              <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
-            </div>
-          ))}
-        </div>
-      ) : (
+      {!isLoading ? (
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
           {data.slice(0, 8).map((channel, index) => (
             <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
@@ -65,7 +55,7 @@ export function LiveTvShelf() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
