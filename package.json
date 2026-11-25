@@ -114,5 +114,6 @@
     "@capacitor/cli": "8.6.0",
     "@cloudflare/vite-plugin": "1.70.1",
     "wrangler": "4.167.0"
-  }
+  },
+  "packageManager": "npm@11.19.1"
 }
