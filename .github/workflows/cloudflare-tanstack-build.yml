@@ -1,4 +1,5 @@
 name: Cloudflare TanStack build validation
+# Triggered after Worker entrypoint syntax correction
 
 on:
   push:
