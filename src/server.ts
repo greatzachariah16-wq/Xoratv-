@@ -1635,7 +1635,7 @@ export default {
 
     // Sparkle Hub Supabase Storage bridge: videos are stored outside Render disk.
     if (url.pathname.startsWith("/api/storage/sparkle/")) {
-      const storageRes = await handleSparkleStorageRoute(request, url);
+      const storageRes = await handleSparkleStorageRoute(request, url, env as Parameters<typeof handleSparkleStorageRoute>[2]);
       if (storageRes) return storageRes;
     }
 
