@@ -5,6 +5,8 @@ import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
 import { handleSurveyWalletRoute } from "./server/survey-wallet-controller";
 
+type Env = Record<string, unknown>;
+
 const EDGE_API_ORIGIN = "https://xoratv-edge-api.ericgreat668.workers.dev";
 const EDGE_API_PATHS = new Set([
   "/api/tv/channels",
@@ -13,7 +15,7 @@ const EDGE_API_PATHS = new Set([
 ]);
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -60,6 +62,6 @@ export default {
     // subscriptions, profiles, feed, chat and other file-based API routes.
     // Node server startup jobs, Python crawlers, HLS relay/proxy, and local
     // filesystem media routes are intentionally not imported into this Worker.
-    return handler.fetch(request, env, ctx);
+    return handler.fetch(request, env);
   },
-} satisfies ExportedHandler<Env>;
+};
