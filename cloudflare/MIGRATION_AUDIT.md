@@ -55,3 +55,15 @@ Keep existing data and media systems during the hosting migration:
 - Never merge an unbuilt or untested migration.
 - Never replace real feature APIs with success-shaped placeholder handlers.
 - Never claim the whole app is migrated merely because the IPTV catalogue Worker is deployed.
+
+## Additional Node-runtime findings from repository search
+
+The Node-only surface extends beyond `src/server.ts`:
+- `src/routes/api.source-ipfs.ts`, `api.source-ipfs-index.ts`, `api.source-ipfs-seed-history.ts`, and `api.source-ipfs-search.ts` spawn Python scripts directly.
+- `src/server/shorts-verification.ts` uses child processes for media checks.
+- `src/server/admin-auth.ts` imports Node filesystem and crypto APIs for audit/security state.
+- `src/server/stream-proxy.ts` imports filesystem, OS, streams, child processes and utilities; it is intentionally excluded from the Cloudflare runtime because playback is local in LibVLC.
+- `src/routes/api.profile.ts`, `api.subscriptions.ts`, `api.chat.ts`, and `src/server/session-auth.ts` use Node crypto and `process.env` for Supabase session access. These need Web Crypto and Worker environment bindings (or a compatible audited library).
+- The project includes Puppeteer, Chromium and FFmpeg dependencies. They must not be imported into the Worker bundle. Browser automation/media verification needs a separate compatible execution path or to remain disabled; do not pretend Workers can run these binaries.
+
+This means the migration must include route-level and transitive-import audits, not just changing the deployment adapter.
