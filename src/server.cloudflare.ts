@@ -12,7 +12,8 @@ export default {
     if (EDGE_API_PATHS.has(url.pathname) && (request.method === "GET" || request.method === "POST" || request.method === "OPTIONS")) {
       const upstream = new URL(url.pathname + url.search, EDGE_API_ORIGIN);
       const headers = new Headers(request.headers);
-      const init: RequestInit = { method: request.method, headers, redirect: "manual" };\n      if (request.method === "POST") init.body = await request.arrayBuffer();
+      const init: RequestInit = { method: request.method, headers, redirect: "manual" };
+      if (request.method === "POST") init.body = await request.arrayBuffer();
       return fetch(new Request(upstream, init));
     }
 
