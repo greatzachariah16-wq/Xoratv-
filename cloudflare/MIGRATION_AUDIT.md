@@ -67,3 +67,23 @@ The Node-only surface extends beyond `src/server.ts`:
 - The project includes Puppeteer, Chromium and FFmpeg dependencies. They must not be imported into the Worker bundle. Browser automation/media verification needs a separate compatible execution path or to remain disabled; do not pretend Workers can run these binaries.
 
 This means the migration must include route-level and transitive-import audits, not just changing the deployment adapter.
+
+## Important architecture clarification from the full server entrypoint
+
+The app's backend is not only a collection of TanStack file routes. `src/server.ts` is a custom request dispatcher that intercepts requests before the TanStack SSR fallback. It owns multiple application API contracts directly. Replacing it with the stock Start entrypoint would silently remove those APIs, so that shortcut is prohibited.
+
+The dispatcher currently includes, among others:
+- TV catalogue, playback resolution, playback feedback and EPG.
+- XTV Series catalogue, playback resolution and discovery run.
+- Discovery run and YouTube/Vimeo provider search.
+- Cloudinary/media upload and storage bridge routes.
+- Creator commerce, campaigns, offerwall, survey wallet, CPX rewards and live TV, admin and X-Series handlers imported near the top of the entrypoint.
+- Local media file reads and multipart upload fallback.
+
+A safe Cloudflare migration therefore needs a Worker-compatible request dispatcher that preserves each supported route's response contract, then falls through to the TanStack Start SSR handler. Route handlers should be extracted into independent modules with explicit Worker `env`/execution context parameters. Node-only modules must not be imported by the Worker graph.
+
+The existing `/api/tv/stream` route is a streaming proxy and is excluded from the new architecture as requested; direct stream resolution/catalogue APIs remain where needed by the app and local LibVLC. The local upload/media-disk routes must be replaced by the existing Cloudinary signed upload path, not by a new R2 dependency.
+
+## Required next technical milestone
+
+Before switching the default Vite config, build an isolated Worker entrypoint and test that it preserves the current dispatcher route inventory. Then move the app's Vite adapter to Cloudflare and validate the generated SSR build. This avoids accidentally deploying only the frontend while dropping backend routes.
