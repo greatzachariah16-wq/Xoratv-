@@ -15,7 +15,10 @@
     "cap:sync:android": "cap sync android && npm run cap:apply:native",
     "cap:apply:native": "node scripts/apply-xora-android.mjs",
     "cap:open:android": "cap open android",
-    "android:debug": "npm run cap:sync:android && cd android && ./gradlew assembleDebug"
+    "android:debug": "npm run cap:sync:android && cd android && ./gradlew assembleDebug",
+    "cf:build": "vite build --config vite.cloudflare.config.ts",
+    "cf:preview": "vite preview --config vite.cloudflare.config.ts",
+    "cf:typegen": "wrangler types --config wrangler.jsonc"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -108,6 +111,11 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
-    "@capacitor/cli": "8.6.0"
+    "@capacitor/cli": "8.6.0",
+    "@cloudflare/vite-plugin": "1.70.1",
+    "wrangler": "4.167.0",
+    "@tanstack/react-start": "1.170.18",
+    "@tanstack/react-router": "1.170.18",
+    "@tanstack/router-plugin": "1.170.18"
   }
 }
