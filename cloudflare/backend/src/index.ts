@@ -106,7 +106,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/tv/channels") {
       try {
         const all = await getCatalogue();
-        const query = (url.searchParams.get("query") || "").trim().toLowerCase();
+        const query = (url.searchParams.get("q") || url.searchParams.get("query") || "").trim().toLowerCase();
         const country = (url.searchParams.get("country") || "").trim().toUpperCase();
         const category = (url.searchParams.get("category") || "").trim().toLowerCase();
         const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 30, 1), 10000);
