@@ -1,5 +1,6 @@
 const base = process.env.XORATV_EDGE_URL || "https://xoratv-edge-api.ericgreat668.workers.dev";
 const origin = "https://xoratv-x.onrender.com";
+const plannedWorkerOrigin = "https://xoratv-web.ericgreat668.workers.dev";
 
 async function check(path, expectedStatus, validate) {
   const response = await fetch(base + path, { headers: { Origin: origin } });
@@ -24,6 +25,9 @@ await check("/api/tv/channels?limit=3", 200, body => {
 await check("/api/tv/guide?channel=bbc.uk&hours=12", 200, body => {
   if (body.ok !== true || body.channelId !== "bbc.uk" || !Array.isArray(body.programmes)) throw new Error("Invalid EPG response");
 });
+const plannedOrigin = await fetch(base + "/health", { headers: { Origin: plannedWorkerOrigin } });
+if (plannedOrigin.status !== 200 || plannedOrigin.headers.get("access-control-allow-origin") !== plannedWorkerOrigin) throw new Error("Planned Cloudflare web origin was not allowed");
+console.log("PASS planned Cloudflare web origin", plannedOrigin.status);
 const denied = await fetch(base + "/health", { headers: { Origin: "https://not-xoratv.example" } });
 if (denied.status !== 403) throw new Error("Unapproved origin was not rejected");
 console.log("PASS CORS origin allowlist", denied.status);
