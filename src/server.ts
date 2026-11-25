@@ -17,7 +17,6 @@ import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleContentVideoUpload } from "./server/content-media-controller";
 import { getCpaOffers, getCpaWallet, recordCpaClick, handleCpaPostback, createOfferPromotionLink, settleCpaRevenue, markCpaCreatorPaid } from "./server/offerwall-service";
 import { startXseriesDiscoveryScheduler } from "./server/xseries-discovery-runner";
-import { handleStreamProxyRoute } from "./server/stream-proxy";
 import { runFullAutomatedDiscovery, startDiscoveryScheduler } from "./server/discovery-runner";
 import { runXTvSeriesDiscovery, startXTvSeriesScheduler } from "./server/xtv-series-runner";
 import {
@@ -594,11 +593,6 @@ export default {
       );
     }
 
-    // Dynamic Stream Proxy & Embedded Player Service (with temporary chunk caching & 30-min TTL)
-    if (url.pathname.startsWith("/api/stream") || url.pathname.startsWith("/api/proxy")) {
-      const streamRes = await handleStreamProxyRoute(request, url);
-      if (streamRes) return streamRes;
-    }
 
     // Xseries & Legacy Xseris Controller & Viewer Catalog Endpoints
     if (
