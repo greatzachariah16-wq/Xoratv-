@@ -1,5 +1,7 @@
 name: Validate XoraTV build
 on:
+  push:
+    branches: [cloudflare-migration]
   pull_request:
     branches: [main]
   workflow_dispatch:
