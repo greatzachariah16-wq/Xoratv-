@@ -183,7 +183,7 @@ async function getCatalogue() {
 
 function makeHeaders(request, env) {
   const origin = request.headers.get("Origin");
-  const allowed = (env.ALLOWED_ORIGINS || "https://xoratv-x.onrender.com").split(",").map(v => v.trim()).filter(Boolean);
+  const allowed = (env.ALLOWED_ORIGINS || "https://xoratv-x.onrender.com,https://xoratv-web.ericgreat668.workers.dev").split(",").map(v => v.trim()).filter(Boolean);
   const permitted = !!origin && allowed.includes(origin);
   return {
     "content-type": "application/json; charset=utf-8",
