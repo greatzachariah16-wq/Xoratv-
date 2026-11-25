@@ -9,6 +9,21 @@ import { fetchIptvChannels } from "./providers/iptv-org";
 import { getIptvOrgGuide } from "./providers/iptv-org-epg";
 import { fetchNexusChannels, getNexusGuide } from "./providers/iptv-nexus";
 
+// Keep optional guide metadata from holding up Live TV when a public EPG host is slow.
+async function withProviderTimeout<T>(task: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      task,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 type ChannelOptions = {
   category?: string;
   platform?: "native" | "web";
@@ -76,14 +91,23 @@ export async function getTvChannels(options: ChannelOptions) {
 export async function getTvGuide(channelId: string, hours: number) {
   const providerErrors: string[] = [];
   try {
-    const programmes = await getIptvOrgGuide(channelId, hours);
-    if (programmes.length) return { programmes, source: "iptv-org" as const };
+    const programmes = await withProviderTimeout(getIptvOrgGuide(channelId, hours), 7000);
+    if (programmes?.length) return { programmes, source: "iptv-org" as const };
+    if (programmes === null) providerErrors.push("IPTV-org guide request timed out");
   } catch (error) {
     providerErrors.push(error instanceof Error ? error.message : "IPTV-org guide unavailable");
   }
 
   try {
-    const programmes = await getNexusGuide(channelId, hours);
+    const programmes = await withProviderTimeout(getNexusGuide(channelId, hours), 7000);
+    if (programmes === null) {
+      providerErrors.push("IPTV Nexus guide request timed out");
+      return {
+        programmes: [],
+        source: "none" as const,
+        warning: "TV guide providers are taking too long to respond. Live TV playback is unaffected.",
+      };
+    }
     return {
       programmes,
       source: programmes.length ? "iptv-nexus" as const : "none" as const,
