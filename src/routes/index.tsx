@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
-    <AppShell rail={<TrendingRail />} hideTopBanner>
+    <AppShell rail={<TrendingRail />} hideTopBanner wide>
       <header className="mb-5">
         <h1 className="font-editorial text-3xl font-semibold tracking-tight text-balance">
           Your feed
