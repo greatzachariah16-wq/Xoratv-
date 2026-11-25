@@ -16,7 +16,7 @@ export const Route = createFileRoute("/")({
         content:
           "XoraTV brings creators, short videos, movies, live TV, sports, kids and learning together in one social entertainment platform.",
       },
-      { property: "og:title", content: "Xora — Short video for people who teach" },
+      { property: "og:title", content: "XoraTV — Social entertainment, creators and cinema" },
       {
         property: "og:description",
         content: "Connect with creators, watch entertainment and discover something new on XoraTV.",
