@@ -44,7 +44,7 @@ jobs:
           trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
           READY=0
           for attempt in $(seq 1 45); do
-            if curl --silent --fail http://127.0.0.1:8787/ >/dev/null; then
+            if curl --silent --fail --max-time 3 http://127.0.0.1:8787/ >/dev/null; then
               READY=1
               break
             fi
@@ -55,14 +55,14 @@ jobs:
             exit 1
           fi
           for route in / /shorts /learn /watch /rewards /xtv-series; do
-            status=$(curl --silent --output /dev/null --write-out "%{http_code}" "http://127.0.0.1:8787$route")
+            status=$(curl --silent --max-time 15 --output /dev/null --write-out "%{http_code}" "http://127.0.0.1:8787$route")
             case "$status" in
               2*|3*) echo "PASS $route $status" ;;
               *) echo "FAIL $route $status"; cat /tmp/xoratv-cf-preview.log; exit 1 ;;
             esac
           done
-          curl --silent --show-error --fail "http://127.0.0.1:8787/api/tv/channels?limit=2" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const x=JSON.parse(d);if(!x.ok||!Array.isArray(x.channels)||x.channels.length>2)process.exit(1);console.log("PASS /api/tv/channels")})'
-          curl --silent --show-error --fail "http://127.0.0.1:8787/api/tv/guide?channel=bbc.uk&hours=12" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const x=JSON.parse(d);if(!x.ok||!Array.isArray(x.programmes))process.exit(1);console.log("PASS /api/tv/guide")})'
+          curl --silent --show-error --fail --max-time 20 "http://127.0.0.1:8787/api/tv/channels?limit=2" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const x=JSON.parse(d);if(!x.ok||!Array.isArray(x.channels)||x.channels.length>2)process.exit(1);console.log("PASS /api/tv/channels")})'
+          curl --silent --show-error --fail --max-time 20 "http://127.0.0.1:8787/api/tv/guide?channel=bbc.uk&hours=12" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const x=JSON.parse(d);if(!x.ok||!Array.isArray(x.programmes))process.exit(1);console.log("PASS /api/tv/guide")})'
           echo "Cloudflare preview route checks passed."
       - name: Commit verified lockfile update
         run: |
