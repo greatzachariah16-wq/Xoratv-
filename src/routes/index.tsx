@@ -10,16 +10,16 @@ import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Xora — Short video for people who teach" },
+      { title: "XoraTV — Social entertainment, creators and cinema" },
       {
         name: "description",
         content:
-          "Xora is a warm, editorial home for short video, shorts and lessons. Follow creators, share ideas, learn something today.",
+          "XoraTV brings creators, short videos, movies, live TV, sports, kids and learning together in one social entertainment platform.",
       },
       { property: "og:title", content: "Xora — Short video for people who teach" },
       {
         property: "og:description",
-        content: "Follow creators, watch shorts, and learn something new on Xora.",
+        content: "Connect with creators, watch entertainment and discover something new on XoraTV.",
       },
     ],
   }),
