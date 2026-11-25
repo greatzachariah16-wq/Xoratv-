@@ -1,11 +1,4 @@
-import {
-  fetchIptvChannels,
-} from "../integrations/providers/iptv-org";
-import { getIptvOrgGuide } from "../integrations/providers/iptv-org-epg";
-import {
-  fetchNexusChannels,
-  getNexusGuide,
-} from "../integrations/providers/iptv-nexus";
+import { getTvChannels, getTvGuide } from "../integrations/provider-gateway";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
@@ -25,82 +18,15 @@ export async function handleTvCatalogueRoute(
 
   if (url.pathname === "/api/tv/channels") {
     const category = (url.searchParams.get("category") || "").toLowerCase();
-    const nativePlatform = url.searchParams.get("platform") === "native";
+    const platform = url.searchParams.get("platform") === "native" ? "native" : "web";
     const query = url.searchParams.get("q") || undefined;
     const country = url.searchParams.get("country") || undefined;
     const limit = Math.max(1, Math.min(200, Number(url.searchParams.get("limit") || "30") || 30));
-
     try {
-      if (category === "movies" || category === "series") {
-        const result = await fetchIptvChannels({
-          query,
-          country,
-          category,
-          limit,
-          platform: nativePlatform ? "native" : "web",
-        });
-        const channels = result.channels.map((channel) => ({
-          ...channel,
-          provider: "iptv-org" as const,
-        }));
-        return json({
-          ok: result.ok,
-          total: result.total,
-          channels,
-          ...(result.error ? { error: result.error } : {}),
-        }, result.ok ? 200 : 502);
-      }
-
-      const result = await fetchNexusChannels({
-        query,
-        country,
-        category: url.searchParams.get("category") || undefined,
-        limit,
-        platform: nativePlatform ? "native" : "web",
-      });
-      const fallbackBrands = category === "sports"
-        ? ["ESPN", "SuperSport"]
-        : query && /espn/i.test(query)
-          ? ["ESPN"]
-          : query && /supersport/i.test(query)
-            ? ["SuperSport"]
-            : [];
-      const fallbacks = await Promise.all(fallbackBrands.map((brand) =>
-        fetchIptvChannels({ query: brand, limit: 100, platform: nativePlatform ? "native" : "web" })
-          .catch(() => ({ channels: [], total: 0, ok: false })),
-      ));
-      const merged = new Map<string, (typeof result.channels)[number] & { provider?: "iptv-org" }>();
-      for (const channel of result.channels) merged.set(channel.id, channel);
-      for (const channel of fallbacks.flatMap((item) => item.channels)) {
-        if (!fallbackBrands.some((brand) => channel.name.toLowerCase().includes(brand.toLowerCase()))) continue;
-        if (country && channel.country !== country) continue;
-        if (category && !channel.categories.some((item) => item.toLowerCase() === category)) continue;
-        if (!merged.has(channel.id)) {
-          merged.set(channel.id, {
-            id: channel.id,
-            name: /wwe|wrestling/i.test(channel.name) ? "WWE Live TV" : channel.name,
-            country: channel.country,
-            categories: channel.categories.length ? channel.categories : ["sports"],
-            logo: channel.logo,
-            streamUrl: channel.streamUrl,
-            quality: channel.quality || null,
-            referrer: channel.referrer || null,
-            userAgent: channel.userAgent || null,
-            score: 0,
-            provider: "iptv-org",
-          });
-        }
-      }
-      const channels = [...merged.values()].slice(0, limit);
-      const ok = result.ok || channels.length > 0;
-      return json({
-        ok,
-        total: Math.max(result.total, channels.length),
-        channels,
-        ...(!ok && result.error ? { error: result.error } : {}),
-      }, ok ? 200 : 502);
+      const result = await getTvChannels({ category, platform, query, country, limit });
+      return json(result, result.ok ? 200 : 502);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "IPTV channel catalogue error";
+      const message = error instanceof Error ? error.message : "TV catalogue unavailable";
       return json({ ok: false, total: 0, channels: [], error: message }, 502);
     }
   }
@@ -109,16 +35,8 @@ export async function handleTvCatalogueRoute(
     const channelId = url.searchParams.get("channel");
     const hours = Math.max(1, Math.min(48, Number(url.searchParams.get("hours") || "12") || 12));
     if (!channelId) return json({ ok: false, programmes: [], error: "Channel is required." }, 400);
-    try {
-      const iptvOrgProgrammes = await getIptvOrgGuide(channelId, hours).catch(() => []);
-      const programmes = iptvOrgProgrammes.length > 0
-        ? iptvOrgProgrammes
-        : await getNexusGuide(channelId, hours);
-      return json({ ok: true, channelId, programmes });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "TV guide error";
-      return json({ ok: false, programmes: [], error: message }, 502);
-    }
+    const result = await getTvGuide(channelId, hours);
+    return json({ ok: true, channelId, ...result });
   }
 
   return null;
