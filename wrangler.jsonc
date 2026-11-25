@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "xoratv-web",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.cloudflare.ts",
   "compatibility_date": "2026-11-25",
   "observability": {
     "enabled": true
