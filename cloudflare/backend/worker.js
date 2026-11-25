@@ -12,12 +12,17 @@ function decodeXml(value) {
     .replace(/&#x([\da-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16))).trim();
 }
 function readAttr(tag, name) {
-  const match = tag.match(new RegExp("(?:^|\\\\s)" + name + "=[\\\\\\"']([^\\\\\\"']*)[\\\\\\"']", "i"));
+  const match = tag.match(new RegExp(name + '="([^"]*)"', "i"));
   return match ? match[1] : "";
 }
 function readTag(block, name) {
-  const match = block.match(new RegExp("<" + name + "(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</" + name + ">", "i"));
-  return match ? decodeXml(match[1]) : "";
+  const open = "<" + name;
+  const start = block.toLowerCase().indexOf(open.toLowerCase());
+  if (start < 0) return "";
+  const contentStart = block.indexOf(">", start) + 1;
+  const close = "</" + name + ">";
+  const end = block.toLowerCase().indexOf(close.toLowerCase(), contentStart);
+  return end < 0 ? "" : decodeXml(block.slice(contentStart, end));
 }
 function parseGuideDate(value) {
   const match = value.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(?:\d{2})?(?:\s+([+-]\d{4}))?/);
