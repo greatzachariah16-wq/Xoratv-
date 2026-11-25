@@ -107,6 +107,7 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
     "@capacitor/cli": "8.6.0",
-    "@cloudflare/vite-plugin": "^1.0.0"
+    "@cloudflare/vite-plugin": "2.0.0-rc.3",
+    "cf": "^1.0.0-rc.5"
   }
 }
