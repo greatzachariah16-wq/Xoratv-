@@ -325,7 +325,7 @@ export function AppShell({
               <p className="font-display text-sm font-semibold">Explore XoraTV</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Everything you need, one tap away.</p>
             </div>
-            <nav aria-label="Mobile navigation" className="grid grid-cols-2 gap-1">
+            <nav aria-label="Mobile navigation" className="grid grid-cols-3 gap-1.5">
               {NAV.map(({ to, label, icon: Icon }) => {
                 const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
                 return (
@@ -334,12 +334,12 @@ export function AppShell({
                     to={to as NavDestination}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "press flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold shadow-sm transition-all",
+                      "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-[11px] font-semibold leading-tight shadow-sm transition-all",
                       active ? "border-primary/25 bg-gradient-to-br from-primary/15 via-primary/8 to-card text-foreground shadow-md" : "border-border/70 bg-card/75 text-foreground hover:border-primary/20 hover:bg-secondary/70",
                     )}
                   >
-                    <NavIconTile icon={Icon} active={active} />
-                    <span className="min-w-0 flex-1 leading-tight">{label}</span>
+                    <NavIconTile icon={Icon} active={active} compact />
+                    <span className="w-full min-w-0 text-center leading-tight line-clamp-2">{label}</span>
                   </NavDestinationLink>
                 );
               })}
