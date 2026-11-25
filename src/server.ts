@@ -820,7 +820,7 @@ export default {
           });
         }
         if (courseUploadFolders.includes(folder)) {
-          const userId = await getAuthenticatedUserId(request);
+          const userId = await getAuthenticatedUserId(request, env as Parameters<typeof getAuthenticatedUserId>[1]);
           if (!userId) {
             return new Response(JSON.stringify({ ok: false, error: "Sign in before uploading course media." }), {
               status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
