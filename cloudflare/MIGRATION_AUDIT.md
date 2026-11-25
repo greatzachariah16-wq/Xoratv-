@@ -112,5 +112,17 @@ This is still an isolated API Worker. It is not the XoraTV website, does not yet
 - [x] Added `cf:build`, `cf:preview`, and `cf:typegen` scripts.
 - [x] Added generated Worker type inclusion and immutable asset cache headers.
 - [x] Added CI workflow to regenerate the lockfile, install dependencies, generate Worker types, and build the Cloudflare SSR application.
-- [ ] Cloudflare TanStack CI build must pass before preview/deployment.
-- [ ] The default TanStack server entry does not yet port the custom Node dispatcher in `src/server.ts`; this Worker build is for SSR compatibility validation only and must not be deployed as a production replacement until backend route parity is implemented.
+- [x] Cloudflare Worker type generation passed in GitHub Actions.
+- [x] Cloudflare TanStack SSR build passed in GitHub Actions; the first workflow attempt then failed only while pushing its generated lockfile due to concurrent staging commits.
+- [ ] Cloudflare preview route tests must pass before deployment.
+- [x] Added `src/server.cloudflare.ts`: it delegates `/api/tv/channels` and `/api/tv/guide` to the deployed edge API Worker and falls through to TanStack Start SSR for all other requests.
+- [ ] The custom Node dispatcher in `src/server.ts` is not yet ported. The Cloudflare build is for SSR compatibility validation only and must not be deployed as a production replacement until backend route parity is implemented.
+
+
+## Build verification details
+
+- The first Cloudflare TanStack CI attempt failed before installation because Start 1.170.18 is not a published package release.
+- The next dependency resolution identified the required router peer range from Start's plugin core. The staging package versions are now pinned to published compatible releases: React Start 1.169.7, React Router 1.170.46 and router-plugin 1.169.0.
+- The subsequent CI run completed dependency installation, Worker type generation and the Cloudflare Vite SSR build. Vite emitted the client and server bundles, including the application route chunks.
+- That run ended non-green only because its generated lockfile commit raced with other commits to the same branch. The workflow now rebases before pushing the lockfile and adds a Workers-runtime preview check for core pages and the migrated TV APIs.
+- Edge API smoke test now passes with both the current Render origin and the planned `xoratv-web.ericgreat668.workers.dev` origin; unapproved origins remain rejected.
