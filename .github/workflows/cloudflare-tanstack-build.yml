@@ -32,7 +32,7 @@ jobs:
       - name: Regenerate lockfile for Cloudflare toolchain
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Generate Cloudflare Worker types
         run: npm run cf:typegen
       - name: Build TanStack Start for Cloudflare Workers
