@@ -1,7 +1,7 @@
 import handler from "@tanstack/react-start/server-entry";
 
 const EDGE_API_ORIGIN = "https://xoratv-edge-api.ericgreat668.workers.dev";
-const EDGE_API_PATHS = new Set(["/api/tv/channels", "/api/tv/guide"]);
+const EDGE_API_PATHS = new Set(["/api/tv/channels", "/api/tv/guide", "/api/tv/playback-feedback"]);
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -9,10 +9,10 @@ export default {
 
     // These endpoints have already been ported to the dedicated Worker.
     // Forward the original query and browser Origin so its CORS allowlist remains active.
-    if (EDGE_API_PATHS.has(url.pathname) && (request.method === "GET" || request.method === "OPTIONS")) {
+    if (EDGE_API_PATHS.has(url.pathname) && (request.method === "GET" || request.method === "POST" || request.method === "OPTIONS")) {
       const upstream = new URL(url.pathname + url.search, EDGE_API_ORIGIN);
       const headers = new Headers(request.headers);
-      const init: RequestInit = { method: request.method, headers, redirect: "manual" };
+      const init: RequestInit = { method: request.method, headers, redirect: "manual" };\n      if (request.method === "POST") init.body = await request.arrayBuffer();
       return fetch(new Request(upstream, init));
     }
 
