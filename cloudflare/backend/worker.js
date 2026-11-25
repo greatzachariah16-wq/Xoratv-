@@ -1,4 +1,121 @@
-const PLAYLISTS = [
+
+const GUIDE_INDEX_URL = "https://iptv-org.github.io/api/guides.json";
+let guideIndexCache = null;
+let guideIndexExpiry = 0;
+const guideSourceCache = new Map();
+
+async function readGuideText(response) {
+  const declared = Number(response.headers.get("content-length") || 0);
+  if (declared > 20 * 1024 * 1024) throw new Error("EPG source exceeds size limit");
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 20 * 1024 * 1024) {
+        await reader.cancel();
+        throw new Error("EPG source exceeds size limit");
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
+  if (!isGzip) return new TextDecoder().decode(bytes);
+  const decompressed = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const output = await new Response(decompressed).text();
+  if (output.length > 60 * 1024 * 1024) throw new Error("Expanded EPG source exceeds size limit");
+  return output;
+}
+
+function xmlDecode(value) {
+  return value.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&apos;|&#39;/g, "'")
+    .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([\\da-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16))).trim();
+}
+function xmlAttr(tag, name) {
+  const escaped = name.replace(/[.*+?^\x24{}()|[\\]\\\\]/g, "\\\\const PLAYLISTS = [");
+  return tag.match(new RegExp("\\b" + escaped + "=[\\\"']([^\\\"']*)[\\\"']", "i"))?.[1] || "";
+}
+function xmlTag(block, name) {
+  const match = block.match(new RegExp("<" + name + "(?:\\s[^>]*)?>([\\s\\S]*?)</" + name + ">", "i"));
+  return match ? xmlDecode(match[1]) : "";
+}
+function xmlDate(value) {
+  const match = value.trim().match(/^(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(?:\\d{2})?(?:\\s+([+-]\\d{4}))?/);
+  if (!match) return null;
+  const [, y, mo, d, h, mi, zone] = match;
+  const date = new Date(y + "-" + mo + "-" + d + "T" + h + ":" + mi + ":00" +
+    (zone ? zone.slice(0, 3) + ":" + zone.slice(3) : "Z"));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+async function getIptvOrgGuide(channelId, hours) {
+  if (!guideIndexCache || guideIndexExpiry <= Date.now()) {
+    const response = await fetch(GUIDE_INDEX_URL, {headers:{Accept:"application/json"}});
+    if (!response.ok) throw new Error("EPG directory unavailable");
+    const records = await response.json();
+    if (!Array.isArray(records)) throw new Error("Invalid EPG directory");
+    guideIndexCache = records;
+    guideIndexExpiry = Date.now() + 6 * 60 * 60 * 1000;
+  }
+  const baseId = channelId.split("@")[0];
+  const requestedFeed = channelId.includes("@") ? channelId.slice(channelId.indexOf("@") + 1) : "";
+  const matches = guideIndexCache.filter(record => record.channel &&
+    (record.channel === channelId || record.channel === baseId) &&
+    (!requestedFeed || !record.feed || record.feed === requestedFeed));
+  const sources = matches.flatMap(record => (record.sources || []).map(source => ({record, source})))
+    .filter(({source}) => source.url && /^https?:\\/\\//i.test(source.url) &&
+      (!source.format || source.format.toUpperCase().includes("XML"))).slice(0, 4);
+  const ids = new Set([channelId]);
+  for (const {record} of sources) {
+    if (record.channel && record.feed) ids.add(record.channel + "@" + record.feed);
+    if (record.channel) ids.add(record.channel);
+  }
+  const end = Date.now() + Math.min(Math.max(hours, 1), 24) * 3600000;
+  for (const {source} of sources) {
+    try {
+      let xml = guideSourceCache.get(source.url);
+      if (!xml || xml.expiry <= Date.now()) {
+        const response = await fetch(source.url, {headers:{Accept:"application/xml,text/xml,application/gzip,*/*;q=0.7"}});
+        if (!response.ok) throw new Error("EPG source unavailable");
+        xml = {value: await readGuideText(response), expiry: Date.now() + 20 * 60 * 1000};
+        guideSourceCache.set(source.url, xml);
+        while (guideSourceCache.size > 3) guideSourceCache.delete(guideSourceCache.keys().next().value);
+      }
+      const programmes = [];
+      const pattern = /<programme\\b[^>]*>[\\s\\S]*?<\\/programme>/gi;
+      let match;
+      while ((match = pattern.exec(xml.value))) {
+        const block = match[0];
+        const tag = block.slice(0, block.indexOf(">") + 1);
+        const id = xmlAttr(tag, "channel");
+        if (!ids.has(id)) continue;
+        const start = xmlDate(xmlAttr(tag, "start"));
+        const stop = xmlDate(xmlAttr(tag, "stop"));
+        const now = Date.now();
+        if (!start || !stop || stop.getTime() <= now || start.getTime() > end) continue;
+        programmes.push({id:id + "-" + start.toISOString(), channelId:id,
+          title:xmlTag(block,"title") || "Programme", description:xmlTag(block,"desc") || undefined,
+          start:start.toISOString(), stop:stop.toISOString(),
+          isLive:start.getTime() <= now && stop.getTime() > now});
+        if (programmes.length >= 24) break;
+      }
+      if (programmes.length) return programmes.sort((a,b) => a.start.localeCompare(b.start));
+    } catch (error) {
+      console.warn("[EPG] source unavailable", error instanceof Error ? error.message : "unknown");
+    }
+  }
+  return [];
+}
+\nconst PLAYLISTS = [
   { path: "index.m3u" },
   { path: "categories/kids.m3u", category: "kids" },
   { path: "categories/movies.m3u", category: "movies" },
@@ -102,6 +219,17 @@ export default {
     }
     if (request.method === "GET" && ["/health", "/api/health"].includes(url.pathname)) {
       return Response.json({ ok: true, service: "xoratv-edge-api", runtime: "cloudflare-workers" }, { headers: responseHeaders });
+    }
+    if (request.method === "GET" && url.pathname === "/api/tv/guide") {
+      const channelId = (url.searchParams.get("channel") || "").trim();
+      if (!channelId) return Response.json({ok:false,programmes:[],error:"Channel is required."},{status:400,headers:responseHeaders});
+      try {
+        const hours = Number(url.searchParams.get("hours") || "12");
+        const programmes = await getIptvOrgGuide(channelId, Number.isFinite(hours) ? hours : 12);
+        return Response.json({ok:true,channelId,programmes},{headers:{...responseHeaders,"cache-control":"public, max-age=300"}});
+      } catch {
+        return Response.json({ok:false,programmes:[],error:"TV guide is temporarily unavailable."},{status:502,headers:responseHeaders});
+      }
     }
     if (request.method === "GET" && url.pathname === "/api/tv/channels") {
       try {
