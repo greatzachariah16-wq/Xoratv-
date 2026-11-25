@@ -4,12 +4,9 @@ import * as entrypoint from "@tanstack/react-start/server-entry" with {
 };
 
 export default defineConfig({
-  workers: [
-    {
-      name: "xoratv-app",
-      entrypoint,
-      compatibilityDate: "2026-11-25",
-      observability: { enabled: true },
-    },
-  ],
+  worker: {
+    name: "xoratv-app",
+    entrypoint,
+    compatibilityDate: "2026-11-25",
+  },
 });
