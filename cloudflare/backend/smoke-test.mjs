@@ -28,6 +28,19 @@ await check("/api/tv/guide?channel=bbc.uk&hours=12", 200, body => {
 const plannedOrigin = await fetch(base + "/health", { headers: { Origin: plannedWorkerOrigin } });
 if (plannedOrigin.status !== 200 || plannedOrigin.headers.get("access-control-allow-origin") !== plannedWorkerOrigin) throw new Error("Planned Cloudflare web origin was not allowed");
 console.log("PASS planned Cloudflare web origin", plannedOrigin.status);
+const feedback = await fetch(base + "/api/tv/playback-feedback", {
+  method: "POST",
+  headers: { Origin: origin, "Content-Type": "application/json" },
+  body: JSON.stringify({ provider: "iptv-org", channelId: "smoke-test", transport: "direct" }),
+});
+if (feedback.status !== 204) throw new Error("Playback feedback endpoint returned " + feedback.status);
+console.log("PASS /api/tv/playback-feedback", feedback.status);
+const preflight = await fetch(base + "/api/tv/playback-feedback", {
+  method: "OPTIONS",
+  headers: { Origin: origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" },
+});
+if (preflight.status !== 204 || !(preflight.headers.get("access-control-allow-methods") || "").includes("POST")) throw new Error("Playback feedback CORS preflight failed");
+console.log("PASS playback feedback CORS preflight", preflight.status);
 const denied = await fetch(base + "/health", { headers: { Origin: "https://not-xoratv.example" } });
 if (denied.status !== 403) throw new Error("Unapproved origin was not rejected");
 console.log("PASS CORS origin allowlist", denied.status);
