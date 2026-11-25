@@ -1,8 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "xoratv-web",
+  "name": "xoratv",
   "main": "src/server.cloudflare.ts",
-  "compatibility_date": "2026-11-24",
+  "compatibility_date": "2026-11-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
   "observability": {
     "enabled": true
   }
