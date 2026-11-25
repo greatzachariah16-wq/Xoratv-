@@ -189,7 +189,7 @@ function makeHeaders(request, env) {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "public, max-age=60, s-maxage=300",
     "x-content-type-options": "nosniff",
-    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "Content-Type, Authorization",
     "vary": "Origin",
     ...(permitted ? { "access-control-allow-origin": origin } : {}),
@@ -206,6 +206,15 @@ export default {
     if (request.method === "OPTIONS") {
       if (!origin || !allowed.includes(origin)) return new Response(null, { status: 403, headers: responseHeaders });
       return new Response(null, { status: 204, headers: { ...responseHeaders, "access-control-max-age": "86400" } });
+    }
+    if (request.method === "POST" && url.pathname === "/api/tv/playback-feedback") {
+      try {
+        const body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid feedback payload");
+        return new Response(null, { status: 204, headers: responseHeaders });
+      } catch {
+        return Response.json({ ok: false }, { status: 400, headers: responseHeaders });
+      }
     }
     if (request.method === "GET" && ["/health", "/api/health"].includes(url.pathname)) {
       return Response.json({ ok: true, service: "xoratv-edge-api", runtime: "cloudflare-workers" }, { headers: responseHeaders });
