@@ -155,7 +155,7 @@ export function AppShell({
           display_name: user.displayName || user.email?.split("@")[0] || "User",
           avatar_url:
             user.photoURL ||
-            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+            undefined,
         }
       : null);
 
@@ -275,7 +275,7 @@ export function AppShell({
           <div className="rounded-xl border border-border bg-surface p-3">
             <p className="font-display text-sm font-semibold">Xora Studio</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Short video, long ideas. Made for creators who teach.
+              A place to connect, discover, watch and create.
             </p>
             <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
               <Link to="/privacy" hash="privacy" className="hover:underline hover:text-foreground">
@@ -393,7 +393,7 @@ export function AppShell({
       <main id="main" className={immersive ? "min-h-screen w-full overflow-x-clip" : cn("overflow-x-clip lg:pl-[248px]", rail && "xl:pr-[320px]")}>
         <div
           className={cn(
-            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-[var(--header-h)]" : "pt-[calc(var(--header-h)+16px)]"),
+            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(124px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-[var(--header-h)]" : "pt-[calc(var(--header-h)+16px)]"),
             !immersive && (extraWide ? "max-w-[1600px]" : wide ? "max-w-6xl" : "max-w-[620px]"),
           )}
         >
