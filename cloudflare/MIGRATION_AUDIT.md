@@ -37,7 +37,7 @@ Keep existing data and media systems during the hosting migration:
 
 ## Migration sequence
 
-- [x] Add isolated Cloudflare Vite adapter config and Wrangler config without touching the Render/Nitro Vite config. TanStack runtime packages aligned to 1.170.18; Cloudflare plugin and Wrangler added. CI build/type-generation is now the next gate.
+- [x] Add isolated Cloudflare Vite adapter config and Wrangler config without touching the Render/Nitro Vite config. TanStack Start/router packages set to published compatible release versions after CI caught that Start 1.170.18 is not published; Cloudflare plugin and Wrangler added. CI build/type-generation is now the next gate.
 - [ ] Worker-compatible TanStack Start SSR build and preview.
 - [ ] Request context, CORS, environment bindings and secret handling.
 - [ ] Core Firebase-backed session/profile/feed/engagement APIs.
