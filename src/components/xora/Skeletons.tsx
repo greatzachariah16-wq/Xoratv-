@@ -53,7 +53,22 @@ export function FeedSkeleton({
   vertical?: boolean;
 }) {
   if (vertical) {
-    return <XoraLoading title="Loading Shorts" subtitle="Finding fresh videos from Xora creators." />;
+    return (
+      <div className="mx-auto w-full max-w-[420px]" role="status" aria-label="Loading Shorts">
+        <div className="relative aspect-[9/16] max-h-[68dvh] overflow-hidden rounded-[26px] border border-border/70 bg-gradient-to-br from-secondary via-surface to-primary/10 shadow-sm">
+          <div className="absolute inset-x-5 top-5 flex items-center gap-3">
+            <span className="shimmer size-9 rounded-full" />
+            <span className="shimmer h-3 w-28 rounded-full" />
+          </div>
+          <div className="absolute inset-x-5 bottom-6 space-y-3">
+            <span className="shimmer block h-3 w-3/4 rounded-full" />
+            <span className="shimmer block h-3 w-1/2 rounded-full" />
+          </div>
+          <div className="absolute bottom-1/2 left-1/2 size-11 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        </div>
+        <span className="sr-only">Finding fresh videos from Xora creators.</span>
+      </div>
+    );
   }
 
   return (
