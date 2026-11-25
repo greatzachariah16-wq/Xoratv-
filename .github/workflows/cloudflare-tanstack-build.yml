@@ -1,0 +1,48 @@
+name: Cloudflare TanStack build validation
+
+on:
+  push:
+    branches:
+      - cloudflare-backend-staging
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "vite.cloudflare.config.ts"
+      - "wrangler.jsonc"
+      - "src/**"
+      - "public/**"
+      - ".github/workflows/cloudflare-tanstack-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cloudflare-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cloudflare-backend-staging
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Regenerate lockfile for Cloudflare toolchain
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Generate Cloudflare Worker types
+        run: npm run cf:typegen
+      - name: Build TanStack Start for Cloudflare Workers
+        run: npm run cf:build
+      - name: Commit verified lockfile update
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "Update lockfile for Cloudflare Workers build"
+            git push origin cloudflare-backend-staging
+          fi
