@@ -295,6 +295,11 @@ function XTvSeriesPage() {
                       </div>
                     </div>
                   </section>
+                ) : seriesError ? (
+                  <section className="xsp-empty-state" role="alert">
+                    <Film size={22} /><h2>Series temporarily unavailable</h2><p>We couldn’t load the catalogue. Please try again.</p>
+                    <button type="button" onClick={() => void refetchSeries()}>Try again</button>
+                  </section>
                 ) : isFetching ? (
                   <section className="xsp-hero-skeleton" aria-label="Loading featured titles"><div className="xsp-skeleton-copy"><span /><span /><span /></div></section>
                 ) : null}
