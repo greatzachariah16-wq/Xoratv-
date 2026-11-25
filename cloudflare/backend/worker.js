@@ -201,7 +201,7 @@ export default {
     const url = new URL(request.url);
     const responseHeaders = makeHeaders(request, env);
     const origin = request.headers.get("Origin");
-    const allowed = (env.ALLOWED_ORIGINS || "https://xoratv-x.onrender.com").split(",").map(v => v.trim()).filter(Boolean);
+    const allowed = (env.ALLOWED_ORIGINS || "https://xoratv-x.onrender.com,https://xoratv-web.ericgreat668.workers.dev").split(",").map(v => v.trim()).filter(Boolean);
     if (origin && !allowed.includes(origin)) return Response.json({ ok: false, error: "Origin not allowed" }, { status: 403, headers: responseHeaders });
     if (request.method === "OPTIONS") {
       if (!origin || !allowed.includes(origin)) return new Response(null, { status: 403, headers: responseHeaders });
