@@ -37,7 +37,7 @@ Keep existing data and media systems during the hosting migration:
 
 ## Migration sequence
 
-- [ ] Cloudflare Vite adapter and Workers config on isolated branch.
+- [ ] Cloudflare Vite adapter and Workers config on isolated branch (blocked pending TanStack package alignment and Worker-safe server entry).
 - [ ] Worker-compatible TanStack Start SSR build and preview.
 - [ ] Request context, CORS, environment bindings and secret handling.
 - [ ] Core Firebase-backed session/profile/feed/engagement APIs.
@@ -87,3 +87,17 @@ The existing `/api/tv/stream` route is a streaming proxy and is excluded from th
 ## Required next technical milestone
 
 Before switching the default Vite config, build an isolated Worker entrypoint and test that it preserves the current dispatcher route inventory. Then move the app's Vite adapter to Cloudflare and validate the generated SSR build. This avoids accidentally deploying only the frontend while dropping backend routes.
+
+
+## Deployed edge API milestone (2026-11-25)
+
+- [x] Standalone Cloudflare Worker deployed as `xoratv-edge-api`.
+- [x] `GET /health` and `GET /api/health`.
+- [x] `GET /api/tv/channels`: IPTV-org playlists, filters, direct stream URLs for local LibVLC, ten-minute in-isolate cache.
+- [x] `GET /api/tv/guide`: IPTV-org guides index and XMLTV parsing, bounded source size, gzip support through Web APIs, six-hour index cache and twenty-minute guide cache.
+- [x] Origin allowlist: defaults to the current Render web origin; unapproved browser origins receive 403.
+- [x] Worker runtime source committed at `cloudflare/backend/worker.js`; TypeScript reference remains at `cloudflare/backend/src/index.ts`.
+- [x] GitHub Actions smoke-test script and workflow added for health, channel response shape, EPG response shape and CORS rejection.
+- [ ] Confirm the newly added smoke-test workflow result before treating the EPG API as fully verified.
+
+This is still an isolated API Worker. It is not the XoraTV website, does not yet serve TanStack pages, and does not yet host the rest of the Node-dispatched backend.
