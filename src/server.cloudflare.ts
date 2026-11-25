@@ -4,30 +4,17 @@ import { handleCampaignsRoute } from "./server/campaigns-controller";
 import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
 import { handleSurveyWalletRoute } from "./server/survey-wallet-controller";
+import { handleTvCatalogueRoute } from "./server/tv-catalog-controller";
 
 type Env = Record<string, unknown>;
-
-const EDGE_API_ORIGIN = "https://xoratv-edge-api.ericgreat668.workers.dev";
-const EDGE_API_PATHS = new Set([
-  "/api/tv/channels",
-  "/api/tv/guide",
-  "/api/tv/playback-feedback",
-]);
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // The separate edge Worker owns the direct IPTV catalogue and EPG only.
-    // It does not proxy or relay any video stream.
-    if (EDGE_API_PATHS.has(path) && ["GET", "POST", "OPTIONS"].includes(request.method)) {
-      const upstream = new URL(path + url.search, EDGE_API_ORIGIN);
-      const headers = new Headers(request.headers);
-      const init: RequestInit = { method: request.method, headers, redirect: "manual" };
-      if (request.method === "POST") init.body = await request.arrayBuffer();
-      return fetch(new Request(upstream, init));
-    }
+    const tvResponse = await handleTvCatalogueRoute(request, url);
+    if (tvResponse) return tvResponse;
 
     // Essential application APIs. Firebase RTDB and Supabase remain the data stores;
     // these existing controllers preserve their current API contracts and checks.
