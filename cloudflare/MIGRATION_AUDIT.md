@@ -95,6 +95,7 @@ Before switching the default Vite config, build an isolated Worker entrypoint an
 - [x] `GET /health` and `GET /api/health`.
 - [x] `GET /api/tv/channels`: IPTV-org playlists, filters, direct stream URLs for local LibVLC, ten-minute in-isolate cache.
 - [x] `GET /api/tv/guide`: IPTV-org guides index and XMLTV parsing, bounded source size, gzip support through Web APIs, six-hour index cache and twenty-minute guide cache.
+- [x] `POST /api/tv/playback-feedback`: preserves the existing 204 success / 400 invalid-payload contract without retaining the obsolete local proxy-preference cache.
 - [x] Origin allowlist: defaults to the current Render web origin; unapproved browser origins receive 403.
 - [x] Worker runtime source committed at `cloudflare/backend/worker.js`; TypeScript reference remains at `cloudflare/backend/src/index.ts`.
 - [x] GitHub Actions smoke-test script and workflow added for health, channel response shape, EPG response shape and CORS rejection.
@@ -126,3 +127,6 @@ This is still an isolated API Worker. It is not the XoraTV website, does not yet
 - The subsequent CI run completed dependency installation, Worker type generation and the Cloudflare Vite SSR build. Vite emitted the client and server bundles, including the application route chunks.
 - That run ended non-green only because its generated lockfile commit raced with other commits to the same branch. The workflow now rebases before pushing the lockfile and adds a Workers-runtime preview check for core pages and the migrated TV APIs.
 - Edge API smoke test now passes with both the current Render origin and the planned `xoratv-web.ericgreat668.workers.dev` origin; unapproved origins remain rejected.
+
+
+The Cloudflare web entrypoint forwards the three migrated TV API paths (`/api/tv/channels`, `/api/tv/guide`, and `/api/tv/playback-feedback`) to the edge Worker. All other requests use the TanStack Start SSR handler. The old Node dispatcher and its stream proxy are still excluded.
