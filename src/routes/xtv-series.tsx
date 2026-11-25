@@ -26,16 +26,12 @@ export const Route = createFileRoute("/xtv-series")({
 const CATEGORY_ORDER = ["Drama", "Action", "Comedy", "Romance", "Thriller", "Horror", "Sci-Fi", "Crime", "Adventure", "Fantasy", "Documentary", "Animation", "Kids", "More"];
 
 async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
-  try {
-    const url = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch X Series titles");
-    const json = (await res.json()) as { ok: boolean; items?: XTvSeriesItem[] };
-    return Array.isArray(json.items) ? json.items : [];
-  } catch (error) {
-    console.warn("[X Series] Error fetching items:", error);
-    return [];
-  }
+  const url = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("The X Series catalogue could not be reached.");
+  const json = (await res.json()) as { ok: boolean; items?: XTvSeriesItem[] };
+  if (json.ok === false) throw new Error("The X Series catalogue returned an error.");
+  return Array.isArray(json.items) ? json.items : [];
 }
 
 function primaryCategory(item: XTvSeriesItem): string {
@@ -179,7 +175,7 @@ function XTvSeriesPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const { data: userSignals } = useQuery({ queryKey: ["user-signals", user?.id], queryFn: () => loadUserSignals(user?.id), staleTime: 10_000 });
-  const { data: rawAllItems = [], isFetching } = useQuery({ queryKey: ["xtv-series-all"], queryFn: () => fetchXTvSeries("All"), staleTime: 30_000 });
+  const { data: rawAllItems = [], isFetching, error: seriesError, refetch: refetchSeries } = useQuery({ queryKey: ["xtv-series-all"], queryFn: () => fetchXTvSeries("All"), staleTime: 30_000 });
 
   const allItems = useMemo(() => {
     const seen = new Set<string>();
