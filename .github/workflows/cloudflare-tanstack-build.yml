@@ -37,6 +37,33 @@ jobs:
         run: npm run cf:typegen
       - name: Build TanStack Start for Cloudflare Workers
         run: npm run cf:build
+      - name: Preview Cloudflare Worker and test routes
+        run: |
+          npm run cf:preview -- --host 127.0.0.1 --port 8787 > /tmp/xoratv-cf-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 45); do
+            if curl --silent --fail http://127.0.0.1:8787/ >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$READY" -ne 1 ]; then
+            cat /tmp/xoratv-cf-preview.log
+            exit 1
+          fi
+          for route in / /shorts /learn /watch /rewards /xtv-series; do
+            status=$(curl --silent --output /dev/null --write-out "%{http_code}" "http://127.0.0.1:8787$route")
+            case "$status" in
+              2*|3*) echo "PASS $route $status" ;;
+              *) echo "FAIL $route $status"; cat /tmp/xoratv-cf-preview.log; exit 1 ;;
+            esac
+          done
+          curl --silent --show-error --fail "http://127.0.0.1:8787/api/tv/channels?limit=2" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const x=JSON.parse(d);if(!x.ok||!Array.isArray(x.channels)||x.channels.length>2)process.exit(1);console.log("PASS /api/tv/channels")})'
+          curl --silent --show-error --fail "http://127.0.0.1:8787/api/tv/guide?channel=bbc.uk&hours=12" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const x=JSON.parse(d);if(!x.ok||!Array.isArray(x.programmes))process.exit(1);console.log("PASS /api/tv/guide")})'
+          echo "Cloudflare preview route checks passed."
       - name: Commit verified lockfile update
         run: |
           if ! git diff --quiet -- package-lock.json; then
@@ -44,5 +71,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package-lock.json
             git commit -m "Update lockfile for Cloudflare Workers build"
-            git push origin cloudflare-backend-staging
+            git fetch origin cloudflare-backend-staging
+            git rebase origin/cloudflare-backend-staging
+            git push origin HEAD:cloudflare-backend-staging
           fi
