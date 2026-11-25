@@ -37,7 +37,7 @@ Keep existing data and media systems during the hosting migration:
 
 ## Migration sequence
 
-- [ ] Cloudflare Vite adapter and Workers config on isolated branch (blocked pending TanStack package alignment and Worker-safe server entry).
+- [x] Add isolated Cloudflare Vite adapter config and Wrangler config without touching the Render/Nitro Vite config. TanStack runtime packages aligned to 1.170.18; Cloudflare plugin and Wrangler added. CI build/type-generation is now the next gate.
 - [ ] Worker-compatible TanStack Start SSR build and preview.
 - [ ] Request context, CORS, environment bindings and secret handling.
 - [ ] Core Firebase-backed session/profile/feed/engagement APIs.
@@ -101,3 +101,16 @@ Before switching the default Vite config, build an isolated Worker entrypoint an
 - [ ] Confirm the newly added smoke-test workflow result before treating the EPG API as fully verified.
 
 This is still an isolated API Worker. It is not the XoraTV website, does not yet serve TanStack pages, and does not yet host the rest of the Node-dispatched backend.
+
+
+## TanStack Worker build setup (2026-11-25)
+
+- [x] Added `vite.cloudflare.config.ts` using the official Cloudflare Vite plugin, TanStack Start, React, Tailwind and tsconfig path support.
+- [x] Added `wrangler.jsonc` for the isolated `xoratv-web` Worker build.
+- [x] Aligned `@tanstack/react-start`, `@tanstack/react-router`, and `@tanstack/router-plugin` to 1.170.18.
+- [x] Added Cloudflare Vite plugin 1.70.1 and Wrangler 4.167.0 as development dependencies.
+- [x] Added `cf:build`, `cf:preview`, and `cf:typegen` scripts.
+- [x] Added generated Worker type inclusion and immutable asset cache headers.
+- [x] Added CI workflow to regenerate the lockfile, install dependencies, generate Worker types, and build the Cloudflare SSR application.
+- [ ] Cloudflare TanStack CI build must pass before preview/deployment.
+- [ ] The default TanStack server entry does not yet port the custom Node dispatcher in `src/server.ts`; this Worker build is for SSR compatibility validation only and must not be deployed as a production replacement until backend route parity is implemented.
