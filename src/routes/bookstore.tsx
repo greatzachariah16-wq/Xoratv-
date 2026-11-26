@@ -93,35 +93,6 @@ function Bookstore() {
           </div>
         </section>
 
-        <section className="mt-7 grid gap-4 border-t border-border pt-6 sm:grid-cols-3 sm:gap-6">
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-soft text-primary">
-              <BookOpen className="size-[18px]" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">A place for stories</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">A fresh corner of XoraTV, made for readers.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-soft text-primary">
-              <Bookmark className="size-[18px]" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Carefully considered</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">We’re taking time to get the collection right.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-soft text-primary">
-              <Sparkles className="size-[18px]" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Just the beginning</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">More details will arrive as the shelves take shape.</p>
-            </div>
-          </div>
-        </section>
       </div>
     </AppShell>
   );
