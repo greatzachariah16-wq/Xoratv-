@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, Search, Sparkles, X } from "lucide-react";
+import { ArrowRight, BookOpen, Bookmark, ChevronLeft, ChevronRight, Search, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 
 export const Route = createFileRoute("/bookstore")({
