@@ -52,6 +52,7 @@ const GROUPS = [
     collapsible: false,
     items: [
       { to: "/learn", label: "Learn", icon: BookOpen },
+      { to: "/bookstore", label: "Bookstore", icon: BookOpen },
       { to: "/chat", label: "Messages", icon: MessagesSquare },
     ],
   },
