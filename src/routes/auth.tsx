@@ -78,7 +78,7 @@ function RecoveryCode({ code, onContinue }: { code: string; onContinue: () => vo
 }function AuthPage() {
   const [screen,setScreen]=useState<Screen>(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("mode")==="signup"?"signup":"signin");
   const [recoveryCode,setRecoveryCode]=useState("");
-  const {user,loading}=useAuth();const navigate=useNavigate();
+  const {user,loading,authUnavailable}=useAuth();const navigate=useNavigate();
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     const referral=params.get("ref")||"";
@@ -91,6 +91,7 @@ function RecoveryCode({ code, onContinue }: { code: string; onContinue: () => vo
     <aside className="xora-auth-brand relative hidden overflow-hidden lg:block"><div className="xora-auth-glow xora-auth-glow-one"/><div className="xora-auth-glow xora-auth-glow-two"/><div className="relative flex h-full flex-col justify-between p-12 xl:p-16"><Brand light/><div className="max-w-md"><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Stories from everywhere</p><h2 className="text-4xl font-semibold leading-tight text-white xl:text-5xl">Watch, share and create the culture you love.</h2><p className="mt-5 text-base leading-relaxed text-white/70">Join a community of creators and viewers bringing stories, music and entertainment to the world.</p></div><p className="text-xs text-white/45">A little closer, every day.</p></div></aside>
     <main className="flex min-h-screen flex-col px-4 py-6 sm:px-8 lg:py-10"><div className="mx-auto flex w-full max-w-[440px] items-center justify-between lg:justify-end"><div className="lg:hidden"><Brand/></div><span className="xora-auth-pill rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Your XoraTV account</span></div>
       <div className="flex flex-1 items-center justify-center py-8"><div key={screen} className="xora-auth-card rise w-full max-w-[440px] rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
+        {authUnavailable&&<Notice tone="error">XoraTV account services are temporarily unavailable. Your account details have not been changed. Please try again shortly.</Notice>}
         {screen==="signup"&&<SignUp onScreen={setScreen} onRecovery={setRecoveryCode}/>}
         {screen==="signin"&&<SignIn onScreen={setScreen}/>}
         {screen==="forgot"&&<ForgotPassword onScreen={setScreen} onRecovery={setRecoveryCode}/>}
