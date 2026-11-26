@@ -192,13 +192,6 @@ export function AppShell({
     () => pathname === "/menu" || GROUPS.some((group) => group.items.some((item) => isActive(pathname, item.to))),
     [pathname],
   );
-  const visibleGroups = GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) =>
-      item.label.toLowerCase().includes(menuSearch.trim().toLowerCase()),
-    ),
-  })).filter((group) => group.items.length > 0);
-
   const renderDestination = (item: Destination, compact = false, closeMenu?: () => void) => {
     const active = isActive(pathname, item.to);
     const destinationContent = (
@@ -487,7 +480,6 @@ export function AppShell({
               <NavDestinationLink
                 key={item.to}
                 to={item.to}
-                onClick={() => setMobileMenuOpen(false)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold leading-none",
