@@ -13,7 +13,8 @@ export const Route = createFileRoute("/")({
       { title: "XoraTV — Videos, series and live moments" },
       {
         name: "description",
-        content: "Watch short videos, discover series, catch live moments and learn something new on XoraTV.",
+        content:
+          "Watch short videos, discover series, catch live moments and learn something new on XoraTV.",
       },
       { property: "og:title", content: "XoraTV — Videos, series and live moments" },
       {
@@ -59,9 +60,7 @@ function Home() {
           <p className="font-display text-lg font-semibold tracking-tight text-foreground">
             Good to see you
           </p>
-          <p className="text-xs text-muted-foreground">
-            Find something worth watching.
-          </p>
+          <p className="text-xs text-muted-foreground">Find something worth watching.</p>
         </div>
         <span className="shrink-0 rounded-full bg-secondary px-3 py-2 text-[11px] font-medium text-muted-foreground">
           XoraTV
