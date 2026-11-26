@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ArrowLeft, Baby, BarChart3, BookOpen, CheckSquare, ChevronRight, Clapperboard,
+  ArrowLeft, Baby, BookOpen, CheckSquare, ChevronRight, Clapperboard,
   Film, Headset, House, MessagesSquare, MonitorPlay, PanelsTopLeft, RadioTower,
-  Search, Settings, Shield, Signal, Trophy, UserRound, WalletCards,
+  Search, Settings, Signal, Trophy, UserRound, WalletCards,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,7 +43,7 @@ const groups = [
 ];
 
 function MenuPage() {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile } = useAuth();
   const [search, setSearch] = useState("");
   const { data } = useQuery(walletQuery(user?.id));
   const balance = Number(data?.wallet?.balance || 0);
@@ -90,8 +90,6 @@ function MenuPage() {
           </Link>; })}
         </div>
       </section>)}
-
-      {isAdmin ? <section className="mb-7"><h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-[.16em] text-muted-foreground">Administration</h2><div className="overflow-hidden rounded-[20px] border border-border bg-surface">{[{to:"/admin",label:"Admin",icon:Shield},{to:"/admin/commerce",label:"Commerce",icon:BarChart3}].map(item => { const Icon=item.icon; return <Link key={item.to} to={item.to as never} className="flex min-h-14 items-center gap-3 border-b border-border/70 px-4 last:border-0"><Icon className="size-5 text-primary"/><span className="flex-1 text-sm font-medium">{item.label}</span><ChevronRight className="size-4 text-muted-foreground"/></Link>; })}</div></section> : null}
 
       <Link to="/wallet" className="flex items-center justify-between rounded-[20px] bg-clay-soft p-4 text-foreground dark:bg-primary/15"><span><span className="block text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">Wallet balance</span><strong className="mt-1 block font-display text-2xl tabular-nums">₦{balance.toLocaleString()}</strong></span><span className="grid size-11 place-items-center rounded-2xl bg-background text-primary"><WalletCards className="size-6"/></span></Link>
     </div>
