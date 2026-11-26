@@ -1,7 +1,6 @@
 import { memo, type CSSProperties } from "react";
 import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
-import { Baby, Play } from "lucide-react";
-import { Pill } from "@/components/xora/Pill";
+import { Baby } from "lucide-react";
 import { ChannelTile } from "@/components/xora/ChannelTile";
 
 export interface KidsCarouselProps {
@@ -11,38 +10,39 @@ export interface KidsCarouselProps {
 
 function KidsCarouselComponent({ channels, onOpenKids }: KidsCarouselProps) {
   return (
-    <section className="card-surface xora-kids-carousel relative mt-8 overflow-hidden pb-4 pt-4 sm:pt-6">
-      <div className="pointer-events-none absolute -right-14 -top-14 size-40 rounded-full bg-primary/5 blur-2xl" />
-      <div className="relative">
-        <div className="mb-4 flex items-center justify-between gap-3 px-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-              <Baby className="size-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <h2 className="whitespace-nowrap font-editorial text-xl font-semibold tracking-tight text-foreground">
-                  Xora Kids
-                </h2>
-                <Play className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              </div>
-              <p className="mt-1 block w-full truncate text-xs text-muted-foreground">
-                Cartoons, animation & kids TV
-              </p>
-            </div>
+    <section className="xora-shelf min-w-0 overflow-hidden">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-soft text-primary dark:bg-primary/15">
+            <Baby className="size-[18px]" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold leading-tight text-foreground">
+              Xora Kids
+            </h2>
+            <p className="truncate text-[11px] text-muted-foreground">
+              Stories, cartoons and curious minds.
+            </p>
           </div>
-          <Pill variant="solid" onClick={onOpenKids} className="h-11 min-h-11 shrink-0 px-4">
-            Open Kids
-          </Pill>
         </div>
-
-        <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1">
-          {channels.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
-              <ChannelTile channel={channel} destination="kids" eager={index === 0} />
-            </div>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={onOpenKids}
+          className="press inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-xs font-semibold text-primary hover:bg-secondary"
+        >
+          View all
+        </button>
+      </div>
+      <div className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pr-8">
+        {channels.slice(0, 8).map((channel, index) => (
+          <div
+            key={channel.id}
+            className="xora-card-compact shrink-0 snap-start"
+            style={{ "--i": Math.min(index, 8) } as CSSProperties}
+          >
+            <ChannelTile channel={channel} destination="kids" eager={index === 0} />
+          </div>
+        ))}
       </div>
     </section>
   );

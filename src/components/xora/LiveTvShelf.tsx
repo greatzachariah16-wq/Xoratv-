@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { CSSProperties } from "react";
-import { Radio } from "lucide-react";
+import { RadioTower } from "lucide-react";
 import type { NexusTvChannel } from "@/integrations/providers/iptv-nexus";
 import { getChannelPlatformQuery } from "@/lib/native-vlc";
 import { ChannelTile } from "@/components/xora/ChannelTile";
-import { Pill } from "@/components/xora/Pill";
 import { Link } from "@tanstack/react-router";
 
 async function loadChannels(): Promise<NexusTvChannel[]> {
@@ -27,35 +26,63 @@ export function LiveTvShelf() {
   if (!isLoading && data.length === 0) return null;
 
   return (
-    <section className="mt-8 min-w-0">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Radio className="size-4" aria-hidden="true" />
-            </span>
-            <h2 className="font-editorial text-xl font-semibold tracking-tight text-foreground">
-              Live TV
+    <section className="xora-shelf min-w-0" aria-label="Live now">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-soft text-primary dark:bg-primary/15">
+            <RadioTower className="size-[18px]" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold leading-tight text-foreground">
+              Live now
             </h2>
+            <p className="truncate text-[11px] text-muted-foreground">
+              Watch what’s happening right now.
+            </p>
           </div>
-          <p className="mt-1 truncate whitespace-nowrap text-xs text-muted-foreground">
-            Browse live channels and discover what is on now.
-          </p>
         </div>
-        <Pill asChild variant="outline" className="h-11 min-h-11 shrink-0 whitespace-nowrap px-4">
-          <Link to="/tv" search={{ channel: undefined }}>View all</Link>
-        </Pill>
+        <Link
+          to="/tv"
+          search={{ channel: undefined }}
+          className="press inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-xs font-semibold text-primary hover:bg-secondary"
+        >
+          View all
+        </Link>
       </div>
-
-      {!isLoading ? (
-        <div className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
-          {data.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="rise snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
-              <ChannelTile channel={channel} destination="tv" layout="carousel" eager={index === 0} />
+      {isLoading ? (
+        <div
+          className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2"
+          aria-label="Loading Live TV channels"
+        >
+          {["live-placeholder-1", "live-placeholder-2", "live-placeholder-3"].map((key) => (
+            <div
+              key={key}
+              className="w-[146px] min-w-[146px] shrink-0 rounded-[17px] bg-card p-2 shadow-sm"
+            >
+              <div className="shimmer aspect-video rounded-xl" />
+              <div className="shimmer mt-3 h-3 w-4/5 rounded-full" />
+              <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pr-8">
+          {data.slice(0, 8).map((channel, index) => (
+            <div
+              key={channel.id}
+              className="xora-card-compact relative shrink-0 snap-start"
+              style={{ "--i": Math.min(index, 8) } as CSSProperties}
+            >
+              <ChannelTile
+                channel={channel}
+                destination="tv"
+                layout="carousel"
+                eager={index === 0}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

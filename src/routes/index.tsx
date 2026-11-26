@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell, FeedTabs } from "@/components/xora/AppShell";
+import { AppShell } from "@/components/xora/AppShell";
 import { FeedList } from "@/components/xora/FeedList";
 import { TrendingRail } from "@/components/xora/TrendingRail";
 import { LiveTvShelf } from "@/components/xora/LiveTvShelf";
@@ -10,16 +10,16 @@ import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "XoraTV — Social entertainment, creators and cinema" },
+      { title: "XoraTV — Videos, series and live moments" },
       {
         name: "description",
         content:
-          "XoraTV brings creators, short videos, movies, live TV, sports, kids and learning together in one social entertainment platform.",
+          "Watch short videos, discover series, catch live moments and learn something new on XoraTV.",
       },
-      { property: "og:title", content: "XoraTV — Social entertainment, creators and cinema" },
+      { property: "og:title", content: "XoraTV — Videos, series and live moments" },
       {
         property: "og:description",
-        content: "Connect with creators, watch entertainment and discover something new on XoraTV.",
+        content: "Discover creators, watch live TV, explore series and learn on XoraTV.",
       },
     ],
   }),
@@ -27,17 +27,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  return (
-    <AppShell rail={<TrendingRail />} hideTopBanner wide>
-      <header className="mb-5">
-        <h1 className="font-editorial text-3xl font-semibold tracking-tight text-balance">
-          Your feed
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Fresh from the creators you follow.</p>
-      </header>
-      <FeedTabs />
-      <LiveTvShelf />
-      <AdSlot height={96}>
+  const liveShelf = (
+    <>
+      <div className="xl:hidden">
+        <LiveTvShelf />
+      </div>
+      <AdSlot height={68}>
         <AdsterraBannerAd
           adKey="075ef17698a6be8914c3d3aaaf74c814"
           width={320}
@@ -45,8 +40,41 @@ function Home() {
           className="my-0"
         />
       </AdSlot>
-      <KidsTvShelf />
-      <FeedList feed="home" />
+    </>
+  );
+
+  return (
+    <AppShell
+      wide
+      hideTopBanner
+      rail={
+        <div className="space-y-8">
+          <LiveTvShelf />
+          <KidsTvShelf />
+          <TrendingRail />
+        </div>
+      }
+    >
+      <header className="mb-2 flex min-h-10 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-lg font-semibold tracking-tight text-foreground">
+            Good to see you
+          </p>
+          <p className="text-xs text-muted-foreground">Find something worth watching.</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-secondary px-3 py-2 text-[11px] font-medium text-muted-foreground">
+          XoraTV
+        </span>
+      </header>
+      <FeedList
+        feed="home"
+        topContent={liveShelf}
+        afterPostContent={
+          <div className="xl:hidden">
+            <KidsTvShelf />
+          </div>
+        }
+      />
     </AppShell>
   );
 }
