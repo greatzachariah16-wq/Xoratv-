@@ -53,13 +53,14 @@ async function passwordHash(password: string) {
 async function passwordMatches(password: string, stored: string) {
   const [scheme, salt, digest] = stored.split(":");
   if (scheme !== "scrypt" || !salt || !digest) return false;
+  if (!/^[0-9a-f]{128}$/i.test(digest)) return false;
   const expected = Buffer.from(digest, "hex");
   const actual = await scrypt(password, salt, expected.length) as Buffer;
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 function publicUser(account: Row, profile: Row) {
   return {
-    id: account.id, email: account.email, emailVerified: true,
+    id: account.id, email: account.email, emailVerified: Boolean(account.email_verified_at),
     displayName: profile.display_name, photoURL: profile.avatar_url, profile: { ...profile, email: account.email }
   };
 }
@@ -113,7 +114,7 @@ export const Route = createFileRoute("/api/auth")({
         const taken = await db(`xora_profiles?username=eq.${encodeURIComponent(username)}&select=id`);
         if (taken.length) return json({ok:false,error:"That username is already taken."},409);
         const code = recoveryCode();
-        const accounts = await db("xora_auth_accounts", {method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({email,password_hash:await passwordHash(password),email_verified_at:new Date().toISOString(),recovery_code_hash:hash(code)})});
+        const accounts = await db("xora_auth_accounts", {method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({email,password_hash:await passwordHash(password),recovery_code_hash:hash(code)})});
         const account = accounts[0];
         if (!account?.id) throw new Error("Account creation failed.");
         try {
@@ -126,7 +127,7 @@ export const Route = createFileRoute("/api/auth")({
           const raw = await createSession(account.id);
           const profile = await profileFor(account.id);
           if (!profile) throw new Error("Account profile creation failed.");
-          const response = json({ok:true,user:publicUser({...account,email_verified_at:new Date().toISOString()},profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
+          const response = json({ok:true,user:publicUser(account,profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
           if (referralToken) response.headers.append("Set-Cookie", clearReferralCookie());
           if (referralClickId) response.headers.append("Set-Cookie", clearReferralClickCookie());
           return response;
