@@ -54,10 +54,7 @@ export function LiveTvShelf() {
       ) : (
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pr-8">
           {data.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="relative shrink-0 snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
-              <span className="absolute left-2 top-2 z-10 inline-flex min-h-5 items-center gap-1 rounded-full bg-black/75 px-2 text-[9px] font-semibold tracking-wide text-white">
-                <span className="size-1.5 rounded-full bg-[#2FBF8F]" /> LIVE
-              </span>
+            <div key={channel.id} className="xora-card-compact relative shrink-0 snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
               <ChannelTile channel={channel} destination="tv" layout="carousel" eager={index === 0} />
             </div>
           ))}
