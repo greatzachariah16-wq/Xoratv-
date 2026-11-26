@@ -4,8 +4,14 @@ import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } fr
 import { promisify } from "node:util";
 
 const scrypt = promisify(scryptCallback);
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
-const DB_KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+// Cloudflare injects Worker secrets at request time. Read them inside db(),
+// not at module initialization, so the deployed binding is available.
+function supabaseUrl() {
+  return (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
+}
+function databaseKey() {
+  return (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+}
 const COOKIE = "xora_session";
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
@@ -32,11 +38,12 @@ function json(body: unknown, status = 200, headers: Record<string,string> = {}) 
   return Response.json(body, { status, headers: { "Cache-Control":"no-store", "X-Content-Type-Options":"nosniff", ...headers } });
 }
 async function db(path: string, init: RequestInit = {}) {
-  if (!DB_KEY) throw new Error("Auth database server key is not configured on the server.");
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const key = databaseKey();
+  if (!key) throw new Error("Auth database server key is not configured on the server.");
+  const response = await fetch(`${supabaseUrl()}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: DB_KEY, Authorization: `Bearer ${DB_KEY}`,
+      apikey: key, Authorization: `Bearer ${key}`,
       "Content-Type":"application/json", ...init.headers
     },
     signal: AbortSignal.timeout(10000),
