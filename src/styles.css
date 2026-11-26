@@ -3645,3 +3645,90 @@ html.xora-channel-route .ad-slot::before {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* XoraTV home refresh: purposeful card tiers, responsive rails and safe tap targets. */
+:root {
+  --xora-card-feature-radius: 26px;
+  --xora-card-standard-radius: 18px;
+  --xora-card-compact-radius: 13px;
+  --xora-card-feature-shadow: 0 16px 36px rgba(42, 31, 26, 0.12);
+  --xora-card-standard-shadow: 0 5px 16px rgba(42, 31, 26, 0.06);
+}
+html[data-theme="dark"] {
+  --xora-card-feature-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+  --xora-card-standard-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+.xora-home-shell .xora-feed-filters {
+  margin-bottom: 2px;
+  padding-block: 5px;
+}
+.xora-home-shell .xora-feed-filters > * {
+  min-height: 44px;
+  white-space: nowrap;
+}
+.xora-home-shell .xora-post-card {
+  border-radius: var(--xora-card-standard-radius);
+  box-shadow: var(--xora-card-standard-shadow);
+}
+.xora-home-shell .xora-card-feature .xora-post-card {
+  border-radius: var(--xora-card-feature-radius);
+  box-shadow: var(--xora-card-feature-shadow);
+}
+.xora-home-shell .xora-card-standard .xora-post-card {
+  border-radius: var(--xora-card-standard-radius);
+  box-shadow: var(--xora-card-standard-shadow);
+}
+.xora-home-shell .xora-card-compact :is(.card-surface, article, a, button) {
+  border-radius: var(--xora-card-compact-radius);
+}
+.xora-home-shell .xora-shelf {
+  min-width: 0;
+}
+.xora-home-shell .ad-slot {
+  min-height: 68px;
+  margin-block: 8px 12px;
+  border-radius: 13px;
+}
+.xora-home-shell .xora-post-card button,
+.xora-home-shell .xora-post-card a,
+.xora-home-shell .xora-shelf a,
+.xora-home-shell .xora-shelf button {
+  min-height: 44px;
+}
+.xora-home-shell :is(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--xora-accent);
+  outline-offset: 3px;
+}
+@media (min-width: 1280px) {
+  .xora-home-shell .xora-feed-filters {
+    margin-inline: 0;
+    width: 100%;
+    padding-inline: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-home-shell *,
+  .xora-home-shell *::before,
+  .xora-home-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* A single coordinated entrance for the Home surface; interactions own all later motion. */
+@keyframes xora-home-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.xora-home-shell main > div {
+  animation: xora-home-enter 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.xora-home-shell .shimmer {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .xora-home-shell main > div { animation: none !important; }
+}
