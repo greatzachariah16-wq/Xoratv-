@@ -4,8 +4,14 @@ import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } fr
 import { promisify } from "node:util";
 
 const scrypt = promisify(scryptCallback);
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
-const DB_KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+// Cloudflare injects Worker secrets at request time. Read them inside db(),
+// not at module initialization, so the deployed binding is available.
+function supabaseUrl() {
+  return (process.env.SUPABASE_URL || "https://ygifyoaraxtwixbyranq.supabase.co").replace(/\/$/, "");
+}
+function databaseKey() {
+  return (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+}
 const COOKIE = "xora_session";
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
@@ -32,11 +38,12 @@ function json(body: unknown, status = 200, headers: Record<string,string> = {}) 
   return Response.json(body, { status, headers: { "Cache-Control":"no-store", "X-Content-Type-Options":"nosniff", ...headers } });
 }
 async function db(path: string, init: RequestInit = {}) {
-  if (!DB_KEY) throw new Error("Auth database server key is not configured on the server.");
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const key = databaseKey();
+  if (!key) throw new Error("Auth database server key is not configured on the server.");
+  const response = await fetch(`${supabaseUrl()}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: DB_KEY, Authorization: `Bearer ${DB_KEY}`,
+      apikey: key, Authorization: `Bearer ${key}`,
       "Content-Type":"application/json", ...init.headers
     },
     signal: AbortSignal.timeout(10000),
@@ -53,13 +60,14 @@ async function passwordHash(password: string) {
 async function passwordMatches(password: string, stored: string) {
   const [scheme, salt, digest] = stored.split(":");
   if (scheme !== "scrypt" || !salt || !digest) return false;
+  if (!/^[0-9a-f]{128}$/i.test(digest)) return false;
   const expected = Buffer.from(digest, "hex");
   const actual = await scrypt(password, salt, expected.length) as Buffer;
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 function publicUser(account: Row, profile: Row) {
   return {
-    id: account.id, email: account.email, emailVerified: true,
+    id: account.id, email: account.email, emailVerified: Boolean(account.email_verified_at),
     displayName: profile.display_name, photoURL: profile.avatar_url, profile: { ...profile, email: account.email }
   };
 }
@@ -113,7 +121,7 @@ export const Route = createFileRoute("/api/auth")({
         const taken = await db(`xora_profiles?username=eq.${encodeURIComponent(username)}&select=id`);
         if (taken.length) return json({ok:false,error:"That username is already taken."},409);
         const code = recoveryCode();
-        const accounts = await db("xora_auth_accounts", {method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({email,password_hash:await passwordHash(password),email_verified_at:new Date().toISOString(),recovery_code_hash:hash(code)})});
+        const accounts = await db("xora_auth_accounts", {method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({email,password_hash:await passwordHash(password),recovery_code_hash:hash(code)})});
         const account = accounts[0];
         if (!account?.id) throw new Error("Account creation failed.");
         try {
@@ -126,7 +134,7 @@ export const Route = createFileRoute("/api/auth")({
           const raw = await createSession(account.id);
           const profile = await profileFor(account.id);
           if (!profile) throw new Error("Account profile creation failed.");
-          const response = json({ok:true,user:publicUser({...account,email_verified_at:new Date().toISOString()},profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
+          const response = json({ok:true,user:publicUser(account,profile),recoveryCode:code,message:"Account created. Save your recovery code now; it cannot be shown again."},201,{"Set-Cookie":cookie(raw,SESSION_MS/1000)});
           if (referralToken) response.headers.append("Set-Cookie", clearReferralCookie());
           if (referralClickId) response.headers.append("Set-Cookie", clearReferralClickCookie());
           return response;

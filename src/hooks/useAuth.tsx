@@ -16,10 +16,11 @@ type AuthContextValue = {
   profile: Profile | null;
   isAdmin: boolean;
   loading: boolean;
+  authUnavailable: boolean;
   signOut: () => Promise<void>;
 };
 const AuthContext = createContext<AuthContextValue>({
-  session:null,user:null,profile:null,isAdmin:false,loading:true,signOut:async()=>{}
+  session:null,user:null,profile:null,isAdmin:false,loading:true,authUnavailable:false,signOut:async()=>{}
 });
 function mapUser(value: CustomAuthUser): User {
   return { id:value.id,email:value.email,displayName:value.displayName,photoURL:value.photoURL };
@@ -27,11 +28,12 @@ function mapUser(value: CustomAuthUser): User {
 export function AuthProvider({children}:{children:ReactNode}) {
   const [authUser,setAuthUser] = useState<CustomAuthUser|null>(null);
   const [loading,setLoading] = useState(true);
+  const [authUnavailable,setAuthUnavailable] = useState(false);
   useEffect(()=>{
     let alive=true;
     const refresh=async()=>{
-      try { const next=await customGetSession(); if(alive) setAuthUser(next); }
-      catch { if(alive) setAuthUser(null); }
+      try { const next=await customGetSession(); if(alive) { setAuthUser(next); setAuthUnavailable(false); } }
+      catch { if(alive) setAuthUnavailable(true); }
       finally { if(alive) setLoading(false); }
     };
     const changed=()=>{void refresh();};
@@ -45,9 +47,9 @@ export function AuthProvider({children}:{children:ReactNode}) {
   const adminUids=useMemo(()=>((import.meta.env?.VITE_ADMIN_UIDS as string|undefined)||"").split(",").map(v=>v.trim()).filter(Boolean),[]);
   const isAdmin=Boolean(profile?.is_admin===true || (authUser && adminUids.includes(authUser.id)));
   const value=useMemo<AuthContextValue>(()=>({
-    session,user:session?.user??null,profile,isAdmin,loading,
+    session,user:session?.user??null,profile,isAdmin,loading,authUnavailable,
     signOut:async()=>{await customSignOut();setAuthUser(null);}
-  }),[session,profile,isAdmin,loading]);
+  }),[session,profile,isAdmin,loading,authUnavailable]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth(){return useContext(AuthContext);}
