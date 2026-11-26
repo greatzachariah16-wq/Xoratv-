@@ -2,6 +2,7 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   Baby, BarChart3, Bell, BookOpen, CheckSquare, ChevronDown, Clapperboard,
   Film, Headset, House, Menu, MessagesSquare, MonitorPlay, Plus, RadioTower,
@@ -41,7 +42,7 @@ const GROUPS = [
   ]},
 ] as const;
 
-type Destination = { to: string; label: string; icon: typeof House };
+type Destination = { to: string; label: string; icon: LucideIcon };
 type NavDestinationLinkProps = Pick<AnchorHTMLAttributes<HTMLAnchorElement>, "className" | "onClick" | "aria-current"> & {
   to: string;
   children: ReactNode;
@@ -54,7 +55,7 @@ function NavDestinationLink({ to, children, ...props }: NavDestinationLinkProps)
   return <Link to={to as never} {...props}>{children}</Link>;
 }
 
-function NavIconTile({ icon: Icon, active = false, compact = false }: { icon: typeof House; active?: boolean; compact?: boolean }) {
+function NavIconTile({ icon: Icon, active = false, compact = false }: { icon: LucideIcon; active?: boolean; compact?: boolean }) {
   return (
     <span className={cn(
       "grid shrink-0 place-items-center rounded-xl transition-colors",
@@ -112,21 +113,28 @@ export function AppShell({
 
   const renderDestination = (item: Destination, compact = false, closeMenu?: () => void) => {
     const active = isActive(pathname, item.to);
-    return (
-      <NavDestinationLink
-        key={item.to}
-        to={item.to}
-        onClick={closeMenu}
-        aria-current={active ? "page" : undefined}
-        className={cn(
-          "group flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors",
-          active ? "bg-clay-soft text-primary dark:bg-primary/15" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-          compact && "min-w-0",
-        )}
-      >
+    const destinationContent = (
+      <>
         <NavIconTile icon={item.icon} active={active} compact />
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
         {item.to === "/wallet" && balance > 0 ? <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">₦{balance.toLocaleString()}</span> : null}
+      </>
+    );
+    const className = cn(
+      "group flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors",
+      active ? "bg-clay-soft text-primary dark:bg-primary/15" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+      compact && "min-w-0",
+    );
+    if (item.to === "/profile") {
+      return currentProfile ? (
+        <Link key={item.to} to="/profile/$username" params={{ username: currentProfile.username }} onClick={closeMenu} aria-current={active ? "page" : undefined} className={className}>{destinationContent}</Link>
+      ) : (
+        <Link key={item.to} to="/auth" onClick={closeMenu} className={className}>{destinationContent}</Link>
+      );
+    }
+    return (
+      <NavDestinationLink key={item.to} to={item.to} onClick={closeMenu} aria-current={active ? "page" : undefined} className={className}>
+        {destinationContent}
       </NavDestinationLink>
     );
   };
