@@ -1,30 +1,11 @@
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Baby,
-  BarChart3,
-  BellRing,
-  ClipboardCheck,
-  Clapperboard,
-  Film,
-  GraduationCap,
-  Headset,
-  House,
-  Menu,
-  MessagesSquare,
-  MonitorPlay,
-  Plus,
-  RadioTower,
-  Search,
-  Settings,
-  Shield,
-  Signal,
-  UserRound,
-  UserRoundPen,
-  WalletCards,
-  X,
+  Baby, BarChart3, Bell, BookOpen, CheckSquare, ChevronDown, Clapperboard,
+  Film, Headset, House, Menu, MessagesSquare, MonitorPlay, Plus, RadioTower,
+  Search, Settings, Shield, Signal, Trophy, UserRound, WalletCards, X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -32,100 +13,74 @@ import { notificationsQuery } from "@/lib/api";
 import { walletQuery } from "@/lib/commerce";
 import { Logo } from "./Logo";
 import { UserAvatar } from "./UserAvatar";
-import { XSportsIcon } from "./XSportsIcon";
-import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 import { cn } from "@/lib/utils";
+import { AdsterraBannerAd } from "@/components/ads/AdsterraBannerAd";
 
-const NAV = [
-  { to: "/", label: "Home", icon: House },
-  { to: "/shorts", label: "Shorts", icon: Clapperboard },
-  { to: "/xtv-series", label: "X Series", icon: MonitorPlay },
-  { to: "/tv", label: "Live TV", icon: RadioTower },
-  { to: "/xsports", label: "XSports", icon: XSportsIcon },
-  { to: "/kids", label: "Xora Kids", icon: Baby },
-  { to: "/learn", label: "Learn", icon: GraduationCap },
-  { to: "/creator-studio", label: "X Channel", icon: RadioTower },
-  { to: "/chat", label: "Messages", icon: MessagesSquare },
-  { to: "/catalog", label: "Movie Catalog", icon: Film },
-  { to: "/data-rewards", label: "Data Rewards", icon: Signal },
-  { to: "/surveys", label: "Surveys", icon: ClipboardCheck },
-  { to: "/search", label: "Search", icon: Search },
-  { to: "/wallet", label: "Xora Wallet", icon: WalletCards },
-  { to: "/notifications", label: "Alerts", icon: BellRing },
-  { to: "/support", label: "Support", icon: Headset },
+const GROUPS = [
+  { label: "Watch", collapsible: false, items: [
+    { to: "/xsports", label: "XSports", icon: Trophy },
+    { to: "/kids", label: "Xora Kids", icon: Baby },
+    { to: "/catalog", label: "Movie Catalog", icon: Film },
+  ]},
+  { label: "Learn and connect", collapsible: false, items: [
+    { to: "/learn", label: "Learn", icon: BookOpen },
+    { to: "/chat", label: "Messages", icon: MessagesSquare },
+  ]},
+  { label: "Earn", collapsible: true, items: [
+    { to: "/data-rewards", label: "Data Rewards", icon: Signal },
+    { to: "/surveys", label: "Surveys", icon: CheckSquare },
+    { to: "/wallet", label: "Wallet", icon: WalletCards },
+  ]},
+  { label: "Creators", collapsible: false, items: [
+    { to: "/creator-studio", label: "Creator Studio", icon: Clapperboard },
+  ]},
+  { label: "Account", collapsible: true, items: [
+    { to: "/profile", label: "Profile", icon: UserRound },
+    { to: "/settings", label: "Settings", icon: Settings },
+    { to: "/support", label: "Support", icon: Headset },
+  ]},
 ] as const;
 
-type NavIconComponent = (typeof NAV)[number]["icon"];
-
-type NavDestination = (typeof NAV)[number]["to"];
-type NavDestinationLinkProps = Pick<
-  AnchorHTMLAttributes<HTMLAnchorElement>,
-  "className" | "onClick" | "aria-current"
-> & {
-  to: NavDestination;
+type Destination = { to: string; label: string; icon: typeof House };
+type NavDestinationLinkProps = Pick<AnchorHTMLAttributes<HTMLAnchorElement>, "className" | "onClick" | "aria-current"> & {
+  to: string;
   children: ReactNode;
 };
 
-/** Opening Live TV from primary navigation clears stale playback selection. */
-function NavDestinationLink({ to, children, ...linkProps }: NavDestinationLinkProps) {
+function NavDestinationLink({ to, children, ...props }: NavDestinationLinkProps) {
   if (to === "/tv") {
-    return (
-      <Link
-        to="/tv"
-        search={{ channel: undefined, q: undefined, filter: undefined, category: undefined, country: undefined }}
-        {...linkProps}
-      >
-        {children}
-      </Link>
-    );
+    return <Link to="/tv" search={{ channel: undefined, q: undefined, filter: undefined, category: undefined, country: undefined }} {...props}>{children}</Link>;
   }
+  return <Link to={to as never} {...props}>{children}</Link>;
+}
 
+function NavIconTile({ icon: Icon, active = false, compact = false }: { icon: typeof House; active?: boolean; compact?: boolean }) {
   return (
-    <Link to={to} {...linkProps}>
-      {children}
-    </Link>
+    <span className={cn(
+      "grid shrink-0 place-items-center rounded-xl transition-colors",
+      compact ? "size-9" : "size-10",
+      active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground group-hover:text-primary",
+    )}>
+      <Icon className="size-[19px] stroke-[1.9]" aria-hidden="true" />
+    </span>
   );
 }
 
-function NavIconTile({
-  icon: Icon,
-  active = false,
-  compact = false,
-}: {
-  icon: NavIconComponent;
-  active?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <span
-      className={cn(
-        "relative grid shrink-0 place-items-center overflow-hidden rounded-[15px] border transition-all duration-200 before:pointer-events-none before:absolute before:inset-[3px] before:rounded-[11px] before:border before:border-white/55 after:pointer-events-none after:absolute after:inset-x-2 after:bottom-[3px] after:h-px after:bg-white/70",
-        compact ? "size-10 rounded-[14px]" : "size-11",
-        active
-          ? "border-primary bg-primary text-primary-foreground shadow-card"
-          : "border-border bg-card text-primary shadow-sm group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:text-primary group-hover:shadow-card",
-      )}
-    >
-      <span className="pointer-events-none absolute inset-x-2 top-0 h-px bg-white/90" />
-      <Icon className="relative z-10 size-[23px] stroke-[2.25] drop-shadow-[0_2px_1px_rgba(66,35,23,0.28)]" aria-hidden="true" />
-    </span>
-  );
+function isActive(pathname: string, to: string) {
+  if (to === "/") return pathname === "/";
+  if (to === "/profile") return pathname.startsWith("/profile") || pathname.startsWith("/edit-profile");
+  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 function useUnreadCount() {
   const { user } = useAuth();
   const { data } = useQuery(notificationsQuery(user?.id));
-  return (data ?? []).filter((n) => !n.read).length;
+  return (data ?? []).filter((notification) => !notification.read).length;
 }
 
 export function AppShell({
-  children,
-  rail,
-  wide = false,
-  extraWide = false,
-  immersive = false,
-  hideTopBanner = false,
-  onSearchClick,
+  children, rail, wide = false, extraWide = false, immersive = false,
+  hideTopBanner = false, onSearchClick,
 }: {
   children: ReactNode;
   rail?: ReactNode;
@@ -137,274 +92,174 @@ export function AppShell({
 }) {
   usePresenceTracker();
   const { user, profile, isAdmin } = useAuth();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const unread = useUnreadCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuSearch, setMenuSearch] = useState("");
   const { data: walletData } = useQuery(walletQuery(user?.id));
+  const balance = Number(walletData?.wallet?.balance || 0);
+  const currentProfile = profile || (user ? {
+    id: user.id,
+    username: user.displayName ? user.displayName.toLowerCase().replace(/\s+/g, "_") : user.email ? user.email.split("@")[0] : "user_" + user.id.slice(0, 6),
+    display_name: user.displayName || user.email?.split("@")[0] || "User",
+    avatar_url: user.photoURL || "",
+  } : null);
+  const moreActive = useMemo(() => GROUPS.some((group) => group.items.some((item) => isActive(pathname, item.to))), [pathname]);
+  const visibleGroups = GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => item.label.toLowerCase().includes(menuSearch.trim().toLowerCase())),
+  })).filter((group) => group.items.length > 0);
 
-  const currentProfile =
-    profile ||
-    (user
-      ? {
-          id: user.id,
-          username: user.displayName
-            ? user.displayName.toLowerCase().replace(/\s+/g, "_")
-            : user.email
-              ? user.email.split("@")[0]
-              : "user_" + user.id.slice(0, 6),
-          display_name: user.displayName || user.email?.split("@")[0] || "User",
-          avatar_url:
-            user.photoURL ||
-            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-        }
-      : null);
+  const renderDestination = (item: Destination, compact = false, closeMenu?: () => void) => {
+    const active = isActive(pathname, item.to);
+    return (
+      <NavDestinationLink
+        key={item.to}
+        to={item.to}
+        onClick={closeMenu}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "group flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors",
+          active ? "bg-clay-soft text-primary dark:bg-primary/15" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+          compact && "min-w-0",
+        )}
+      >
+        <NavIconTile icon={item.icon} active={active} compact />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.to === "/wallet" && balance > 0 ? <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">₦{balance.toLocaleString()}</span> : null}
+      </NavDestinationLink>
+    );
+  };
 
   return (
     <div className={cn("min-h-screen w-full max-w-full", pathname === "/xtv-series" ? "xora-series-shell" : "bg-background")}>
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-      >
-        Skip to content
-      </a>
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">Skip to content</a>
 
       {!immersive ? (
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col overflow-y-auto border-r border-border bg-sidebar px-4 py-6 lg:flex">
-        <Link to="/" className="press flex items-center px-2">
-          <Logo />
-        </Link>
-        <nav aria-label="Primary" className="mt-8 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pb-3">
-          {NAV.map(({ to, label, icon: Icon }) => {
-            const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-            return (
-              <NavDestinationLink
-                key={to}
-                to={to as NavDestination}
-                className={cn(
-                  "press group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold tracking-[0.01em] transition-all",
-                  active
-                    ? "bg-gradient-to-r from-primary/15 via-primary/8 to-transparent text-foreground ring-1 ring-primary/20 shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
-                )}
-              >
-                <NavIconTile icon={Icon} active={active} compact />
-                <span className="min-w-0 flex-1">{label}</span>
-                {to === "/wallet" && user ? (
-                  <span className="ml-auto text-[11px] font-semibold tabular-nums text-muted-foreground">₦{Number(walletData?.wallet?.balance || 0).toLocaleString()}</span>
-                ) : null}
-                {to === "/notifications" && unread > 0 ? (
-                  <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{unread}</span>
-                ) : null}
-              </NavDestinationLink>
-            );
-          })}
-          {currentProfile ? (
-            <>
-              <Link
-                to="/profile/$username"
-                params={{ username: currentProfile.username }}
-                className={cn(
-                  "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                  pathname.startsWith("/profile")
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                <NavIconTile icon={UserRound} compact active={pathname.startsWith("/profile")} /> Profile
-              </Link>
-              <Link
-                to="/edit-profile"
-                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <NavIconTile icon={UserRoundPen} compact active={pathname.startsWith("/edit-profile")} />
-                Edit profile
-              </Link>
-            </>
-          ) : (
-            <Link
-              to="/auth"
-              className={cn(
-                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                pathname.startsWith("/auth")
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              )}
-            >
-              <NavIconTile icon={UserRound} compact active={pathname.startsWith("/auth")} /> Sign in
-            </Link>
-          )}
-          {isAdmin ? (
-            <>
-              <Link
-                to="/admin"
-                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <NavIconTile icon={Shield} compact /> Admin
-              </Link>
-              <Link
-                to="/admin/commerce"
-                className="press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <NavIconTile icon={BarChart3} compact /> Commerce
-              </Link>
-            </>
-          ) : null}
-        </nav>
-
-        <Link
-          to="/create"
-          className="press mt-6 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-card"
-        >
-          <Plus className="size-4 stroke-[2.2]" aria-hidden="true" /> Create
-        </Link>
-
-        <div className="mt-4 shrink-0 space-y-2">
-          <Link
-            to="/settings"
-            className={cn(
-              "press flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-sm font-medium",
-              pathname.startsWith("/settings")
-                ? "bg-accent text-accent-foreground"
-                : "bg-surface text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-            aria-label="Settings"
-          >
-            <NavIconTile icon={Settings} compact active={pathname.startsWith("/settings")} />
-            Settings
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col overflow-y-auto border-r border-border bg-sidebar px-4 py-5 lg:flex">
+          <Link to="/" className="press flex min-h-10 items-center px-2"><Logo /></Link>
+          <Link to="/create" className="press mt-5 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+            <Plus className="size-4" aria-hidden="true" /> Create
           </Link>
-          <div className="rounded-xl border border-border bg-surface p-3">
-            <p className="font-display text-sm font-semibold">Xora Studio</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Short video, long ideas. Made for creators who teach.
-            </p>
-            <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
-              <Link to="/privacy" hash="privacy" className="hover:underline hover:text-foreground">
-                Privacy
-              </Link>
-              <Link to="/privacy" hash="terms" className="hover:underline hover:text-foreground">
-                Terms
-              </Link>
+          <Link to="/search" className="mt-3 flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground">
+            <Search className="size-4" aria-hidden="true" /> Search XoraTV
+          </Link>
+          <NavDestinationLink to="/notifications" aria-current={isActive(pathname, "/notifications") ? "page" : undefined} className={cn("mt-2 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm", isActive(pathname, "/notifications") ? "bg-clay-soft text-primary" : "text-muted-foreground hover:bg-secondary")}>
+            <Bell className="size-[18px]" aria-hidden="true" /> Notifications
+            {unread > 0 ? <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">{unread > 99 ? "99+" : unread}</span> : null}
+          </NavDestinationLink>
+          <nav aria-label="Primary navigation" className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-3">
+            <div className="space-y-1">
+              {[
+                { to: "/", label: "Home", icon: House },
+                { to: "/shorts", label: "Shorts", icon: Clapperboard },
+                { to: "/xtv-series", label: "Series", icon: MonitorPlay },
+                { to: "/tv", label: "Live TV", icon: RadioTower },
+              ].map((item) => renderDestination(item))}
             </div>
+            {GROUPS.map((group) => {
+              const content = <div className="mt-1 space-y-1">{group.items.map((item) => renderDestination(item))}</div>;
+              return group.collapsible ? (
+                <details key={group.label} className="group/section">
+                  <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:bg-secondary [&::-webkit-details-marker]:hidden">
+                    {group.label}<ChevronDown className="size-4 transition-transform group-open/section:rotate-180" aria-hidden="true" />
+                  </summary>
+                  {content}
+                </details>
+              ) : (
+                <section key={group.label}>
+                  <h2 className="px-2 text-xs font-semibold text-muted-foreground">{group.label}</h2>
+                  {content}
+                </section>
+              );
+            })}
+            {isAdmin ? <section><h2 className="px-2 text-xs font-semibold text-muted-foreground">Admin</h2><div className="mt-1 space-y-1">
+              {renderDestination({ to: "/admin", label: "Admin", icon: Shield })}
+              {renderDestination({ to: "/admin/commerce", label: "Commerce", icon: BarChart3 })}
+            </div></section> : null}
+          </nav>
+          <div className="mt-auto rounded-xl border border-border bg-surface p-3">
+            <p className="text-xs text-muted-foreground">Wallet balance</p>
+            <p className="mt-1 font-display text-lg font-semibold tabular-nums">₦{balance.toLocaleString()}</p>
           </div>
-        </div>
-      </aside>
+          {currentProfile ? (
+            <Link to="/profile/$username" params={{ username: currentProfile.username }} className="mt-3 flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm hover:bg-secondary">
+              <UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={30} />
+              <span className="min-w-0 truncate">{currentProfile.display_name}</span>
+            </Link>
+          ) : <Link to="/auth" className="mt-3 flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm hover:bg-secondary"><UserRound className="size-5" /> Sign in</Link>}
+        </aside>
       ) : null}
 
       {!immersive ? (
-      <header className={cn("fixed inset-x-0 top-0 z-50 flex h-[var(--header-h)] items-center justify-between border-b border-border bg-background/95 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:px-4 lg:hidden", pathname === "/xtv-series" && "xora-series-topbar")}>
-        <Link to="/" className="press">
-          <Logo />
-        </Link>
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          {pathname === "/xtv-series" && onSearchClick ? (
-            <button type="button" onClick={onSearchClick} aria-label="Search Series" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
-              <Search className="size-[21px] stroke-[1.8]" aria-hidden="true" />
-            </button>
-          ) : (
-            <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-full hover:bg-secondary">
-              <Search className="size-[21px] stroke-[1.8]" aria-hidden="true" />
+        <header className={cn("fixed inset-x-0 top-0 z-50 flex h-[var(--header-h)] items-center justify-between border-b border-border bg-background/95 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:px-4 lg:hidden", pathname === "/xtv-series" && "xora-series-topbar")}>
+          <Link to="/" className="press"><Logo /></Link>
+          <div className="flex items-center gap-1">
+            {pathname === "/xtv-series" && onSearchClick ? (
+              <button type="button" onClick={onSearchClick} aria-label="Search Series" className="press grid size-11 place-items-center rounded-xl hover:bg-secondary"><Search className="size-5" aria-hidden="true" /></button>
+            ) : (
+              <Link to="/search" aria-label="Search" className="press grid size-11 place-items-center rounded-xl hover:bg-secondary"><Search className="size-5" aria-hidden="true" /></Link>
+            )}
+            <Link to="/create" aria-label="Create" className="press grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground"><Plus className="size-6" aria-hidden="true" /></Link>
+            <Link to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid size-11 place-items-center rounded-xl hover:bg-secondary">
+              <Bell className="size-5" aria-hidden="true" />
+              {unread > 0 ? <span className="absolute right-0.5 top-0.5 grid min-w-[17px] place-items-center rounded-full bg-primary px-1 text-[9px] font-bold leading-[17px] text-primary-foreground ring-2 ring-background">{unread > 99 ? "99+" : unread}</span> : null}
             </Link>
-          )}
-          <Link to="/wallet" aria-label="Xora Wallet" className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <WalletCards className="size-[21px] stroke-[1.8]" aria-hidden="true" />
-            {user && Number(walletData?.wallet?.balance || 0) > 0 ? <span className="absolute right-1 top-1 min-w-2 rounded-full bg-primary px-1 text-[8px] font-bold leading-3 text-primary-foreground">{Number(walletData?.wallet?.balance || 0) >= 1000 ? "₦+" : "₦"}</span> : null}
-          </Link>
-          <Link to="/notifications" aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid size-11 place-items-center rounded-full hover:bg-secondary">
-            <BellRing className="size-[21px] stroke-[1.8]" aria-hidden="true" />
-            {unread > 0 ? <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
-          </Link>
-
-        </div>
-      </header>
+          </div>
+        </header>
       ) : null}
 
       {!immersive && mobileMenuOpen ? (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute inset-x-3 top-[4.25rem] bottom-[calc(5rem+env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain rounded-[1.5rem] border border-primary/15 bg-background/98 p-2 shadow-lift backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-2 rounded-[1.1rem] bg-gradient-to-r from-primary/10 via-primary/5 to-secondary p-3">
-              <p className="font-display text-sm font-semibold">Explore XoraTV</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">Everything you need, one tap away.</p>
+        <div className="fixed inset-0 z-[60] bg-ink/35 backdrop-blur-[2px] lg:hidden" onClick={() => setMobileMenuOpen(false)}>
+          <section
+            role="dialog" aria-modal="true" aria-label="More navigation"
+            className="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] top-[calc(var(--header-h)+8px)] flex flex-col overflow-hidden rounded-t-[26px] border border-border bg-card shadow-lift"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-border" />
+            <div className="flex items-center justify-between px-4 pb-2 pt-3">
+              <h2 className="font-display text-xl font-semibold">More</h2>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Close More" className="grid size-11 place-items-center rounded-xl hover:bg-secondary"><X className="size-5" /></button>
             </div>
-            <nav aria-label="Mobile navigation" className="grid grid-cols-2 gap-1">
-              {NAV.map(({ to, label, icon: Icon }) => {
-                const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-                return (
-                  <NavDestinationLink
-                    key={to}
-                    to={to as NavDestination}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={cn(
-                      "press flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold shadow-sm transition-all",
-                      active ? "border-primary/25 bg-gradient-to-br from-primary/15 via-primary/8 to-card text-foreground shadow-md" : "border-border/70 bg-card/75 text-foreground hover:border-primary/20 hover:bg-secondary/70",
-                    )}
-                  >
-                    <NavIconTile icon={Icon} active={active} />
-                    <span className="min-w-0 flex-1 leading-tight">{label}</span>
-                  </NavDestinationLink>
-                );
-              })}
-              <Link
-                to="/create"
-                onClick={() => setMobileMenuOpen(false)}
-                className="press col-span-2 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-3 py-3 text-sm font-semibold text-primary shadow-sm"
-              >
-                <NavIconTile icon={Plus} compact />
-                <span className="flex-1">Create a post</span>
-                <span className="text-xs font-bold tracking-wide">CREATE</span>
+            <div className="px-4 pb-3">
+              <label className="flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-3 text-sm text-muted-foreground">
+                <Search className="size-4" aria-hidden="true" />
+                <input value={menuSearch} onChange={(event) => setMenuSearch(event.target.value)} placeholder="Search destinations" className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground" />
+              </label>
+            </div>
+            <div className="hide-scrollbar flex-1 overflow-y-auto px-4 pb-5">
+              <Link to="/wallet" onClick={() => setMobileMenuOpen(false)} className={cn("mb-4 flex min-h-[76px] items-center justify-between rounded-2xl bg-clay-soft px-4 py-3 text-foreground dark:bg-primary/15", isActive(pathname, "/wallet") && "ring-2 ring-primary/30")}>
+                <span><span className="block text-xs text-muted-foreground">Wallet balance</span><strong className="mt-1 block font-display text-xl tabular-nums">₦{balance.toLocaleString()}</strong><span className="mt-0.5 block text-xs font-medium text-primary">View wallet</span></span>
+                <span className="grid size-11 place-items-center rounded-xl bg-card text-primary"><WalletCards className="size-6" /></span>
               </Link>
-              {currentProfile ? (
-                <Link to="/profile/$username" params={{ username: currentProfile.username }} onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                  <span className="grid size-9 place-items-center overflow-hidden rounded-xl bg-secondary"><UserAvatar path={currentProfile.avatar_url} name={currentProfile.display_name} size={30} /></span>
-                  Profile
-                </Link>
-              ) : (
-                <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                  <NavIconTile icon={UserRound} compact />
-                  Sign in
-                </Link>
-              )}
-              {currentProfile ? (
-                <Link to="/edit-profile" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                  <NavIconTile icon={UserRoundPen} compact />
-                  Edit profile
-                </Link>
+              {visibleGroups.map((group) => (
+                <section key={group.label} className="mb-4">
+                  <h3 className="mb-2 text-xs font-semibold text-muted-foreground">{group.label}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.items.map((item) => renderDestination(item, true, () => setMobileMenuOpen(false)))}
+                  </div>
+                </section>
+              ))}
+              {isAdmin && (!menuSearch || "admin commerce".includes(menuSearch.toLowerCase())) ? (
+                <section className="mb-4"><h3 className="mb-2 text-xs font-semibold text-muted-foreground">Admin</h3><div className="grid grid-cols-2 gap-2">
+                  {renderDestination({ to: "/admin", label: "Admin", icon: Shield }, true, () => setMobileMenuOpen(false))}
+                  {renderDestination({ to: "/admin/commerce", label: "Commerce", icon: BarChart3 }, true, () => setMobileMenuOpen(false))}
+                </div></section>
               ) : null}
-              {isAdmin ? (
-                <>
-                  <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                    <NavIconTile icon={Shield} compact />
-                    Admin
-                  </Link>
-                  <Link to="/admin/commerce" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                    <NavIconTile icon={BarChart3} compact />
-                    Commerce
-                  </Link>
-                </>
-              ) : null}
-              <Link to="/settings" onClick={() => setMobileMenuOpen(false)} className="press flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-secondary">
-                <NavIconTile icon={Settings} compact active={pathname.startsWith("/settings")} />
-                Settings
-              </Link>
-            </nav>
-          </div>
+              {!currentProfile ? <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="mt-2 flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm text-muted-foreground hover:bg-secondary"><UserRound className="size-5" /> Sign in</Link> : null}
+            </div>
+          </section>
         </div>
       ) : null}
 
       <main id="main" className={immersive ? "min-h-screen w-full overflow-x-clip" : cn("overflow-x-clip lg:pl-[248px]", rail && "xl:pr-[320px]")}>
-        <div
-          className={cn(
-            immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-[var(--header-h)]" : "pt-[calc(var(--header-h)+16px)]"),
-            !immersive && (extraWide ? "max-w-[1600px]" : wide ? "max-w-6xl" : "max-w-[620px]"),
-          )}
-        >
+        <div className={cn(
+          immersive ? "w-full max-w-none px-0 pb-0 pt-0" : cn("mx-auto px-4 pb-[calc(100px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-14 lg:pt-8", pathname.startsWith("/profile/") ? "pt-[var(--header-h)]" : "pt-[calc(var(--header-h)+12px)]"),
+          !immersive && (extraWide ? "max-w-[1600px]" : wide ? "max-w-6xl" : "max-w-[620px]"),
+        )}>
           {!hideTopBanner && !pathname.startsWith("/profile/") ? (
-            <div className={cn("ad-slot mb-5 flex items-center justify-center", pathname.startsWith("/profile/") && "xora-profile-ad-slot")}>
-              <AdsterraBannerAd
-                adKey="075ef17698a6be8914c3d3aaaf74c814"
-                width={320}
-                height={50}
-                className="my-0 shadow-xs"
-              />
+            <div className="ad-slot mb-5 flex items-center justify-center">
+              <AdsterraBannerAd adKey="075ef17698a6be8914c3d3aaaf74c814" width={320} height={50} className="my-0 shadow-xs" />
             </div>
           ) : null}
           {children}
@@ -412,85 +267,28 @@ export function AppShell({
       </main>
 
       {!immersive ? (
-      <nav aria-label="Primary mobile navigation" className={cn("xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-16 grid-cols-5 rounded-[28px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-card lg:hidden", pathname === "/xtv-series" && "xora-series-bottom-nav")}>
-        {[
-          { to: "/", label: "Home", icon: House },
-          { to: "/shorts", label: "Shorts", icon: Clapperboard },
-          { to: "/xtv-series", label: "Series", icon: MonitorPlay },
-          { to: "/tv", label: "Live TV", icon: RadioTower },
-        ].map(({ to, label, icon: Icon }) => {
-          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-          return (
-            <NavDestinationLink
-              key={to}
-              to={to as NavDestination}
-              onClick={() => setMobileMenuOpen(false)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "press relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-semibold leading-none transition-colors",
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", active ? "bg-primary/10 text-primary" : "bg-transparent")}>
-                <Icon className={cn("size-[20px] stroke-[2]", active && "fill-current stroke-[2.35]")} aria-hidden="true" />
-              </span>
-              <span className="max-w-full truncate">{label}</span>
-            </NavDestinationLink>
-          );
-        })}
-        <button
-          type="button"
-          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={mobileMenuOpen}
-          onClick={() => setMobileMenuOpen((open) => !open)}
-          className={cn(
-            "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold leading-none transition-colors",
-            mobileMenuOpen ? "text-primary" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <span className={cn("grid size-8 place-items-center rounded-xl transition-colors", mobileMenuOpen && "bg-primary/12")}>
-            {mobileMenuOpen ? <X className="size-[20px]" aria-hidden="true" /> : <Menu className="size-[20px]" aria-hidden="true" />}
-          </span>
-          <span>{mobileMenuOpen ? "Close" : "More"}</span>
-        </button>
-      </nav>
+        <nav aria-label="Primary mobile navigation" className={cn("xora-floating-nav fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 grid h-[66px] grid-cols-5 rounded-[22px] border border-[color:var(--xora-line)] px-1 pt-1 shadow-nav lg:hidden", pathname === "/xtv-series" && "xora-series-bottom-nav")}>
+          {[
+            { to: "/", label: "Home", icon: House },
+            { to: "/shorts", label: "Shorts", icon: Clapperboard },
+            { to: "/xtv-series", label: "Series", icon: MonitorPlay },
+            { to: "/tv", label: "Live TV", icon: RadioTower },
+          ].map((item) => {
+            const active = isActive(pathname, item.to);
+            const Icon = item.icon;
+            return <NavDestinationLink key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} aria-current={active ? "page" : undefined} className={cn("press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold leading-none", active ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+              <span className={cn("grid size-8 place-items-center rounded-xl", active ? "bg-clay-soft text-primary dark:bg-primary/15" : "text-muted-foreground")}><Icon className="size-5" aria-hidden="true" /></span>
+              <span className="max-w-full truncate">{item.label}</span>
+            </NavDestinationLink>;
+          })}
+          <button type="button" aria-label="More" aria-expanded={mobileMenuOpen} aria-current={moreActive ? "page" : undefined} onClick={() => setMobileMenuOpen((open) => !open)} className={cn("press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold leading-none", mobileMenuOpen || moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+            <span className={cn("grid size-8 place-items-center rounded-xl", mobileMenuOpen || moreActive ? "bg-clay-soft text-primary dark:bg-primary/15" : "")}>{mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}</span>
+            <span>More</span>
+          </button>
+        </nav>
       ) : null}
 
-      {!immersive && rail ? (
-        <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-8 xl:block">
-          {rail}
-        </aside>
-      ) : null}
-
-
+      {!immersive && rail ? <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-7 xl:block">{rail}</aside> : null}
     </div>
-  );
-}
-
-export function FeedTabs() {
-  const tabs = [
-    { key: "home", label: "Home", to: "/" },
-    { key: "shorts", label: "Shorts", to: "/shorts" },
-    { key: "xtv-series", label: "Series", to: "/xtv-series" },
-    { key: "learn", label: "Learn", to: "/learn" },
-  ] as const;
-  return (
-    <nav
-      aria-label="Feed navigation"
-      className="mb-5 flex w-full min-w-0 items-center gap-4 border-b border-border/80"
-    >
-      {tabs.map((tab) => (
-        <Link
-          key={tab.key}
-          to={tab.to}
-          activeOptions={tab.key === "home" ? { exact: true } : undefined}
-          activeProps={{ "data-active": "true" }}
-          inactiveProps={{ "data-active": "false" }}
-          className="press relative inline-flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap px-2 text-sm font-semibold text-muted-foreground transition-colors data-[active=true]:text-foreground after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-8 after:-translate-x-1/2 after:rounded-full after:bg-transparent data-[active=true]:after:bg-primary"
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
   );
 }
