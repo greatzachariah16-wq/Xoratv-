@@ -152,7 +152,9 @@ function Bookstore() {
       .xora-bookstore .xora-category-tabs::-webkit-scrollbar { display:none !important; width:0 !important; height:0 !important; }
       .xora-bookstore nav::-webkit-scrollbar,.xora-bookstore .book-rail::-webkit-scrollbar,.xora-bookstore .book-category-rail::-webkit-scrollbar { display:none; }
       .reader-stage { touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; }
-      .reader-stage:active { cursor:grabbing; }\n      .xora-reader header,.xora-reader footer { flex-shrink:0; }\n      .reader-page { min-width:0; min-height:0; overflow:hidden; }
+      .reader-stage:active { cursor:grabbing; }
+      .xora-reader header,.xora-reader footer { flex-shrink:0; }
+      .reader-page { min-width:0; min-height:0; overflow:hidden; }
       .reader-book { perspective:1800px; transform-style:preserve-3d; }
       .reader-flip { transform-style:preserve-3d; backface-visibility:hidden; pointer-events:none; }
       .reader-flip-front,.reader-flip-back { backface-visibility:hidden; -webkit-backface-visibility:hidden; }
