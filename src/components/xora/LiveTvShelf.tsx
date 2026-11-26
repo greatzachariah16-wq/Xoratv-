@@ -33,18 +33,32 @@ export function LiveTvShelf() {
             <RadioTower className="size-[18px]" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display text-base font-semibold leading-tight text-foreground">Live now</h2>
-            <p className="truncate text-[11px] text-muted-foreground">Watch what’s happening right now.</p>
+            <h2 className="font-display text-base font-semibold leading-tight text-foreground">
+              Live now
+            </h2>
+            <p className="truncate text-[11px] text-muted-foreground">
+              Watch what’s happening right now.
+            </p>
           </div>
         </div>
-        <Link to="/tv" search={{ channel: undefined }} className="press inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-xs font-semibold text-primary hover:bg-secondary">
+        <Link
+          to="/tv"
+          search={{ channel: undefined }}
+          className="press inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-xs font-semibold text-primary hover:bg-secondary"
+        >
           View all
         </Link>
       </div>
       {isLoading ? (
-        <div className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2" aria-label="Loading Live TV channels">
+        <div
+          className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2"
+          aria-label="Loading Live TV channels"
+        >
           {["live-placeholder-1", "live-placeholder-2", "live-placeholder-3"].map((key) => (
-            <div key={key} className="w-[146px] min-w-[146px] shrink-0 rounded-[17px] bg-card p-2 shadow-sm">
+            <div
+              key={key}
+              className="w-[146px] min-w-[146px] shrink-0 rounded-[17px] bg-card p-2 shadow-sm"
+            >
               <div className="shimmer aspect-video rounded-xl" />
               <div className="shimmer mt-3 h-3 w-4/5 rounded-full" />
               <div className="shimmer mt-2 h-2.5 w-2/5 rounded-full" />
@@ -54,8 +68,17 @@ export function LiveTvShelf() {
       ) : (
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pr-8">
           {data.slice(0, 8).map((channel, index) => (
-            <div key={channel.id} className="xora-card-compact relative shrink-0 snap-start" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
-              <ChannelTile channel={channel} destination="tv" layout="carousel" eager={index === 0} />
+            <div
+              key={channel.id}
+              className="xora-card-compact relative shrink-0 snap-start"
+              style={{ "--i": Math.min(index, 8) } as CSSProperties}
+            >
+              <ChannelTile
+                channel={channel}
+                destination="tv"
+                layout="carousel"
+                eager={index === 0}
+              />
             </div>
           ))}
         </div>
