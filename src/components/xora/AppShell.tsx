@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Baby, BarChart3, Bell, BookOpen, CheckSquare, ChevronDown, Clapperboard,
-  Film, Headset, House, Menu, MessagesSquare, MonitorPlay, Plus, RadioTower,
+  Film, Headset, House, Menu, MessagesSquare, MonitorPlay, PanelsTopLeft, Plus, RadioTower,
   Search, Settings, Shield, Signal, Trophy, UserRound, WalletCards, X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,7 +33,7 @@ const GROUPS = [
     { to: "/wallet", label: "Wallet", icon: WalletCards },
   ]},
   { label: "Creators", collapsible: false, items: [
-    { to: "/creator-studio", label: "Creator Studio", icon: Clapperboard },
+    { to: "/creator-studio", label: "Creator Studio", icon: PanelsTopLeft },
   ]},
   { label: "Account", collapsible: true, items: [
     { to: "/profile", label: "Profile", icon: UserRound },
@@ -140,7 +140,7 @@ export function AppShell({
   };
 
   return (
-    <div className={cn("min-h-screen w-full max-w-full", pathname === "/xtv-series" ? "xora-series-shell" : "bg-background")}>
+    <div className={cn("min-h-screen w-full max-w-full", pathname === "/xtv-series" ? "xora-series-shell" : pathname === "/" ? "xora-home-shell bg-background" : "bg-background")}>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">Skip to content</a>
 
       {!immersive ? (
@@ -298,5 +298,33 @@ export function AppShell({
 
       {!immersive && rail ? <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-border bg-sidebar px-5 py-7 xl:block">{rail}</aside> : null}
     </div>
+  );
+}
+
+
+/** Secondary discovery tabs remain available on Shorts and Learn pages. Home uses its own feed filters. */
+export function FeedTabs() {
+  const tabs = [
+    { key: "home", label: "Home", to: "/" },
+    { key: "shorts", label: "Shorts", to: "/shorts" },
+    { key: "xtv-series", label: "Series", to: "/xtv-series" },
+    { key: "learn", label: "Learn", to: "/learn" },
+  ] as const;
+
+  return (
+    <nav aria-label="Feed navigation" className="mb-5 flex w-full min-w-0 items-center gap-4 border-b border-border/80">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.key}
+          to={tab.to}
+          activeOptions={tab.key === "home" ? { exact: true } : undefined}
+          activeProps={{ "data-active": "true" }}
+          inactiveProps={{ "data-active": "false" }}
+          className="press relative inline-flex h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap px-2 text-sm font-semibold text-muted-foreground transition-colors data-[active=true]:text-foreground after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-8 after:-translate-x-1/2 after:rounded-full after:bg-transparent data-[active=true]:after:bg-primary"
+        >
+          {tab.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
