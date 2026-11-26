@@ -148,7 +148,7 @@ function Bookstore() {
     </div>:null}
     <style>{`
       .xora-bookstore nav,.xora-bookstore .book-rail,.xora-bookstore .book-category-rail { scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
-      .xora-bookstore nav::-webkit-scrollbar,.xora-bookstore .book-rail::-webkit-scrollbar,.xora-bookstore .book-category-rail::-webkit-scrollbar { display:none; }
+      .xora-bookstore .xora-category-tabs { scrollbar-width:none !important; -ms-overflow-style:none !important; }\n      .xora-bookstore .xora-category-tabs::-webkit-scrollbar { display:none !important; width:0 !important; height:0 !important; }\n      .xora-bookstore nav::-webkit-scrollbar,.xora-bookstore .book-rail::-webkit-scrollbar,.xora-bookstore .book-category-rail::-webkit-scrollbar { display:none; }
       .reader-stage { touch-action:pan-y; user-select:none; -webkit-user-select:none; cursor:grab; }\n      .reader-stage:active { cursor:grabbing; }\n      .reader-book { perspective:1800px; transform-style:preserve-3d; }
       .reader-flip { transform-style:preserve-3d; backface-visibility:hidden; pointer-events:none; }
       .reader-flip-front,.reader-flip-back { backface-visibility:hidden; -webkit-backface-visibility:hidden; }
