@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft, Baby, BarChart3, BookOpen, CheckSquare, ChevronRight, Clapperboard,
-  Film, Headset, MessagesSquare, MonitorPlay, PanelsTopLeft, RadioTower,
+  Film, Headset, House, MessagesSquare, MonitorPlay, PanelsTopLeft, RadioTower,
   Search, Settings, Shield, Signal, Trophy, UserRound, WalletCards,
 } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -14,7 +14,7 @@ import { UserAvatar } from "@/components/xora/UserAvatar";
 export const Route = createFileRoute("/menu")({ component: MenuPage });
 
 const primary = [
-  { to: "/", label: "Home", detail: "Your personalised feed", icon: UserRound },
+  { to: "/", label: "Home", detail: "Your personalised feed", icon: House },
   { to: "/shorts", label: "Shorts", detail: "Quick videos from creators", icon: Clapperboard },
   { to: "/xtv-series", label: "X-Series", detail: "Discover films and series", icon: MonitorPlay },
   { to: "/tv", label: "Live TV", detail: "Watch live channels", icon: RadioTower },
