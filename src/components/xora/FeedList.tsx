@@ -11,7 +11,17 @@ import { EmptyState, ErrorState } from "./EmptyState";
 import { Pill } from "@/components/xora/Pill";
 import { rememberShownPostIds } from "@/lib/ranking";
 
-export function FeedList({ feed, vertical = false, topContent, afterPostContent }: { feed: FeedType; vertical?: boolean; topContent?: ReactNode; afterPostContent?: ReactNode }) {
+export function FeedList({
+  feed,
+  vertical = false,
+  topContent,
+  afterPostContent,
+}: {
+  feed: FeedType;
+  vertical?: boolean;
+  topContent?: ReactNode;
+  afterPostContent?: ReactNode;
+}) {
   const { user } = useAuth();
   const [mode, setMode] = useState<"for_you" | "following">("for_you");
   const [activeShortId, setActiveShortId] = useState<string | null>(null);
@@ -49,7 +59,11 @@ export function FeedList({ feed, vertical = false, topContent, afterPostContent 
 
   useEffect(() => {
     if (mode === "for_you" && feed === "home" && allPosts.length > 0) {
-      rememberShownPostIds(feed, allPosts.map((post) => post.id), mode);
+      rememberShownPostIds(
+        feed,
+        allPosts.map((post) => post.id),
+        mode,
+      );
     }
   }, [allPosts, feed, mode]);
 
@@ -123,7 +137,12 @@ export function FeedList({ feed, vertical = false, topContent, afterPostContent 
             <Users className="size-4 shrink-0" aria-hidden="true" />
             Following
           </Pill>
-          <Link to="/learn" className="press inline-flex h-11 min-h-11 shrink-0 items-center rounded-full border border-border bg-card px-4 text-sm font-medium text-muted-foreground hover:bg-secondary">Learn</Link>
+          <Link
+            to="/learn"
+            className="press inline-flex h-11 min-h-11 shrink-0 items-center rounded-full border border-border bg-card px-4 text-sm font-medium text-muted-foreground hover:bg-secondary"
+          >
+            Learn
+          </Link>
         </div>
       ) : null}
 
@@ -166,7 +185,11 @@ export function FeedList({ feed, vertical = false, topContent, afterPostContent 
           {allPosts.map((post, index) => {
             const isAutoPlay = feed === "shorts" || vertical ? activeShortId === post.id : false;
             return (
-              <div key={post.id} className={index === 0 ? "xora-card-feature" : "xora-card-standard"} style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+              <div
+                key={post.id}
+                className={index === 0 ? "xora-card-feature" : "xora-card-standard"}
+                style={{ "--i": Math.min(index, 8) } as CSSProperties}
+              >
                 <div
                   ref={(el) => {
                     if (el) cardRefs.current.set(post.id, el);
@@ -176,10 +199,13 @@ export function FeedList({ feed, vertical = false, topContent, afterPostContent 
                 >
                   <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
                 </div>
-                {(feed === "home" ? index === 2 : (index + 1) % 2 === 0) && (feed === "home" || feed === "shorts" || feed === "learn") ? (
+                {(feed === "home" ? index === 2 : (index + 1) % 2 === 0) &&
+                (feed === "home" || feed === "shorts" || feed === "learn") ? (
                   <AdsterraBanner className="my-3" />
                 ) : null}
-                {feed === "home" && index === 2 && afterPostContent ? <div className="mt-5">{afterPostContent}</div> : null}
+                {feed === "home" && index === 2 && afterPostContent ? (
+                  <div className="mt-5">{afterPostContent}</div>
+                ) : null}
               </div>
             );
           })}
