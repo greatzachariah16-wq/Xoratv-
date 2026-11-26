@@ -20,7 +20,7 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 const AuthContext = createContext<AuthContextValue>({
-  session:null,user:null,profile:null,isAdmin:false,loading:true,signOut:async()=>{}
+  session:null,user:null,profile:null,isAdmin:false,loading:true,authUnavailable:false,signOut:async()=>{}
 });
 function mapUser(value: CustomAuthUser): User {
   return { id:value.id,email:value.email,displayName:value.displayName,photoURL:value.photoURL };
