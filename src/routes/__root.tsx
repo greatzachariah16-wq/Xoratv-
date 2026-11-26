@@ -112,13 +112,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Xseris streaming network and custom logo-free video streaming web platform with admin controller and media catalog",
+          "XoraTV is a social entertainment platform for creators, short videos, movies, live TV, sports, kids and learning.",
       },
       { property: "og:title", content: "Xora" },
       {
         property: "og:description",
         content:
-          "Xseris streaming network and custom logo-free video streaming web platform with admin controller and media catalog",
+          "XoraTV is a social entertainment platform for creators, short videos, movies, live TV, sports, kids and learning.",
       },
       { name: "theme-color", content: "#faf6ef" },
       { name: "author", content: "Xora" },

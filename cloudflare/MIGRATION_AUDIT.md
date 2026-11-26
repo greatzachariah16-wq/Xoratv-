@@ -1,0 +1,132 @@
+# XoraTV Cloudflare Serverless Migration Audit
+
+Status: staging audit; production remains on Render. This document records verified source-code findings and the migration sequence. It is not a claim that the migration is complete.
+
+## Target
+
+Move the complete TanStack Start application (all existing routes/pages and server APIs) to Cloudflare Workers using the official `@cloudflare/vite-plugin`. Keep the existing app UI and route definitions. Do not migrate the IPTV stream proxy: Android LibVLC plays direct provider stream URLs locally.
+
+Keep existing data and media systems during the hosting migration:
+- Firebase Realtime Database remains the current application data store.
+- Existing Cloudinary uploads and media URLs remain in place.
+- Do not create or require an R2 bucket or payment card for this migration.
+- Supabase integration remains as currently configured; do not silently change auth or database ownership.
+
+## Verified current application
+
+- Framework: TanStack Start 1.168.32, React 19, Vite 8.1.5.
+- Current Vite configuration imports `@lovable.dev/vite-tanstack-config`; its comments say it injects TanStack Start, React, Tailwind, aliases, environment injection, and a Nitro adapter targeting Node/Render.
+- Current deployment is Nitro `render-com`; package start command launches `.output/server/index.mjs`.
+- `src/server.ts` is a custom Node server entrypoint and imports `node:child_process`, `node:fs`, `node:path`, `node:crypto`, and `node:stream`.
+- It starts recurring schedulers during module initialization (discovery, X-Series discovery, Shorts verification, and IPFS discovery).
+- It implements local filesystem media reads/writes and range streaming.
+- It includes a local upload fallback, Cloudinary signature endpoint, Firebase RTDB calls, content discovery, creator commerce, offers, rewards, wallet, campaigns, admin, chat purge, and catalog endpoints.
+- Server modules include admin auth, campaigns, commerce, media upload, CPX rewards/live TV, engagement, offerwall, wallet, X-Series, discovery runners, and stream proxy.
+- The repository includes Firebase rules/config, Supabase config, Cloudinary integration and a lockfile.
+
+## Worker incompatibilities to remove or replace
+
+1. Replace the Lovable/Nitro Render adapter with the Cloudflare Vite plugin while preserving the TanStack Start/React/Tailwind build pipeline. Verify the helper package's plugin injection before editing; avoid loading Nitro and Cloudflare adapters together.
+2. Replace the custom Node server entrypoint with the TanStack Start Worker entrypoint plus only Worker-compatible request hooks.
+3. Remove local filesystem media serving and disk upload fallback from the Cloudflare runtime. Continue existing Cloudinary signed/direct upload flows.
+4. Do not import or invoke the IPTV stream proxy in the Cloudflare app. Preserve direct stream URLs for local LibVLC playback.
+5. Move scheduled discovery and verification from startup timers to Cloudflare Cron Triggers and/or Queues. Preserve opt-in/disabled behavior and ensure jobs are idempotent before enabling schedules.
+6. Audit all imported server modules for Node-only packages and process.env usage; convert configuration to Worker bindings/secrets and Web Crypto where necessary.
+7. Preserve Firebase RTDB semantics and authorization. Do not expose service-account secrets or privileged admin operations to the browser.
+8. Keep API contracts and existing route URLs stable; migrate by feature group and test each group.
+
+## Migration sequence
+
+- [x] Add isolated Cloudflare Vite adapter config and Wrangler config without touching the Render/Nitro Vite config. TanStack Start/router packages set to published compatible release versions after CI caught that Start 1.170.18 is not published; Cloudflare plugin and Wrangler added. CI build/type-generation is now the next gate.
+- [ ] Worker-compatible TanStack Start SSR build and preview.
+- [ ] Request context, CORS, environment bindings and secret handling.
+- [ ] Core Firebase-backed session/profile/feed/engagement APIs.
+- [ ] Creator, offers, rewards, wallet, campaigns and admin APIs.
+- [ ] X-Series catalog and approved media APIs.
+- [ ] Cloudinary signed upload and upload authorization.
+- [ ] Cron/Queue replacements for background jobs.
+- [ ] Remove obsolete proxy and local-disk media endpoints from Cloudflare path.
+- [ ] Build checks, route smoke tests, Android WebView/Capacitor checks, and API regression tests.
+- [ ] Only after acceptance, plan production domain/API cutover. Keep Render available for rollback until then.
+
+## Safety rules
+
+- Never change the live Render service or production DNS during staging.
+- Never merge an unbuilt or untested migration.
+- Never replace real feature APIs with success-shaped placeholder handlers.
+- Never claim the whole app is migrated merely because the IPTV catalogue Worker is deployed.
+
+## Additional Node-runtime findings from repository search
+
+The Node-only surface extends beyond `src/server.ts`:
+- `src/routes/api.source-ipfs.ts`, `api.source-ipfs-index.ts`, `api.source-ipfs-seed-history.ts`, and `api.source-ipfs-search.ts` spawn Python scripts directly.
+- `src/server/shorts-verification.ts` uses child processes for media checks.
+- `src/server/admin-auth.ts` imports Node filesystem and crypto APIs for audit/security state.
+- `src/server/stream-proxy.ts` imports filesystem, OS, streams, child processes and utilities; it is intentionally excluded from the Cloudflare runtime because playback is local in LibVLC.
+- `src/routes/api.profile.ts`, `api.subscriptions.ts`, `api.chat.ts`, and `src/server/session-auth.ts` use Node crypto and `process.env` for Supabase session access. These need Web Crypto and Worker environment bindings (or a compatible audited library).
+- The project includes Puppeteer, Chromium and FFmpeg dependencies. They must not be imported into the Worker bundle. Browser automation/media verification needs a separate compatible execution path or to remain disabled; do not pretend Workers can run these binaries.
+
+This means the migration must include route-level and transitive-import audits, not just changing the deployment adapter.
+
+## Important architecture clarification from the full server entrypoint
+
+The app's backend is not only a collection of TanStack file routes. `src/server.ts` is a custom request dispatcher that intercepts requests before the TanStack SSR fallback. It owns multiple application API contracts directly. Replacing it with the stock Start entrypoint would silently remove those APIs, so that shortcut is prohibited.
+
+The dispatcher currently includes, among others:
+- TV catalogue, playback resolution, playback feedback and EPG.
+- XTV Series catalogue, playback resolution and discovery run.
+- Discovery run and YouTube/Vimeo provider search.
+- Cloudinary/media upload and storage bridge routes.
+- Creator commerce, campaigns, offerwall, survey wallet, CPX rewards and live TV, admin and X-Series handlers imported near the top of the entrypoint.
+- Local media file reads and multipart upload fallback.
+
+A safe Cloudflare migration therefore needs a Worker-compatible request dispatcher that preserves each supported route's response contract, then falls through to the TanStack Start SSR handler. Route handlers should be extracted into independent modules with explicit Worker `env`/execution context parameters. Node-only modules must not be imported by the Worker graph.
+
+The existing `/api/tv/stream` route is a streaming proxy and is excluded from the new architecture as requested; direct stream resolution/catalogue APIs remain where needed by the app and local LibVLC. The local upload/media-disk routes must be replaced by the existing Cloudinary signed upload path, not by a new R2 dependency.
+
+## Required next technical milestone
+
+Before switching the default Vite config, build an isolated Worker entrypoint and test that it preserves the current dispatcher route inventory. Then move the app's Vite adapter to Cloudflare and validate the generated SSR build. This avoids accidentally deploying only the frontend while dropping backend routes.
+
+
+## Deployed edge API milestone (2026-11-25)
+
+- [x] Standalone Cloudflare Worker deployed as `xoratv-edge-api`.
+- [x] `GET /health` and `GET /api/health`.
+- [x] `GET /api/tv/channels`: IPTV-org playlists, filters, direct stream URLs for local LibVLC, ten-minute in-isolate cache.
+- [x] `GET /api/tv/guide`: IPTV-org guides index and XMLTV parsing, bounded source size, gzip support through Web APIs, six-hour index cache and twenty-minute guide cache.
+- [x] `POST /api/tv/playback-feedback`: preserves the existing 204 success / 400 invalid-payload contract without retaining the obsolete local proxy-preference cache.
+- [x] Origin allowlist: defaults to the current Render web origin; unapproved browser origins receive 403.
+- [x] Worker runtime source committed at `cloudflare/backend/worker.js`; TypeScript reference remains at `cloudflare/backend/src/index.ts`.
+- [x] GitHub Actions smoke-test script and workflow added for health, channel response shape, EPG response shape and CORS rejection.
+- [ ] Confirm the newly added smoke-test workflow result before treating the EPG API as fully verified.
+
+This is still an isolated API Worker. It is not the XoraTV website, does not yet serve TanStack pages, and does not yet host the rest of the Node-dispatched backend.
+
+
+## TanStack Worker build setup (2026-11-25)
+
+- [x] Added `vite.cloudflare.config.ts` using the official Cloudflare Vite plugin, TanStack Start, React, Tailwind and tsconfig path support.
+- [x] Added `wrangler.jsonc` for the isolated `xoratv-web` Worker build.
+- [x] Aligned `@tanstack/react-start`, `@tanstack/react-router`, and `@tanstack/router-plugin` to 1.170.18.
+- [x] Added Cloudflare Vite plugin 1.70.1 and Wrangler 4.167.0 as development dependencies.
+- [x] Added `cf:build`, `cf:preview`, and `cf:typegen` scripts.
+- [x] Added generated Worker type inclusion and immutable asset cache headers.
+- [x] Added CI workflow to regenerate the lockfile, install dependencies, generate Worker types, and build the Cloudflare SSR application.
+- [x] Cloudflare Worker type generation passed in GitHub Actions.
+- [x] Cloudflare TanStack SSR build passed in GitHub Actions; the first workflow attempt then failed only while pushing its generated lockfile due to concurrent staging commits.
+- [ ] Cloudflare preview route tests must pass before deployment.
+- [x] Added `src/server.cloudflare.ts`: it delegates `/api/tv/channels` and `/api/tv/guide` to the deployed edge API Worker and falls through to TanStack Start SSR for all other requests.
+- [ ] The custom Node dispatcher in `src/server.ts` is not yet ported. The Cloudflare build is for SSR compatibility validation only and must not be deployed as a production replacement until backend route parity is implemented.
+
+
+## Build verification details
+
+- The first Cloudflare TanStack CI attempt failed before installation because Start 1.170.18 is not a published package release.
+- The next dependency resolution identified the required router peer range from Start's plugin core. The staging package versions are now pinned to published compatible releases: React Start 1.169.7, React Router 1.170.46 and router-plugin 1.169.0.
+- The subsequent CI run completed dependency installation, Worker type generation and the Cloudflare Vite SSR build. Vite emitted the client and server bundles, including the application route chunks.
+- That run ended non-green only because its generated lockfile commit raced with other commits to the same branch. The workflow now rebases before pushing the lockfile and adds a Workers-runtime preview check for core pages and the migrated TV APIs.
+- Edge API smoke test now passes with both the current Render origin and the planned `xoratv-web.ericgreat668.workers.dev` origin; unapproved origins remain rejected.
+
+
+The Cloudflare web entrypoint forwards the three migrated TV API paths (`/api/tv/channels`, `/api/tv/guide`, and `/api/tv/playback-feedback`) to the edge Worker. All other requests use the TanStack Start SSR handler. The old Node dispatcher and its stream proxy are still excluded.

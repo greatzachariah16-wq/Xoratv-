@@ -50,3 +50,8 @@ android/local.properties
 android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/build/
+
+# Cloudflare local development
+.wrangler/
+.dev.vars*
+worker-configuration.d.ts
