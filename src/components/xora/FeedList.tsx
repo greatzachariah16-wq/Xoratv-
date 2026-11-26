@@ -1,20 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Users, Compass, Loader2 } from "lucide-react";
 import { feedInfiniteQuery, type FeedType } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PostCard } from "./PostCard";
-import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { AdsterraBanner } from "@/components/ads/AdsterraBanner";
 import { FeedSkeleton } from "./Skeletons";
 import { EmptyState, ErrorState } from "./EmptyState";
-import { DataSaverBadge } from "./DataSaverBadge";
 import { Pill } from "@/components/xora/Pill";
 import { rememberShownPostIds } from "@/lib/ranking";
-import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 
-export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?: boolean }) {
+export function FeedList({
+  feed,
+  vertical = false,
+  topContent,
+  afterPostContent,
+}: {
+  feed: FeedType;
+  vertical?: boolean;
+  topContent?: ReactNode;
+  afterPostContent?: ReactNode;
+}) {
   const { user } = useAuth();
   const [mode, setMode] = useState<"for_you" | "following">("for_you");
   const [activeShortId, setActiveShortId] = useState<string | null>(null);
@@ -48,11 +55,15 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
       seen.add(post.id);
       return true;
     });
-  }, [data?.pages]);
+  }, [data?.pages, feed]);
 
   useEffect(() => {
     if (mode === "for_you" && feed === "home" && allPosts.length > 0) {
-      rememberShownPostIds(feed, allPosts.map((post) => post.id), mode);
+      rememberShownPostIds(
+        feed,
+        allPosts.map((post) => post.id),
+        mode,
+      );
     }
   }, [allPosts, feed, mode]);
 
@@ -109,14 +120,14 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
   return (
     <div className="space-y-4">
       {feed === "home" || feed === "shorts" ? (
-        <div className="xora-feed-filters hide-scrollbar -mx-4 flex w-[calc(100%+2rem)] min-w-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 py-6">
+        <div className="xora-feed-filters hide-scrollbar -mx-4 flex w-[calc(100%+2rem)] min-w-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto px-4 py-2">
           <Pill
             variant={mode === "for_you" ? "solid" : "outline"}
             onClick={() => setMode("for_you")}
             aria-pressed={mode === "for_you"}
           >
             <Compass className="size-4 shrink-0" aria-hidden="true" />
-            For You
+            For you
           </Pill>
           <Pill
             variant={mode === "following" ? "solid" : "outline"}
@@ -124,11 +135,18 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
             aria-pressed={mode === "following"}
           >
             <Users className="size-4 shrink-0" aria-hidden="true" />
-            Subscriptions
+            Following
           </Pill>
-          <DataSaverBadge className="h-11 min-w-max shrink-0 whitespace-nowrap px-4" />
+          <Link
+            to="/learn"
+            className="press inline-flex h-11 min-h-11 shrink-0 items-center rounded-full border border-border bg-card px-4 text-sm font-medium text-muted-foreground hover:bg-secondary"
+          >
+            Learn
+          </Link>
         </div>
       ) : null}
+
+      {topContent ? <div className="min-w-0">{topContent}</div> : null}
 
       {isPending ? (
         <FeedSkeleton vertical={vertical} />
@@ -137,10 +155,10 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
       ) : !allPosts.length ? (
         <EmptyState
           icon={mode === "following" ? Users : Compass}
-          title={mode === "following" ? "No posts from subscribed creators" : "Nothing here yet"}
+          title={mode === "following" ? "No posts from creators you follow" : "Nothing here yet"}
           description={
             mode === "following"
-              ? "Subscribe to creators from the 'For You' feed or search to see their latest videos here."
+              ? "Follow creators from the For you feed or search to see their latest videos here."
               : "Be the first to post in this feed — upload a video or share a thought."
           }
           action={
@@ -166,9 +184,12 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
         <div className="space-y-4">
           {allPosts.map((post, index) => {
             const isAutoPlay = feed === "shorts" || vertical ? activeShortId === post.id : false;
-            const showInHouseAd = (index + 1) % 5 === 0;
             return (
-              <div key={post.id} style={{ "--i": Math.min(index, 8) } as CSSProperties}>
+              <div
+                key={post.id}
+                className={index === 0 ? "xora-card-feature" : "xora-card-standard"}
+                style={{ "--i": Math.min(index, 8) } as CSSProperties}
+              >
                 <div
                   ref={(el) => {
                     if (el) cardRefs.current.set(post.id, el);
@@ -178,8 +199,12 @@ export function FeedList({ feed, vertical = false }: { feed: FeedType; vertical?
                 >
                   <PostCard post={post} vertical={vertical} autoPlay={isAutoPlay} />
                 </div>
-                {(index + 1) % 2 === 0 && (feed === "home" || feed === "shorts" || feed === "learn") ? (
+                {(feed === "home" ? index === 2 : (index + 1) % 2 === 0) &&
+                (feed === "home" || feed === "shorts" || feed === "learn") ? (
                   <AdsterraBanner className="my-3" />
+                ) : null}
+                {feed === "home" && index === 2 && afterPostContent ? (
+                  <div className="mt-5">{afterPostContent}</div>
                 ) : null}
               </div>
             );
