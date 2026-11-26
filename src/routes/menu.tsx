@@ -25,6 +25,7 @@ const primary = [
 const groups = [
   { label: "Learn & connect", items: [
     { to: "/learn", label: "Learn", detail: "Courses and creator lessons", icon: BookOpen },
+    { to: "/bookstore", label: "Bookstore", detail: "A new home for books and stories", icon: BookOpen },
     { to: "/chat", label: "Messages", detail: "Your conversations", icon: MessagesSquare },
   ]},
   { label: "Earn", items: [
