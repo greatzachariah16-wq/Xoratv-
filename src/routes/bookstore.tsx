@@ -86,7 +86,7 @@ function Bookstore() {
   const railRefs=useRef<Record<string,HTMLDivElement|null>>({});
   const shelf=shelves.find(item=>item.id===activeShelf)||shelves[0];
   const visibleShelves=useMemo(()=>shelves.filter(item=>item.id!=="featured"&&(!search.trim()||(item.label+" "+item.description).toLowerCase().includes(search.toLowerCase()))),[search]);
-  const shelfBooks=books.filter(book=>book.shelf===activeShelf);
+  const shelfBooks=books.filter(book=>{const category=shelves.find(item=>item.id===book.shelf)?.label||"";const matches=(book.title+" "+book.author+" "+category).toLowerCase().includes(search.trim().toLowerCase());return search.trim()?matches:book.shelf===activeShelf;});
 
   const turn=(direction:"next"|"prev")=>{
     if(flip) return;
@@ -120,7 +120,7 @@ function Bookstore() {
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-end justify-between gap-3"><div><p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">{shelf.eyebrow}</p><h2 className="mt-1 font-editorial text-2xl sm:text-3xl">{shelf.title}</h2><p className="mt-1 text-xs text-muted-foreground">{shelf.description}</p></div><div className="hidden gap-2 sm:flex"><button onClick={()=>scrollRail("main",-1)} aria-label="Scroll books left" className="grid size-9 place-items-center rounded-full border border-border bg-surface transition hover:border-primary/40"><ChevronLeft className="size-4"/></button><button onClick={()=>scrollRail("main",1)} aria-label="Scroll books right" className="grid size-9 place-items-center rounded-full border border-border bg-surface transition hover:border-primary/40"><ChevronRight className="size-4"/></button></div></div>
+        <div className="flex items-end justify-between gap-3"><div><p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">{search.trim()?"SEARCH THE COLLECTION":shelf.eyebrow}</p><h2 className="mt-1 font-editorial text-2xl sm:text-3xl">{search.trim()?"Your search results":shelf.title}</h2><p className="mt-1 text-xs text-muted-foreground">{search.trim()?"Matching books across every shelf.":shelf.description}</p></div><div className="hidden gap-2 sm:flex"><button onClick={()=>scrollRail("main",-1)} aria-label="Scroll books left" className="grid size-9 place-items-center rounded-full border border-border bg-surface transition hover:border-primary/40"><ChevronLeft className="size-4"/></button><button onClick={()=>scrollRail("main",1)} aria-label="Scroll books right" className="grid size-9 place-items-center rounded-full border border-border bg-surface transition hover:border-primary/40"><ChevronRight className="size-4"/></button></div></div>
         <div ref={el=>{railRefs.current.main=el}} className="book-rail no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-5 sm:-mx-2 sm:px-2" aria-label={shelf.label+" books"}>{shelfBooks.map(book=><button key={book.id} onClick={()=>openBook(book)} className="book-card group w-[142px] shrink-0 snap-start text-left sm:w-[166px]"><div className="relative rounded-[10px] bg-[#eee3d8] p-3 shadow-[0_10px_24px_-19px_rgba(45,31,23,.5)] transition duration-300 group-hover:-translate-y-1 group-active:scale-[.98]"><BookCover book={book}/><span className="absolute right-4 top-4 rounded-full border border-white/50 bg-[#fff8ef]/90 px-2 py-1 text-[7px] font-bold uppercase tracking-[.15em] text-[#8b5b43]">Preview</span></div><p className="mt-3 line-clamp-2 min-h-[36px] font-editorial text-[15px] leading-tight">{book.title}</p><p className="mt-1 text-[10px] text-muted-foreground">{book.author}</p><span className="mt-2 inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[.12em] text-primary">Open preview <ArrowRight className="size-3"/></span></button>)}</div>
         <p className="text-[9px] text-muted-foreground">Swipe to explore · These are design-preview titles, not published catalogue listings.</p>
       </section>
@@ -147,8 +147,8 @@ function Bookstore() {
       </section>
     </div>:null}
     <style>{`
-      .xora-bookstore .book-rail,.xora-bookstore .book-category-rail { scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
-      .xora-bookstore .book-rail::-webkit-scrollbar,.xora-bookstore .book-category-rail::-webkit-scrollbar { display:none; }
+      .xora-bookstore nav,.xora-bookstore .book-rail,.xora-bookstore .book-category-rail { scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+      .xora-bookstore nav::-webkit-scrollbar,.xora-bookstore .book-rail::-webkit-scrollbar,.xora-bookstore .book-category-rail::-webkit-scrollbar { display:none; }
       .reader-book { perspective:1800px; transform-style:preserve-3d; }
       .reader-flip { transform-style:preserve-3d; backface-visibility:hidden; pointer-events:none; }
       .reader-flip-front,.reader-flip-back { backface-visibility:hidden; -webkit-backface-visibility:hidden; }
