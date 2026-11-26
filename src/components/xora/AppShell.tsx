@@ -1,7 +1,7 @@
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Baby,
@@ -27,7 +27,6 @@ import {
   Trophy,
   UserRound,
   WalletCards,
-  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceTracker } from "@/hooks/usePresenceTracker";
@@ -173,8 +172,6 @@ export function AppShell({
   const { user, profile, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const unread = useUnreadCount();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [menuSearch, setMenuSearch] = useState("");
   const { data: walletData } = useQuery(walletQuery(user?.id));
   const balance = Number(walletData?.wallet?.balance || 0);
   const currentProfile =
@@ -192,7 +189,7 @@ export function AppShell({
         }
       : null);
   const moreActive = useMemo(
-    () => GROUPS.some((group) => group.items.some((item) => isActive(pathname, item.to))),
+    () => pathname === "/menu" || GROUPS.some((group) => group.items.some((item) => isActive(pathname, item.to))),
     [pathname],
   );
   const visibleGroups = GROUPS.map((group) => ({
@@ -415,9 +412,9 @@ export function AppShell({
             <Link
               to="/create"
               aria-label="Create"
-              className="press grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground"
+              className="press grid size-10 place-items-center rounded-full border border-primary/20 bg-clay-soft text-primary shadow-sm transition-transform active:scale-95 dark:bg-primary/15"
             >
-              <Plus className="size-6" aria-hidden="true" />
+              <Plus className="size-[21px] stroke-[2.1]" aria-hidden="true" />
             </Link>
             <Link
               to="/notifications"
@@ -433,102 +430,6 @@ export function AppShell({
             </Link>
           </div>
         </header>
-      ) : null}
-
-      {!immersive && mobileMenuOpen ? (
-        <div
-          className="fixed inset-0 z-[60] bg-ink/35 backdrop-blur-[2px] lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label="More navigation"
-            className="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] top-[calc(var(--header-h)+8px)] flex flex-col overflow-hidden rounded-t-[26px] border border-border bg-card shadow-lift"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-border" />
-            <div className="flex items-center justify-between px-4 pb-2 pt-3">
-              <h2 className="font-display text-xl font-semibold">More</h2>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                aria-label="Close More"
-                className="grid size-11 place-items-center rounded-xl hover:bg-secondary"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="px-4 pb-3">
-              <label className="flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-3 text-sm text-muted-foreground">
-                <Search className="size-4" aria-hidden="true" />
-                <input
-                  value={menuSearch}
-                  onChange={(event) => setMenuSearch(event.target.value)}
-                  placeholder="Search destinations"
-                  className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
-                />
-              </label>
-            </div>
-            <div className="hide-scrollbar flex-1 overflow-y-auto px-4 pb-5">
-              <Link
-                to="/wallet"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "mb-4 flex min-h-[76px] items-center justify-between rounded-2xl bg-clay-soft px-4 py-3 text-foreground dark:bg-primary/15",
-                  isActive(pathname, "/wallet") && "ring-2 ring-primary/30",
-                )}
-              >
-                <span>
-                  <span className="block text-xs text-muted-foreground">Wallet balance</span>
-                  <strong className="mt-1 block font-display text-xl tabular-nums">
-                    ₦{balance.toLocaleString()}
-                  </strong>
-                  <span className="mt-0.5 block text-xs font-medium text-primary">View wallet</span>
-                </span>
-                <span className="grid size-11 place-items-center rounded-xl bg-card text-primary">
-                  <WalletCards className="size-6" />
-                </span>
-              </Link>
-              {visibleGroups.map((group) => (
-                <section key={group.label} className="mb-4">
-                  <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
-                    {group.label}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {group.items.map((item) =>
-                      renderDestination(item, true, () => setMobileMenuOpen(false)),
-                    )}
-                  </div>
-                </section>
-              ))}
-              {isAdmin && (!menuSearch || "admin commerce".includes(menuSearch.toLowerCase())) ? (
-                <section className="mb-4">
-                  <h3 className="mb-2 text-xs font-semibold text-muted-foreground">Admin</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {renderDestination({ to: "/admin", label: "Admin", icon: Shield }, true, () =>
-                      setMobileMenuOpen(false),
-                    )}
-                    {renderDestination(
-                      { to: "/admin/commerce", label: "Commerce", icon: BarChart3 },
-                      true,
-                      () => setMobileMenuOpen(false),
-                    )}
-                  </div>
-                </section>
-              ) : null}
-              {!currentProfile ? (
-                <Link
-                  to="/auth"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="mt-2 flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm text-muted-foreground hover:bg-secondary"
-                >
-                  <UserRound className="size-5" /> Sign in
-                </Link>
-              ) : null}
-            </div>
-          </section>
-        </div>
       ) : null}
 
       <main
@@ -607,29 +508,16 @@ export function AppShell({
               </NavDestinationLink>
             );
           })}
-          <button
-            type="button"
-            aria-label="More"
-            aria-expanded={mobileMenuOpen}
+          <NavDestinationLink
+            to="/menu"
             aria-current={moreActive ? "page" : undefined}
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            className={cn(
-              "press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold leading-none",
-              mobileMenuOpen || moreActive
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+            className={cn("press flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold leading-none", moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground")}
           >
-            <span
-              className={cn(
-                "grid size-8 place-items-center rounded-xl",
-                mobileMenuOpen || moreActive ? "bg-clay-soft text-primary dark:bg-primary/15" : "",
-              )}
-            >
-              {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            <span className={cn("grid size-8 place-items-center rounded-xl", moreActive && "bg-clay-soft text-primary dark:bg-primary/15")}>
+              <Menu className="size-5" aria-hidden="true" />
             </span>
-            <span>More</span>
-          </button>
+            <span>Menu</span>
+          </NavDestinationLink>
         </nav>
       ) : null}
 
