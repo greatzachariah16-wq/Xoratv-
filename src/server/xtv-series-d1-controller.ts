@@ -300,6 +300,45 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
       });
     }
 
+    // A movie becomes part of the playable XSeries catalogue when a user selects it from TMDB search.
+    // Only the selected title is persisted; search results themselves remain transient.
+    if (path === "/api/xtv-series/select" && request.method === "POST") {
+      const apiKey = text(env.TMDB_API_KEY);
+      if (!apiKey) return json({ ok: false, error: "TMDB metadata service is not configured." }, 503);
+      const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+      const tmdbId = int(body.tmdbId, 0);
+      const mediaType = text(body.mediaType) || "movie";
+      if (!tmdbId || !Number.isSafeInteger(tmdbId) || tmdbId < 1 || mediaType !== "movie") {
+        return json({ ok: false, error: "A valid TMDB movie ID is required." }, 400);
+      }
+      const details = await tmdb<Record<string, unknown>>("movie/" + tmdbId, apiKey);
+      const title = text(details.title);
+      if (!title) return json({ ok: false, error: "TMDB did not return a valid movie." }, 422);
+      const genres = Array.isArray(details.genres)
+        ? details.genres.map((item) => text((item as Record<string, unknown>).name)).filter(Boolean)
+        : [];
+      if (genres.some((genre) => genre.toLowerCase() === "animation")) {
+        return json({ ok: false, error: "Animated titles are not part of XSeries." }, 422);
+      }
+      const releaseDate = text(details.release_date) || null;
+      const year = releaseDate ? Number(releaseDate.slice(0, 4)) || null : null;
+      const runtime = int(details.runtime, 0) || null;
+      const category = genres[0] || "More";
+      await db.prepare(
+        "INSERT INTO xseries_titles (tmdb_id, media_type, title, original_title, overview, release_date, release_year, poster_path, backdrop_path, genres_json, vote_average, runtime_minutes, category, match_status, is_published, updated_at) " +
+        "VALUES (?, 'movie', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 1, CURRENT_TIMESTAMP) " +
+        "ON CONFLICT(tmdb_id) DO UPDATE SET media_type='movie', title=excluded.title, original_title=excluded.original_title, overview=excluded.overview, " +
+        "release_date=excluded.release_date, release_year=excluded.release_year, poster_path=excluded.poster_path, backdrop_path=excluded.backdrop_path, " +
+        "genres_json=excluded.genres_json, vote_average=excluded.vote_average, runtime_minutes=excluded.runtime_minutes, " +
+        "category=COALESCE(excluded.category, xseries_titles.category), match_status='confirmed', is_published=1, updated_at=CURRENT_TIMESTAMP"
+      ).bind(tmdbId, title, text(details.original_title) || null, text(details.overview) || null,
+        releaseDate, year, text(details.poster_path) || null, text(details.backdrop_path) || null,
+        JSON.stringify(genres), Number(details.vote_average) || null, runtime, category).run();
+      return json({ ok: true, item: publicItem(await db.prepare(
+        "SELECT * FROM xseries_titles WHERE tmdb_id = ? AND is_published = 1 LIMIT 1"
+      ).bind(tmdbId).first<TitleRow>() as TitleRow), saved: true }, 200, { "Cache-Control": "no-store" });
+    }
+
     if (path.startsWith("/api/xtv-series/admin/")) {
       if (!requireAdmin(request)) return json({ ok: false, error: "Administrator authorization required." }, 401);
       const apiKey = text(env.TMDB_API_KEY);
