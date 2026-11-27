@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -93,12 +93,12 @@ function SeriesThumbnail({ item, eager = false }: { item: XTvSeriesItem; eager?:
   );
 }
 
-function SeriesCard({ item, grid = false }: { item: XTvSeriesItem; grid?: boolean }) {
+function SeriesCard({ item, grid = false, onSelect }: { item: XTvSeriesItem; grid?: boolean; onSelect?: (item: XTvSeriesItem) => void }) {
   const title = cleanTitle(item.title) || "Untitled";
   const minutes = item.durationSeconds ? Math.max(1, Math.round(item.durationSeconds / 60)) : null;
   return (
     <article className={cn("xsp-card", grid && "xsp-card-grid")}>
-      <Link to="/watch" search={{ id: item.id }} className="xsp-card-link" aria-label={"Open " + title} title={title}>
+      <Link to="/watch" search={{ id: item.id }} onClick={(event) => { if (onSelect) { event.preventDefault(); onSelect(item); } }} className="xsp-card-link" aria-label={"Open " + title} title={title}>
         <div className="xsp-card-image">
           <SeriesThumbnail item={item} />
           {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
@@ -113,6 +113,9 @@ function SeriesCard({ item, grid = false }: { item: XTvSeriesItem; grid?: boolea
 }
 
 function XTvSeriesPage() {
+  const navigate = useNavigate();
+  const [selectingMovieId, setSelectingMovieId] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState("");
   const [genre, setGenre] = useState("All");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -211,6 +214,26 @@ function XTvSeriesPage() {
 
   const openSearch = () => { setSearchOpen(true); setSearchPage(1); setActiveGridCategory(null); };
 
+  const selectSearchMovie = async (item: XTvSeriesItem) => {
+    if (selectingMovieId) return;
+    setSelectingMovieId(item.id);
+    setSelectionError("");
+    try {
+      const response = await fetch("/api/xtv-series/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: Number(item.id.replace(/^movie_/, "")), mediaType: "movie" }),
+      });
+      const data = await response.json() as { ok?: boolean; error?: string };
+      if (!response.ok || !data.ok) throw new Error(data.error || "This movie could not be added to XSeries.");
+      await navigate({ to: "/watch", search: { id: item.id } });
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } catch (error) {
+      setSelectionError(error instanceof Error ? error.message : "This movie could not be prepared.");
+      setSelectingMovieId(null);
+    }
+  };
+
   return (
     <AppShell wide extraWide immersive={activeSection === "cinema"} onSearchClick={openSearch}>
       <div className="xseries-page" style={{ paddingBottom: "calc(104px + env(safe-area-inset-bottom, 0px))" }}>
@@ -252,9 +275,11 @@ function XTvSeriesPage() {
                   {isSearchPending ? <span className="xsp-muted">Searching…</span> : null}
                 </div>
                 {searchError ? <p className="xsp-empty-state" role="alert">TMDB search is temporarily unavailable. Try again.</p> : null}
+                {selectionError ? <p className="xsp-empty-state" role="alert">{selectionError}</p> : null}
+                {selectingMovieId ? <p className="xsp-muted" role="status">Saving movie to XSeries…</p> : null}
                 {searchResults.length ? (
                   <>
-                    <div className="xsp-grid">{searchResults.map((item) => <SeriesCard key={item.id} item={item} grid />)}</div>
+                    <div className="xsp-grid">{searchResults.map((item) => <SeriesCard key={item.id} item={item} grid onSelect={selectSearchMovie} />)}</div>
                     {hasMoreSearchResults ? (
                       <button type="button" className="xsp-load-more" disabled={isSearchPending} onClick={() => setSearchPage((value) => value + 1)}>Load more results</button>
                     ) : <p className="xsp-muted">You’re all caught up with TMDB results.</p>}
