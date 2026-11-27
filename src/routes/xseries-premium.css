@@ -92,3 +92,11 @@
 .xsp-grid .xsp-card-title{font-size:13px;line-height:18px;min-height:36px}
 .xsp-grid .xsp-card-channel{font-size:10px}
 @media(min-width:640px){.xsp-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:22px 16px}}
+
+/* TMDB cinema poster grid and paginated search controls */
+.xsp-load-more{display:flex;min-height:46px;align-items:center;justify-content:center;width:100%;margin:20px 0 10px;padding:0 18px;border:1px solid rgba(120,78,54,.16);border-radius:999px;background:linear-gradient(180deg,#fffefa,#f1e4da);color:var(--xsp-clay-deep);font-size:12px;font-weight:800;box-shadow:var(--xsp-shadow)}
+.xsp-load-more:disabled{opacity:.55}
+.xsp-grid .xsp-card-image{aspect-ratio:2/3;border-radius:16px}
+.xsp-grid .xsp-card-title{font-size:13px;line-height:18px;min-height:36px}
+.xsp-grid .xsp-card-channel{font-size:10px}
+@media(min-width:640px){.xsp-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:22px 16px}}
