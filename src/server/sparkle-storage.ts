@@ -4,6 +4,7 @@ const DEFAULT_SPARKLE_SUPABASE_URL = "https://blwxtzhvxebcethathkt.supabase.co";
 const BUCKET = "videos";
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
 const SIGNED_URL_TTL_SECONDS = 24 * 60 * 60;
+let sparkleUploadInProgress = false;
 
 function getConfig() {
   const url = (process.env.SPARKLE_SUPABASE_URL || DEFAULT_SPARKLE_SUPABASE_URL).replace(/\/+$/, "");
@@ -39,10 +40,23 @@ function safeExtension(name: string, mime: string) {
 export async function handleSparkleStorageRoute(request: Request, url: URL): Promise<Response | null> {
   if (!url.pathname.startsWith("/api/storage/sparkle/")) return null;
 
+  const isUploadRequest = url.pathname === "/api/storage/sparkle/upload" && request.method === "POST";
+  if (isUploadRequest) {
+    // Keep one large creator-video upload at a time on the 512MiB free instance.
+    if (sparkleUploadInProgress) {
+      return json({ ok: false, error: "Another video upload is already running. Please try again shortly." }, 429);
+    }
+    sparkleUploadInProgress = true;
+  }
+
   try {
     const { url: supabaseUrl, key } = getConfig();
 
     if (url.pathname === "/api/storage/sparkle/upload" && request.method === "POST") {
+      const declaredLength = Number(request.headers.get("content-length") || 0);
+      if (Number.isFinite(declaredLength) && declaredLength > MAX_UPLOAD_BYTES + 1024 * 1024) {
+        return json({ ok: false, error: "Video is larger than the 250MB upload limit." }, 413);
+      }
       const form = await request.formData();
       const file = form.get("file");
       const userId = String(form.get("userId") || "creator").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -64,7 +78,8 @@ export async function handleSparkleStorageRoute(request: Request, url: URL): Pro
           "Cache-Control": "31536000",
           "x-upsert": "false",
         },
-        body: await file.arrayBuffer(),
+        // File is a Blob; pass it directly so fetch can stream it without creating a second 250MB ArrayBuffer.
+        body: file,
         signal: AbortSignal.timeout(180000),
       });
 
@@ -127,5 +142,7 @@ export async function handleSparkleStorageRoute(request: Request, url: URL): Pro
   } catch (error) {
     console.error("[SparkleStorage] Route error:", error);
     return json({ ok: false, error: error instanceof Error ? error.message : "Sparkle storage error." }, 500);
+  } finally {
+    if (isUploadRequest) sparkleUploadInProgress = false;
   }
 }

@@ -110,6 +110,11 @@ export async function handleContentVideoUpload(request: Request): Promise<Respon
   if (!userId) return new Response(JSON.stringify({ ok: false, error: "Sign in with your Xora account before uploading." }), { status: 401, headers: { "Content-Type": "application/json" } });
   const creator = await queryRtdb(`commerce/creators/${userId}`) as { status?: string } | null;
   if (!creator || creator.status !== "active") return new Response(JSON.stringify({ ok: false, error: "Only active X Channel creators can upload course videos. Open X Channel first." }), { status: 403, headers: { "Content-Type": "application/json" } });
+  // Reject bodies beyond the existing 250MB file limit before multipart parsing.
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_UPLOAD_BYTES + 1024 * 1024) {
+    return new Response(JSON.stringify({ ok: false, error: "Video is larger than the 250MB upload limit." }), { status: 413, headers: { "Content-Type": "application/json" } });
+  }
   const form = await request.formData();
   const requestedCreatorId = String(form.get("creatorId") || "");
   if (requestedCreatorId && requestedCreatorId !== userId) return new Response(JSON.stringify({ ok: false, error: "The upload creator does not match your signed-in account." }), { status: 403, headers: { "Content-Type": "application/json" } });
