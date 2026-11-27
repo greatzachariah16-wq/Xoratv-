@@ -21,6 +21,7 @@ export interface ProviderEmbedPlayerProps {
   /** Clean, YouTube-controls-only presentation used by the Watch route. */
   cinemaMode?: boolean;
   externalPoster?: string | null;
+  onPlaybackError?: () => void;
 }
 
 export function ProviderEmbedPlayer({
@@ -36,6 +37,7 @@ export function ProviderEmbedPlayer({
   onClose,
   cinemaMode = false,
   externalPoster,
+  onPlaybackError,
 }: ProviderEmbedPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(Boolean(autoPlay));
@@ -87,6 +89,7 @@ export function ProviderEmbedPlayer({
           setEmbedError(Number(data.info));
           setEmbedLoading(false);
           setIsPlaying(false);
+          if (cinemaMode) onPlaybackError?.();
         }
       } catch {
         // ignore non-json messages from other extensions or iframes
@@ -94,7 +97,7 @@ export function ProviderEmbedPlayer({
     };
     window.addEventListener("message", handleEmbedMessage);
     return () => window.removeEventListener("message", handleEmbedMessage);
-  }, [isClient]);
+  }, [isClient, cinemaMode, onPlaybackError]);
 
   useEffect(() => {
     if (postId && isClient) {
@@ -412,6 +415,12 @@ export function ProviderEmbedPlayer({
           loading="eager"
           referrerPolicy="strict-origin-when-cross-origin"
           className={cn("h-full w-full border-0 pointer-events-auto", cinemaMode ? "rounded-none" : "rounded-2xl", cinemaMode && embedLoading && "opacity-0")}
+          onError={() => {
+            if (cinemaMode) {
+              setEmbedLoading(false);
+              onPlaybackError?.();
+            }
+          }}
           onLoad={() => {
             if (cinemaMode) setEmbedLoading(false);
             const target = iframeRef.current?.contentWindow;
