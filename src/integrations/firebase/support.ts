@@ -1,7 +1,6 @@
 import {
   push,
   ref,
-  set,
   get,
   update,
   onValue,
@@ -59,9 +58,11 @@ export async function createSupportTicket(
   if (isFirebaseConfigured()) {
     const ticketRef = push(ref(rtdb, "supportTickets"));
     const storedRecord = { ...record, rtdbKey: ticketRef.key };
-    await set(ticketRef, storedRecord);
-    // Each customer reads only their own ticket mirror.
-    await set(ref(rtdb, `userSupportTickets/${ticket.user_id}/${ticketRef.key}`), storedRecord);
+    // Write the admin record and private customer mirror atomically.
+    await update(ref(rtdb), {
+      [`supportTickets/${ticketRef.key}`]: storedRecord,
+      [`userSupportTickets/${ticket.user_id}/${ticketRef.key}`]: storedRecord,
+    });
   } else {
     const existing = JSON.parse(
       localStorage.getItem("xora_support_tickets") || "[]",
