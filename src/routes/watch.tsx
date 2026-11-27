@@ -47,8 +47,6 @@ async function fetchMovieStream(id: string): Promise<{
   provider?: string;
   providerName?: string;
   nativeHeaders?: Record<string, string>;
-  provider?: string;
-  providerName?: string;
 }> {
   try {
     const platform = isNativeVlcPlatform() ? "native" : "web";
@@ -72,8 +70,6 @@ async function fetchMovieStream(id: string): Promise<{
           provider: data.provider,
           providerName: data.providerName || data.provider,
           nativeHeaders: data.nativeHeaders,
-          provider: data.provider,
-          providerName: data.providerName || data.provider,
         };
       }
     }
