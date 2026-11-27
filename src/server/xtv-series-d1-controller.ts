@@ -6,7 +6,7 @@ interface D1Statement {
   first<T = Record<string, unknown>>(): Promise<T | null>;
   run(): Promise<unknown>;
 }
-interface D1Database { prepare(sql: string): D1Statement; }
+interface D1Database { prepare(sql: string): D1Statement; batch<T = unknown>(statements: D1Statement[]): Promise<T[]>; }
 interface XSeriesEnv { XORATV_XSERIES_DB?: D1Database; TMDB_API_KEY?: string; }
 interface TitleRow {
   id: number; tmdb_id: number; media_type: "movie" | "tv"; title: string;
@@ -90,6 +90,64 @@ function tmdbResult(item: Record<string, unknown>, mediaType: "movie" | "tv") {
   };
 }
 
+
+const MOVIE_GENRES: Record<number, string> = {28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",9648:"Mystery",10749:"Romance",878:"Sci-Fi",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"};
+const TV_GENRES: Record<number, string> = {10759:"Action",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",10762:"Kids",9648:"Mystery",10763:"News",10764:"Reality",10765:"Sci-Fi",10766:"Soap",10767:"Talk",10768:"War",37:"Western"};
+async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> {
+  const lists = await Promise.all([
+    ...(["movie", "tv"] as const).flatMap((type) => ["popular", "top_rated"].flatMap((kind) =>
+      [1, 2].map(async (page) => {
+        const data = await tmdb<{ results?: Record<string, unknown>[] }>(
+          type + "/" + kind + "?include_adult=false&language=en-US&page=" + page, apiKey);
+        return { type, results: data.results || [] };
+      }))),
+  ]);
+  const rows = new Map<string, { type: "movie" | "tv"; item: Record<string, unknown> }>();
+  for (const list of lists) for (const item of list.results) {
+    const id = Number(item.id);
+    if (!id || !text(item.title) && !text(item.name)) continue;
+    const key = list.type + ":" + id;
+    const current = rows.get(key);
+    if (!current || Number(item.vote_average || 0) > Number(current.item.vote_average || 0)) rows.set(key, { type: list.type, item });
+  }
+  const statements = Array.from(rows.values()).map(({ type, item }) => {
+    const date = text(item.release_date) || text(item.first_air_date) || null;
+    const title = text(item.title) || text(item.name);
+    const ids = Array.isArray(item.genre_ids) ? item.genre_ids.map(Number) : [];
+    const map = type === "movie" ? MOVIE_GENRES : TV_GENRES;
+    const genres = ids.map((id) => map[id]).filter(Boolean);
+    return db.prepare("INSERT OR IGNORE INTO xseries_titles (tmdb_id, media_type, title, original_title, overview, release_date, release_year, poster_path, backdrop_path, genres_json, vote_average, runtime_minutes, category, match_status, is_published, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'confirmed', 1, CURRENT_TIMESTAMP)")
+      .bind(Number(item.id), type, title, text(item.original_title) || text(item.original_name) || null,
+        text(item.overview) || null, date, date ? Number(date.slice(0, 4)) || null : null,
+        text(item.poster_path) || null, text(item.backdrop_path) || null, JSON.stringify(genres),
+        Number(item.vote_average) || null, genres[0] || "More");
+  });
+  if (statements.length) await db.batch(statements);
+  return statements.length;
+}
+function tmdbSearchItem(item: Record<string, unknown>) {
+  const type = text(item.media_type);
+  if (type !== "movie" && type !== "tv") return null;
+  const date = text(item.release_date) || text(item.first_air_date);
+  const ids = Array.isArray(item.genre_ids) ? item.genre_ids.map(Number) : [];
+  const map = type === "movie" ? MOVIE_GENRES : TV_GENRES;
+  const categories = ids.map((id) => map[id]).filter(Boolean);
+  return {
+    id: type + "_" + Number(item.id),
+    title: text(item.title) || text(item.name),
+    description: text(item.overview),
+    genre: categories[0] || "More",
+    year: date ? Number(date.slice(0, 4)) || undefined : undefined,
+    tag: type === "tv" ? "Series" : "Movie",
+    thumbnailUrl: text(item.poster_path) ? IMAGE_BASE + "w500" + text(item.poster_path) : undefined,
+    backdropUrl: text(item.backdrop_path) ? IMAGE_BASE + "w1280" + text(item.backdrop_path) : undefined,
+    provider: "tmdb-search",
+    createdAt: new Date().toISOString(),
+    categories,
+    playbackAvailable: false,
+  };
+}
+
 export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: Record<string, unknown>): Promise<Response | null> {
   const path = url.pathname;
   if (!path.startsWith("/api/xtv-series/")) return null;
@@ -106,6 +164,9 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
     }
 
     if (path === "/api/xtv-series/items" && request.method === "GET") {
+      const apiKey = text(env.TMDB_API_KEY);
+      const count = await db.prepare("SELECT COUNT(*) AS total FROM xseries_titles WHERE is_published = 1").first<{ total: number }>();
+      if (!count?.total && apiKey) await seedPopularTmdb(db, apiKey);
       const genre = text(url.searchParams.get("genre"));
       const query = text(url.searchParams.get("q"));
       const limit = Math.min(1000, Math.max(1, int(url.searchParams.get("limit"), 1000)));
@@ -125,6 +186,21 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         .bind(...values, limit, (page - 1) * limit).all<TitleRow>();
       return json({ ok: true, items: result.results.map(publicItem), page, limit, hasMore: result.results.length === limit }, 200, {
         "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
+      });
+    }
+
+
+    if (path === "/api/xtv-series/search" && request.method === "GET") {
+      const apiKey = text(env.TMDB_API_KEY);
+      if (!apiKey) return json({ ok: false, error: "TMDB search is not configured." }, 503);
+      const query = text(url.searchParams.get("q"));
+      const page = Math.max(1, Math.min(500, int(url.searchParams.get("page"), 1)));
+      if (query.length < 2) return json({ ok: true, results: [], page, totalPages: 0, totalResults: 0 });
+      const data = await tmdb<{ results?: Record<string, unknown>[]; page?: number; total_pages?: number; total_results?: number }>(
+        "search/multi?query=" + encodeURIComponent(query) + "&include_adult=false&language=en-US&page=" + page, apiKey);
+      const results = (data.results || []).map(tmdbSearchItem).filter((item) => item && item.title);
+      return json({ ok: true, results, page: data.page || page, totalPages: Math.min(500, data.total_pages || 0), totalResults: data.total_results || 0 }, 200, {
+        "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
       });
     }
 
