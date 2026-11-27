@@ -39,6 +39,17 @@ async function fetchAllMovies(): Promise<XTvSeriesItem[]> {
   }
 }
 
+type ProviderAttempt = { provider: string; status: string; reason?: string };
+
+class StreamResolutionError extends Error {
+  attempts: ProviderAttempt[];
+  constructor(message: string, attempts: ProviderAttempt[] = []) {
+    super(message);
+    this.name = "StreamResolutionError";
+    this.attempts = attempts;
+  }
+}
+
 async function fetchMovieStream(id: string): Promise<{
   streamUrl: string;
   sourceType: string;
@@ -47,6 +58,7 @@ async function fetchMovieStream(id: string): Promise<{
   provider?: string;
   providerName?: string;
   nativeHeaders?: Record<string, string>;
+  attempts?: ProviderAttempt[];
 }> {
   try {
     const platform = isNativeVlcPlatform() ? "native" : "web";
@@ -60,6 +72,8 @@ async function fetchMovieStream(id: string): Promise<{
         providerName?: string;
         nativeHeaders?: Record<string, string>;
         item?: { title?: string; videoUrl?: string };
+        attempts?: ProviderAttempt[];
+        error?: string;
       };
       if (data.ok && data.streamUrl) {
         return {
@@ -70,11 +84,17 @@ async function fetchMovieStream(id: string): Promise<{
           provider: data.provider,
           providerName: data.providerName || data.provider,
           nativeHeaders: data.nativeHeaders,
+          attempts: data.attempts || [],
         };
       }
+      const failure = await res.clone().json().catch(() => ({})) as { error?: string; attempts?: ProviderAttempt[] };
+      if (/^(movie|tv)_\\d+$/.test(id)) {
+        throw new StreamResolutionError(failure.error || "No provider returned a usable source.", failure.attempts || []);
+      }
     }
-  } catch {
-    // Continue to the existing catalogue resolver.
+  } catch (error) {
+    if (error instanceof StreamResolutionError) throw error;
+    // Continue to the existing catalogue resolver only for legacy catalogue IDs.
   }
 
   try {
@@ -186,6 +206,7 @@ function WatchPage() {
   });
 
   const activeStreamData = fallbackStream || streamData;
+  const streamAttempts = streamError instanceof StreamResolutionError ? streamError.attempts : (streamData?.attempts || []);
   const streamUrl =
     activeStreamData?.streamUrl ||
     activeMovie?.streamUrl ||
@@ -314,7 +335,18 @@ function WatchPage() {
             ) : streamError && !streamUrl ? (
               <div className="xora-watch-player-message">
                 <Film size={30} aria-hidden="true" />
-                <p>We couldn’t prepare this stream.</p>
+                <p>{streamError instanceof Error ? streamError.message : "We couldn’t prepare this stream."}</p>
+                {streamAttempts.length > 0 ? (
+                  <div className="xora-watch-provider-diagnostics" role="status">
+                    <strong>Provider checks (priority order)</strong>
+                    {streamAttempts.map((attempt, index) => (
+                      <div key={attempt.provider + index}>
+                        <span>{index + 1}. {attempt.provider === "cinepro" ? "CinePro" : attempt.provider}</span>
+                        <span>{attempt.status}{attempt.reason ? " · " + attempt.reason : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <button type="button" className="xora-watch-primary" onClick={() => void refetchStream()}>
                   Try again
                 </button>
