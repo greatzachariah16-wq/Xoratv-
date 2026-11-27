@@ -351,14 +351,14 @@ function WatchPage() {
           {activeStreamData?.provider ? (
             <div className="xora-watch-sourcebar">
               <span className="xora-watch-source-label">Source · {activeStreamData.providerName || activeStreamData.provider}</span>
-              {playbackFailed ? (
+              {(playbackFailed || activeStreamData.sourceType === "xseries") ? (
                 <button
                   type="button"
                   onClick={() => void tryAnotherSource()}
                   disabled={isTryingAnotherSource}
                   className="xora-watch-primary"
                 >
-                  {isTryingAnotherSource ? "Finding another provider…" : "Try again"}
+                  {isTryingAnotherSource ? "Finding another provider…" : playbackFailed ? "Try another source" : "Source not working? Try another"}
                 </button>
               ) : null}
               {fallbackMessage ? <span className="xora-watch-source-feedback" role="status">{fallbackMessage}</span> : null}
