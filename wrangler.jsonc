@@ -3,14 +3,21 @@
   "name": "app",
   "main": "src/server.cloudflare.ts",
   "compatibility_date": "2026-11-24",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": true,
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true
+  },
   "d1_databases": [
     {
       "binding": "XORATV_XSERIES_DB",
       "database_name": "xoratv-xseries",
       "database_id": "4ca3ba89-db23-489c-bd83-4dfef1a537db"
     }
-  ]
+  ],
+  "vars": {
+    "CINEPRO_API_BASE_URL": "https://cinepro-core-t8pk.onrender.com"
+  }
 }
