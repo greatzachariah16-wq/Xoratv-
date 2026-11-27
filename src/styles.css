@@ -3732,3 +3732,103 @@ html[data-theme="dark"] {
 @media (prefers-reduced-motion: reduce) {
   .xora-home-shell main > div { animation: none !important; }
 }
+
+
+/* XSeries cinema watch refresh: wide YouTube-style stage with a compact mobile edge-to-edge player. */
+.xora-watch-main {
+  width: min(100%, 1480px);
+  max-width: 1480px;
+  margin-inline: auto;
+  padding: 18px clamp(12px, 2.4vw, 36px) 48px;
+}
+.xora-watch-player-sticky {
+  position: relative;
+  width: 100%;
+  aspect-ratio: auto;
+  min-width: 0;
+}
+.xora-watch-player {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  border-radius: clamp(12px, 1.4vw, 22px);
+  background: #080706;
+  box-shadow: 0 24px 64px rgba(0,0,0,.34), 0 1px 0 rgba(255,255,255,.08) inset;
+}
+.xora-watch-player > * {
+  position: absolute;
+  inset: 0;
+}
+.xora-watch-sourcebar {
+  display: flex;
+  min-height: 54px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 16px;
+  background: linear-gradient(110deg, #211813, #17110e);
+  color: #fff;
+}
+.xora-watch-source-label {
+  margin-right: auto;
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+}
+.xora-watch-source-feedback {
+  flex-basis: 100%;
+  color: #E9AA91;
+  font-size: 12px;
+}
+.xora-watch-primary:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+.xora-watch-details {
+  margin-top: 16px;
+}
+@media (min-width: 1100px) {
+  .xora-watch-main {
+    padding-top: 24px;
+  }
+  .xora-watch-details {
+    padding: 22px 24px;
+    border-radius: 22px;
+  }
+  .xora-watch-title {
+    font-size: clamp(24px, 2vw, 32px);
+  }
+}
+@media (max-width: 640px) {
+  .xora-watch-main {
+    padding: 8px 0 32px;
+  }
+  .xora-watch-player {
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .xora-watch-sourcebar {
+    margin: 8px 12px 0;
+    border-radius: 14px;
+  }
+  .xora-watch-details,
+  .xora-watch-settings,
+  .xora-watch-up-next {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+  .xora-watch-details {
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 22px;
+  }
+  .xora-watch-rail {
+    margin-right: -14px;
+    margin-left: -14px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
