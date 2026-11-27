@@ -322,7 +322,7 @@ function XTvSeriesPage() {
                         <h3 title={featured.title}>{cleanTitle(featured.title) || "Untitled"}</h3>
                         <p>{channelName(featured)} <span aria-hidden="true">·</span> {primaryCategory(featured)}</p>
                         <div className="xsp-hero-actions">
-                          <span className="xsp-watch-button" aria-disabled="true"><Play size={17} fill="currentColor" /> Supplier coming soon</span>
+                          <Link to="/watch" search={{ id: featured.id }} className="xsp-watch-button"><Play size={17} fill="currentColor" /> Watch now</Link>
                         </div>
                       </div>
                     </div>
