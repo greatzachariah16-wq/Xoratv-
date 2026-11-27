@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronDown, CircleHelp, Clock3, Gift, LockKeyhole, Mail, MessageCircle, MessageSquare, MessageSquareText, PlayCircle, Search, Send, ShieldCheck, Sparkles, UserRound, Wrench, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronDown, CircleHelp, Clock3, Gift, LockKeyhole, Mail, MessageCircle, MessageSquare, MessageSquareText, PlayCircle, Search, Send, ShieldCheck, UserRound, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/xora/AppShell";
 import { Logo } from "@/components/xora/Logo";
@@ -60,7 +60,7 @@ function SupportHero() {
     <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 size-[330px] rounded-full border border-[#b87556]/20"/>
     <div aria-hidden="true" className="pointer-events-none absolute -right-5 -top-14 size-[225px] rounded-full border border-[#b87556]/20"/>
     <div className="relative max-w-2xl">
-      <span className="inline-flex items-center gap-2 rounded-full border border-[#b9795b]/25 bg-white/55 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.22em] text-[#98543b]"><Sparkles className="size-3.5"/>Xora Care</span>
+      <span className="inline-flex items-center gap-2 rounded-full border border-[#b9795b]/25 bg-white/55 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.22em] text-[#98543b]">Xora Care</span>
       <h1 className="mt-5 max-w-xl font-editorial text-[2.65rem] leading-[.98] tracking-[-.045em] text-[#3d2d25] sm:text-5xl lg:text-[3.6rem]">We're here to <em className="font-normal text-[#a65337]">help.</em></h1>
       <p className="mt-4 max-w-lg text-[13px] leading-6 text-[#78665a] sm:text-[15px] sm:leading-7">A better experience starts with being heard. Find a quick answer or tell our team what you need.</p>
       <div className="mt-6 flex flex-wrap gap-2">
