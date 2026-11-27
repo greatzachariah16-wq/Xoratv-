@@ -161,7 +161,7 @@ function XTvSeriesPage() {
     return rankAndShuffleXSeries(list);
   }, [allItems, genre]);
 
-  const featured = filtered[0];
+  const isSearchPending = isSearching || search.trim() !== debouncedSearch;\n  const hasMoreSearchResults = tmdbSearchData ? tmdbSearchData.page < tmdbSearchData.totalPages : isSearchPending;\n  const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
   const categoryRows = useMemo(() => {
     const grouped = new Map<string, XTvSeriesItem[]>();
@@ -223,17 +223,17 @@ function XTvSeriesPage() {
               <section className="xsp-grid-view" aria-label="TMDB search results">
                 <div className="xsp-section-heading">
                   <div><h2>Search results</h2><span className="xsp-muted">{tmdbSearchData?.totalResults ? tmdbSearchData.totalResults.toLocaleString() + " matching titles on TMDB" : "Searching the TMDB catalogue"}</span></div>
-                  {isSearching ? <span className="xsp-muted">Loading…</span> : null}
+                  {isSearchPending ? <span className="xsp-muted">Searching…</span> : null}
                 </div>
                 {searchError ? <p className="xsp-empty-state" role="alert">TMDB search is temporarily unavailable. Try again.</p> : null}
                 {searchResults.length ? (
                   <>
                     <div className="xsp-grid">{searchResults.map((item) => <SeriesCard key={item.id} item={item} grid />)}</div>
-                    {tmdbSearchData.page < tmdbSearchData.totalPages ? (
-                      <button type="button" className="xsp-load-more" disabled={isSearching} onClick={() => setSearchPage((value) => value + 1)}>Load more results</button>
+                    {hasMoreSearchResults ? (
+                      <button type="button" className="xsp-load-more" disabled={isSearchPending} onClick={() => setSearchPage((value) => value + 1)}>Load more results</button>
                     ) : <p className="xsp-muted">You’re all caught up with TMDB results.</p>}
                   </>
-                ) : !isSearching && !searchError ? <p className="xsp-empty-state">No matching movies or series found. Try another title.</p> : null}
+                ) : !isSearchPending && !searchError ? <p className="xsp-empty-state">No matching movies or series found. Try another title.</p> : null}
               </section>
             ) : activeGridCategory ? (
               <section className="xsp-grid-view" aria-label={activeGridCategory + " titles"}>
