@@ -207,7 +207,6 @@ function WatchPage() {
   });
 
   const activeStreamData = fallbackStream || streamData;
-  const streamAttempts = streamError instanceof StreamResolutionError ? streamError.attempts : (streamData?.attempts || []);
   const streamUrl =
     activeStreamData?.streamUrl ||
     activeMovie?.streamUrl ||
