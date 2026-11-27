@@ -58,7 +58,10 @@ export async function createSupportTicket(
 
   if (isFirebaseConfigured()) {
     const ticketRef = push(ref(rtdb, "supportTickets"));
-    await set(ticketRef, { ...record, rtdbKey: ticketRef.key });
+    const storedRecord = { ...record, rtdbKey: ticketRef.key };
+    await set(ticketRef, storedRecord);
+    // Each customer reads only their own ticket mirror.
+    await set(ref(rtdb, `userSupportTickets/${ticket.user_id}/${ticketRef.key}`), storedRecord);
   } else {
     const existing = JSON.parse(
       localStorage.getItem("xora_support_tickets") || "[]",
@@ -112,10 +115,28 @@ export function subscribeToUserSupportTickets(
   userId: string,
   callback: (tickets: SupportTicket[]) => void,
 ): () => void {
-  return subscribeToSupportTickets((allTickets) => {
-    const userTickets = allTickets.filter((t) => t.user_id === userId);
-    callback(userTickets);
-  });
+  if (isFirebaseConfigured()) {
+    const userTicketsRef = ref(rtdb, `userSupportTickets/${userId}`);
+    const unsub = onValue(userTicketsRef, (snapshot) => {
+      if (!snapshot.exists()) { callback([]); return; }
+      const raw = snapshot.val() as Record<string, SupportTicket>;
+      const list = Object.entries(raw).map(([key, value]) => ({
+        ...value,
+        rtdbKey: value.rtdbKey || key,
+        replies: value.replies ? (Array.isArray(value.replies) ? value.replies : Object.values(value.replies)) : [],
+      }));
+      list.sort((a, b) => b.created_at - a.created_at);
+      callback(list);
+    });
+    return unsub;
+  }
+  const readLocal = () => {
+    const local = JSON.parse(localStorage.getItem("xora_support_tickets") || "[]") as SupportTicket[];
+    callback(local.filter((ticket) => ticket.user_id === userId));
+  };
+  readLocal();
+  const interval = setInterval(readLocal, 2000);
+  return () => clearInterval(interval);
 }
 
 export async function addSupportTicketReply(
@@ -151,11 +172,11 @@ export async function addSupportTicketReply(
     }
 
     if (keyToUpdate) {
-      await update(ref(rtdb, `supportTickets/${keyToUpdate}`), {
-        replies: updatedReplies,
-        status: newStatus,
-        updated_at: now,
-      });
+      const patch = { replies: updatedReplies, status: newStatus, updated_at: now };
+      await update(ref(rtdb, `supportTickets/${keyToUpdate}`), patch);
+      if (ticket.user_id) {
+        await update(ref(rtdb, `userSupportTickets/${ticket.user_id}/${keyToUpdate}`), patch);
+      }
     }
 
     if (ticket.user_id && !ticket.user_id.startsWith("guest_")) {
