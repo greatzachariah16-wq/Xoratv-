@@ -60,41 +60,42 @@ async function fetchMovieStream(id: string): Promise<{
   nativeHeaders?: Record<string, string>;
   attempts?: ProviderAttempt[];
 }> {
+  const isXSeriesId = /^(movie|tv)_\d+$/.test(id);
   try {
     const platform = isNativeVlcPlatform() ? "native" : "web";
-    const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(id) + "&platform=" + platform);
-    if (res.ok) {
-      const data = (await res.json()) as {
-        ok: boolean;
-        streamUrl?: string;
-        sourceType?: string;
-        provider?: string;
-        providerName?: string;
-        nativeHeaders?: Record<string, string>;
-        item?: { title?: string; videoUrl?: string };
-        attempts?: ProviderAttempt[];
-        error?: string;
+    const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(id) + "&platform=" + platform, { cache: "no-store" });
+    const data = await res.json().catch(() => ({})) as {
+      ok?: boolean;
+      streamUrl?: string;
+      sourceType?: string;
+      provider?: string;
+      providerName?: string;
+      nativeHeaders?: Record<string, string>;
+      item?: { title?: string; videoUrl?: string };
+      attempts?: ProviderAttempt[];
+      error?: string;
+    };
+    if (res.ok && data.ok && data.streamUrl) {
+      return {
+        streamUrl: data.streamUrl,
+        sourceType: data.sourceType || "hls",
+        title: data.item?.title || "Cinema Stream",
+        originalUrl: data.item?.videoUrl || data.streamUrl,
+        provider: data.provider,
+        providerName: data.providerName || data.provider,
+        nativeHeaders: data.nativeHeaders,
+        attempts: data.attempts || [],
       };
-      if (data.ok && data.streamUrl) {
-        return {
-          streamUrl: data.streamUrl,
-          sourceType: data.sourceType || "hls",
-          title: data.item?.title || "Cinema Stream",
-          originalUrl: data.item?.videoUrl || data.streamUrl,
-          provider: data.provider,
-          providerName: data.providerName || data.provider,
-          nativeHeaders: data.nativeHeaders,
-          attempts: data.attempts || [],
-        };
-      }
-      const failure = await res.clone().json().catch(() => ({})) as { error?: string; attempts?: ProviderAttempt[] };
-      if (/^(movie|tv)_\\d+$/.test(id)) {
-        throw new StreamResolutionError(failure.error || "No provider returned a usable source.", failure.attempts || []);
-      }
+    }
+    if (isXSeriesId) {
+      throw new StreamResolutionError(data.error || "No provider returned a usable source.", data.attempts || []);
     }
   } catch (error) {
     if (error instanceof StreamResolutionError) throw error;
-    // Continue to the existing catalogue resolver only for legacy catalogue IDs.
+    if (isXSeriesId) {
+      throw new StreamResolutionError("Could not reach the XSeries playback resolver.");
+    }
+    // Legacy catalogue IDs may continue through the older playback routes.
   }
 
   try {
