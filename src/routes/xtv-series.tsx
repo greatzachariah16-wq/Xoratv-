@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
@@ -98,7 +98,7 @@ function SeriesCard({ item, grid = false }: { item: XTvSeriesItem; grid?: boolea
   const minutes = item.durationSeconds ? Math.max(1, Math.round(item.durationSeconds / 60)) : null;
   return (
     <article className={cn("xsp-card", grid && "xsp-card-grid")}>
-      <div className="xsp-card-link" aria-label={item.title} title={item.title}>
+      <Link to="/watch" search={{ id: item.id }} className="xsp-card-link" aria-label={"Open " + title} title={title}>
         <div className="xsp-card-image">
           <SeriesThumbnail item={item} />
           {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
@@ -107,7 +107,7 @@ function SeriesCard({ item, grid = false }: { item: XTvSeriesItem; grid?: boolea
           <h3 className="xsp-card-title">{title}</h3>
           <p className="xsp-card-channel">{channelName(item)}</p>
         </div>
-      </div>
+      </Link>
     </article>
   );
 }
@@ -228,7 +228,6 @@ function XTvSeriesPage() {
               <div className="xsp-search-overlay" role="search">
                 <Search size={18} aria-hidden="true" />
                 <input ref={searchRef} value={search} onChange={(event) => { setSearch(event.target.value); setSearchPage(1); setActiveGridCategory(null); }} placeholder="Search movies by title" aria-label="Search movies" />
-                {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={17} /></button> : null}
                 <button type="button" onClick={() => setSearchOpen(false)} aria-label="Close search"><X size={18} /></button>
               </div>
             ) : null}
