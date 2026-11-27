@@ -102,7 +102,7 @@ import type { XTvSeriesItem } from "./integrations/firebase/rtdb";
 
 type TmdbInfo = { id:number; mediaType:"movie"|"tv"; title:string; posterPath:string|null; backdropPath:string|null; overview:string; rating:number; date:string };
 const tmdbCache = new Map<string,{expires:number;value:TmdbInfo|null}>();
-function normalizeTmdbTitle(value:string) { return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+function normalizeTmdbTitle(value:string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,""); }
 
 async function lookupTmdb(title:string, year?:number):Promise<TmdbInfo|null> {
   const clean=title.trim();
