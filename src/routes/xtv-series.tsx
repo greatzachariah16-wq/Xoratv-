@@ -98,16 +98,30 @@ function SeriesCard({ item, grid = false, onSelect }: { item: XTvSeriesItem; gri
   const minutes = item.durationSeconds ? Math.max(1, Math.round(item.durationSeconds / 60)) : null;
   return (
     <article className={cn("xsp-card", grid && "xsp-card-grid")}>
-      <Link to="/watch" search={{ id: item.id }} onClick={(event) => { if (onSelect) { event.preventDefault(); onSelect(item); } }} className="xsp-card-link" aria-label={"Open " + title} title={title}>
-        <div className="xsp-card-image">
-          <SeriesThumbnail item={item} />
-          {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
-        </div>
-        <div className="xsp-card-copy">
-          <h3 className="xsp-card-title">{title}</h3>
-          <p className="xsp-card-channel">{channelName(item)}</p>
-        </div>
-      </Link>
+      {onSelect ? (
+        <button type="button" className="xsp-card-link" onClick={() => onSelect(item)} aria-label={"Play " + title} title={"Play " + title}>
+          <div className="xsp-card-image">
+            <SeriesThumbnail item={item} />
+            <span className="xsp-card-play-overlay"><Play size={18} fill="currentColor" /></span>
+            {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
+          </div>
+          <div className="xsp-card-copy">
+            <h3 className="xsp-card-title">{title}</h3>
+            <p className="xsp-card-channel">{channelName(item)}</p>
+          </div>
+        </button>
+      ) : (
+        <Link to="/watch" search={{ id: item.id }} className="xsp-card-link" aria-label={"Open " + title} title={title}>
+          <div className="xsp-card-image">
+            <SeriesThumbnail item={item} />
+            {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
+          </div>
+          <div className="xsp-card-copy">
+            <h3 className="xsp-card-title">{title}</h3>
+            <p className="xsp-card-channel">{channelName(item)}</p>
+          </div>
+        </Link>
+      )}
     </article>
   );
 }
