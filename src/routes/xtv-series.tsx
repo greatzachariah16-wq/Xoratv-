@@ -21,13 +21,24 @@ export const Route = createFileRoute("/xtv-series")({
 
 const CATEGORY_ORDER = ["Action", "Drama", "Comedy", "Thriller", "Crime", "Adventure", "Romance", "Horror", "Sci-Fi", "Fantasy", "Mystery", "Documentary", "War", "Western", "More"];
 
-async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
+interface XSeriesCatalogueResponse {
+  items: XTvSeriesItem[];
+  catalogTotal: number;
+  seedComplete: boolean;
+  seedNextPage: number;
+}
+async function fetchXTvSeries(genre: string): Promise<XSeriesCatalogueResponse> {
   const url = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
   const res = await fetch(url);
   if (!res.ok) throw new Error("The X Series catalogue could not be reached.");
-  const json = (await res.json()) as { ok: boolean; items?: XTvSeriesItem[] };
+  const json = (await res.json()) as { ok: boolean; items?: XTvSeriesItem[]; catalogTotal?: number; seedComplete?: boolean; seedNextPage?: number };
   if (json.ok === false) throw new Error("The X Series catalogue returned an error.");
-  return Array.isArray(json.items) ? json.items : [];
+  return {
+    items: Array.isArray(json.items) ? json.items : [],
+    catalogTotal: json.catalogTotal || 0,
+    seedComplete: json.seedComplete === true,
+    seedNextPage: json.seedNextPage || 1,
+  };
 }
 
 interface TmdbSearchResponse {
@@ -113,7 +124,16 @@ function XTvSeriesPage() {
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const { data: rawAllItems = [], isFetching, error: seriesError, refetch: refetchSeries } = useQuery({ queryKey: ["xtv-series-all"], queryFn: () => fetchXTvSeries("All"), staleTime: 30_000 });
+  const { data: catalogueData, isFetching, error: seriesError, refetch: refetchSeries } = useQuery({
+    queryKey: ["xtv-series-all"],
+    queryFn: () => fetchXTvSeries("All"),
+    staleTime: 2_000,
+    refetchInterval: (query) => {
+      const data = query.state.data as XSeriesCatalogueResponse | undefined;
+      return data && (data.seedComplete || data.catalogTotal >= 1000) ? false : 3_500;
+    },
+  });
+  const rawAllItems = catalogueData?.items || [];
 
   const { data: tmdbSearchData, isFetching: isSearching, error: searchError } = useQuery({
     queryKey: ["xtv-tmdb-search", debouncedSearch, searchPage],
@@ -213,6 +233,11 @@ function XTvSeriesPage() {
               </div>
             ) : null}
 
+            {catalogueData && !catalogueData.seedComplete && catalogueData.catalogTotal < 1000 ? (
+              <p className="xsp-muted" role="status">
+                Building your movie library automatically · {catalogueData.catalogTotal.toLocaleString()} movies imported so far.
+              </p>
+            ) : null}
             <nav className="xsp-category-rail" aria-label="Filter by category">
               {categories.map((category) => (
                 <button key={category} type="button" aria-pressed={genre === category} className={cn("xsp-category-chip", genre === category && "is-active")} onClick={() => { setGenre(category); setActiveGridCategory(null); }}>

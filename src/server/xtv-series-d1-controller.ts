@@ -94,17 +94,15 @@ function tmdbResult(item: Record<string, unknown>, mediaType: "movie" | "tv") {
 
 const MOVIE_GENRES: Record<number, string> = {28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",9648:"Mystery",10749:"Romance",878:"Sci-Fi",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"};
 const TV_GENRES: Record<number, string> = {10759:"Action",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",10762:"Kids",9648:"Mystery",10763:"News",10764:"Reality",10765:"Sci-Fi",10766:"Soap",10767:"Talk",10768:"War",37:"Western"};
-async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> {
-  // Prioritise a first import of 1,000 live-action movie candidates.
-  // This is only the initial seed target; it does not cap future catalogue growth.
-  const pages = Array.from({ length: 50 }, (_, index) => index + 1);
+async function seedPopularTmdb(db: D1Database, apiKey: string, startPage: number): Promise<{ inserted: number; nextPage: number; complete: boolean }> {
+  // Import in small resumable batches so a Worker request never tries to fetch all 1,000+ titles at once.
+  const firstPage = Math.max(1, Math.min(500, startPage));
+  const pages = Array.from({ length: Math.min(5, 501 - firstPage) }, (_, index) => firstPage + index);
   const requests: Record<string, unknown>[] = [];
-  for (let offset = 0; offset < pages.length; offset += 5) {
-    const batch = await Promise.all(pages.slice(offset, offset + 5).map((page) =>
-      tmdb<{ results?: Record<string, unknown>[] }>(
-        "discover/movie?include_adult=false&language=en-US&sort_by=popularity.desc&without_genres=16%2C10770&page=" + page, apiKey)));
-    for (const data of batch) requests.push(...(data.results || []));
-  }
+  const batch = await Promise.all(pages.map((page) =>
+    tmdb<{ results?: Record<string, unknown>[] }>(
+      "discover/movie?include_adult=false&language=en-US&sort_by=popularity.desc&without_genres=16%2C10770&page=" + page, apiKey)));
+  for (const data of batch) requests.push(...(data.results || []));
   const rows = new Map<string, Record<string, unknown>>();
   for (const item of requests) {
     const id = Number(item.id);
@@ -123,11 +121,18 @@ async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> 
         text(item.poster_path) || null, text(item.backdrop_path) || null, JSON.stringify(genres),
         Number(item.vote_average) || null, genres[0] || "More");
   });
+  let inserted = 0;
   for (let offset = 0; offset < statements.length; offset += 80) {
-    await db.batch(statements.slice(offset, offset + 80));
+    const results = await db.batch(statements.slice(offset, offset + 80));
+    inserted += results.reduce((sum, result) => {
+      const meta = (result as { meta?: { changes?: number } })?.meta;
+      return sum + (meta?.changes || 0);
+    }, 0);
   }
-  return statements.length;
+  const nextPage = firstPage + pages.length;
+  return { inserted, nextPage, complete: nextPage > 500 };
 }
+
 function tmdbSearchItem(item: Record<string, unknown>) {
   const type = text(item.media_type);
   if (type !== "movie") return null;
@@ -171,8 +176,21 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
       const apiKey = text(env.TMDB_API_KEY);
       // X-Series is a live-action movie catalogue, not a TV or animation feed.
       await db.prepare("DELETE FROM xseries_titles WHERE media_type != 'movie' OR EXISTS (SELECT 1 FROM json_each(xseries_titles.genres_json) WHERE LOWER(value) = 'animation')").run();
-      const count = await db.prepare("SELECT COUNT(*) AS total FROM xseries_titles WHERE is_published = 1 AND media_type = 'movie'").first<{ total: number }>();
-      if ((count?.total || 0) < 1000 && apiKey) await seedPopularTmdb(db, apiKey);
+      await db.prepare("CREATE TABLE IF NOT EXISTS xseries_import_state (state_key TEXT PRIMARY KEY, state_value TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)").run();
+      let count = await db.prepare("SELECT COUNT(*) AS total FROM xseries_titles WHERE is_published = 1 AND media_type = 'movie'").first<{ total: number }>();
+      let importState = await db.prepare("SELECT state_value FROM xseries_import_state WHERE state_key = 'tmdb_movie_seed_page'").first<{ state_value: string }>();
+      let nextPage = Math.max(1, int(importState?.state_value, 1));
+      let seedComplete = nextPage > 500 || (count?.total || 0) >= 1000;
+      let importedThisRequest = 0;
+      if (!seedComplete && apiKey) {
+        const seeded = await seedPopularTmdb(db, apiKey, nextPage);
+        importedThisRequest = seeded.inserted;
+        nextPage = seeded.nextPage;
+        count = await db.prepare("SELECT COUNT(*) AS total FROM xseries_titles WHERE is_published = 1 AND media_type = 'movie'").first<{ total: number }>();
+        seedComplete = seeded.complete || (count?.total || 0) >= 1000;
+        await db.prepare("INSERT INTO xseries_import_state (state_key, state_value, updated_at) VALUES ('tmdb_movie_seed_page', ?, CURRENT_TIMESTAMP) ON CONFLICT(state_key) DO UPDATE SET state_value = excluded.state_value, updated_at = CURRENT_TIMESTAMP")
+          .bind(String(seedComplete ? 501 : nextPage)).run();
+      }
       const genre = text(url.searchParams.get("genre"));
       const query = text(url.searchParams.get("q"));
       const limit = Math.min(1000, Math.max(1, int(url.searchParams.get("limit"), 1000)));
@@ -190,7 +208,8 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
       const result = await db.prepare("SELECT * FROM xseries_titles WHERE " + where.join(" AND ") +
         " ORDER BY COALESCE(vote_average, 0) DESC, COALESCE(release_date, created_at) DESC, title COLLATE NOCASE ASC LIMIT ? OFFSET ?")
         .bind(...values, limit, (page - 1) * limit).all<TitleRow>();
-      return json({ ok: true, items: result.results.map(publicItem), page, limit, hasMore: result.results.length === limit }, 200, {
+      return json({ ok: true, items: result.results.map(publicItem), page, limit, hasMore: result.results.length === limit,
+        catalogTotal: count?.total || 0, importedThisRequest, seedComplete, seedNextPage: nextPage }, 200, {
         "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
       });
     }
