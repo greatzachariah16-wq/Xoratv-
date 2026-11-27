@@ -249,7 +249,7 @@ function WatchPage() {
       setFailedProviders(excludedProviders);
       setFallbackStream({ streamUrl: data.streamUrl, sourceType: data.sourceType || "xseries", title: data.item?.title || title, originalUrl: data.item?.videoUrl || data.streamUrl, provider: data.provider, providerName: data.providerName || data.provider, nativeHeaders: data.nativeHeaders });
       setPlaybackFailed(false);
-      setFallbackMessage("Switched to " + (data.providerName || data.provider) + ".");
+      setFallbackMessage("We found another way to play this title.");
     } catch {
       setFallbackMessage("Could not reach another source. Please try again.");
     } finally {
@@ -337,17 +337,6 @@ function WatchPage() {
               <div className="xora-watch-player-message">
                 <Film size={30} aria-hidden="true" />
                 <p>{streamError instanceof Error ? streamError.message : "We couldn’t prepare this stream."}</p>
-                {streamAttempts.length > 0 ? (
-                  <div className="xora-watch-provider-diagnostics" role="status">
-                    <strong>Provider checks (priority order)</strong>
-                    {streamAttempts.map((attempt, index) => (
-                      <div key={attempt.provider + index}>
-                        <span>{index + 1}. {attempt.provider === "cinepro" ? "CinePro" : attempt.provider}</span>
-                        <span>{attempt.status}{attempt.reason ? " · " + attempt.reason : ""}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
                 <button type="button" className="xora-watch-primary" onClick={() => void refetchStream()}>
                   Try again
                 </button>
@@ -381,35 +370,16 @@ function WatchPage() {
               </div>
             )}
           </div>
-          {activeStreamData?.provider ? (
+          {activeStreamData?.provider && playbackFailed ? (
             <div className="xora-watch-sourcebar">
-              <span className="xora-watch-source-label">Source · {activeStreamData.providerName || activeStreamData.provider}</span>
-              {streamAttempts.length > 0 ? (
-                <div className="xora-watch-provider-diagnostics" aria-label="Provider resolution order">
-                  <strong>Provider checks (priority order)</strong>
-                  {streamAttempts.map((attempt, index) => (
-                    <div key={attempt.provider + index}>
-                      <span>{index + 1}. {attempt.provider === "cinepro" ? "CinePro" : attempt.provider}</span>
-                      <span>{attempt.status}{attempt.reason ? " · " + attempt.reason : ""}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {(playbackFailed || activeStreamData.sourceType === "xseries") ? (
-                <button
-                  type="button"
-                  onClick={() => void tryAnotherSource()}
-                  disabled={isTryingAnotherSource}
-                  className="xora-watch-primary"
-                >
-                  {isTryingAnotherSource ? "Finding another provider…" : playbackFailed ? "Try another source" : "Source not working? Try another"}
-                </button>
-              ) : null}
+              <button type="button" onClick={() => void tryAnotherSource()} disabled={isTryingAnotherSource} className="xora-watch-primary">
+                {isTryingAnotherSource ? "Finding another way to play…" : "Try again"}
+              </button>
               {fallbackMessage ? <span className="xora-watch-source-feedback" role="status">{fallbackMessage}</span> : null}
             </div>
           ) : playbackFailed ? (
             <div className="xora-watch-sourcebar">
-              <span className="xora-watch-source-label">Playback could not start.</span>
+              <span className="xora-watch-source-label">Playback couldn't start.</span>
               <button type="button" onClick={() => void refetchStream()} className="xora-watch-primary">Try again</button>
             </div>
           ) : null}
@@ -480,15 +450,15 @@ function WatchPage() {
           >
             <span>
               <span className="xora-watch-settings-title">Playback settings</span>
-              <span className="xora-watch-settings-subtitle">Audio &amp; stream information</span>
+              <span className="xora-watch-settings-subtitle">Audio, captions &amp; playback preferences</span>
             </span>
             {settingsOpen ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
           </button>
           {settingsOpen ? (
             <div id="xora-watch-settings-content" className="xora-watch-settings-content">
-              {activeStreamData?.providerName ? (
-                <div><span>Stream provider</span><strong>{activeStreamData.providerName}</strong></div>
-              ) : null}
+              <p>Playback preferences will appear here when available for this title.</p>
+            </div>
+          ) : null}
               {activeStreamData?.sourceType ? (
                 <div><span>Playback type</span><strong>{activeStreamData.sourceType === "xseries" ? "Embedded player" : activeStreamData.sourceType.toUpperCase()}</strong></div>
               ) : null}
