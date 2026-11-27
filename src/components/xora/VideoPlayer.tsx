@@ -79,6 +79,7 @@ type Props = {
   favorite?: boolean;
   onFavorite?: () => void;
   onShare?: () => void;
+  onPlaybackError?: () => void;
 };
 
 function NativeVideoPlayerCore({
@@ -1190,6 +1191,7 @@ export function VideoPlayer(props: Props) {
       onClose={props.onClose}
       cinemaMode={props.cinemaMode}
       externalPoster={props.externalPoster}
+      onPlaybackError={props.onPlaybackError}
     />
   ) : (
     <NativeVideoPlayer {...props} />
