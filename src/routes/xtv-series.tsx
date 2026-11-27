@@ -12,14 +12,14 @@ import "./xseries-premium.css";
 export const Route = createFileRoute("/xtv-series")({
   head: () => ({
     meta: [
-      { title: "X-Series — Movies & Series | Xora" },
-      { name: "description", content: "Curated movies and series published directly from the sovereign Xora Studio." },
+      { title: "X-Series — Movies | Xora" },
+      { name: "description", content: "A curated collection of popular live-action movies." },
     ],
   }),
   component: XTvSeriesPage,
 });
 
-const CATEGORY_ORDER = ["Drama", "Action", "Comedy", "Romance", "Thriller", "Horror", "Sci-Fi", "Crime", "Adventure", "Fantasy", "Documentary", "Animation", "Kids", "More"];
+const CATEGORY_ORDER = ["Action", "Drama", "Comedy", "Thriller", "Crime", "Adventure", "Romance", "Horror", "Sci-Fi", "Fantasy", "Mystery", "Documentary", "War", "Western", "More"];
 
 async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
   const url = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
@@ -199,7 +199,7 @@ function XTvSeriesPage() {
             <header className="xsp-page-header">
               <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA</p><h1>X-Series</h1></div>
               <div className="xsp-section-switch" role="group" aria-label="X Series sections">
-                <button type="button" className="is-active" aria-pressed="true" onClick={() => setActiveSection("library")}>Movies &amp; Series</button>
+                <button type="button" className="is-active" aria-pressed="true" onClick={() => setActiveSection("library")}>Movies</button>
                 <button type="button" aria-pressed="false" onClick={() => setActiveSection("cinema")}>Cinema Live TV</button>
               </div>
             </header>
@@ -207,7 +207,7 @@ function XTvSeriesPage() {
             {searchOpen ? (
               <div className="xsp-search-overlay" role="search">
                 <Search size={18} aria-hidden="true" />
-                <input ref={searchRef} value={search} onChange={(event) => { setSearch(event.target.value); setSearchPage(1); setActiveGridCategory(null); }} placeholder="Find a story, genre or title" aria-label="Search series" />
+                <input ref={searchRef} value={search} onChange={(event) => { setSearch(event.target.value); setSearchPage(1); setActiveGridCategory(null); }} placeholder="Search movies by title" aria-label="Search movies" />
                 {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={17} /></button> : null}
                 <button type="button" onClick={() => setSearchOpen(false)} aria-label="Close search"><X size={18} /></button>
               </div>
@@ -222,7 +222,7 @@ function XTvSeriesPage() {
             </nav>
 
             {search.trim().length >= 2 ? (
-              <section className="xsp-grid-view" aria-label="TMDB search results">
+              <section className="xsp-grid-view" aria-label="TMDB movie search results">
                 <div className="xsp-section-heading">
                   <div><h2>Search results</h2><span className="xsp-muted">{tmdbSearchData?.totalResults ? tmdbSearchData.totalResults.toLocaleString() + " matching titles on TMDB" : "Searching the TMDB catalogue"}</span></div>
                   {isSearchPending ? <span className="xsp-muted">Searching…</span> : null}
@@ -235,7 +235,7 @@ function XTvSeriesPage() {
                       <button type="button" className="xsp-load-more" disabled={isSearchPending} onClick={() => setSearchPage((value) => value + 1)}>Load more results</button>
                     ) : <p className="xsp-muted">You’re all caught up with TMDB results.</p>}
                   </>
-                ) : !isSearchPending && !searchError ? <p className="xsp-empty-state">No matching movies or series found. Try another title.</p> : null}
+                ) : !isSearchPending && !searchError ? <p className="xsp-empty-state">No matching movies found. Try another title.</p> : null}
               </section>
             ) : activeGridCategory ? (
               <section className="xsp-grid-view" aria-label={activeGridCategory + " titles"}>
@@ -293,7 +293,7 @@ function XTvSeriesPage() {
                   </section>
                 ) : !featured ? (
                   <section className="xsp-empty-state">
-                    <Film size={22} /><h2>No titles found</h2><p>Try another category or search.</p>
+                    <Film size={22} /><h2>No movies found</h2><p>Try another category or search.</p>
                     <button type="button" onClick={() => { setGenre("All"); setSearch(""); setDebouncedSearch(""); setSearchResults([]); setSearchPage(1); setSearchOpen(false); }}>Show all titles</button>
                   </section>
                 ) : null}
