@@ -162,6 +162,7 @@ function WatchPage() {
   const [failedProviders, setFailedProviders] = useState<string[]>([]);
   const [isTryingAnotherSource, setIsTryingAnotherSource] = useState(false);
   const [fallbackMessage, setFallbackMessage] = useState("");
+  const [playbackFailed, setPlaybackFailed] = useState(false);
 
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
     queryKey: ["xtv-series-items-all"],
@@ -229,6 +230,7 @@ function WatchPage() {
       }
       setFailedProviders(excludedProviders);
       setFallbackStream({ streamUrl: data.streamUrl, sourceType: data.sourceType || "xseries", title: data.item?.title || title, originalUrl: data.item?.videoUrl || data.streamUrl, provider: data.provider, providerName: data.providerName || data.provider, nativeHeaders: data.nativeHeaders });
+      setPlaybackFailed(false);
       setFallbackMessage("Switched to " + (data.providerName || data.provider) + ".");
     } catch {
       setFallbackMessage("Could not reach another source. Please try again.");
@@ -246,6 +248,7 @@ function WatchPage() {
     setFallbackStream(null);
     setFailedProviders([]);
     setFallbackMessage("");
+    setPlaybackFailed(false);
   }, [activeId]);
 
   useEffect(() => {
@@ -336,7 +339,10 @@ function WatchPage() {
                 authorId="xora-cinema"
                 genre={activeMovie?.genre}
                 source={activeStreamData?.sourceType || activeMovie?.provider}
-                onPlaybackError={() => { void tryAnotherSource(); }}
+                onPlaybackError={() => {
+                  setPlaybackFailed(true);
+                  setFallbackMessage("This source couldn't start the video. Try another provider.");
+                }}
                 cinemaMode
               />
             ) : (
@@ -347,12 +353,24 @@ function WatchPage() {
             )}
           </div>
           {activeStreamData?.provider ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#1E1713] px-4 py-3 text-white">
-              <span className="text-xs text-white/65">Source: {activeStreamData.providerName || activeStreamData.provider}</span>
-              <button type="button" onClick={() => void tryAnotherSource()} disabled={isTryingAnotherSource} className="rounded-full bg-[#C0583A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-60">
-                {isTryingAnotherSource ? "Finding source…" : "Try another source"}
-              </button>
-              {fallbackMessage ? <span className="w-full text-xs text-white/70" role="status">{fallbackMessage}</span> : null}
+            <div className="xora-watch-sourcebar">
+              <span className="xora-watch-source-label">Source · {activeStreamData.providerName || activeStreamData.provider}</span>
+              {playbackFailed ? (
+                <button
+                  type="button"
+                  onClick={() => void tryAnotherSource()}
+                  disabled={isTryingAnotherSource}
+                  className="xora-watch-primary"
+                >
+                  {isTryingAnotherSource ? "Finding another provider…" : "Try again"}
+                </button>
+              ) : null}
+              {fallbackMessage ? <span className="xora-watch-source-feedback" role="status">{fallbackMessage}</span> : null}
+            </div>
+          ) : playbackFailed ? (
+            <div className="xora-watch-sourcebar">
+              <span className="xora-watch-source-label">Playback could not start.</span>
+              <button type="button" onClick={() => void refetchStream()} className="xora-watch-primary">Try again</button>
             </div>
           ) : null}
         </div>
