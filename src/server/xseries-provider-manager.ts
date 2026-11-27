@@ -231,9 +231,11 @@ export async function resolveXSeriesWithFallback<Env extends ProviderEnv>(
   lookup: XSeriesLookup,
   env: Env,
   adapters: readonly XSeriesProviderAdapter<Env>[] = XSERIES_PROVIDER_ADAPTERS as readonly XSeriesProviderAdapter<Env>[],
+  excludedProviders: readonly XSeriesProviderId[] = [],
 ): Promise<XSeriesResolution> {
+  const excluded = new Set(excludedProviders);
   const ordered = [...adapters]
-    .filter((adapter) => adapter.isEnabled(env))
+    .filter((adapter) => adapter.isEnabled(env) && !excluded.has(adapter.id))
     .sort((a, b) => a.priority - b.priority);
   const attempts: XSeriesProviderAttempt[] = [];
 
