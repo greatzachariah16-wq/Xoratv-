@@ -384,6 +384,17 @@ function WatchPage() {
           {activeStreamData?.provider ? (
             <div className="xora-watch-sourcebar">
               <span className="xora-watch-source-label">Source · {activeStreamData.providerName || activeStreamData.provider}</span>
+              {streamAttempts.length > 0 ? (
+                <div className="xora-watch-provider-diagnostics" aria-label="Provider resolution order">
+                  <strong>Provider checks (priority order)</strong>
+                  {streamAttempts.map((attempt, index) => (
+                    <div key={attempt.provider + index}>
+                      <span>{index + 1}. {attempt.provider === "cinepro" ? "CinePro" : attempt.provider}</span>
+                      <span>{attempt.status}{attempt.reason ? " · " + attempt.reason : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {(playbackFailed || activeStreamData.sourceType === "xseries") ? (
                 <button
                   type="button"
