@@ -108,7 +108,7 @@ function XTvSeriesPage() {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchPage, setSearchPage] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");\n  const [searchResults, setSearchResults] = useState<XTvSeriesItem[]>([]);
   const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
   const [activeGridCategory, setActiveGridCategory] = useState<string | null>(null);
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
@@ -127,6 +127,13 @@ function XTvSeriesPage() {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 280);
     return () => window.clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    if (!tmdbSearchData) return;
+    setSearchResults((current) => searchPage === 1
+      ? tmdbSearchData.results
+      : [...current, ...tmdbSearchData.results.filter((item) => !current.some((existing) => existing.id === item.id))]);
+  }, [tmdbSearchData, searchPage]);
 
   const allItems = useMemo(() => {
     const seen = new Set<string>();
@@ -219,9 +226,9 @@ function XTvSeriesPage() {
                   {isSearching ? <span className="xsp-muted">Loading…</span> : null}
                 </div>
                 {searchError ? <p className="xsp-empty-state" role="alert">TMDB search is temporarily unavailable. Try again.</p> : null}
-                {tmdbSearchData?.results.length ? (
+                {searchResults.length ? (
                   <>
-                    <div className="xsp-grid">{tmdbSearchData.results.map((item) => <SeriesCard key={item.id} item={item} grid />)}</div>
+                    <div className="xsp-grid">{searchResults.map((item) => <SeriesCard key={item.id} item={item} grid />)}</div>
                     {tmdbSearchData.page < tmdbSearchData.totalPages ? (
                       <button type="button" className="xsp-load-more" disabled={isSearching} onClick={() => setSearchPage((value) => value + 1)}>Load more results</button>
                     ) : <p className="xsp-muted">You’re all caught up with TMDB results.</p>}
@@ -285,7 +292,7 @@ function XTvSeriesPage() {
                 ) : !featured ? (
                   <section className="xsp-empty-state">
                     <Film size={22} /><h2>No titles found</h2><p>Try another category or search.</p>
-                    <button type="button" onClick={() => { setGenre("All"); setSearch(""); setDebouncedSearch(""); setSearchPage(1); setSearchOpen(false); }}>Show all titles</button>
+                    <button type="button" onClick={() => { setGenre("All"); setSearch(""); setDebouncedSearch(""); setSearchResults([]); setSearchPage(1); setSearchOpen(false); }}>Show all titles</button>
                   </section>
                 ) : null}
               </>
