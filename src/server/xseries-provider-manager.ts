@@ -171,7 +171,6 @@ const vidsrcAdapter: XSeriesProviderAdapter<ProviderEnv> = {
   priority: 2,
   isEnabled: () => true,
   async resolve(lookup) {
-    const kind = lookup.mediaKind === "movie" ? "movie" : "tv";
     const infoPath = lookup.mediaKind === "movie"
       ? `https://vidsrc.sh/info/movie/${lookup.tmdbId}.json`
       : `https://vidsrc.sh/info/tv/${lookup.tmdbId}/${lookup.season}/${lookup.episode}.json`;
@@ -179,14 +178,16 @@ const vidsrcAdapter: XSeriesProviderAdapter<ProviderEnv> = {
       const response = await fetch(infoPath, { headers: { Accept: "application/json" }, signal: timeoutSignal() });
       if (response.status === 404) return { status: "unavailable", reason: "not-found" };
       if (response.status === 429) return { status: "error", reason: "rate-limited" };
-      if (!response.ok) return { status: "unavailable", reason: "provider-unreachable" };
-      const data = await response.json() as { status_code?: number; embed_url_tmdb?: string };
-      if (data.status_code === 404) return { status: "unavailable", reason: "not-found" };
-      const url = secureUrl(data.embed_url_tmdb) || embedUrl("vidsrc", lookup);
-      return { status: "available", source: { kind: "embed", url } };
+      if (response.ok) {
+        const data = await response.json() as { status_code?: number; embed_url_tmdb?: unknown };
+        if (data.status_code === 404) return { status: "unavailable", reason: "not-found" };
+        const infoEmbed = secureUrl(data.embed_url_tmdb);
+        if (infoEmbed) return probeEmbed(infoEmbed);
+      }
     } catch {
-      return { status: "unavailable", reason: "provider-unreachable" };
+      // The info endpoint is optional; continue with the provider's standard embed route.
     }
+    return probeEmbed(embedUrl("vidsrc", lookup));
   },
 };
 
