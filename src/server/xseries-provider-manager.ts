@@ -73,7 +73,10 @@ function secureUrl(value: unknown, base?: string): string | null {
 async function probeEmbed(url: string): Promise<XSeriesProviderResult> {
   try {
     let response = await fetch(url, { method: "HEAD", signal: timeoutSignal() });
-    if (response.status === 405 || response.status === 501) {
+    // Some hosts reject HEAD but permit a lightweight GET. A 403 is not
+    // evidence that the iframe is playable, so retry it once and only accept
+    // a successful final response.
+    if (response.status === 403 || response.status === 405 || response.status === 501) {
       response = await fetch(url, {
         method: "GET",
         headers: { Range: "bytes=0-0" },
@@ -85,11 +88,8 @@ async function probeEmbed(url: string): Promise<XSeriesProviderResult> {
       return { status: "unavailable", reason: "not-found" };
     }
     if (response.status === 429) return { status: "error", reason: "rate-limited" };
-    if (response.status === 401) return { status: "error", reason: "unauthorized" };
-    // Some embed hosts deny server-side HEAD requests while allowing their
-    // player page to load in a real browser. Treat 403 as an iframe candidate;
-    // the browser player will surface an error if the page itself is blocked.
-    return response.ok || response.status === 403 || (response.status >= 300 && response.status < 400)
+    if (response.status === 401 || response.status === 403) return { status: "error", reason: "unauthorized" };
+    return response.ok
       ? { status: "available", source: { kind: "embed", url } }
       : { status: "unavailable", reason: "provider-unreachable" };
   } catch {
