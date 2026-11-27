@@ -106,7 +106,8 @@ function XTvSeriesPage() {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchPage, setSearchPage] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState("");\n  const [searchResults, setSearchResults] = useState<XTvSeriesItem[]>([]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<XTvSeriesItem[]>([]);
   const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
   const [activeGridCategory, setActiveGridCategory] = useState<string | null>(null);
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
