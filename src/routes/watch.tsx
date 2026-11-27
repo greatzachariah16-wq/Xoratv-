@@ -159,6 +159,7 @@ function WatchPage() {
   const [saved, setSaved] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
   const [fallbackStream, setFallbackStream] = useState<Awaited<ReturnType<typeof fetchMovieStream>> | null>(null);
+  const [failedProviders, setFailedProviders] = useState<string[]>([]);
   const [isTryingAnotherSource, setIsTryingAnotherSource] = useState(false);
   const [fallbackMessage, setFallbackMessage] = useState("");
 
@@ -215,16 +216,18 @@ function WatchPage() {
   const tryAnotherSource = async () => {
     const currentProvider = activeStreamData?.provider;
     if (!activeId || !currentProvider || isTryingAnotherSource) return;
+    const excludedProviders = [...new Set([...failedProviders, currentProvider])];
     setIsTryingAnotherSource(true);
     setFallbackMessage("");
     try {
-      const params = new URLSearchParams({ id: activeId, platform: isNativeVlcPlatform() ? "native" : "web", exclude: currentProvider });
+      const params = new URLSearchParams({ id: activeId, platform: isNativeVlcPlatform() ? "native" : "web", exclude: excludedProviders.join(",") });
       const response = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
       const data = await response.json() as { ok?: boolean; streamUrl?: string; sourceType?: string; provider?: string; providerName?: string; nativeHeaders?: Record<string, string>; item?: { title?: string; videoUrl?: string } };
       if (!response.ok || !data.ok || !data.streamUrl || !data.provider) {
         setFallbackMessage("No other source is available right now.");
         return;
       }
+      setFailedProviders(excludedProviders);
       setFallbackStream({ streamUrl: data.streamUrl, sourceType: data.sourceType || "xseries", title: data.item?.title || title, originalUrl: data.item?.videoUrl || data.streamUrl, provider: data.provider, providerName: data.providerName || data.provider, nativeHeaders: data.nativeHeaders });
       setFallbackMessage("Switched to " + (data.providerName || data.provider) + ".");
     } catch {
@@ -238,6 +241,12 @@ function WatchPage() {
     () => allMovies.filter((movie) => movie.id !== activeId),
     [allMovies, activeId],
   );
+
+  useEffect(() => {
+    setFallbackStream(null);
+    setFailedProviders([]);
+    setFallbackMessage("");
+  }, [activeId]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !activeId) {
