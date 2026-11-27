@@ -100,6 +100,52 @@ import { xseriesDbRead } from "./server/xseries-service-account";
 import type { XserisMediaItem } from "./lib/xseris/types";
 import type { XTvSeriesItem } from "./integrations/firebase/rtdb";
 
+type TmdbInfo = { id:number; mediaType:"movie"|"tv"; title:string; posterPath:string|null; backdropPath:string|null; overview:string; rating:number; date:string };
+const tmdbCache = new Map<string,{expires:number;value:TmdbInfo|null}>();
+function normalizeTmdbTitle(value:string) { return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+
+async function lookupTmdb(title:string, year?:number):Promise<TmdbInfo|null> {
+  const clean=title.trim();
+  if(!clean) return null;
+  const cacheKey=normalizeTmdbTitle(clean)+":"+(year||"");
+  const cached=tmdbCache.get(cacheKey);
+  if(cached&&cached.expires>Date.now()) return cached.value;
+  try {
+    const endpoint=new URL("https://app.xoratv.workers.dev/api/tmdb/search");
+    endpoint.searchParams.set("title",clean);
+    if(year) endpoint.searchParams.set("year",String(year));
+    const response=await fetch(endpoint.toString(),{headers:{Accept:"application/json"},signal:AbortSignal.timeout(7000)});
+    if(!response.ok) throw new Error("TMDB Worker HTTP "+response.status);
+    const payload=await response.json() as {item?:TmdbInfo|null};
+    const value=payload.item||null;
+    tmdbCache.set(cacheKey,{expires:Date.now()+(value?12*60*60*1000:15*60*1000),value});
+    return value;
+  } catch(error) {
+    console.warn("[TMDB] Lookup skipped:",error instanceof Error?error.message:"request failed");
+    return null;
+  }
+}
+
+async function enrichXSeriesItems(items:XTvSeriesItem[]):Promise<XTvSeriesItem[]> {
+  if(!items.length) return items;
+  const counts=new Map<string,number>();
+  const targets=items.filter((item)=>{
+    const category=(item.genre||item.categories?.[0]||"more").toLowerCase(), count=counts.get(category)||0;
+    if(count>=4||(count===0&&counts.size>=16)) return false;
+    counts.set(category,count+1); return true;
+  }).slice(0,64);
+  const found=new Map<string,TmdbInfo>(); let cursor=0;
+  await Promise.all(Array.from({length:Math.min(4,targets.length)},async()=>{
+    while(cursor<targets.length){const item=targets[cursor++],info=await lookupTmdb(item.title,item.year);if(info)found.set(item.id,info);}
+  }));
+  return items.map((item)=>{
+    const info=found.get(item.id); if(!info) return item;
+    const poster=info.posterPath?"https://image.tmdb.org/t/p/w500"+info.posterPath:item.thumbnailUrl;
+    return {...item,tmdbId:info.id,tmdbMediaType:info.mediaType,tmdbTitle:info.title,tmdbPosterUrl:poster,tmdbBackdropUrl:info.backdropPath?"https://image.tmdb.org/t/p/w1280"+info.backdropPath:undefined,tmdbOverview:info.overview||undefined,tmdbVoteAverage:info.rating||undefined,tmdbReleaseDate:info.date||undefined,thumbnailUrl:poster||item.thumbnailUrl};
+  });
+}
+
+
 const IPFS_DISCOVERY_INTERVAL_MS = 30 * 60 * 1000;
 let ipfsDiscoveryRunning = false;
 
@@ -964,7 +1010,7 @@ export default {
               title: it.title,
               description: it.description || "Curated X Series production.",
               genre: primaryCat,
-              year: it.release_year || 2026,
+              year: it.release_year || undefined,
               seasons: 1,
               episodesCount: 1,
               tag: primaryCat.toUpperCase(),
@@ -972,7 +1018,7 @@ export default {
               videoUrl: it.playback?.url || `/api/stream/embed/${encodeURIComponent(it.id)}`,
               thumbnailUrl: it.thumbnail_url || "",
               provider: "xseries",
-              durationSeconds: it.duration || 5400,
+              durationSeconds: it.duration || undefined,
               createdAt: it.created_at || new Date().toISOString(),
               categories: it.categories || [primaryCat],
             };
@@ -991,7 +1037,8 @@ export default {
           );
         }
         filtered.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-        return new Response(JSON.stringify({ ok: true, count: filtered.length, items: filtered }), {
+        const enrichedItems = await enrichXSeriesItems(filtered);
+        return new Response(JSON.stringify({ ok: true, count: enrichedItems.length, items: enrichedItems }), {
           status: 200,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
         });
