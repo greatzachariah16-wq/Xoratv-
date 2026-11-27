@@ -5,9 +5,6 @@ import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { useAuth } from "@/hooks/useAuth";
-import { loadUserSignals } from "@/lib/events";
-import { getOrCreateSessionId } from "@/lib/ranking";
-import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 import { XSeriesChannelShelf } from "@/components/xora/XSeriesChannelShelf";
@@ -16,7 +13,7 @@ import "./xseries-premium.css";
 export const Route = createFileRoute("/xtv-series")({
   head: () => ({
     meta: [
-      { title: "X Series — Movies, Series & Cinema | Xora" },
+      { title: "X-Series — Movies & Series | Xora" },
       { name: "description", content: "Curated movies and series published directly from the sovereign Xora Studio." },
     ],
   }),
@@ -34,6 +31,21 @@ async function fetchXTvSeries(genre: string): Promise<XTvSeriesItem[]> {
   return Array.isArray(json.items) ? json.items : [];
 }
 
+interface TmdbSearchResponse {
+  results: XTvSeriesItem[];
+  page: number;
+  totalPages: number;
+  totalResults: number;
+}
+async function searchTmdbTitles(query: string, page: number): Promise<TmdbSearchResponse> {
+  const params = new URLSearchParams({ q: query, page: String(page) });
+  const response = await fetch("/api/xtv-series/search?" + params.toString());
+  if (!response.ok) throw new Error("TMDB search is temporarily unavailable.");
+  const data = await response.json() as { ok?: boolean; results?: XTvSeriesItem[]; page?: number; totalPages?: number; totalResults?: number; error?: string };
+  if (!data.ok) throw new Error(data.error || "TMDB search failed.");
+  return { results: data.results || [], page: data.page || page, totalPages: data.totalPages || 0, totalResults: data.totalResults || 0 };
+}
+
 function primaryCategory(item: XTvSeriesItem): string {
   const raw = item.genre || item.categories?.[0] || item.tag || "More";
   const label = raw.trim();
@@ -41,46 +53,8 @@ function primaryCategory(item: XTvSeriesItem): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function rankAndShuffleXSeries(
-  items: XTvSeriesItem[],
-  signals?: UserSignals | null,
-  userId?: string | null,
-): XTvSeriesItem[] {
-  if (!items || items.length <= 1) return items;
-  const sessionId = getOrCreateSessionId();
-  const utcDate = new Date().toISOString().slice(0, 10);
-  const seedString = "xseries_" + (userId || "anon") + "_" + sessionId + "_" + utcDate;
-  let hash = 2166136261;
-  for (let i = 0; i < seedString.length; i++) {
-    hash ^= seedString.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  let state = hash >>> 0;
-  const prng = () => {
-    let t = (state += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  const scored = items.map((item) => {
-    let score = 50;
-    if (signals?.genres) {
-      const primaryGenre = item.genre?.toLowerCase() || "";
-      if (primaryGenre && signals.genres[primaryGenre]) score += (signals.genres[primaryGenre] || 0) * 4;
-      if (Array.isArray(item.categories)) {
-        item.categories.forEach((category) => {
-          const lower = category.toLowerCase();
-          if (signals.genres?.[lower]) score += (signals.genres[lower] || 0) * 2;
-        });
-      }
-    }
-    const year = item.year || 2026;
-    score += (year - 2000) * 0.2;
-    score += (prng() - 0.5) * 16;
-    return { item, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map((entry) => entry.item);
+function rankAndShuffleXSeries(items: XTvSeriesItem[]): XTvSeriesItem[] {
+  return [...items];
 }
 
 function cleanTitle(value: string): string {
@@ -133,13 +107,26 @@ function XTvSeriesPage() {
   const [genre, setGenre] = useState("All");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchPage, setSearchPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
   const [activeGridCategory, setActiveGridCategory] = useState<string | null>(null);
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const { data: userSignals } = useQuery({ queryKey: ["user-signals", user?.id], queryFn: () => loadUserSignals(user?.id), staleTime: 10_000 });
   const { data: rawAllItems = [], isFetching, error: seriesError, refetch: refetchSeries } = useQuery({ queryKey: ["xtv-series-all"], queryFn: () => fetchXTvSeries("All"), staleTime: 30_000 });
+
+  const { data: tmdbSearchData, isFetching: isSearching, error: searchError } = useQuery({
+    queryKey: ["xtv-tmdb-search", debouncedSearch, searchPage],
+    queryFn: () => searchTmdbTitles(debouncedSearch, searchPage),
+    enabled: searchOpen && debouncedSearch.length >= 2,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 280);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const allItems = useMemo(() => {
     const seen = new Set<string>();
@@ -164,10 +151,8 @@ function XTvSeriesPage() {
   const filtered = useMemo(() => {
     let list = allItems;
     if (genre !== "All") list = list.filter((item) => primaryCategory(item).toLowerCase() === genre.toLowerCase());
-    const q = search.trim().toLowerCase();
-    if (q) list = list.filter((item) => [item.title, item.description, item.genre, item.tag, ...(item.categories || [])].filter(Boolean).join(" ").toLowerCase().includes(q));
-    return rankAndShuffleXSeries(list, userSignals, user?.id);
-  }, [allItems, genre, search, userSignals, user?.id]);
+    return rankAndShuffleXSeries(list);
+  }, [allItems, genre]);
 
   const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
@@ -195,7 +180,7 @@ function XTvSeriesPage() {
     return () => { window.cancelAnimationFrame(frame); window.removeEventListener("keydown", onKey); };
   }, [searchOpen]);
 
-  const openSearch = () => { setSearchOpen(true); setActiveGridCategory(null); };
+  const openSearch = () => { setSearchOpen(true); setSearchPage(1); setActiveGridCategory(null); };
 
   return (
     <AppShell wide extraWide immersive={activeSection === "cinema"} onSearchClick={openSearch}>
@@ -203,7 +188,7 @@ function XTvSeriesPage() {
         {activeSection === "library" ? (
           <>
             <header className="xsp-page-header">
-              <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA</p><h1>Series</h1></div>
+              <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA</p><h1>X-Series</h1></div>
               <div className="xsp-section-switch" role="group" aria-label="X Series sections">
                 <button type="button" className="is-active" aria-pressed="true" onClick={() => setActiveSection("library")}>Movies &amp; Series</button>
                 <button type="button" aria-pressed="false" onClick={() => setActiveSection("cinema")}>Cinema Live TV</button>
@@ -213,7 +198,7 @@ function XTvSeriesPage() {
             {searchOpen ? (
               <div className="xsp-search-overlay" role="search">
                 <Search size={18} aria-hidden="true" />
-                <input ref={searchRef} value={search} onChange={(event) => { setSearch(event.target.value); setActiveGridCategory(null); }} placeholder="Find a story, genre or title" aria-label="Search series" />
+                <input ref={searchRef} value={search} onChange={(event) => { setSearch(event.target.value); setSearchPage(1); setActiveGridCategory(null); }} placeholder="Find a story, genre or title" aria-label="Search series" />
                 {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={17} /></button> : null}
                 <button type="button" onClick={() => setSearchOpen(false)} aria-label="Close search"><X size={18} /></button>
               </div>
@@ -227,10 +212,26 @@ function XTvSeriesPage() {
               ))}
             </nav>
 
-            {activeGridCategory ? (
+            {search.trim().length >= 2 ? (
+              <section className="xsp-grid-view" aria-label="TMDB search results">
+                <div className="xsp-section-heading">
+                  <div><h2>Search results</h2><span className="xsp-muted">{tmdbSearchData?.totalResults ? tmdbSearchData.totalResults.toLocaleString() + " matching titles on TMDB" : "Searching the TMDB catalogue"}</span></div>
+                  {isSearching ? <span className="xsp-muted">Loading…</span> : null}
+                </div>
+                {searchError ? <p className="xsp-empty-state" role="alert">TMDB search is temporarily unavailable. Try again.</p> : null}
+                {tmdbSearchData?.results.length ? (
+                  <>
+                    <div className="xsp-grid">{tmdbSearchData.results.map((item) => <SeriesCard key={item.id} item={item} grid />)}</div>
+                    {tmdbSearchData.page < tmdbSearchData.totalPages ? (
+                      <button type="button" className="xsp-load-more" disabled={isSearching} onClick={() => setSearchPage((value) => value + 1)}>Load more results</button>
+                    ) : <p className="xsp-muted">You’re all caught up with TMDB results.</p>}
+                  </>
+                ) : !isSearching && !searchError ? <p className="xsp-empty-state">No matching movies or series found. Try another title.</p> : null}
+              </section>
+            ) : activeGridCategory ? (
               <section className="xsp-grid-view" aria-label={activeGridCategory + " titles"}>
                 <div className="xsp-section-heading">
-                  <button type="button" className="xsp-back-link" onClick={() => setActiveGridCategory(null)}><ArrowLeft size={16} /> Back to Series</button>
+                  <button type="button" className="xsp-back-link" onClick={() => setActiveGridCategory(null)}><ArrowLeft size={16} /> Back to X-Series</button>
                   <span>{gridItems.length} titles</span>
                 </div>
                 <h2>{activeGridCategory}</h2>
@@ -284,7 +285,7 @@ function XTvSeriesPage() {
                 ) : !featured ? (
                   <section className="xsp-empty-state">
                     <Film size={22} /><h2>No titles found</h2><p>Try another category or search.</p>
-                    <button type="button" onClick={() => { setGenre("All"); setSearch(""); setSearchOpen(false); }}>Show all titles</button>
+                    <button type="button" onClick={() => { setGenre("All"); setSearch(""); setDebouncedSearch(""); setSearchPage(1); setSearchOpen(false); }}>Show all titles</button>
                   </section>
                 ) : null}
               </>
