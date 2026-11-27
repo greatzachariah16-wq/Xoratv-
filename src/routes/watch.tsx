@@ -43,31 +43,35 @@ async function fetchMovieStream(id: string): Promise<{
   sourceType: string;
   title: string;
   originalUrl?: string;
+  providerName?: string;
 }> {
   try {
-    const res = await fetch(`/api/xtv-series/stream?id=${encodeURIComponent(id)}`);
+    const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(id));
     if (res.ok) {
       const data = (await res.json()) as {
         ok: boolean;
         streamUrl?: string;
+        sourceType?: string;
         provider?: string;
+        providerName?: string;
         item?: { title?: string; videoUrl?: string };
       };
       if (data.ok && data.streamUrl) {
         return {
           streamUrl: data.streamUrl,
-          sourceType: data.provider || "hls",
+          sourceType: data.sourceType || "hls",
           title: data.item?.title || "Cinema Stream",
-          originalUrl: data.item?.videoUrl,
+          originalUrl: data.item?.videoUrl || data.streamUrl,
+          providerName: data.providerName || data.provider,
         };
       }
     }
   } catch {
-    // Continue to the catalog resolver.
+    // Continue to the existing catalogue resolver.
   }
 
   try {
-    const res = await fetch(`/api/catalog/${encodeURIComponent(id)}/playback`);
+    const res = await fetch("/api/catalog/" + encodeURIComponent(id) + "/playback");
     if (res.ok) {
       const data = (await res.json()) as {
         ok: boolean;
@@ -78,17 +82,20 @@ async function fetchMovieStream(id: string): Promise<{
           streamUrl: data.playback.url,
           sourceType: data.playback.provider || "embed",
           title: "Cinema Stream",
+          originalUrl: data.playback.url,
+          providerName: data.playback.provider,
         };
       }
     }
   } catch {
-    // Continue to the existing proxy fallback.
+    // Continue to the legacy embed fallback.
   }
 
   return {
-    streamUrl: `/api/stream/embed/${encodeURIComponent(id)}`,
-    sourceType: "embed",
+    streamUrl: "/api/stream/embed/" + encodeURIComponent(id),
+    sourceType: "xseries",
     title: "Cinema Stream",
+    providerName: "Legacy resolver",
   };
 }
 
@@ -362,8 +369,11 @@ function WatchPage() {
           </button>
           {settingsOpen ? (
             <div id="xora-watch-settings-content" className="xora-watch-settings-content">
+              {streamData?.providerName ? (
+                <div><span>Stream provider</span><strong>{streamData.providerName}</strong></div>
+              ) : null}
               {streamData?.sourceType ? (
-                <div><span>Stream source</span><strong>{streamData.sourceType}</strong></div>
+                <div><span>Playback type</span><strong>{streamData.sourceType === "xseries" ? "Embedded player" : streamData.sourceType.toUpperCase()}</strong></div>
               ) : null}
               {activeMovie?.provider ? (
                 <div><span>Provider</span><strong>{activeMovie.provider}</strong></div>
