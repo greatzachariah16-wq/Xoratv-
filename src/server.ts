@@ -1024,7 +1024,7 @@ export default {
                   const wanted = normalize(title);
                   const results = (payload.results || []).filter((entry) =>
                     (entry.media_type === "movie" || entry.media_type === "tv") &&
-                    typeof entry.title === "string" || typeof entry.name === "string"
+                    (typeof entry.title === "string" || typeof entry.name === "string")
                   );
                   const ranked = results.map((entry) => {
                     const candidateTitle = normalize(String(entry.title || entry.name || ""));
