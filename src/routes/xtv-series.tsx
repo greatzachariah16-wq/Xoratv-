@@ -234,7 +234,7 @@ function XTvSeriesPage() {
                   <span>{gridItems.length} titles</span>
                 </div>
                 <h2>{activeGridCategory}</h2>
-                <div className="xsp-grid">{gridItems.map((item) => <SeriesCard key={item.id} item={item} userId={user?.id} grid />)}</div>
+                <div className="xsp-grid">{gridItems.map((item) => <SeriesCard key={item.id} item={item} grid />)}</div>
               </section>
             ) : (
               <>
@@ -277,7 +277,7 @@ function XTvSeriesPage() {
                           <h2>{category}</h2>
                           <button type="button" onClick={() => setActiveGridCategory(category)}>See all <ChevronRight size={15} /></button>
                         </div>
-                        <div className="xsp-card-rail">{items.slice(0, 10).map((item) => <SeriesCard key={item.id} item={item} userId={user?.id} />)}</div>
+                        <div className="xsp-card-rail">{items.slice(0, 10).map((item) => <SeriesCard key={item.id} item={item} />)}</div>
                       </section>
                     ))}
                   </section>
