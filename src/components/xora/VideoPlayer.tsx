@@ -105,6 +105,7 @@ function NativeVideoPlayerCore({
   liveTv = false,
   onClose,
   cinemaMode = false,
+  onPlaybackError,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const nativeStageRef = useRef<HTMLDivElement | null>(null);
@@ -197,6 +198,7 @@ function NativeVideoPlayerCore({
       setPlaying(state.playing);
       setWaiting(state.waiting);
       setFailed(state.failed);
+      if (state.failed && cinemaMode) onPlaybackError?.();
       if (state.closed) {
         nativeVlcActiveRef.current = false;
         setNativeVlcActive(false);
@@ -912,6 +914,7 @@ function NativeVideoPlayerCore({
             }
             setWaiting(false);
             setFailed(true);
+            if (cinemaMode) onPlaybackError?.();
           }}
           onDurationChange={(e) => setTotal(e.currentTarget.duration || 0)}
           onTimeUpdate={handleTimeUpdate}
