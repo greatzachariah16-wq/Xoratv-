@@ -95,15 +95,20 @@ function tmdbResult(item: Record<string, unknown>, mediaType: "movie" | "tv") {
 const MOVIE_GENRES: Record<number, string> = {28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",9648:"Mystery",10749:"Romance",878:"Sci-Fi",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"};
 const TV_GENRES: Record<number, string> = {10759:"Action",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",10762:"Kids",9648:"Mystery",10763:"News",10764:"Reality",10765:"Sci-Fi",10766:"Soap",10767:"Talk",10768:"War",37:"Western"};
 async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> {
-  const requests = ["popular", "top_rated", "now_playing"].flatMap((kind) =>
-    (kind === "now_playing" ? [1] : [1, 2]).map(async (page) => {
-      const data = await tmdb<{ results?: Record<string, unknown>[] }>(
-        "movie/" + kind + "?include_adult=false&language=en-US&page=" + page, apiKey);
-      return { results: data.results || [] };
-    }));
-  const lists = await Promise.all(requests);
+  // Import a substantial first catalogue: 50 TMDB pages each from Popular and Top Rated.
+  // This is an initial-fill target, never a cap on the catalogue or future imports.
+  const pages = Array.from({ length: 50 }, (_, index) => index + 1);
+  const requests: Record<string, unknown>[] = [];
+  for (const kind of ["popular", "top_rated"]) {
+    for (let offset = 0; offset < pages.length; offset += 5) {
+      const batch = await Promise.all(pages.slice(offset, offset + 5).map((page) =>
+        tmdb<{ results?: Record<string, unknown>[] }>(
+          "movie/" + kind + "?include_adult=false&language=en-US&page=" + page, apiKey)));
+      for (const data of batch) requests.push(...(data.results || []));
+    }
+  }
   const rows = new Map<string, Record<string, unknown>>();
-  for (const list of lists) for (const item of list.results) {
+  for (const item of requests) {
     const id = Number(item.id);
     const genreIds = Array.isArray(item.genre_ids) ? item.genre_ids.map(Number) : [];
     if (!id || !text(item.title) || genreIds.includes(16)) continue;
@@ -170,7 +175,7 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
       // X-Series is a live-action movie catalogue, not a TV or animation feed.
       await db.prepare("DELETE FROM xseries_titles WHERE media_type != 'movie' OR EXISTS (SELECT 1 FROM json_each(xseries_titles.genres_json) WHERE LOWER(value) = 'animation')").run();
       const count = await db.prepare("SELECT COUNT(*) AS total FROM xseries_titles WHERE is_published = 1 AND media_type = 'movie'").first<{ total: number }>();
-      if (!count?.total && apiKey) await seedPopularTmdb(db, apiKey);
+      if ((count?.total || 0) < 1000 && apiKey) await seedPopularTmdb(db, apiKey);
       const genre = text(url.searchParams.get("genre"));
       const query = text(url.searchParams.get("q"));
       const limit = Math.min(1000, Math.max(1, int(url.searchParams.get("limit"), 1000)));
