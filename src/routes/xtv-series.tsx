@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Film, Play, Search, Star, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { useAuth } from "@/hooks/useAuth";
@@ -127,9 +127,11 @@ function trackOpen(item: XTvSeriesItem, userId?: string | null) {
 function SeriesThumbnail({ item, eager = false }: { item: XTvSeriesItem; eager?: boolean }) {
   const youtube = isYouTube(item);
   const id = youtube ? youtubeId(item) : null;
-  const sources = id
-    ? ["https://i.ytimg.com/vi/" + id + "/maxresdefault.jpg", "https://i.ytimg.com/vi/" + id + "/sddefault.jpg", "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"]
-    : item.thumbnailUrl ? [item.thumbnailUrl] : [];
+  const sources = item.tmdbPosterUrl
+    ? [item.tmdbPosterUrl]
+    : id
+      ? ["https://i.ytimg.com/vi/" + id + "/maxresdefault.jpg", "https://i.ytimg.com/vi/" + id + "/sddefault.jpg", "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"]
+      : [item.thumbnailUrl].filter((value): value is string => Boolean(value));
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
   const next = () => index < sources.length - 1 ? setIndex((current) => current + 1) : setFailed(true);
@@ -149,19 +151,30 @@ function SeriesThumbnail({ item, eager = false }: { item: XTvSeriesItem; eager?:
   );
 }
 
+function SeriesBackdrop({ item }: { item: XTvSeriesItem }) {
+  const source = item.tmdbBackdropUrl || item.tmdbPosterUrl || item.thumbnailUrl || "";
+  const [failed, setFailed] = useState(false);
+  if (failed || !source) return <div className="xsp-hero-art-fallback" aria-hidden="true"><Film size={34} /></div>;
+  return <img className="xsp-hero-image" src={source} alt="" loading="eager" decoding="async" onError={() => setFailed(true)} />;
+}
+
 function SeriesCard({ item, userId, grid = false }: { item: XTvSeriesItem; userId?: string | null; grid?: boolean }) {
-  const title = cleanTitle(item.title) || "Untitled";
+  const title = cleanTitle(item.tmdbTitle || item.title) || "Untitled";
   const minutes = item.durationSeconds ? Math.max(1, Math.round(item.durationSeconds / 60)) : null;
   return (
     <article className={cn("xsp-card", grid && "xsp-card-grid")}>
       <Link to="/watch" search={{ id: item.id }} onClick={() => trackOpen(item, userId)} className="xsp-card-link" aria-label={"Play " + item.title} title={item.title}>
         <div className="xsp-card-image">
           <SeriesThumbnail item={item} />
+          {item.tmdbVoteAverage ? <span className="xsp-rating-badge"><Star size={11} fill="currentColor" /> {item.tmdbVoteAverage.toFixed(1)}</span> : null}
           {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
         </div>
         <div className="xsp-card-copy">
           <h3 className="xsp-card-title">{title}</h3>
-          <p className="xsp-card-channel">{channelName(item)}</p>
+          <div className="xsp-card-meta">
+            {(item.year || Number(item.tmdbReleaseDate?.slice(0, 4))) ? <span>{item.year || item.tmdbReleaseDate?.slice(0, 4)}</span> : null}
+            <span>{primaryCategory(item)}</span>
+          </div>
         </div>
       </Link>
     </article>
@@ -209,8 +222,8 @@ function XTvSeriesPage() {
     return rankAndShuffleXSeries(list, userSignals, user?.id);
   }, [allItems, genre, search, userSignals, user?.id]);
 
-  const featured = filtered[0];
-  const shelves = filtered.slice(featured ? 1 : 0);
+  const featured = filtered.find((item) => item.tmdbBackdropUrl || item.tmdbPosterUrl) || filtered[0];
+  const shelves = featured ? filtered.filter((item) => item.id !== featured.id) : filtered;
   const categoryRows = useMemo(() => {
     const grouped = new Map<string, XTvSeriesItem[]>();
     shelves.forEach((item) => {
@@ -243,7 +256,7 @@ function XTvSeriesPage() {
         {activeSection === "library" ? (
           <>
             <header className="xsp-page-header">
-              <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA</p><h1>Series</h1></div>
+              <div className="xsp-heading-group"><p className="xsp-kicker">XORA CINEMA · CURATED STORIES</p><h1>X-Series</h1></div>
               <div className="xsp-section-switch" role="group" aria-label="X Series sections">
                 <button type="button" className="is-active" aria-pressed="true" onClick={() => setActiveSection("library")}>Movies &amp; Series</button>
                 <button type="button" aria-pressed="false" onClick={() => setActiveSection("cinema")}>Cinema Live TV</button>
@@ -282,12 +295,17 @@ function XTvSeriesPage() {
                   <section className="xsp-featured" aria-label="Featured tonight">
                     <div className="xsp-section-heading"><h2>Featured tonight</h2>{isFetching ? <span className="xsp-muted">Updating</span> : null}</div>
                     <div className="xsp-hero">
-                      <SeriesThumbnail key={featured.id} item={featured} eager />
+                      <SeriesBackdrop key={featured.id} item={featured} />
                       <div className="xsp-hero-scrim" />
                       <div className="xsp-hero-copy">
-                        <span className="xsp-editor-label">Editor's pick</span>
-                        <h3 title={featured.title}>{cleanTitle(featured.title) || "Untitled"}</h3>
-                        <p>{channelName(featured)} <span aria-hidden="true">·</span> {primaryCategory(featured)}</p>
+                        <span className="xsp-editor-label">Xora selects · Featured tonight</span>
+                        <h3 title={featured.title}>{cleanTitle(featured.tmdbTitle || featured.title) || "Untitled"}</h3>
+                        <div className="xsp-hero-meta">
+                          {(featured.year || Number(featured.tmdbReleaseDate?.slice(0, 4))) ? <span>{featured.year || featured.tmdbReleaseDate?.slice(0, 4)}</span> : null}
+                          {featured.tmdbVoteAverage ? <span><Star size={12} fill="currentColor" /> {featured.tmdbVoteAverage.toFixed(1)} / 10</span> : null}
+                          <span>{primaryCategory(featured)}</span>
+                        </div>
+                        <p>{featured.tmdbOverview || (featured.description?.startsWith("By ") ? "A story selected for your next cinema night." : featured.description) || "A story selected for your next cinema night."}</p>
                         <div className="xsp-hero-actions">
                           <Link to="/watch" search={{ id: featured.id }} onClick={() => trackOpen(featured, user?.id)} className="xsp-watch-button" aria-label={"Watch " + featured.title} title={featured.title}>
                             <Play size={17} fill="currentColor" /> Watch now

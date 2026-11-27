@@ -542,6 +542,14 @@ export interface XTvSeriesItem {
   videoUrl?: string;
   streamUrl?: string;
   thumbnailUrl?: string;
+  tmdbId?: number;
+  tmdbMediaType?: "movie" | "tv";
+  tmdbTitle?: string;
+  tmdbPosterUrl?: string;
+  tmdbBackdropUrl?: string;
+  tmdbOverview?: string;
+  tmdbVoteAverage?: number;
+  tmdbReleaseDate?: string;
   provider?: "youtube" | "vimeo" | "dailymotion" | "open" | "xseries" | string;
   durationSeconds?: number;
   createdAt: string;
