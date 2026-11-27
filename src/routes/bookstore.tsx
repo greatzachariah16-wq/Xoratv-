@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, Feather, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Feather } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 
 export const Route = createFileRoute("/bookstore")({
@@ -29,7 +29,7 @@ function Bookstore() {
         <div className="pointer-events-none absolute -right-8 -top-16 size-[250px] rounded-full border border-[#b77b5e]/20"/>
         <div className="relative grid items-center gap-8 md:grid-cols-[1.05fr_.95fr]">
           <div className="relative z-10">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#a65d42]/25 bg-white/45 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.2em] text-[#99543b]"><Sparkles className="size-3.5"/>The Xora reading room</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#a65d42]/25 bg-white/45 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.2em] text-[#99543b]">The Xora reading room</span>
             <p className="mt-5 text-[10px] font-semibold uppercase tracking-[.25em] text-[#806b5c]">A WORLD OF WORDS, WAITING TO BE WRITTEN</p>
             <h1 className="mt-3 max-w-xl font-editorial text-[2.8rem] leading-[.94] tracking-[-.055em] sm:text-6xl lg:text-[4.6rem]">Every great story starts with <em className="font-normal text-[#a65337]">a page.</em></h1>
             <p className="mt-4 max-w-md text-[13px] leading-6 text-[#756052] sm:text-[15px] sm:leading-7">A considered space for ideas, imagination and the voices behind every book. Soon, these shelves will hold stories from the Xora community.</p>
