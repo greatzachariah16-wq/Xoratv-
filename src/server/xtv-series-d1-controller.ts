@@ -121,7 +121,9 @@ async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> 
         text(item.poster_path) || null, text(item.backdrop_path) || null, JSON.stringify(genres),
         Number(item.vote_average) || null, genres[0] || "More");
   });
-  for (let offset = 0; offset < statements.length; offset += 80) {\n    await db.batch(statements.slice(offset, offset + 80));\n  }
+  for (let offset = 0; offset < statements.length; offset += 80) {
+    await db.batch(statements.slice(offset, offset + 80));
+  }
   return statements.length;
 }
 function tmdbSearchItem(item: Record<string, unknown>) {
