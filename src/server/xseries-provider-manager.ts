@@ -16,10 +16,11 @@ export interface XSeriesLookup {
   releaseYear?: number;
   season?: number;
   episode?: number;
+  platform?: "web" | "native";
 }
 
 export type XSeriesPlaybackSource =
-  | { kind: "direct-hls" | "direct-dash" | "direct-file"; url: string; mimeType?: string }
+  | { kind: "direct-hls" | "direct-dash" | "direct-file"; url: string; mimeType?: string; headers?: Record<string, string> }
   | { kind: "embed"; url: string };
 
 export type XSeriesProviderResult =
@@ -122,8 +123,10 @@ const cineproAdapter: XSeriesProviderAdapter<ProviderEnv> = {
     const endpoint = lookup.mediaKind === "movie"
       ? `/v1/movies/${lookup.tmdbId}`
       : `/v1/tv/${lookup.tmdbId}/seasons/${lookup.season}/episodes/${lookup.episode}`;
+    const requestUrl = new URL(endpoint, base);
+    requestUrl.searchParams.set("platform", lookup.platform === "native" ? "native" : "web");
     try {
-      const response = await fetch(new URL(endpoint, base), {
+      const response = await fetch(requestUrl, {
         headers: { Accept: "application/json" },
         signal: timeoutSignal(),
       });
@@ -133,17 +136,23 @@ const cineproAdapter: XSeriesProviderAdapter<ProviderEnv> = {
       if (!response.ok) return { status: "unavailable", reason: "provider-unreachable" };
 
       const data = await response.json() as {
-        sources?: Array<{ url?: unknown; type?: unknown; quality?: unknown }>;
+        sources?: Array<{ url?: unknown; type?: unknown; streamable?: unknown; headers?: unknown; quality?: unknown }>;
       };
       if (!Array.isArray(data.sources)) return { status: "error", reason: "invalid-response" };
       const candidates = data.sources
         .map((item) => {
+          if (item.streamable === false) return null;
           const url = secureUrl(item.url, base);
           const type = String(item.type || "").toLowerCase();
           if (!url) return null;
-          if (type === "hls" || type === "m3u8") return { kind: "direct-hls" as const, url, mimeType: "application/vnd.apple.mpegurl" };
-          if (type === "dash" || type === "mpd") return { kind: "direct-dash" as const, url, mimeType: "application/dash+xml" };
-          if (["mp4", "file", "video"].includes(type)) return { kind: "direct-file" as const, url, mimeType: "video/mp4" };
+          const headers = item.headers && typeof item.headers === "object"
+            ? Object.fromEntries(Object.entries(item.headers as Record<string, unknown>)
+                .filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+            : undefined;
+          if (type === "embed") return { kind: "embed" as const, url };
+          if (type === "hls" || type === "m3u8") return { kind: "direct-hls" as const, url, mimeType: "application/vnd.apple.mpegurl", ...(headers ? { headers } : {}) };
+          if (type === "dash" || type === "mpd") return { kind: "direct-dash" as const, url, mimeType: "application/dash+xml", ...(headers ? { headers } : {}) };
+          if (["mp4", "mkv", "webm", "http", "file", "video"].includes(type)) return { kind: "direct-file" as const, url, mimeType: type === "mp4" ? "video/mp4" : undefined, ...(headers ? { headers } : {}) };
           return null;
         })
         .filter((item): item is NonNullable<typeof item> => Boolean(item));
