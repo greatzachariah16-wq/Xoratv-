@@ -27,6 +27,7 @@ const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =
   new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...extra } });
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const int = (value: unknown, fallback: number) => {
+  if (value === null || value === undefined || value === "") return fallback;
   const n = Number(value);
   return Number.isFinite(n) ? Math.trunc(n) : fallback;
 };
