@@ -55,7 +55,10 @@ type ProviderEnv = {
   CINEPRO_API_BASE_URL?: string;
 };
 
-const timeoutSignal = () => AbortSignal.timeout(9000);
+const timeoutSignal = (milliseconds = 9000) => AbortSignal.timeout(milliseconds);
+// Render may have suspended CinePro Core between requests. Give its first
+// cold-start resolution enough time to boot before treating it as unavailable.
+const CINEPRO_RESOLVE_TIMEOUT_MS = 45000;
 
 function secureUrl(value: unknown, base?: string): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -131,7 +134,7 @@ const cineproAdapter: XSeriesProviderAdapter<ProviderEnv> = {
     try {
       const response = await fetch(requestUrl, {
         headers: { Accept: "application/json" },
-        signal: timeoutSignal(),
+        signal: timeoutSignal(CINEPRO_RESOLVE_TIMEOUT_MS),
       });
       if (response.status === 404) return { status: "unavailable", reason: "not-found" };
       if (response.status === 401 || response.status === 403) return { status: "error", reason: "unauthorized" };
