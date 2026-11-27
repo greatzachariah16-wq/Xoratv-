@@ -11,7 +11,6 @@ import {
   CheckSquare,
   ChevronDown,
   Clapperboard,
-  Film,
   Headset,
   House,
   Menu,
@@ -44,7 +43,6 @@ const GROUPS = [
     items: [
       { to: "/xsports", label: "XSports", icon: Trophy },
       { to: "/kids", label: "Xora Kids", icon: Baby },
-      { to: "/catalog", label: "Movie Catalog", icon: Film },
     ],
   },
   {
@@ -304,7 +302,7 @@ export function AppShell({
               {[
                 { to: "/", label: "Home", icon: House },
                 { to: "/shorts", label: "Shorts", icon: Clapperboard },
-                { to: "/xtv-series", label: "Series", icon: MonitorPlay },
+                { to: "/xtv-series", label: "X-Series", icon: MonitorPlay },
                 { to: "/tv", label: "Live TV", icon: RadioTower },
               ].map((item) => renderDestination(item))}
             </div>
