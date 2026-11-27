@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
-import { useAuth } from "@/hooks/useAuth";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
 import { cn } from "@/lib/utils";
 import { XSeriesChannelShelf } from "@/components/xora/XSeriesChannelShelf";
@@ -103,7 +102,6 @@ function SeriesCard({ item, grid = false }: { item: XTvSeriesItem; grid?: boolea
 }
 
 function XTvSeriesPage() {
-  const { user } = useAuth();
   const [genre, setGenre] = useState("All");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -124,6 +122,7 @@ function XTvSeriesPage() {
   });
 
   useEffect(() => {
+    setSearchResults([]);
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 280);
     return () => window.clearTimeout(timer);
   }, [search]);
