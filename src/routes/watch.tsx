@@ -12,6 +12,7 @@ import {
   Share2,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
+import { isNativeVlcPlatform } from "@/lib/native-vlc";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 
 export const Route = createFileRoute("/watch")({
@@ -44,9 +45,11 @@ async function fetchMovieStream(id: string): Promise<{
   title: string;
   originalUrl?: string;
   providerName?: string;
+  nativeHeaders?: Record<string, string>;
 }> {
   try {
-    const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(id));
+    const platform = isNativeVlcPlatform() ? "native" : "web";
+    const res = await fetch("/api/xtv-series/stream?id=" + encodeURIComponent(id) + "&platform=" + platform);
     if (res.ok) {
       const data = (await res.json()) as {
         ok: boolean;
@@ -54,6 +57,7 @@ async function fetchMovieStream(id: string): Promise<{
         sourceType?: string;
         provider?: string;
         providerName?: string;
+        nativeHeaders?: Record<string, string>;
         item?: { title?: string; videoUrl?: string };
       };
       if (data.ok && data.streamUrl) {
@@ -63,6 +67,7 @@ async function fetchMovieStream(id: string): Promise<{
           title: data.item?.title || "Cinema Stream",
           originalUrl: data.item?.videoUrl || data.streamUrl,
           providerName: data.providerName || data.provider,
+          nativeHeaders: data.nativeHeaders,
         };
       }
     }
@@ -182,7 +187,9 @@ function WatchPage() {
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
   const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
   const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
-  const nativeCinemaDirectUrl = isDirectMediaUrl(originalUrl) ? originalUrl : "";
+  const nativeCinemaDirectUrl = streamData?.provider === "cinepro" && isNativeVlcPlatform()
+    ? streamUrl
+    : isDirectMediaUrl(originalUrl) ? originalUrl : "";
   const title = activeMovie?.title || streamData?.title || "Now Playing";
   const displayTitle = cleanTitle(title);
   const description = activeMovie?.description?.trim() || "";
@@ -278,6 +285,7 @@ function WatchPage() {
                 streamUrl={nativeCinemaDirectUrl || playerStreamUrl}
                 nativeVlc={Boolean(nativeCinemaDirectUrl)}
                 nativeDirectOnly={Boolean(nativeCinemaDirectUrl)}
+                nativeHeaders={streamData?.nativeHeaders}
                 externalPoster={activeMovie?.thumbnailUrl}
                 title={title}
                 autoPlay={false}
