@@ -178,7 +178,7 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
       if (!tmdbId || !Number.isSafeInteger(tmdbId) || tmdbId < 1) {
         return json({ ok: false, error: "A valid XSeries title ID is required." }, 400);
       }
-      if (requestedType === "tv" && (season < 0 || episode < 1)) {
+      if (requestedType === "tv" && (season < 1 || episode < 1)) {
         return json({ ok: false, error: "TV playback requires a season and episode number." }, 400);
       }
 
