@@ -161,7 +161,9 @@ function XTvSeriesPage() {
     return rankAndShuffleXSeries(list);
   }, [allItems, genre]);
 
-  const isSearchPending = isSearching || search.trim() !== debouncedSearch;\n  const hasMoreSearchResults = tmdbSearchData ? tmdbSearchData.page < tmdbSearchData.totalPages : isSearchPending;\n  const featured = filtered[0];
+  const isSearchPending = isSearching || search.trim() !== debouncedSearch;
+  const hasMoreSearchResults = tmdbSearchData ? tmdbSearchData.page < tmdbSearchData.totalPages : isSearchPending;
+  const featured = filtered[0];
   const shelves = filtered.slice(featured ? 1 : 0);
   const categoryRows = useMemo(() => {
     const grouped = new Map<string, XTvSeriesItem[]>();
