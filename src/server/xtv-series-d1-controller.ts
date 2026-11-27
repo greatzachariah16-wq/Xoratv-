@@ -1,4 +1,5 @@
 import { verifyAdminSession } from "./admin-auth";
+import { resolveXSeriesWithFallback } from "./xseries-provider-manager";
 
 interface D1Statement {
   bind(...values: unknown[]): D1Statement;
@@ -7,7 +8,7 @@ interface D1Statement {
   run(): Promise<unknown>;
 }
 interface D1Database { prepare(sql: string): D1Statement; batch<T = unknown>(statements: D1Statement[]): Promise<T[]>; }
-interface XSeriesEnv { XORATV_XSERIES_DB?: D1Database; TMDB_API_KEY?: string; }
+interface XSeriesEnv { XORATV_XSERIES_DB?: D1Database; TMDB_API_KEY?: string; CINEPRO_API_BASE_URL?: string; }
 interface TitleRow {
   id: number; tmdb_id: number; media_type: "movie" | "tv"; title: string;
   original_title: string | null; overview: string | null; release_date: string | null;
@@ -166,6 +167,69 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
   if (!db) return json({ ok: false, error: "X-Series database binding is unavailable." }, 503);
 
   try {
+    if (path === "/api/xtv-series/stream" && request.method === "GET") {
+      const rawId = text(url.searchParams.get("id"));
+      const parsed = rawId.match(/^(movie|tv)_(\d+)$/);
+      const fallbackTmdbId = /^\d+$/.test(rawId) ? Number(rawId) : 0;
+      const tmdbId = parsed ? Number(parsed[2]) : fallbackTmdbId;
+      const requestedType = parsed?.[1] === "tv" ? "tv" : text(url.searchParams.get("mediaType")) === "tv" ? "tv" : "movie";
+      const season = int(url.searchParams.get("season"), 0);
+      const episode = int(url.searchParams.get("episode"), 0);
+      if (!tmdbId || !Number.isSafeInteger(tmdbId) || tmdbId < 1) {
+        return json({ ok: false, error: "A valid XSeries title ID is required." }, 400);
+      }
+      if (requestedType === "tv" && (season < 0 || episode < 1)) {
+        return json({ ok: false, error: "TV playback requires a season and episode number." }, 400);
+      }
+
+      const titleRow = await db.prepare(
+        "SELECT tmdb_id, media_type, title, release_year FROM xseries_titles WHERE tmdb_id = ? AND is_published = 1 LIMIT 1"
+      ).bind(tmdbId).first<{ tmdb_id: number; media_type: "movie" | "tv"; title: string; release_year: number | null }>();
+      if (!titleRow) return json({ ok: false, error: "This title is not available in the published XSeries catalogue." }, 404);
+      if (titleRow.media_type !== requestedType) {
+        return json({ ok: false, error: "The requested media type does not match this catalogue title." }, 400);
+      }
+
+      const lookup = {
+        tmdbId,
+        mediaKind: requestedType === "movie" ? "movie" as const : "episode" as const,
+        title: titleRow.title,
+        ...(titleRow.release_year ? { releaseYear: titleRow.release_year } : {}),
+        ...(requestedType === "tv" ? { season, episode } : {}),
+      };
+      const resolution = await resolveXSeriesWithFallback(lookup, env);
+      if (!resolution.playback) {
+        return json({
+          ok: false,
+          error: "No XSeries provider currently has a playable source for this title.",
+          attempts: resolution.attempts,
+        }, 404, { "Cache-Control": "no-store" });
+      }
+
+      const { provider, source } = resolution.playback;
+      const sourceType = source.kind === "embed"
+        ? "xseries"
+        : source.kind === "direct-hls" ? "hls"
+        : source.kind === "direct-dash" ? "dash" : "mp4";
+      const providerNames: Record<string, string> = {
+        cinepro: "CinePro Foundation",
+        vidsrc: "VidSrc.sh",
+        twoembed: "2Embed.cc",
+        cinesrc: "CineSrc",
+        bingeapi: "BingeAPI",
+      };
+      return json({
+        ok: true,
+        streamUrl: source.url,
+        provider,
+        providerName: providerNames[provider],
+        sourceType,
+        sourceKind: source.kind,
+        attempts: resolution.attempts,
+        item: { id: rawId, tmdbId, title: titleRow.title, videoUrl: source.url },
+      }, 200, { "Cache-Control": "private, no-store" });
+    }
+
     if (path === "/api/xtv-series/status" && request.method === "GET") {
       const row = await db.prepare("SELECT COUNT(*) AS total, SUM(is_published) AS published FROM xseries_titles")
         .first<{ total: number; published: number | null }>();
