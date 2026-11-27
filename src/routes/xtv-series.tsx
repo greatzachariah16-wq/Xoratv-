@@ -213,7 +213,7 @@ function XTvSeriesPage() {
 
   return (
     <AppShell wide extraWide immersive={activeSection === "cinema"} onSearchClick={openSearch}>
-      <div className="xseries-page">
+      <div className="xseries-page" style={{ paddingBottom: "calc(104px + env(safe-area-inset-bottom, 0px))" }}>
         {activeSection === "library" ? (
           <>
             <header className="xsp-page-header">
