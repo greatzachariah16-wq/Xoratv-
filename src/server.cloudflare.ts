@@ -5,6 +5,7 @@ import { handleCommerceRoute } from "./server/commerce-controller";
 import { handleCpxRewardsRoute } from "./server/cpx-rewards-controller";
 import { handleSurveyWalletRoute } from "./server/survey-wallet-controller";
 import { handleTvCatalogueRoute } from "./server/tv-catalog-controller";
+import { handleXtvSeriesRoute } from "./server/xtv-series-d1-controller";
 
 type Env = Record<string, unknown>;
 
@@ -12,6 +13,9 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    const xSeriesResponse = await handleXtvSeriesRoute(request, url, env);
+    if (xSeriesResponse) return xSeriesResponse;
 
     const tvResponse = await handleTvCatalogueRoute(request, url);
     if (tvResponse) return tvResponse;
