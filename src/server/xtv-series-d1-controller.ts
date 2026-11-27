@@ -94,14 +94,13 @@ function tmdbResult(item: Record<string, unknown>, mediaType: "movie" | "tv") {
 const MOVIE_GENRES: Record<number, string> = {28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",9648:"Mystery",10749:"Romance",878:"Sci-Fi",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"};
 const TV_GENRES: Record<number, string> = {10759:"Action",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",18:"Drama",10751:"Family",10762:"Kids",9648:"Mystery",10763:"News",10764:"Reality",10765:"Sci-Fi",10766:"Soap",10767:"Talk",10768:"War",37:"Western"};
 async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> {
-  const lists = await Promise.all([
-    ...(["movie", "tv"] as const).flatMap((type) => ["popular", "top_rated"].flatMap((kind) =>
-      [1, 2].map(async (page) => {
-        const data = await tmdb<{ results?: Record<string, unknown>[] }>(
-          type + "/" + kind + "?include_adult=false&language=en-US&page=" + page, apiKey);
-        return { type, results: data.results || [] };
-      }))),
-  ]);
+  const requests = (["movie", "tv"] as const).flatMap((type) =>
+    ["popular", "top_rated"].flatMap((kind) => [1, 2].map(async (page) => {
+      const data = await tmdb<{ results?: Record<string, unknown>[] }>(
+        type + "/" + kind + "?include_adult=false&language=en-US&page=" + page, apiKey);
+      return { type, results: data.results || [] };
+    })));
+  const lists = await Promise.all(requests);
   const rows = new Map<string, { type: "movie" | "tv"; item: Record<string, unknown> }>();
   for (const list of lists) for (const item of list.results) {
     const id = Number(item.id);
@@ -122,7 +121,7 @@ async function seedPopularTmdb(db: D1Database, apiKey: string): Promise<number> 
         text(item.poster_path) || null, text(item.backdrop_path) || null, JSON.stringify(genres),
         Number(item.vote_average) || null, genres[0] || "More");
   });
-  if (statements.length) await db.batch(statements);
+  for (let offset = 0; offset < statements.length; offset += 80) {\n    await db.batch(statements.slice(offset, offset + 80));\n  }
   return statements.length;
 }
 function tmdbSearchItem(item: Record<string, unknown>) {
@@ -182,7 +181,7 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         values.push("%" + query + "%", "%" + query + "%");
       }
       const result = await db.prepare("SELECT * FROM xseries_titles WHERE " + where.join(" AND ") +
-        " ORDER BY COALESCE(release_date, created_at) DESC, title COLLATE NOCASE ASC LIMIT ? OFFSET ?")
+        " ORDER BY COALESCE(vote_average, 0) DESC, COALESCE(release_date, created_at) DESC, title COLLATE NOCASE ASC LIMIT ? OFFSET ?")
         .bind(...values, limit, (page - 1) * limit).all<TitleRow>();
       return json({ ok: true, items: result.results.map(publicItem), page, limit, hasMore: result.results.length === limit }, 200, {
         "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
