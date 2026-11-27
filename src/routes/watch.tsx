@@ -44,6 +44,7 @@ async function fetchMovieStream(id: string): Promise<{
   sourceType: string;
   title: string;
   originalUrl?: string;
+  provider?: string;
   providerName?: string;
   nativeHeaders?: Record<string, string>;
 }> {
@@ -66,6 +67,7 @@ async function fetchMovieStream(id: string): Promise<{
           sourceType: data.sourceType || "hls",
           title: data.item?.title || "Cinema Stream",
           originalUrl: data.item?.videoUrl || data.streamUrl,
+          provider: data.provider,
           providerName: data.providerName || data.provider,
           nativeHeaders: data.nativeHeaders,
         };
