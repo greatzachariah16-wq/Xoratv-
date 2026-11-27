@@ -458,17 +458,6 @@ function WatchPage() {
               <p>Playback preferences will appear here when available for this title.</p>
             </div>
           ) : null}
-              {activeStreamData?.sourceType ? (
-                <div><span>Playback type</span><strong>{activeStreamData.sourceType === "xseries" ? "Embedded player" : activeStreamData.sourceType.toUpperCase()}</strong></div>
-              ) : null}
-              {activeMovie?.provider ? (
-                <div><span>Provider</span><strong>{activeMovie.provider}</strong></div>
-              ) : null}
-              {!activeStreamData?.sourceType && !activeMovie?.provider ? (
-                <p>Playback details will appear here when the source provides them.</p>
-              ) : null}
-            </div>
-          ) : null}
         </section>
 
         {upNextMovies.length > 0 ? (
