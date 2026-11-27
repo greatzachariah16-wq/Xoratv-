@@ -83,7 +83,10 @@ async function probeEmbed(url: string): Promise<XSeriesProviderResult> {
     }
     if (response.status === 429) return { status: "error", reason: "rate-limited" };
     if (response.status === 401) return { status: "error", reason: "unauthorized" };
-    return response.ok || (response.status >= 300 && response.status < 400)
+    // Some embed hosts deny server-side HEAD requests while allowing their
+    // player page to load in a real browser. Treat 403 as an iframe candidate;
+    // the browser player will surface an error if the page itself is blocked.
+    return response.ok || response.status === 403 || (response.status >= 300 && response.status < 400)
       ? { status: "available", source: { kind: "embed", url } }
       : { status: "unavailable", reason: "provider-unreachable" };
   } catch {
