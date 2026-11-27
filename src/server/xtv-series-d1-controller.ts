@@ -196,6 +196,7 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         title: titleRow.title,
         ...(titleRow.release_year ? { releaseYear: titleRow.release_year } : {}),
         ...(requestedType === "tv" ? { season, episode } : {}),
+        platform: url.searchParams.get("platform") === "native" ? "native" : "web",
       };
       const resolution = await resolveXSeriesWithFallback(lookup, env);
       if (!resolution.playback) {
@@ -225,6 +226,7 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         providerName: providerNames[provider],
         sourceType,
         sourceKind: source.kind,
+        ...(source.kind !== "embed" && source.headers ? { nativeHeaders: source.headers } : {}),
         attempts: resolution.attempts,
         item: { id: rawId, tmdbId, title: titleRow.title, videoUrl: source.url },
       }, 200, { "Cache-Control": "private, no-store" });
