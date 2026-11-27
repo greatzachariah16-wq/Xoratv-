@@ -198,7 +198,12 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         ...(requestedType === "tv" ? { season, episode } : {}),
         platform: url.searchParams.get("platform") === "native" ? "native" : "web",
       };
-      const resolution = await resolveXSeriesWithFallback(lookup, env);
+      const excludedProviders = url.searchParams.getAll("exclude")
+        .flatMap((value) => value.split(","))
+        .map((value) => value.trim())
+        .filter((value): value is "cinepro" | "vidsrc" | "twoembed" | "cinesrc" | "bingeapi" =>
+          ["cinepro", "vidsrc", "twoembed", "cinesrc", "bingeapi"].includes(value));
+      const resolution = await resolveXSeriesWithFallback(lookup, env, undefined, excludedProviders);
       if (!resolution.playback) {
         return json({
           ok: false,
