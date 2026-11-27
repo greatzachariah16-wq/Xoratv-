@@ -943,10 +943,9 @@ export default {
       }
     }
 
-    // XTv Series Content Engine endpoints (Exclusively serves media published from admin)
+    // X-Series catalogue: preserve uploaded playback sources and enrich matching titles with TMDB metadata/artwork.
     if (url.pathname === "/api/xtv-series/items" && request.method === "GET") {
       try {
-        // Fetch all approved media items published from the Xseris Admin
         const xseriesMedia = (await xseriesDbRead("mediaItems").catch(() => null)) as Record<
           string,
           XserisMediaItem
@@ -954,9 +953,7 @@ export default {
 
         const tones: Array<"clay" | "sage" | "ink" | "sand"> = ["clay", "sage", "ink", "sand"];
         const convertedXseries: XTvSeriesItem[] = Object.values(xseriesMedia || {})
-          .filter(
-            (it) => it && (it.status === "approved" || it.status === "published" || !it.status),
-          )
+          .filter((it) => it && (it.status === "approved" || it.status === "published" || !it.status))
           .map((it, idx) => {
             const primaryCat = (it.categories && it.categories[0]) || "Movies";
             return {
@@ -969,6 +966,7 @@ export default {
               episodesCount: 1,
               tag: primaryCat.toUpperCase(),
               tone: tones[idx % tones.length],
+              // Never alter the supplied stream or the existing playback route.
               videoUrl: it.playback?.url || `/api/stream/embed/${encodeURIComponent(it.id)}`,
               thumbnailUrl: it.thumbnail_url || "",
               provider: "xseries",
@@ -986,14 +984,95 @@ export default {
             (it) =>
               it.genre?.toLowerCase() === g ||
               it.tag?.toLowerCase() === g ||
-              (it.categories &&
-                it.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g))),
+              (it.categories && it.categories.some((c) => c.toLowerCase() === g || c.toLowerCase().includes(g))),
           );
         }
         filtered.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-        return new Response(JSON.stringify({ ok: true, count: filtered.length, items: filtered }), {
+
+        const tmdbKey = process.env.TMDB_API_KEY;
+        let tmdbMatched = 0;
+        if (tmdbKey && filtered.length) {
+          const normalize = (value: string) => value.toLowerCase()
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+          const cache = new Map<string, any>();
+          const candidates = filtered.slice(0, 60);
+          let cursor = 0;
+          const enrichWorker = async () => {
+            while (cursor < candidates.length) {
+              const item = candidates[cursor++];
+              const title = (item.title || "").trim();
+              if (!title || title.length < 2) continue;
+              const cacheKey = normalize(title) + ":" + (item.year || "");
+              let match = cache.get(cacheKey);
+              if (match === undefined) {
+                try {
+                  const params = new URLSearchParams({
+                    api_key: tmdbKey,
+                    query: title,
+                    include_adult: "false",
+                    language: "en-US",
+                  });
+                  const response = await fetch(`https://api.themoviedb.org/3/search/multi?${params.toString()}`, {
+                    headers: { Accept: "application/json" },
+                    signal: AbortSignal.timeout(6500),
+                  });
+                  if (!response.ok) throw new Error(`TMDB search returned ${response.status}`);
+                  const payload = await response.json() as { results?: Array<Record<string, any>> };
+                  const wanted = normalize(title);
+                  const results = (payload.results || []).filter((entry) =>
+                    (entry.media_type === "movie" || entry.media_type === "tv") &&
+                    typeof entry.title === "string" || typeof entry.name === "string"
+                  );
+                  const ranked = results.map((entry) => {
+                    const candidateTitle = normalize(String(entry.title || entry.name || ""));
+                    const exact = candidateTitle === wanted;
+                    const contains = candidateTitle && wanted && (candidateTitle.includes(wanted) || wanted.includes(candidateTitle));
+                    const candidateYear = Number(String(entry.release_date || entry.first_air_date || "").slice(0, 4));
+                    const sourceYear = Number(item.year || 0);
+                    const yearDelta = candidateYear && sourceYear ? Math.abs(candidateYear - sourceYear) : 0;
+                    const score = (exact ? 100 : contains ? 72 : 0) + (yearDelta === 0 ? 8 : yearDelta <= 1 ? 4 : yearDelta <= 3 ? 0 : -18);
+                    return { entry, score, exact };
+                  }).sort((a, b) => b.score - a.score);
+                  const best = ranked[0];
+                  // Conservative matching: exact title, or a very close title with a compatible year.
+                  match = best && best.score >= 82 && best.entry.poster_path
+                    ? {
+                        id: best.entry.id,
+                        mediaType: best.entry.media_type,
+                        poster: `https://image.tmdb.org/t/p/w500${best.entry.poster_path}`,
+                        overview: typeof best.entry.overview === "string" ? best.entry.overview : "",
+                        rating: typeof best.entry.vote_average === "number" ? best.entry.vote_average : null,
+                        releaseDate: best.entry.release_date || best.entry.first_air_date || null,
+                      }
+                    : null;
+                } catch (error) {
+                  console.warn("[X-Series TMDB] Metadata lookup skipped:", error instanceof Error ? error.message : error);
+                  match = null;
+                }
+                cache.set(cacheKey, match);
+              }
+              if (match) {
+                const enriched = item as XTvSeriesItem & { tmdb?: Record<string, unknown> };
+                enriched.thumbnailUrl = match.poster;
+                enriched.tmdb = match;
+                tmdbMatched++;
+              }
+            }
+          };
+          await Promise.all(Array.from({ length: Math.min(4, candidates.length) }, () => enrichWorker()));
+        }
+
+        return new Response(JSON.stringify({
+          ok: true,
+          count: filtered.length,
+          items: filtered,
+          metadata: { provider: tmdbKey ? "tmdb" : "unconfigured", matched: tmdbMatched },
+        }), {
           status: 200,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "XTv Series items error";
