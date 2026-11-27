@@ -23,7 +23,7 @@ export function parseEmbedInfo(
   if (
     input.includes("/api/stream/embed/") ||
     source === "xseries-proxy" ||
-    (source === "xseries" && input.includes("/embed/"))
+    (source === "xseries" && (input.includes("/embed/") || input.includes("/embedtv/")))
   ) {
     return {
       provider: "custom",
