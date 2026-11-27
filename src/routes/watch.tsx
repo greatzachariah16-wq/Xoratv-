@@ -47,6 +47,8 @@ async function fetchMovieStream(id: string): Promise<{
   provider?: string;
   providerName?: string;
   nativeHeaders?: Record<string, string>;
+  provider?: string;
+  providerName?: string;
 }> {
   try {
     const platform = isNativeVlcPlatform() ? "native" : "web";
@@ -70,6 +72,8 @@ async function fetchMovieStream(id: string): Promise<{
           provider: data.provider,
           providerName: data.providerName || data.provider,
           nativeHeaders: data.nativeHeaders,
+          provider: data.provider,
+          providerName: data.providerName || data.provider,
         };
       }
     }
@@ -154,6 +158,9 @@ function WatchPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  const [fallbackStream, setFallbackStream] = useState<Awaited<ReturnType<typeof fetchMovieStream>> | null>(null);
+  const [isTryingAnotherSource, setIsTryingAnotherSource] = useState(false);
+  const [fallbackMessage, setFallbackMessage] = useState("");
 
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
     queryKey: ["xtv-series-items-all"],
@@ -180,19 +187,20 @@ function WatchPage() {
     staleTime: 10 * 60 * 1000,
   });
 
+  const activeStreamData = fallbackStream || streamData;
   const streamUrl =
-    streamData?.streamUrl ||
+    activeStreamData?.streamUrl ||
     activeMovie?.streamUrl ||
     activeMovie?.videoUrl ||
     (activeId ? `/api/stream/embed/${encodeURIComponent(activeId)}` : "");
-  const originalUrl = streamData?.originalUrl || activeMovie?.videoUrl || streamUrl;
+  const originalUrl = activeStreamData?.originalUrl || activeMovie?.videoUrl || streamUrl;
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
   const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
   const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
-  const nativeCinemaDirectUrl = streamData?.provider === "cinepro" && isNativeVlcPlatform()
+  const nativeCinemaDirectUrl = activeStreamData?.provider === "cinepro" && isNativeVlcPlatform()
     ? streamUrl
     : isDirectMediaUrl(originalUrl) ? originalUrl : "";
-  const title = activeMovie?.title || streamData?.title || "Now Playing";
+  const title = activeMovie?.title || activeStreamData?.title || "Now Playing";
   const displayTitle = cleanTitle(title);
   const description = activeMovie?.description?.trim() || "";
   const genres = [...new Set([...(activeMovie?.categories || []), activeMovie?.genre || ""]
@@ -204,6 +212,28 @@ function WatchPage() {
       ? `${Math.round(activeMovie.durationSeconds / 60)} min`
       : null,
   ].filter(Boolean);
+  const tryAnotherSource = async () => {
+    const currentProvider = activeStreamData?.provider;
+    if (!activeId || !currentProvider || isTryingAnotherSource) return;
+    setIsTryingAnotherSource(true);
+    setFallbackMessage("");
+    try {
+      const params = new URLSearchParams({ id: activeId, platform: isNativeVlcPlatform() ? "native" : "web", exclude: currentProvider });
+      const response = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
+      const data = await response.json() as { ok?: boolean; streamUrl?: string; sourceType?: string; provider?: string; providerName?: string; nativeHeaders?: Record<string, string>; item?: { title?: string; videoUrl?: string } };
+      if (!response.ok || !data.ok || !data.streamUrl || !data.provider) {
+        setFallbackMessage("No other source is available right now.");
+        return;
+      }
+      setFallbackStream({ streamUrl: data.streamUrl, sourceType: data.sourceType || "xseries", title: data.item?.title || title, originalUrl: data.item?.videoUrl || data.streamUrl, provider: data.provider, providerName: data.providerName || data.provider, nativeHeaders: data.nativeHeaders });
+      setFallbackMessage("Switched to " + (data.providerName || data.provider) + ".");
+    } catch {
+      setFallbackMessage("Could not reach another source. Please try again.");
+    } finally {
+      setIsTryingAnotherSource(false);
+    }
+  };
+
   const upNextMovies = useMemo(
     () => allMovies.filter((movie) => movie.id !== activeId),
     [allMovies, activeId],
@@ -287,7 +317,7 @@ function WatchPage() {
                 streamUrl={nativeCinemaDirectUrl || playerStreamUrl}
                 nativeVlc={Boolean(nativeCinemaDirectUrl)}
                 nativeDirectOnly={Boolean(nativeCinemaDirectUrl)}
-                nativeHeaders={streamData?.nativeHeaders}
+                nativeHeaders={activeStreamData?.nativeHeaders}
                 externalPoster={activeMovie?.thumbnailUrl}
                 title={title}
                 autoPlay={false}
@@ -296,7 +326,8 @@ function WatchPage() {
                 postId={activeId || "cinema-stream"}
                 authorId="xora-cinema"
                 genre={activeMovie?.genre}
-                source={streamData?.sourceType || activeMovie?.provider}
+                source={activeStreamData?.sourceType || activeMovie?.provider}
+                onPlaybackError={() => { void tryAnotherSource(); }}
                 cinemaMode
               />
             ) : (
@@ -306,6 +337,15 @@ function WatchPage() {
               </div>
             )}
           </div>
+          {activeStreamData?.provider ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#1E1713] px-4 py-3 text-white">
+              <span className="text-xs text-white/65">Source: {activeStreamData.providerName || activeStreamData.provider}</span>
+              <button type="button" onClick={() => void tryAnotherSource()} disabled={isTryingAnotherSource} className="rounded-full bg-[#C0583A] px-4 py-2 text-xs font-semibold text-white disabled:opacity-60">
+                {isTryingAnotherSource ? "Finding source…" : "Try another source"}
+              </button>
+              {fallbackMessage ? <span className="w-full text-xs text-white/70" role="status">{fallbackMessage}</span> : null}
+            </div>
+          ) : null}
         </div>
 
         <section className="xora-watch-details" aria-label="Movie details">
@@ -379,16 +419,16 @@ function WatchPage() {
           </button>
           {settingsOpen ? (
             <div id="xora-watch-settings-content" className="xora-watch-settings-content">
-              {streamData?.providerName ? (
-                <div><span>Stream provider</span><strong>{streamData.providerName}</strong></div>
+              {activeStreamData?.providerName ? (
+                <div><span>Stream provider</span><strong>{activeStreamData.providerName}</strong></div>
               ) : null}
-              {streamData?.sourceType ? (
-                <div><span>Playback type</span><strong>{streamData.sourceType === "xseries" ? "Embedded player" : streamData.sourceType.toUpperCase()}</strong></div>
+              {activeStreamData?.sourceType ? (
+                <div><span>Playback type</span><strong>{activeStreamData.sourceType === "xseries" ? "Embedded player" : activeStreamData.sourceType.toUpperCase()}</strong></div>
               ) : null}
               {activeMovie?.provider ? (
                 <div><span>Provider</span><strong>{activeMovie.provider}</strong></div>
               ) : null}
-              {!streamData?.sourceType && !activeMovie?.provider ? (
+              {!activeStreamData?.sourceType && !activeMovie?.provider ? (
                 <p>Playback details will appear here when the source provides them.</p>
               ) : null}
             </div>
