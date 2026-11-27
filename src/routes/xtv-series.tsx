@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Film, Play, Search, X } from "lucide-react";
 import { AppShell } from "@/components/xora/AppShell";
 import type { XTvSeriesItem } from "@/integrations/firebase/rtdb";
 import { useAuth } from "@/hooks/useAuth";
-import { loadUserSignals, trackEvent } from "@/lib/events";
+import { loadUserSignals } from "@/lib/events";
 import { getOrCreateSessionId } from "@/lib/ranking";
 import type { UserSignals } from "@/integrations/firebase/types";
 import { XoraInHouseAd } from "@/components/ads/XoraInHouseAd";
@@ -95,62 +95,26 @@ function cleanTitle(value: string): string {
     .trim();
 }
 
-function youtubeId(item: XTvSeriesItem): string | null {
-  const values = [item.videoUrl, item.streamUrl, item.thumbnailUrl, item.id].filter((v): v is string => Boolean(v));
-  for (const value of values) {
-    const match = value.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/|i\.ytimg\.com\/vi(?:_webp)?\/)([A-Za-z0-9_-]{11})/) || value.match(/^yt[_-]([A-Za-z0-9_-]{11})$/);
-    if (match?.[1]) return match[1];
-    if (/^[A-Za-z0-9_-]{11}$/.test(value)) return value;
-  }
-  return null;
-}
-
-function isYouTube(item: XTvSeriesItem): boolean {
-  return item.provider === "youtube" || [item.videoUrl, item.streamUrl, item.thumbnailUrl].some((v) => Boolean(v && /youtube\.com|youtu\.be|ytimg\.com|youtube-nocookie/i.test(v)));
-}
-
 function channelName(item: XTvSeriesItem): string {
-  const extra = item as XTvSeriesItem & { channelName?: string };
-  if (extra.channelName?.trim()) return extra.channelName.trim();
-  const byline = item.description?.match(/^\s*By\s+(.+)$/i);
-  return byline?.[1]?.trim() || (isYouTube(item) ? "YouTube" : "Xora Cinema");
-}
-
-function trackOpen(item: XTvSeriesItem, userId?: string | null) {
-  trackEvent({ type: "open_video", postId: item.id, genre: item.genre, feed: "xtv-series", userId });
+  return item.tag || "Xora Cinema";
 }
 
 function SeriesThumbnail({ item, eager = false }: { item: XTvSeriesItem; eager?: boolean }) {
-  const youtube = isYouTube(item);
-  const id = youtube ? youtubeId(item) : null;
-  const sources = id
-    ? ["https://i.ytimg.com/vi/" + id + "/maxresdefault.jpg", "https://i.ytimg.com/vi/" + id + "/sddefault.jpg", "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"]
-    : item.thumbnailUrl ? [item.thumbnailUrl] : [];
-  const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
-  const next = () => index < sources.length - 1 ? setIndex((current) => current + 1) : setFailed(true);
-  if (failed || !sources[index]) return <div className="xsp-thumb-fallback" aria-hidden="true"><Film size={22} /></div>;
+  if (failed || !item.thumbnailUrl) return <div className="xsp-thumb-fallback" aria-hidden="true"><Film size={22} /></div>;
   return (
-    <img
-      className="xsp-thumb-image"
-      src={sources[index]}
-      alt=""
-      loading={eager ? "eager" : "lazy"}
-      fetchPriority={eager ? "high" : "auto"}
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={next}
-      onLoad={(event) => { if (youtube && event.currentTarget.naturalWidth < 640) next(); }}
-    />
+    <img className="xsp-thumb-image" src={item.thumbnailUrl} alt=""
+      loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : "auto"}
+      decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
   );
 }
 
-function SeriesCard({ item, userId, grid = false }: { item: XTvSeriesItem; userId?: string | null; grid?: boolean }) {
+function SeriesCard({ item, grid = false }: { item: XTvSeriesItem; grid?: boolean }) {
   const title = cleanTitle(item.title) || "Untitled";
   const minutes = item.durationSeconds ? Math.max(1, Math.round(item.durationSeconds / 60)) : null;
   return (
     <article className={cn("xsp-card", grid && "xsp-card-grid")}>
-      <Link to="/watch" search={{ id: item.id }} onClick={() => trackOpen(item, userId)} className="xsp-card-link" aria-label={"Play " + item.title} title={item.title}>
+      <div className="xsp-card-link" aria-label={item.title} title={item.title}>
         <div className="xsp-card-image">
           <SeriesThumbnail item={item} />
           {minutes ? <span className="xsp-duration">{minutes} min</span> : null}
@@ -159,7 +123,7 @@ function SeriesCard({ item, userId, grid = false }: { item: XTvSeriesItem; userI
           <h3 className="xsp-card-title">{title}</h3>
           <p className="xsp-card-channel">{channelName(item)}</p>
         </div>
-      </Link>
+      </div>
     </article>
   );
 }
@@ -285,12 +249,7 @@ function XTvSeriesPage() {
                         <h3 title={featured.title}>{cleanTitle(featured.title) || "Untitled"}</h3>
                         <p>{channelName(featured)} <span aria-hidden="true">·</span> {primaryCategory(featured)}</p>
                         <div className="xsp-hero-actions">
-                          <Link to="/watch" search={{ id: featured.id }} onClick={() => trackOpen(featured, user?.id)} className="xsp-watch-button" aria-label={"Watch " + featured.title} title={featured.title}>
-                            <Play size={17} fill="currentColor" /> Watch now
-                          </Link>
-                          <Link to="/watch" search={{ id: featured.id }} onClick={() => trackOpen(featured, user?.id)} className="xsp-detail-button" aria-label={"View details for " + featured.title} title={"Details: " + featured.title}>
-                            <ChevronRight size={20} />
-                          </Link>
+                          <span className="xsp-watch-button" aria-disabled="true"><Play size={17} fill="currentColor" /> Supplier coming soon</span>
                         </div>
                       </div>
                     </div>
