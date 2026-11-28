@@ -393,7 +393,7 @@ function WatchPage() {
                 source={activeStreamData?.sourceType || activeMovie?.provider}
                 onPlaybackError={() => {
                   setPlaybackFailed(true);
-                  setFallbackMessage("This source couldn't start the video. Try another provider.");
+                  setProviderSwitchMessage(`Playback failed from ${providerNames[selectedSourceSlot ?? 0]}. Choose another source or retry this one.`);
                 }}
                 cinemaMode
               />
