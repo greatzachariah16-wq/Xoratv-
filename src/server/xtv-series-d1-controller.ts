@@ -198,12 +198,21 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         ...(requestedType === "tv" ? { season, episode } : {}),
         platform: url.searchParams.get("platform") === "native" ? "native" : "web",
       };
+      const sourceSlotRaw = url.searchParams.get("source");
+      const sourceSlot = sourceSlotRaw === null ? null : Number(sourceSlotRaw);
+      const providerOrder = ["cinepro", "vidsrc", "twoembed", "cinesrc", "bingeapi"] as const;
+      if (sourceSlot !== null && (!Number.isInteger(sourceSlot) || sourceSlot < 0 || sourceSlot >= providerOrder.length)) {
+        return json({ ok: false, error: "Invalid playback source selection." }, 400);
+      }
       const excludedProviders = url.searchParams.getAll("exclude")
         .flatMap((value) => value.split(","))
         .map((value) => value.trim())
         .filter((value): value is "cinepro" | "vidsrc" | "twoembed" | "cinesrc" | "bingeapi" =>
           ["cinepro", "vidsrc", "twoembed", "cinesrc", "bingeapi"].includes(value));
-      const resolution = await resolveXSeriesWithFallback(lookup, env, undefined, excludedProviders);
+      const selectedProvider = sourceSlot === null ? undefined : providerOrder[sourceSlot];
+      const resolution = await resolveXSeriesWithFallback(
+        lookup, env, undefined, excludedProviders, selectedProvider ? [selectedProvider] : undefined,
+      );
       if (!resolution.playback) {
         return json({
           ok: false,
@@ -217,18 +226,12 @@ export async function handleXtvSeriesRoute(request: Request, url: URL, rawEnv: R
         ? "xseries"
         : source.kind === "direct-hls" ? "hls"
         : source.kind === "direct-dash" ? "dash" : "mp4";
-      const providerNames: Record<string, string> = {
-        cinepro: "CinePro Foundation",
-        vidsrc: "VidSrc.sh",
-        twoembed: "2Embed.cc",
-        cinesrc: "CineSrc",
-        bingeapi: "BingeAPI",
-      };
+      const providerSlot = providerOrder.indexOf(provider);
       return json({
         ok: true,
         streamUrl: source.url,
         provider,
-        providerName: providerNames[provider],
+        providerSlot,
         sourceType,
         sourceKind: source.kind,
         ...(source.kind !== "embed" && source.headers ? { nativeHeaders: source.headers } : {}),
