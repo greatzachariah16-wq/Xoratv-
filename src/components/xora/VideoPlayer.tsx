@@ -484,6 +484,7 @@ function NativeVideoPlayerCore({
       if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
       cinemaConfirmationTimerRef.current = setTimeout(() => {
         cinemaConfirmationTimerRef.current = null;
+        cinemaStartupDeadlineRef.current = 0;
         setWaiting(false);
         setFailed(true);
         onPlaybackErrorRef.current?.();
@@ -933,6 +934,7 @@ function NativeVideoPlayerCore({
             if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
             cinemaConfirmationTimerRef.current = null;
             cinemaRecoveryTimerRef.current = null;
+            cinemaStartupDeadlineRef.current = 0;
             setWaiting(false);
             setFailed(false);
           }}
@@ -943,6 +945,7 @@ function NativeVideoPlayerCore({
             if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
             cinemaConfirmationTimerRef.current = null;
             cinemaRecoveryTimerRef.current = null;
+            cinemaStartupDeadlineRef.current = 0;
             setWaiting(false);
           }}
           onError={(event) => {
