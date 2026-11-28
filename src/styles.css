@@ -3957,3 +3957,35 @@ html[data-theme="dark"] {
   background: linear-gradient(135deg,#c46a45,#984326) !important;
   color: #fffaf6 !important;
 }
+
+
+/* Xora Cinema: warm editorial watch layout and accessible external transport controls. */
+.xora-watch-page .xora-watch-header { background:rgba(250,246,240,.97)!important; }
+.xora-watch-header-inner { max-width:1120px; }
+.xora-watch-header-title { color:#35251d!important; font-size:13px; font-weight:820; letter-spacing:.11em; text-transform:uppercase; }
+.xora-watch-main { max-width:1120px; padding-top:18px; }
+.xora-watch-player-sticky { overflow:visible; }
+.xora-watch-player { border-radius:22px; background:#17110e; box-shadow:0 18px 42px rgba(74,43,27,.18),0 2px 8px rgba(74,43,27,.08); }
+.xora-watch-control-row { display:flex; align-items:center; gap:12px; min-height:64px; margin-top:10px; padding:9px 12px; border:1px solid rgba(105,69,47,.10); border-radius:20px; background:linear-gradient(145deg,#fffefa 0%,#f5eae2 100%); box-shadow:0 7px 20px rgba(80,49,31,.055),inset 0 1px 0 #fff; }
+.xora-watch-play-toggle { display:inline-flex; min-width:112px; min-height:44px; align-items:center; justify-content:center; gap:9px; padding:0 18px; border:0; border-radius:999px; background:linear-gradient(135deg,#c46a45,#984326); color:#fffaf6; box-shadow:0 5px 13px rgba(151,65,36,.18),inset 0 1px 0 rgba(255,255,255,.2); font-size:13px; font-weight:780; transition:transform 160ms ease,opacity 160ms ease; }
+.xora-watch-play-toggle:active { transform:scale(.97); }
+.xora-watch-play-toggle:focus-visible { outline:3px solid rgba(181,80,46,.35); outline-offset:3px; }
+.xora-watch-control-hint { color:#806c5f; font-size:11px; font-weight:620; }
+.xora-watch-details { margin-top:14px; }
+.xora-watch-title { font-size:clamp(23px,3.2vw,32px); letter-spacing:-.045em; }
+.xora-watch-up-next { margin-top:30px; }
+.xora-watch-section-heading h3 { font-size:20px; }
+.xora-watch-next-card { width:clamp(132px,17vw,176px); flex-basis:clamp(132px,17vw,176px); }
+@media(min-width:900px) {
+  .xora-watch-main { padding:26px 30px 44px; }
+  .xora-watch-player { border-radius:26px; }
+  .xora-watch-details { padding:26px; }
+  .xora-watch-control-row { min-height:70px; padding:12px 15px; }
+}
+@media(max-width:639px) {
+  .xora-watch-main { padding:10px 12px 28px; }
+  .xora-watch-player { border-radius:16px; }
+  .xora-watch-control-row { min-height:58px; margin-top:8px; padding:7px 9px; border-radius:16px; }
+  .xora-watch-play-toggle { min-width:100px; min-height:42px; }
+  .xora-watch-details { margin-top:12px; padding:17px 14px 15px; border-radius:22px; }
+}
