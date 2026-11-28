@@ -4075,3 +4075,18 @@ html[data-theme="dark"] {
   .xora-watch-details { padding: 15px 14px 13px; border-radius: 21px; }
   .xora-watch-next-card { flex-basis: 136px; }
 }
+
+/* Keep recommendation art in true portrait poster frames across browser flex layouts. */
+.xora-watch-page .xora-watch-next-card { flex: 0 0 142px !important; width: 142px; }
+.xora-watch-page .xora-watch-next-image {
+  display: block;
+  width: 100%;
+  height: 213px !important;
+  min-height: 213px;
+  aspect-ratio: auto !important;
+  flex: 0 0 213px;
+}
+@media (min-width: 640px) {
+  .xora-watch-page .xora-watch-next-card { flex-basis: 164px !important; width: 164px; }
+  .xora-watch-page .xora-watch-next-image { height: 246px !important; min-height: 246px; flex-basis: 246px; }
+}
