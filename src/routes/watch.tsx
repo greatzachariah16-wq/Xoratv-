@@ -198,7 +198,7 @@ function WatchPage() {
       ? `${Math.round(activeMovie.durationSeconds / 60)} min`
       : null,
   ].filter(Boolean);
-  const providerNames = ["Cinepro", "VidSrc", "2Embed", "CineSRC", "BingeAPI"];
+  const sourceLabels = ["Source 1", "Source 2", "Source 3", "Source 4", "Source 5"];
   const activeProviderSlot = activeStreamData?.providerSlot ?? selectedSourceSlot ?? -1;
 
   const choosePlaybackSource = async (sourceSlot: number) => {
@@ -210,21 +210,15 @@ function WatchPage() {
     setStreamError(null);
     setPlaybackFailed(false);
     setIsPlaybackActive(false);
-    setProviderSwitchMessage(`Contacting ${providerNames[sourceSlot]}…`);
+    setProviderSwitchMessage(`Connecting to ${sourceLabels[sourceSlot]}…`);
     try {
       const nextStream = await fetchMovieStream(activeId, sourceSlot);
       setStreamData(nextStream);
-      setProviderSwitchMessage(`${providerNames[sourceSlot]} source selected.`);
+      setProviderSwitchMessage(`${sourceLabels[sourceSlot]} selected.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "This provider did not return a playable source.";
       setStreamError(error instanceof Error ? error : new Error(message));
-      const attempts = error instanceof StreamResolutionError ? error.attempts : [];
-      const diagnostics = attempts.map((attempt) =>
-        `${attempt.provider}: ${attempt.status}${attempt.reason ? ` (${attempt.reason})` : ""}`
-      ).join(" · ");
-      setProviderSwitchMessage(
-        `${providerNames[sourceSlot]} could not provide this title.${diagnostics ? ` Result: ${diagnostics}` : ""}`
-      );
+      setProviderSwitchMessage(`${sourceLabels[sourceSlot]} couldn't provide this title. Retry it or choose another source.`);
     } finally {
       setIsStreamLoading(false);
       setSwitchingProviderSlot(null);
@@ -340,9 +334,9 @@ function WatchPage() {
             ) : streamError && !streamUrl ? (
               <div className="xora-watch-player-message">
                 <Film size={30} aria-hidden="true" />
-                <p>{streamError instanceof Error ? streamError.message : "We couldn’t prepare this stream."}</p>
+                <p>{"The selected source could not prepare this stream. Please retry or choose another source."}</p>
                 <button type="button" className="xora-watch-primary" onClick={retrySelectedSource} disabled={selectedSourceSlot === null || switchingProviderSlot !== null}>
-                  Retry {selectedSourceSlot === null ? "source" : providerNames[selectedSourceSlot]}
+                  Retry {selectedSourceSlot === null ? "source" : sourceLabels[selectedSourceSlot]}
                 </button>
               </div>
             ) : streamUrl ? (
@@ -363,7 +357,7 @@ function WatchPage() {
                 source={activeStreamData?.sourceType || activeMovie?.provider}
                 onPlaybackError={() => {
                   setPlaybackFailed(true);
-                  setProviderSwitchMessage(`Playback failed from ${providerNames[selectedSourceSlot ?? 0]}. Choose another source or retry this one.`);
+                  setProviderSwitchMessage(`Playback failed from ${sourceLabels[selectedSourceSlot ?? 0]}. Choose another source or retry this one.`);
                 }}
                 cinemaMode
               />
@@ -376,7 +370,7 @@ function WatchPage() {
           </div>
           {playbackFailed ? (
             <div className="xora-watch-sourcebar">
-              <span className="xora-watch-source-label">Playback couldn't start from {providerNames[selectedSourceSlot ?? 0]}.</span>
+              <span className="xora-watch-source-label">Playback couldn't start from {sourceLabels[selectedSourceSlot ?? 0]}.</span>
               <button type="button" onClick={retrySelectedSource} className="xora-watch-primary" disabled={selectedSourceSlot === null || switchingProviderSlot !== null}>Retry this source</button>
             </div>
           ) : null}
@@ -390,24 +384,24 @@ function WatchPage() {
                 <h3>Playback source</h3>
               </div>
               <span className="xora-watch-provider-status">
-                {switchingProviderSlot !== null ? `Connecting to ${providerNames[switchingProviderSlot]}…` : selectedSourceSlot === null ? "No source selected" : providerNames[selectedSourceSlot]}
+                {switchingProviderSlot !== null ? `Connecting to ${sourceLabels[switchingProviderSlot]}…` : selectedSourceSlot === null ? "No source selected" : sourceLabels[selectedSourceSlot]}
               </span>
             </div>
             <div className="xora-watch-provider-options" role="group" aria-label="Choose playback source">
-              {providerNames.map((providerName, slot) => {
+              {sourceLabels.map((sourceLabel, slot) => {
                 const active = selectedSourceSlot === slot;
                 const switching = switchingProviderSlot === slot;
                 return (
                   <button
-                    key={providerName}
+                    key={sourceLabel}
                     type="button"
                     className={`xora-watch-provider-option${active ? " is-active" : ""}${switching ? " is-loading" : ""}`}
                     onClick={() => void choosePlaybackSource(slot)}
                     disabled={switchingProviderSlot !== null}
                     aria-pressed={active}
-                    aria-label={`Choose ${providerName} as playback source`}
+                    aria-label={`Choose ${sourceLabel} as playback source`}
                   >
-                    <span className="xora-watch-provider-number">{providerName}</span>
+                    <span className="xora-watch-provider-number">{sourceLabel}</span>
                     <span className="xora-watch-provider-dot" aria-hidden="true" />
                   </button>
                 );
@@ -418,7 +412,7 @@ function WatchPage() {
             </p>
             {switchingProviderSlot === 0 ? (
               <p className="xora-watch-source-feedback" role="status">
-                Cinepro runs on Render. Its first request may take up to 120 seconds while the service wakes from sleep.
+                Some sources may take up to 120 seconds to respond on the first request while the service wakes up.
               </p>
             ) : null}
           </section>
