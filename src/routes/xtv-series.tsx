@@ -314,18 +314,15 @@ function XTvSeriesPage() {
                 {featured ? (
                   <section className="xsp-featured" aria-label="Featured tonight">
                     <div className="xsp-section-heading"><h2>Featured tonight</h2>{isFetching ? <span className="xsp-muted">Updating</span> : null}</div>
-                    <div className="xsp-hero">
+                    <Link
+                      to="/watch"
+                      search={{ id: featured.id }}
+                      className="xsp-hero"
+                      aria-label={"Play " + (cleanTitle(featured.title) || "featured movie")}
+                      title={cleanTitle(featured.title) || "Play featured movie"}
+                    >
                       <SeriesThumbnail key={featured.id} item={featured} eager />
-                      <div className="xsp-hero-scrim" />
-                      <div className="xsp-hero-copy">
-                        <span className="xsp-editor-label">Editor's pick</span>
-                        <h3 title={featured.title}>{cleanTitle(featured.title) || "Untitled"}</h3>
-                        <p>{channelName(featured)} <span aria-hidden="true">·</span> {primaryCategory(featured)}</p>
-                        <div className="xsp-hero-actions">
-                          <Link to="/watch" search={{ id: featured.id }} className="xsp-watch-button"><Play size={17} fill="currentColor" /> Watch now</Link>
-                        </div>
-                      </div>
-                    </div>
+                    </Link>
                   </section>
                 ) : seriesError ? (
                   <section className="xsp-empty-state" role="alert">
