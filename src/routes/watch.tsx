@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Film,
   Play,
+  Pause,
   Share2,
 } from "lucide-react";
 import { VideoPlayer } from "@/components/xora/VideoPlayer";
@@ -180,6 +181,7 @@ function WatchPage() {
   const [isTryingAnotherSource, setIsTryingAnotherSource] = useState(false);
   const [fallbackMessage, setFallbackMessage] = useState("");
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [isPlaybackActive, setIsPlaybackActive] = useState(false);
 
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
     queryKey: ["xtv-series-items-all"],
@@ -219,6 +221,8 @@ function WatchPage() {
   const nativeCinemaDirectUrl = activeStreamData?.provider === "cinepro" && isNativeVlcPlatform()
     ? streamUrl
     : isDirectMediaUrl(originalUrl) ? originalUrl : "";
+  const isVimeoSource = /(?:player\.)?vimeo\.com\//i.test(originalUrl || streamUrl);
+  const supportsExternalPlaybackControl = Boolean(nativeCinemaDirectUrl || isDirectMediaUrl(playerStreamUrl) || isYouTubeSource || isVimeoSource);
   const title = activeMovie?.title || activeStreamData?.title || "Now Playing";
   const displayTitle = cleanTitle(title);
   const description = activeMovie?.description?.trim() || "";
@@ -266,7 +270,21 @@ function WatchPage() {
     setFailedProviders([]);
     setFallbackMessage("");
     setPlaybackFailed(false);
+    setIsPlaybackActive(false);
   }, [activeId]);
+
+  useEffect(() => {
+    const handlePlaybackState = (event: Event) => {
+      const detail = (event as CustomEvent<{ playing?: boolean }>).detail;
+      if (typeof detail?.playing === "boolean") setIsPlaybackActive(detail.playing);
+    };
+    window.addEventListener("xora:watch-playback-state", handlePlaybackState);
+    return () => window.removeEventListener("xora:watch-playback-state", handlePlaybackState);
+  }, []);
+
+  const toggleExternalPlayback = () => {
+    window.dispatchEvent(new CustomEvent("xora:watch-playback-toggle"));
+  };
 
   useEffect(() => {
     if (typeof window === "undefined" || !activeId) {
@@ -321,7 +339,7 @@ function WatchPage() {
           >
             <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" />
           </Link>
-          <h1 className="xora-watch-header-title" title={title}>{displayTitle}</h1>
+          <h1 className="xora-watch-header-title">Xora Cinema</h1>
         </div>
       </header>
 
@@ -383,6 +401,21 @@ function WatchPage() {
             </div>
           ) : null}
         </div>
+
+        {supportsExternalPlaybackControl ? (
+          <div className="xora-watch-control-row" aria-label="Playback controls">
+            <button
+              type="button"
+              className="xora-watch-play-toggle"
+              onClick={toggleExternalPlayback}
+              aria-label={isPlaybackActive ? "Pause video" : "Play video"}
+            >
+              {isPlaybackActive ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+              <span>{isPlaybackActive ? "Pause" : "Play"}</span>
+            </button>
+            <span className="xora-watch-control-hint">{isPlaybackActive ? "Now playing" : "Ready when you are"}</span>
+          </div>
+        ) : null}
 
         <section className="xora-watch-details" aria-label="Movie details">
           {meta.length > 0 ? <p className="xora-watch-meta">{meta.join(" · ")}</p> : null}
