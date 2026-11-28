@@ -40,6 +40,9 @@ import { useOrientation } from "@/hooks/useOrientation";
 import { ProviderEmbedPlayer } from "./ProviderEmbedPlayer";
 import { markPlaybackStartup, recordPlaybackTelemetry, startPlaybackTelemetry } from "@/lib/playback-telemetry";
 
+const CINEMA_STARTUP_CONFIRMATION_MS = 120_000;
+const CINEMA_RECOVERY_INTERVAL_MS = 5_000;
+
 type Props = {
   mediaPath?: string | null;
   posterPath?: string | null;
@@ -140,6 +143,9 @@ function NativeVideoPlayerCore({
   }, [onClose]);
   const shortsRetriedOriginal = useRef(false);
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cinemaConfirmationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cinemaRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cinemaStartupDeadlineRef = useRef(0);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
   const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
@@ -179,6 +185,11 @@ function NativeVideoPlayerCore({
       clearTimeout(shortsRecoveryTimerRef.current);
       shortsRecoveryTimerRef.current = null;
     }
+    if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+    if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
+    cinemaConfirmationTimerRef.current = null;
+    cinemaRecoveryTimerRef.current = null;
+    cinemaStartupDeadlineRef.current = 0;
     sessionRef.current = null;
     lastHeartbeatTimeRef.current = 0;
     if (timer3sRef.current) {
@@ -464,6 +475,17 @@ function NativeVideoPlayerCore({
     let hlsInstance: import("hls.js").default | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let networkRecoveryCount = 0;
+    const cinemaDeadline = cinemaMode ? Date.now() + CINEMA_STARTUP_CONFIRMATION_MS : 0;
+    if (cinemaMode) {
+      cinemaStartupDeadlineRef.current = cinemaDeadline;
+      if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+      cinemaConfirmationTimerRef.current = setTimeout(() => {
+        cinemaConfirmationTimerRef.current = null;
+        setWaiting(false);
+        setFailed(true);
+        onPlaybackError?.();
+      }, CINEMA_STARTUP_CONFIRMATION_MS);
+    }
     const onNetworkOnline = () => {
       if (!liveTv) return;
       networkRecoveryCount = 0;
@@ -523,19 +545,25 @@ function NativeVideoPlayerCore({
                   return;
                 }
 
-                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsInstance && networkRecoveryCount < 3 && !retryTimer) {
-                  const retryDelays = [1000, 2000, 4000];
-                  const delay = retryDelays[networkRecoveryCount];
+                if (cinemaMode && Date.now() < cinemaDeadline && hlsInstance) {
+                  // A cold or slow source is not a confirmed failure. Keep the
+                  // selected stream alive and retry its manifest/network load
+                  // until the startup confirmation window expires.
                   networkRecoveryCount += 1;
+                  setWaiting(true);
                   setFailed(false);
-                  retryTimer = setTimeout(() => {
-                    retryTimer = null;
-                    hlsInstance?.startLoad();
-                  }, delay);
+                  if (!retryTimer) {
+                    retryTimer = setTimeout(() => {
+                      retryTimer = null;
+                      hlsInstance?.startLoad();
+                    }, CINEMA_RECOVERY_INTERVAL_MS);
+                  }
                   return;
                 }
 
+                setWaiting(false);
                 setFailed(true);
+                if (cinemaMode) onPlaybackError?.();
               });
               hlsInstance.attachMedia(videoRef.current);
               hlsInstance.loadSource(activeSrc);
@@ -551,6 +579,8 @@ function NativeVideoPlayerCore({
           window.removeEventListener("online", onNetworkOnline);
           window.removeEventListener("xora:network-online", onNetworkOnline);
           if (retryTimer) clearTimeout(retryTimer);
+          if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+          if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
           hlsInstance?.destroy();
           if (timer3sRef.current) clearTimeout(timer3sRef.current);
           video.pause();
@@ -566,13 +596,15 @@ function NativeVideoPlayerCore({
       window.removeEventListener("online", onNetworkOnline);
       window.removeEventListener("xora:network-online", onNetworkOnline);
       if (retryTimer) clearTimeout(retryTimer);
+      if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+      if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
       if (timer3sRef.current) clearTimeout(timer3sRef.current);
       if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
       video.pause();
       video.removeAttribute("src");
       video.load();
     };
-  }, [activeSrc, feed, liveTv, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
+  }, [activeSrc, feed, liveTv, cinemaMode, onPlaybackError, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
@@ -892,12 +924,20 @@ function NativeVideoPlayerCore({
           onPlaying={() => {
             if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
             shortsRecoveryTimerRef.current = null;
+            if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+            if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
+            cinemaConfirmationTimerRef.current = null;
+            cinemaRecoveryTimerRef.current = null;
             setWaiting(false);
             setFailed(false);
           }}
           onCanPlay={() => {
             if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
             shortsRecoveryTimerRef.current = null;
+            if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+            if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
+            cinemaConfirmationTimerRef.current = null;
+            cinemaRecoveryTimerRef.current = null;
             setWaiting(false);
           }}
           onError={(event) => {
@@ -913,6 +953,21 @@ function NativeVideoPlayerCore({
             if (shortsRecoveryTimerRef.current) clearTimeout(shortsRecoveryTimerRef.current);
             shortsRecoveryTimerRef.current = null;
             const video = videoRef.current;
+            if (cinemaMode && video && Date.now() < cinemaStartupDeadlineRef.current) {
+              // Browsers can emit an early media error while a cold origin or
+              // manifest is still becoming available. Retry the same selected
+              // source; do not report failure until the confirmation window ends.
+              setWaiting(true);
+              setFailed(false);
+              if (!cinemaRecoveryTimerRef.current) {
+                cinemaRecoveryTimerRef.current = setTimeout(() => {
+                  cinemaRecoveryTimerRef.current = null;
+                  if (Date.now() >= cinemaStartupDeadlineRef.current) return;
+                  video.load();
+                }, CINEMA_RECOVERY_INTERVAL_MS);
+              }
+              return;
+            }
             // If the original MP4 cannot play, retry the same asset's
             // low-resolution Cloudinary rendition once.
             if (feed === "shorts" && shortsFallbackSrc && !shortsRetriedOriginal.current && shortsFallbackSrc !== activeSrc) {
@@ -937,7 +992,7 @@ function NativeVideoPlayerCore({
       ) : null}
 
       {/* Buffering indicator */}
-      {!cinemaMode && waiting && !failed ? (
+      {waiting && !failed ? (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40">
           <Loader2 className="size-8 animate-spin text-background" aria-hidden="true" />
         </div>
