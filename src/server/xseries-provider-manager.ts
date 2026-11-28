@@ -139,7 +139,7 @@ const cineproAdapter: XSeriesProviderAdapter<ProviderEnv> = {
         try {
           response = await fetch(requestUrl, {
             headers: { Accept: "application/json", "Cache-Control": "no-cache" },
-            signal: timeoutSignal(CINEPRO_RESOLVE_TIMEOUT_MS),
+            signal: timeoutSignal(attempt === 0 ? CINEPRO_RESOLVE_TIMEOUT_MS : 45000),
           });
         } catch (error) {
           if (attempt === 1) throw error;
