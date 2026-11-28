@@ -364,7 +364,36 @@ function WatchPage() {
     return () => window.removeEventListener("xora:watch-playback-state", handlePlaybackState);
   }, []);
 
-  const toggleExternalPlayback = () => {
+  const toggleExternalPlayback = async () => {
+    // The Watch page Play button is the browser's direct user gesture. Enter
+    // fullscreen and request landscape here, before forwarding playback.
+    if (!isPlaybackActive && !isNativeVlcPlatform()) {
+      const stage = document.querySelector<HTMLElement>(".xora-watch-player");
+      if (stage && document.fullscreenElement !== stage && stage.requestFullscreen) {
+        try {
+          await stage.requestFullscreen();
+        } catch (error) {
+          console.info("[Xora Watch] Fullscreen request was rejected:", error);
+        }
+      }
+
+      const orientation = typeof screen !== "undefined" && screen.orientation
+        ? screen.orientation as ScreenOrientation & {
+            lock?: (value: string) => Promise<void>;
+            unlock?: () => void;
+          }
+        : undefined;
+      try {
+        await orientation?.lock?.("landscape");
+      } catch {
+        try {
+          await orientation?.lock?.("landscape-primary");
+        } catch (error) {
+          console.info("[Xora Watch] Landscape lock was rejected:", error);
+        }
+      }
+    }
+
     window.dispatchEvent(new CustomEvent("xora:watch-playback-toggle"));
   };
 
