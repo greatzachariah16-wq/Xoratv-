@@ -6,6 +6,7 @@ import {
   isNativeVlcPlatform,
   updateNativeVlcBounds,
   toggleNativeVlcPlayback,
+  cycleNativeVlcMode,
 } from "@/lib/native-vlc";
 import {
   Gauge,
@@ -136,6 +137,7 @@ function NativeVideoPlayerCore({
   const [waiting, setWaiting] = useState(false);
   const [failed, setFailed] = useState(false);
   const [nativeVlcActive, setNativeVlcActive] = useState(false);
+  const [cinemaFullscreen, setCinemaFullscreen] = useState(false);
   const nativeVlcActiveRef = useRef(false);
   const onCloseRef = useRef(onClose);
   const onPlaybackErrorRef = useRef(onPlaybackError);
@@ -727,15 +729,25 @@ function NativeVideoPlayerCore({
     }
   }, [activeSrc, nativeDirectOnly, nativeHeaders, nativeCandidates, nativeStreamUrl, nativeVlcOnly, syncNativeStageBounds, title]);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback(async () => {
     if (nativeVlcOnly) {
-      if (nativeVlcActiveRef.current) void toggleNativeVlcPlayback();
-      else void startNativePlayback();
+      if (nativeVlcActiveRef.current) {
+        void toggleNativeVlcPlayback();
+        return;
+      }
+      if (cinemaMode) await lockLandscape();
+      await startNativePlayback();
+      // The native player starts in its embedded layout. Move it into its
+      // dedicated full-screen theatre layout after the surface is created.
+      if (cinemaMode && nativeVlcActiveRef.current) await cycleNativeVlcMode();
       return;
     }
     const video = videoRef.current;
     if (!video || !activeSrc) return;
     if (video.paused || video.ended) {
+      // This is called directly from the Watch page Play gesture, so Android
+      // browsers can enter fullscreen before requesting the landscape lock.
+      if (cinemaMode) await lockLandscape(nativeStageRef.current);
       const attempt = video.play();
       if (attempt) {
         attempt.catch(() => {
@@ -748,11 +760,28 @@ function NativeVideoPlayerCore({
     } else {
       video.pause();
     }
-  }, [activeSrc, nativeVlcOnly, startNativePlayback]);
+  }, [activeSrc, cinemaMode, cycleNativeVlcMode, lockLandscape, nativeVlcOnly, startNativePlayback]);
+
+  useEffect(() => {
+    if (!cinemaMode || nativeVlcOnly) return;
+    const syncFullscreen = () => {
+      const active = document.fullscreenElement === nativeStageRef.current;
+      setCinemaFullscreen(active);
+      if (!document.fullscreenElement) void unlockOrientation();
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      if (document.fullscreenElement === nativeStageRef.current) {
+        void document.exitFullscreen().catch(() => {});
+      }
+      void unlockOrientation();
+    };
+  }, [cinemaMode, nativeVlcOnly, unlockOrientation]);
 
   useEffect(() => {
     if (!cinemaMode) return;
-    const handleExternalToggle = () => toggle();
+    const handleExternalToggle = () => void toggle();
     window.addEventListener("xora:watch-playback-toggle", handleExternalToggle);
     return () => window.removeEventListener("xora:watch-playback-toggle", handleExternalToggle);
   }, [cinemaMode, toggle]);
@@ -835,8 +864,20 @@ function NativeVideoPlayerCore({
         cinemaMode ? "rounded-none" : "rounded-xl",
         nativeVlcOnly && nativeVlcActive ? "opacity-0" : aspect,
         className,
+        cinemaFullscreen && "fixed inset-0 z-[1000] h-[100dvh] w-screen max-w-none",
       )}
     >
+      {cinemaMode && cinemaFullscreen ? (
+        <button
+          type="button"
+          onClick={() => void unlockOrientation()}
+          aria-label="Exit landscape player"
+          title="Exit player"
+          className="absolute right-3 top-3 z-[1100] grid size-11 place-items-center rounded-full border border-white/25 bg-black/65 text-white shadow-lg backdrop-blur-md"
+        >
+          <X className="size-5" aria-hidden="true" />
+        </button>
+      ) : null}
       {!cinemaMode && !liveTv ? <div className="pointer-events-none absolute left-3 top-3 z-30 max-w-[calc(100%-4.5rem)]">
         <span className="block max-w-full truncate rounded-full border border-white/25 bg-black/65 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white backdrop-blur-md">
           4K HD
