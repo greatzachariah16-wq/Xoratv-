@@ -138,9 +138,13 @@ function NativeVideoPlayerCore({
   const [nativeVlcActive, setNativeVlcActive] = useState(false);
   const nativeVlcActiveRef = useRef(false);
   const onCloseRef = useRef(onClose);
+  const onPlaybackErrorRef = useRef(onPlaybackError);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+  useEffect(() => {
+    onPlaybackErrorRef.current = onPlaybackError;
+  }, [onPlaybackError]);
   const shortsRetriedOriginal = useRef(false);
   const shortsRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cinemaConfirmationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,7 +214,7 @@ function NativeVideoPlayerCore({
       setPlaying(state.playing);
       setWaiting(state.waiting);
       setFailed(state.failed);
-      if (state.failed && cinemaMode) onPlaybackError?.();
+      if (state.failed && cinemaMode) onPlaybackErrorRef.current?.();
       if (state.closed) {
         nativeVlcActiveRef.current = false;
         setNativeVlcActive(false);
@@ -474,7 +478,6 @@ function NativeVideoPlayerCore({
 
     let hlsInstance: import("hls.js").default | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let networkRecoveryCount = 0;
     const cinemaDeadline = cinemaMode ? Date.now() + CINEMA_STARTUP_CONFIRMATION_MS : 0;
     if (cinemaMode) {
       cinemaStartupDeadlineRef.current = cinemaDeadline;
@@ -483,12 +486,11 @@ function NativeVideoPlayerCore({
         cinemaConfirmationTimerRef.current = null;
         setWaiting(false);
         setFailed(true);
-        onPlaybackError?.();
+        onPlaybackErrorRef.current?.();
       }, CINEMA_STARTUP_CONFIRMATION_MS);
     }
     const onNetworkOnline = () => {
       if (!liveTv) return;
-      networkRecoveryCount = 0;
       setFailed(false);
       if (hlsInstance) {
         hlsInstance.startLoad();
@@ -549,7 +551,6 @@ function NativeVideoPlayerCore({
                   // A cold or slow source is not a confirmed failure. Keep the
                   // selected stream alive and retry its manifest/network load
                   // until the startup confirmation window expires.
-                  networkRecoveryCount += 1;
                   setWaiting(true);
                   setFailed(false);
                   if (!retryTimer) {
@@ -561,9 +562,13 @@ function NativeVideoPlayerCore({
                   return;
                 }
 
+                if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+                if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
+                cinemaConfirmationTimerRef.current = null;
+                cinemaRecoveryTimerRef.current = null;
                 setWaiting(false);
                 setFailed(true);
-                if (cinemaMode) onPlaybackError?.();
+                if (cinemaMode) onPlaybackErrorRef.current?.();
               });
               hlsInstance.attachMedia(videoRef.current);
               hlsInstance.loadSource(activeSrc);
@@ -604,7 +609,7 @@ function NativeVideoPlayerCore({
       video.removeAttribute("src");
       video.load();
     };
-  }, [activeSrc, feed, liveTv, cinemaMode, onPlaybackError, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
+  }, [activeSrc, feed, liveTv, cinemaMode, dataSaver.maxBitrateKbps, dataSaver.maxBufferLengthSeconds, dataSaver.maxBufferSizeMb]);
 
   // Keep the mute button in sync with imperative changes.
   useEffect(() => {
@@ -981,9 +986,13 @@ function NativeVideoPlayerCore({
               }
               return;
             }
+            if (cinemaConfirmationTimerRef.current) clearTimeout(cinemaConfirmationTimerRef.current);
+            if (cinemaRecoveryTimerRef.current) clearTimeout(cinemaRecoveryTimerRef.current);
+            cinemaConfirmationTimerRef.current = null;
+            cinemaRecoveryTimerRef.current = null;
             setWaiting(false);
             setFailed(true);
-            if (cinemaMode) onPlaybackError?.();
+            if (cinemaMode) onPlaybackErrorRef.current?.();
           }}
           onDurationChange={(e) => setTotal(e.currentTarget.duration || 0)}
           onTimeUpdate={handleTimeUpdate}
