@@ -4090,3 +4090,124 @@ html[data-theme="dark"] {
   .xora-watch-page .xora-watch-next-card { flex-basis: 164px !important; width: 164px; }
   .xora-watch-page .xora-watch-next-image { height: 246px !important; min-height: 246px; flex-basis: 246px; }
 }
+
+
+/* Mobile-first recommendation hierarchy: one clear next title, then a separate discovery shelf. */
+.xora-watch-featured-next {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  gap: 13px;
+  align-items: center;
+  padding: 10px;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid rgba(105,69,47,.12);
+  border-radius: 20px;
+  background: linear-gradient(135deg,#fffefa 0%,#f2e5db 100%);
+  color: #38271F;
+  box-shadow: 0 8px 22px rgba(80,49,31,.075),inset 0 1px 0 rgba(255,255,255,.95);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.xora-watch-featured-next:active { transform: scale(.99); }
+.xora-watch-featured-next-image {
+  position: relative;
+  display: block;
+  flex: 0 0 104px;
+  width: 104px;
+  height: 132px;
+  overflow: hidden;
+  border-radius: 13px;
+  background: #e8d7ca;
+  box-shadow: 0 4px 12px rgba(63,39,26,.14);
+}
+.xora-watch-featured-next-image img { display:block; width:100%; height:100%; object-fit:cover; }
+.xora-watch-featured-next-play {
+  position:absolute;
+  right:7px;
+  bottom:7px;
+  display:grid;
+  width:29px;
+  height:29px;
+  place-items:center;
+  border-radius:50%;
+  background:rgba(61,37,26,.84);
+  color:#fffaf5;
+}
+.xora-watch-featured-next-copy {
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+}
+.xora-watch-featured-next-kicker {
+  color:#A65A3D;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.12em;
+}
+.xora-watch-featured-next-title {
+  display:-webkit-box;
+  overflow:hidden;
+  color:#38271F;
+  font-size:16px;
+  font-weight:800;
+  line-height:1.22;
+  letter-spacing:-.025em;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+.xora-watch-featured-next-meta { color:#927B6B; font-size:11px; font-weight:650; }
+.xora-watch-featured-next-cta {
+  display:inline-flex;
+  min-height:30px;
+  align-items:center;
+  gap:6px;
+  margin-top:3px;
+  padding:0 11px;
+  border-radius:999px;
+  background:#A95032;
+  color:#fffaf5;
+  font-size:10px;
+  font-weight:800;
+}
+.xora-watch-you-may-like { margin-top:25px; }
+.xora-watch-you-may-like .xora-watch-section-heading { margin-bottom:10px; }
+.xora-watch-you-may-like .xora-watch-rail {
+  gap:11px;
+  margin-inline:-12px;
+  padding:2px 12px 14px;
+  scroll-padding-inline:12px;
+  overscroll-behavior-inline:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.xora-watch-you-may-like .xora-watch-next-card {
+  flex:0 0 136px;
+  width:136px;
+  min-width:0;
+}
+.xora-watch-you-may-like .xora-watch-next-image {
+  display:block;
+  width:100%;
+  height:204px !important;
+  min-height:204px;
+  flex:0 0 204px;
+  aspect-ratio:auto !important;
+}
+@media (min-width: 640px) {
+  .xora-watch-featured-next { gap:16px; padding:12px; }
+  .xora-watch-featured-next-image { flex-basis:116px; width:116px; height:148px; }
+  .xora-watch-featured-next-title { font-size:18px; }
+  .xora-watch-you-may-like .xora-watch-next-card { flex-basis:164px; width:164px; }
+  .xora-watch-you-may-like .xora-watch-next-image { height:246px !important; min-height:246px; flex-basis:246px; }
+}
+@media (max-width: 380px) {
+  .xora-watch-featured-next { gap:10px; padding:8px; border-radius:17px; }
+  .xora-watch-featured-next-image { flex-basis:92px; width:92px; height:120px; }
+  .xora-watch-featured-next-title { font-size:14px; }
+  .xora-watch-you-may-like .xora-watch-next-card { flex-basis:128px; width:128px; }
+  .xora-watch-you-may-like .xora-watch-next-image { height:192px !important; min-height:192px; flex-basis:192px; }
+}
