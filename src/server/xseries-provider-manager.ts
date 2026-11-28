@@ -232,10 +232,12 @@ export async function resolveXSeriesWithFallback<Env extends ProviderEnv>(
   env: Env,
   adapters: readonly XSeriesProviderAdapter<Env>[] = XSERIES_PROVIDER_ADAPTERS as readonly XSeriesProviderAdapter<Env>[],
   excludedProviders: readonly XSeriesProviderId[] = [],
+  onlyProviders?: readonly XSeriesProviderId[],
 ): Promise<XSeriesResolution> {
   const excluded = new Set(excludedProviders);
+  const selected = onlyProviders ? new Set(onlyProviders) : null;
   const ordered = [...adapters]
-    .filter((adapter) => adapter.isEnabled(env) && !excluded.has(adapter.id))
+    .filter((adapter) => adapter.isEnabled(env) && !excluded.has(adapter.id) && (!selected || selected.has(adapter.id)))
     .sort((a, b) => a.priority - b.priority);
   const attempts: XSeriesProviderAttempt[] = [];
 
