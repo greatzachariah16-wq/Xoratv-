@@ -279,6 +279,15 @@
           ".write": "auth != null && auth.uid == $subscriberUid"
         }
       }
+    },
+    "userSupportTickets": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "$ticketKey": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && auth.uid == $uid && newData.child('user_id').val() === $uid))",
+          ".validate": "newData.hasChildren(['id','user_id','category','subject','message','status','priority','created_at','updated_at']) && newData.child('user_id').val() === $uid && newData.child('id').isString() && newData.child('subject').isString() && newData.child('message').isString()"
+        }
+      }
     }
   }
 }
