@@ -122,6 +122,11 @@ export function ProviderEmbedPlayer({
   }, [postId, authorId, genre, feed, isClient]);
 
   useEffect(() => {
+    if (!isClient) return;
+    window.dispatchEvent(new CustomEvent("xora:watch-playback-state", { detail: { playing: isPlaying } }));
+  }, [isClient, isPlaying]);
+
+  useEffect(() => {
     if (!isClient || !isPlaying || !user || !postId) {
       return;
     }
@@ -282,8 +287,7 @@ export function ProviderEmbedPlayer({
   }
 
   const togglePlayState = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
+    () => {
       const iframe = iframeRef.current;
       if (!iframe || !iframe.contentWindow) return;
 
@@ -309,6 +313,13 @@ export function ProviderEmbedPlayer({
     },
     [isPlaying],
   );
+
+  useEffect(() => {
+    if (!cinemaMode) return;
+    const handleExternalToggle = () => togglePlayState();
+    window.addEventListener("xora:watch-playback-toggle", handleExternalToggle);
+    return () => window.removeEventListener("xora:watch-playback-toggle", handleExternalToggle);
+  }, [cinemaMode, togglePlayState]);
 
   return (
     <div
@@ -445,7 +456,7 @@ export function ProviderEmbedPlayer({
       {!cinemaMode && !playerClosed && hasStarted && !isPlaying ? (
         <button
           type="button"
-          onClick={togglePlayState}
+          onClick={(event) => { event.stopPropagation(); togglePlayState(); }}
           aria-label="Play video"
           className="press absolute inset-0 z-30 grid place-items-center bg-black/10"
         >
