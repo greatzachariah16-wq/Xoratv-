@@ -192,6 +192,8 @@ function WatchPage() {
   const [isPlaybackActive, setIsPlaybackActive] = useState(false);
   const [switchingProviderSlot, setSwitchingProviderSlot] = useState<number | null>(null);
   const [providerSwitchMessage, setProviderSwitchMessage] = useState("");
+  const [landscapeReady, setLandscapeReady] = useState(false);
+  const [landscapeMessage, setLandscapeMessage] = useState("");
 
   const { data: allMovies = [], isLoading: isLoadingMovies } = useQuery({
     queryKey: ["xtv-series-items-all"],
@@ -351,6 +353,8 @@ function WatchPage() {
     setPlaybackFailed(false);
     setIsPlaybackActive(false);
     setProviderSwitchMessage("");
+    setLandscapeReady(false);
+    setLandscapeMessage("");
     setSwitchingProviderSlot(null);
     autoSwitchInFlight.current = false;
   }, [activeId]);
@@ -381,35 +385,32 @@ function WatchPage() {
   }, []);
 
   const toggleExternalPlayback = async () => {
-    // The Watch page Play button is the browser's direct user gesture. Enter
-    // fullscreen and request landscape here, before forwarding playback.
-    if (!isPlaybackActive && !isNativeVlcPlatform()) {
-      const stage = document.querySelector<HTMLElement>(".xora-watch-player");
-      if (stage && document.fullscreenElement !== stage && stage.requestFullscreen) {
-        try {
-          await stage.requestFullscreen();
-        } catch (error) {
-          console.info("[Xora Watch] Fullscreen request was rejected:", error);
-        }
-      }
-
+    // First tap is ONLY an orientation request. Call lock directly from this
+    // click gesture; do not request fullscreen or start playback here.
+    if (!isPlaybackActive && !isNativeVlcPlatform() && !landscapeReady) {
       const orientation = typeof screen !== "undefined" && screen.orientation
         ? screen.orientation as ScreenOrientation & {
             lock?: (value: string) => Promise<void>;
-            unlock?: () => void;
           }
         : undefined;
-      try {
-        await orientation?.lock?.("landscape");
-      } catch {
-        try {
-          await orientation?.lock?.("landscape-primary");
-        } catch (error) {
-          console.info("[Xora Watch] Landscape lock was rejected:", error);
-        }
+
+      if (!orientation?.lock) {
+        setLandscapeMessage("This browser does not support automatic landscape rotation. Rotate your device manually.");
+        return;
       }
+
+      try {
+        await orientation.lock("landscape");
+        setLandscapeReady(true);
+        setLandscapeMessage("Landscape mode is ready. Tap Play again to start the movie.");
+      } catch (error) {
+        console.info("[Xora Watch] Landscape lock was rejected:", error);
+        setLandscapeMessage("The browser rejected landscape rotation. Rotate your device manually, then tap Play.");
+      }
+      return;
     }
 
+    // Second tap starts playback. Pause continues to work normally.
     window.dispatchEvent(new CustomEvent("xora:watch-playback-toggle"));
   };
 
@@ -571,12 +572,12 @@ function WatchPage() {
               type="button"
               className="xora-watch-play-toggle"
               onClick={toggleExternalPlayback}
-              aria-label={isPlaybackActive ? "Pause video" : "Play video"}
+              aria-label={isPlaybackActive ? "Pause video" : !isNativeVlcPlatform() && !landscapeReady ? "Rotate to landscape" : "Play video"}
             >
               {isPlaybackActive ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-              <span>{isPlaybackActive ? "Pause" : "Play"}</span>
+              <span>{isPlaybackActive ? "Pause" : !isNativeVlcPlatform() && !landscapeReady ? "Rotate" : "Play"}</span>
             </button>
-            <span className="xora-watch-control-hint">{isPlaybackActive ? "Now playing" : "Ready when you are"}</span>
+            <span className="xora-watch-control-hint">{isPlaybackActive ? "Now playing" : landscapeMessage || (landscapeReady ? "Landscape ready · Tap Play" : "Tap to rotate")}</span>
           </div>
         ) : null}
 
