@@ -235,6 +235,7 @@ function WatchPage() {
     if (!activeId || switchingProviderSlot !== null) return;
     setSelectedSourceSlot(sourceSlot);
     setSwitchingProviderSlot(sourceSlot);
+    setIsStreamLoading(true);
     setStreamData(null);
     setStreamError(null);
     setPlaybackFailed(false);
@@ -255,6 +256,7 @@ function WatchPage() {
         `${providerNames[sourceSlot]} could not provide this title.${diagnostics ? ` Result: ${diagnostics}` : ""}`
       );
     } finally {
+      setIsStreamLoading(false);
       setSwitchingProviderSlot(null);
     }
   };
