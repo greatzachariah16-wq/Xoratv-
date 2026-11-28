@@ -63,74 +63,44 @@ async function fetchMovieStream(id: string, sourceSlot: number): Promise<{
   attempts?: ProviderAttempt[];
   providerSlot?: number;
 }> {
-  const isXSeriesId = /^(movie|tv)_\d+$/.test(id);
+  const platform = isNativeVlcPlatform() ? "native" : "web";
+  const params = new URLSearchParams({ id, platform, source: String(sourceSlot) });
+  let response: Response;
   try {
-    const platform = isNativeVlcPlatform() ? "native" : "web";
-    const params = new URLSearchParams({ id, platform });
-    params.set("source", String(sourceSlot));
-    const res = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
-    const data = await res.json().catch(() => ({})) as {
-      ok?: boolean;
-      streamUrl?: string;
-      sourceType?: string;
-      provider?: string;
-      providerName?: string;
-      nativeHeaders?: Record<string, string>;
-      item?: { title?: string; videoUrl?: string };
-      attempts?: ProviderAttempt[];
-      providerSlot?: number;
-      error?: string;
-    };
-    if (res.ok && data.ok && data.streamUrl) {
-      return {
-        streamUrl: data.streamUrl,
-        sourceType: data.sourceType || "hls",
-        title: data.item?.title || "Cinema Stream",
-        originalUrl: data.item?.videoUrl || data.streamUrl,
-        provider: data.provider,
-        providerName: data.providerName || data.provider,
-        nativeHeaders: data.nativeHeaders,
-        attempts: data.attempts || [],
-        providerSlot: data.providerSlot,
-      };
-    }
-    if (isXSeriesId) {
-      throw new StreamResolutionError(data.error || "No provider returned a usable source.", data.attempts || []);
-    }
-  } catch (error) {
-    if (error instanceof StreamResolutionError) throw error;
-    if (isXSeriesId) {
-      throw new StreamResolutionError("Could not reach the XSeries playback resolver.");
-    }
-    // Legacy catalogue IDs may continue through the older playback routes.
+    response = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
+  } catch {
+    throw new StreamResolutionError("Could not reach the selected playback provider.");
   }
 
-  try {
-    const res = await fetch("/api/catalog/" + encodeURIComponent(id) + "/playback");
-    if (res.ok) {
-      const data = (await res.json()) as {
-        ok: boolean;
-        playback?: { url?: string; provider?: string };
-      };
-      if (data.ok && data.playback?.url) {
-        return {
-          streamUrl: data.playback.url,
-          sourceType: data.playback.provider || "embed",
-          title: "Cinema Stream",
-          originalUrl: data.playback.url,
-          providerName: data.playback.provider,
-        };
-      }
-    }
-  } catch {
-    // Continue to the legacy embed fallback.
+  const data = await response.json().catch(() => ({})) as {
+    ok?: boolean;
+    streamUrl?: string;
+    sourceType?: string;
+    provider?: string;
+    providerName?: string;
+    nativeHeaders?: Record<string, string>;
+    item?: { title?: string; videoUrl?: string };
+    attempts?: ProviderAttempt[];
+    providerSlot?: number;
+    error?: string;
+  };
+  if (!response.ok || !data.ok || !data.streamUrl) {
+    throw new StreamResolutionError(
+      data.error || "The selected provider did not return a playable source.",
+      data.attempts || [],
+    );
   }
 
   return {
-    streamUrl: "/api/stream/embed/" + encodeURIComponent(id),
-    sourceType: "xseries",
-    title: "Cinema Stream",
-    providerName: "Legacy resolver",
+    streamUrl: data.streamUrl,
+    sourceType: data.sourceType || "hls",
+    title: data.item?.title || "Cinema Stream",
+    originalUrl: data.item?.videoUrl || data.streamUrl,
+    provider: data.provider,
+    providerName: data.providerName || data.provider,
+    nativeHeaders: data.nativeHeaders,
+    attempts: data.attempts || [],
+    providerSlot: data.providerSlot,
   };
 }
 
