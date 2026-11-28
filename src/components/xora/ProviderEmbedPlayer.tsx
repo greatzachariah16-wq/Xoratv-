@@ -262,6 +262,10 @@ export function ProviderEmbedPlayer({
   if (!(cinemaMode && youtubeVideoId) && currentOrigin && !embedSrc.includes("origin=") && !embedSrc.includes("/api/stream/embed/")) {
     embedSrc += `&origin=${encodeURIComponent(currentOrigin)}`;
   }
+  if (embedSrc.includes("vimeo.com")) {
+    if (!/[?&]api=1(?:&|$)/.test(embedSrc)) embedSrc += "&api=1";
+    if (!/[?&]player_id=/.test(embedSrc)) embedSrc += "&player_id=xora-cinema-player";
+  }
   if (!cinemaMode && dataSaver.maxBitrateKbps <= 667) {
     if (embedSrc.includes("youtube.com") || embedSrc.includes("youtube-nocookie.com")) {
       if (!embedSrc.includes("vq="))
