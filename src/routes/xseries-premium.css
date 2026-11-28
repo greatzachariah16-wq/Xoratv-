@@ -109,3 +109,11 @@
 .xsp-card-link:focus-visible .xsp-card-play-overlay,.xsp-card-link:active .xsp-card-play-overlay{opacity:1}
 @media(hover:hover){.xsp-card-link:hover .xsp-card-play-overlay{opacity:1}}
 
+
+/* Featured cinema artwork: full-bleed landscape image, no visible copy or overlays. */
+.xsp-hero { aspect-ratio:16/9; border:1px solid rgba(255,255,255,.82); border-radius:22px; background:#e8d9ce; isolation:isolate; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.xsp-hero > .xsp-thumb-image,.xsp-hero > .xsp-thumb-fallback { z-index:0; display:block; width:100%; height:100%; object-fit:cover; transition:transform 420ms cubic-bezier(.2,.7,.2,1); }
+.xsp-hero:focus-visible { outline:3px solid rgba(181,80,46,.5); outline-offset:4px; }
+.xsp-hero:active { transform:scale(.99); }
+@media(hover:hover) { .xsp-hero:hover { box-shadow:0 16px 34px rgba(120,60,40,.2),0 3px 9px rgba(120,60,40,.09); } .xsp-hero:hover > .xsp-thumb-image { transform:scale(1.018); } }
+@media(min-width:640px) { .xsp-hero { aspect-ratio:2.05/1; border-radius:28px; } }
