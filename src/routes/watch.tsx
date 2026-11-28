@@ -364,6 +364,22 @@ function WatchPage() {
     return () => window.removeEventListener("xora:watch-playback-state", handlePlaybackState);
   }, []);
 
+  useEffect(() => {
+    const unlockWhenFullscreenEnds = () => {
+      if (document.fullscreenElement) return;
+      try {
+        const orientation = typeof screen !== "undefined" && screen.orientation
+          ? screen.orientation as ScreenOrientation & { unlock?: () => void }
+          : undefined;
+        orientation?.unlock?.();
+      } catch {
+        // Browsers without orientation-unlock support need no fallback.
+      }
+    };
+    document.addEventListener("fullscreenchange", unlockWhenFullscreenEnds);
+    return () => document.removeEventListener("fullscreenchange", unlockWhenFullscreenEnds);
+  }, []);
+
   const toggleExternalPlayback = async () => {
     // The Watch page Play button is the browser's direct user gesture. Enter
     // fullscreen and request landscape here, before forwarding playback.
