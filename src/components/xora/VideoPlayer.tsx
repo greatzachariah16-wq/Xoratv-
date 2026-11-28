@@ -6,7 +6,6 @@ import {
   isNativeVlcPlatform,
   updateNativeVlcBounds,
   toggleNativeVlcPlayback,
-  cycleNativeVlcMode,
 } from "@/lib/native-vlc";
 import {
   Gauge,
@@ -735,11 +734,7 @@ function NativeVideoPlayerCore({
         void toggleNativeVlcPlayback();
         return;
       }
-      if (cinemaMode) await lockLandscape();
       await startNativePlayback();
-      // The native player starts in its embedded layout. Move it into its
-      // dedicated full-screen theatre layout after the surface is created.
-      if (cinemaMode && nativeVlcActiveRef.current) await cycleNativeVlcMode();
       return;
     }
     const video = videoRef.current;
@@ -760,7 +755,7 @@ function NativeVideoPlayerCore({
     } else {
       video.pause();
     }
-  }, [activeSrc, cinemaMode, cycleNativeVlcMode, lockLandscape, nativeVlcOnly, startNativePlayback]);
+  }, [activeSrc, cinemaMode, lockLandscape, nativeVlcOnly, startNativePlayback]);
 
   useEffect(() => {
     if (!cinemaMode || nativeVlcOnly) return;

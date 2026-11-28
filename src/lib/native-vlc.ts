@@ -241,10 +241,6 @@ export async function toggleNativeVlcPlayback(): Promise<void> {
   if (isNativeVlcPlatform()) await NativeVlc.togglePlayback();
 }
 
-/** Switch the native player between its embedded and full-screen theatre layouts. */
-export async function cycleNativeVlcMode(): Promise<void> {
-  if (isNativeVlcPlatform()) await NativeVlc.cycleMode();
-}
 
 export async function lockNativeVlcLandscape(): Promise<void> {
   if (isNativeVlcPlatform()) await NativeVlc.lockLandscape();
