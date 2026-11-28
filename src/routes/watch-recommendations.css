@@ -22,3 +22,27 @@
   .xora-watch-recommendation-row .xora-watch-next-card { flex-basis: 128px; width: 128px; }
   .xora-watch-recommendation-row .xora-watch-next-image { height: 192px !important; min-height: 192px; flex-basis: 192px; }
 }
+
+
+/* Watch-page browser cinema mode: the Play control fullscreen target. */
+.xora-watch-player:fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: grid !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #000 !important;
+  place-items: center !important;
+}
+.xora-watch-player:fullscreen > * {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: 100% !important;
+}
