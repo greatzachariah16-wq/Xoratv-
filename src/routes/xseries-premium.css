@@ -117,3 +117,27 @@
 .xsp-hero:active { transform:scale(.99); }
 @media(hover:hover) { .xsp-hero:hover { box-shadow:0 16px 34px rgba(120,60,40,.2),0 3px 9px rgba(120,60,40,.09); } .xsp-hero:hover > .xsp-thumb-image { transform:scale(1.018); } }
 @media(min-width:640px) { .xsp-hero { aspect-ratio:2.05/1; border-radius:28px; } }
+
+
+/* X-Series shelves: larger poster presence, closer title hierarchy and cleaner touch targets. */
+.xsp-rows { gap: 25px; margin-top: 22px; }
+.xsp-row-heading { margin-bottom: 7px; }
+.xsp-row-heading h2 { font-size: 19px; letter-spacing: -.035em; }
+.xsp-card-rail { gap: 13px; padding-top: 8px; padding-bottom: 15px; }
+.xsp-card { width: 46vw; max-width: 204px; flex-basis: 46vw; }
+.xsp-card-image { border-radius: 18px; box-shadow: 0 8px 20px rgba(65,39,25,.13),inset 0 1px 0 rgba(255,255,255,.35); }
+.xsp-card-copy { padding: 7px 1px 0; }
+.xsp-card-title { min-height: 36px; font-size: 14px; line-height: 18px; font-weight: 780; }
+.xsp-card-channel { margin-top: 2px; font-size: 10px; }
+.xsp-grid { gap: 20px 14px; }
+.xsp-grid .xsp-card-image { border-radius: 18px; }
+.xsp-grid .xsp-card-copy { padding-top: 8px; }
+.xsp-grid .xsp-card-title { min-height: 34px; font-size: 13px; line-height: 17px; }
+@media (min-width: 640px) {
+  .xsp-card { width: 196px; flex-basis: 196px; }
+  .xsp-card-rail { gap: 16px; }
+  .xsp-rows { gap: 30px; }
+}
+@media (max-width: 380px) {
+  .xsp-card { width: 47vw; flex-basis: 47vw; }
+}
