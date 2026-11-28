@@ -153,7 +153,7 @@ function NativeVideoPlayerCore({
   const cinemaStartupDeadlineRef = useRef(0);
   const [current, setCurrent] = useState(0);
   const [total, setTotal] = useState(0);
-  const { isLandscape, lockLandscape, unlockOrientation } = useOrientation();
+  const { isLandscape, unlockOrientation } = useOrientation();
 
   // Tracking refs to ensure events fire at most once per playback session
   const trackedStart = useRef(false);
@@ -740,9 +740,8 @@ function NativeVideoPlayerCore({
     const video = videoRef.current;
     if (!video || !activeSrc) return;
     if (video.paused || video.ended) {
-      // This is called directly from the Watch page Play gesture, so Android
-      // browsers can enter fullscreen before requesting the landscape lock.
-      if (cinemaMode) await lockLandscape(nativeStageRef.current);
+      // The Watch page Play button requests browser fullscreen and landscape
+      // directly from its click handler before forwarding this playback event.
       const attempt = video.play();
       if (attempt) {
         attempt.catch(() => {
@@ -755,7 +754,7 @@ function NativeVideoPlayerCore({
     } else {
       video.pause();
     }
-  }, [activeSrc, cinemaMode, lockLandscape, nativeVlcOnly, startNativePlayback]);
+  }, [activeSrc, cinemaMode, nativeVlcOnly, startNativePlayback]);
 
   useEffect(() => {
     if (!cinemaMode || nativeVlcOnly) return;
