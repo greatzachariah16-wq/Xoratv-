@@ -52,7 +52,11 @@ class StreamResolutionError extends Error {
   }
 }
 
-async function fetchMovieStream(id: string, sourceSlot: number): Promise<{
+async function fetchMovieStream(
+  id: string,
+  sourceSlot: number,
+  onWaitingRetry?: (retry: number, maxRetries: number) => void,
+): Promise<{
   streamUrl: string;
   sourceType: string;
   title: string;
@@ -65,43 +69,68 @@ async function fetchMovieStream(id: string, sourceSlot: number): Promise<{
 }> {
   const platform = isNativeVlcPlatform() ? "native" : "web";
   const params = new URLSearchParams({ id, platform, source: String(sourceSlot) });
-  let response: Response;
-  try {
-    response = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
-  } catch {
-    throw new StreamResolutionError("Could not reach the selected playback provider.");
-  }
+  const maxAttempts = sourceSlot === 0 ? 3 : 1;
+  let lastError: StreamResolutionError | null = null;
 
-  const data = await response.json().catch(() => ({})) as {
-    ok?: boolean;
-    streamUrl?: string;
-    sourceType?: string;
-    provider?: string;
-    providerName?: string;
-    nativeHeaders?: Record<string, string>;
-    item?: { title?: string; videoUrl?: string };
-    attempts?: ProviderAttempt[];
-    providerSlot?: number;
-    error?: string;
-  };
-  if (!response.ok || !data.ok || !data.streamUrl) {
-    throw new StreamResolutionError(
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch("/api/xtv-series/stream?" + params.toString(), {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+    } catch {
+      lastError = new StreamResolutionError("The selected source is still starting.");
+      if (attempt < maxAttempts) {
+        onWaitingRetry?.(attempt, maxAttempts);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      throw lastError;
+    }
+
+    const data = await response.json().catch(() => ({})) as {
+      ok?: boolean;
+      streamUrl?: string;
+      sourceType?: string;
+      provider?: string;
+      providerName?: string;
+      nativeHeaders?: Record<string, string>;
+      item?: { title?: string; videoUrl?: string };
+      attempts?: ProviderAttempt[];
+      providerSlot?: number;
+      error?: string;
+    };
+    if (response.ok && data.ok && data.streamUrl) {
+      return {
+        streamUrl: data.streamUrl,
+        sourceType: data.sourceType || "hls",
+        title: data.item?.title || "Cinema Stream",
+        originalUrl: data.item?.videoUrl || data.streamUrl,
+        provider: data.provider,
+        providerName: data.providerName || data.provider,
+        nativeHeaders: data.nativeHeaders,
+        attempts: data.attempts || [],
+        providerSlot: data.providerSlot,
+      };
+    }
+
+    lastError = new StreamResolutionError(
       data.error || "The selected provider did not return a playable source.",
       data.attempts || [],
     );
+    const cineproUnavailable = (data.attempts || []).some(
+      (entry) => entry.provider === "cinepro" && entry.status === "unavailable" && entry.reason === "provider-unreachable",
+    );
+    const retryable = response.status === 408 || response.status === 502 || response.status === 503 ||
+      response.status === 504 || cineproUnavailable;
+    if (sourceSlot !== 0 || !retryable || attempt === maxAttempts) throw lastError;
+
+    onWaitingRetry?.(attempt, maxAttempts);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
   }
 
-  return {
-    streamUrl: data.streamUrl,
-    sourceType: data.sourceType || "hls",
-    title: data.item?.title || "Cinema Stream",
-    originalUrl: data.item?.videoUrl || data.streamUrl,
-    provider: data.provider,
-    providerName: data.providerName || data.provider,
-    nativeHeaders: data.nativeHeaders,
-    attempts: data.attempts || [],
-    providerSlot: data.providerSlot,
-  };
+  throw lastError || new StreamResolutionError("The selected source could not start.");
 }
 
 function isDirectMediaUrl(value?: string | null): boolean {
@@ -212,7 +241,9 @@ function WatchPage() {
     setIsPlaybackActive(false);
     setProviderSwitchMessage(`Connecting to ${sourceLabels[sourceSlot]}…`);
     try {
-      const nextStream = await fetchMovieStream(activeId, sourceSlot);
+      const nextStream = await fetchMovieStream(activeId, sourceSlot, (retry, maxRetries) => {
+        setProviderSwitchMessage(`The selected source is still starting. Waiting before retry ${retry + 1} of ${maxRetries}…`);
+      });
       setStreamData(nextStream);
       setProviderSwitchMessage(`${sourceLabels[sourceSlot]} selected.`);
     } catch (error) {
