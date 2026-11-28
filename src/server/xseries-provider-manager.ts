@@ -58,7 +58,7 @@ type ProviderEnv = {
 const timeoutSignal = (milliseconds = 9000) => AbortSignal.timeout(milliseconds);
 // Render may have suspended CinePro Core between requests. Give its first
 // cold-start resolution enough time to boot before treating it as unavailable.
-const CINEPRO_RESOLVE_TIMEOUT_MS = 45000;
+const CINEPRO_RESOLVE_TIMEOUT_MS = 120000;
 
 function secureUrl(value: unknown, base?: string): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -132,10 +132,25 @@ const cineproAdapter: XSeriesProviderAdapter<ProviderEnv> = {
     const requestUrl = new URL(endpoint, base);
     requestUrl.searchParams.set("platform", lookup.platform === "native" ? "native" : "web");
     try {
-      const response = await fetch(requestUrl, {
-        headers: { Accept: "application/json" },
-        signal: timeoutSignal(CINEPRO_RESOLVE_TIMEOUT_MS),
-      });
+      // Render can return a transient gateway error while a suspended service wakes.
+      // Keep the request alive for a full cold start, then retry one transient failure.
+      let response: Response | null = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          response = await fetch(requestUrl, {
+            headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+            signal: timeoutSignal(CINEPRO_RESOLVE_TIMEOUT_MS),
+          });
+        } catch (error) {
+          if (attempt === 1) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+          continue;
+        }
+        if (![502, 503, 504].includes(response.status) || attempt === 1) break;
+        await response.body?.cancel();
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+      if (!response) return { status: "unavailable", reason: "provider-unreachable" };
       if (response.status === 404) return { status: "unavailable", reason: "not-found" };
       if (response.status === 401 || response.status === 403) return { status: "error", reason: "unauthorized" };
       if (response.status === 429) return { status: "error", reason: "rate-limited" };
