@@ -5,6 +5,7 @@ import {
   openNativeVlc,
   isNativeVlcPlatform,
   updateNativeVlcBounds,
+  toggleNativeVlcPlayback,
 } from "@/lib/native-vlc";
 import {
   Gauge,
@@ -690,7 +691,8 @@ function NativeVideoPlayerCore({
 
   const toggle = useCallback(() => {
     if (nativeVlcOnly) {
-      void startNativePlayback();
+      if (nativeVlcActiveRef.current) void toggleNativeVlcPlayback();
+      else void startNativePlayback();
       return;
     }
     const video = videoRef.current;
@@ -709,6 +711,18 @@ function NativeVideoPlayerCore({
       video.pause();
     }
   }, [activeSrc, nativeVlcOnly, startNativePlayback]);
+
+  useEffect(() => {
+    if (!cinemaMode) return;
+    const handleExternalToggle = () => toggle();
+    window.addEventListener("xora:watch-playback-toggle", handleExternalToggle);
+    return () => window.removeEventListener("xora:watch-playback-toggle", handleExternalToggle);
+  }, [cinemaMode, toggle]);
+
+  useEffect(() => {
+    if (!cinemaMode) return;
+    window.dispatchEvent(new CustomEvent("xora:watch-playback-state", { detail: { playing } }));
+  }, [cinemaMode, playing]);
 
   // Autoplay-in-view (shorts): starts unmuted when in view, and paused when out of view.
   useEffect(() => {
