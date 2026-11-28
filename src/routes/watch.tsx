@@ -52,7 +52,7 @@ class StreamResolutionError extends Error {
   }
 }
 
-async function fetchMovieStream(id: string, sourceSlot?: number): Promise<{
+async function fetchMovieStream(id: string, sourceSlot: number): Promise<{
   streamUrl: string;
   sourceType: string;
   title: string;
@@ -63,74 +63,44 @@ async function fetchMovieStream(id: string, sourceSlot?: number): Promise<{
   attempts?: ProviderAttempt[];
   providerSlot?: number;
 }> {
-  const isXSeriesId = /^(movie|tv)_\d+$/.test(id);
+  const platform = isNativeVlcPlatform() ? "native" : "web";
+  const params = new URLSearchParams({ id, platform, source: String(sourceSlot) });
+  let response: Response;
   try {
-    const platform = isNativeVlcPlatform() ? "native" : "web";
-    const params = new URLSearchParams({ id, platform });
-    if (sourceSlot !== undefined) params.set("source", String(sourceSlot));
-    const res = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
-    const data = await res.json().catch(() => ({})) as {
-      ok?: boolean;
-      streamUrl?: string;
-      sourceType?: string;
-      provider?: string;
-      providerName?: string;
-      nativeHeaders?: Record<string, string>;
-      item?: { title?: string; videoUrl?: string };
-      attempts?: ProviderAttempt[];
-      providerSlot?: number;
-      error?: string;
-    };
-    if (res.ok && data.ok && data.streamUrl) {
-      return {
-        streamUrl: data.streamUrl,
-        sourceType: data.sourceType || "hls",
-        title: data.item?.title || "Cinema Stream",
-        originalUrl: data.item?.videoUrl || data.streamUrl,
-        provider: data.provider,
-        providerName: data.providerName || data.provider,
-        nativeHeaders: data.nativeHeaders,
-        attempts: data.attempts || [],
-        providerSlot: data.providerSlot,
-      };
-    }
-    if (isXSeriesId) {
-      throw new StreamResolutionError(data.error || "No provider returned a usable source.", data.attempts || []);
-    }
-  } catch (error) {
-    if (error instanceof StreamResolutionError) throw error;
-    if (isXSeriesId) {
-      throw new StreamResolutionError("Could not reach the XSeries playback resolver.");
-    }
-    // Legacy catalogue IDs may continue through the older playback routes.
+    response = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
+  } catch {
+    throw new StreamResolutionError("Could not reach the selected playback provider.");
   }
 
-  try {
-    const res = await fetch("/api/catalog/" + encodeURIComponent(id) + "/playback");
-    if (res.ok) {
-      const data = (await res.json()) as {
-        ok: boolean;
-        playback?: { url?: string; provider?: string };
-      };
-      if (data.ok && data.playback?.url) {
-        return {
-          streamUrl: data.playback.url,
-          sourceType: data.playback.provider || "embed",
-          title: "Cinema Stream",
-          originalUrl: data.playback.url,
-          providerName: data.playback.provider,
-        };
-      }
-    }
-  } catch {
-    // Continue to the legacy embed fallback.
+  const data = await response.json().catch(() => ({})) as {
+    ok?: boolean;
+    streamUrl?: string;
+    sourceType?: string;
+    provider?: string;
+    providerName?: string;
+    nativeHeaders?: Record<string, string>;
+    item?: { title?: string; videoUrl?: string };
+    attempts?: ProviderAttempt[];
+    providerSlot?: number;
+    error?: string;
+  };
+  if (!response.ok || !data.ok || !data.streamUrl) {
+    throw new StreamResolutionError(
+      data.error || "The selected provider did not return a playable source.",
+      data.attempts || [],
+    );
   }
 
   return {
-    streamUrl: "/api/stream/embed/" + encodeURIComponent(id),
-    sourceType: "xseries",
-    title: "Cinema Stream",
-    providerName: "Legacy resolver",
+    streamUrl: data.streamUrl,
+    sourceType: data.sourceType || "hls",
+    title: data.item?.title || "Cinema Stream",
+    originalUrl: data.item?.videoUrl || data.streamUrl,
+    provider: data.provider,
+    providerName: data.providerName || data.provider,
+    nativeHeaders: data.nativeHeaders,
+    attempts: data.attempts || [],
+    providerSlot: data.providerSlot,
   };
 }
 
@@ -182,10 +152,10 @@ function WatchPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
-  const [fallbackStream, setFallbackStream] = useState<Awaited<ReturnType<typeof fetchMovieStream>> | null>(null);
-  const [failedProviders, setFailedProviders] = useState<string[]>([]);
-  const [isTryingAnotherSource, setIsTryingAnotherSource] = useState(false);
-  const [fallbackMessage, setFallbackMessage] = useState("");
+  const [streamData, setStreamData] = useState<Awaited<ReturnType<typeof fetchMovieStream>> | null>(null);
+  const [isStreamLoading, setIsStreamLoading] = useState(false);
+  const [streamError, setStreamError] = useState<Error | null>(null);
+  const [selectedSourceSlot, setSelectedSourceSlot] = useState<number | null>(null);
   const [playbackFailed, setPlaybackFailed] = useState(false);
   const [isPlaybackActive, setIsPlaybackActive] = useState(false);
   const [switchingProviderSlot, setSwitchingProviderSlot] = useState<number | null>(null);
@@ -203,26 +173,11 @@ function WatchPage() {
   }, [allMovies, id]);
 
   const activeId = activeMovie?.id || id || "";
-  const {
-    data: streamData,
-    isLoading: isStreamLoading,
-    error: streamError,
-    refetch: refetchStream,
-  } = useQuery({
-    queryKey: ["movie-stream-resolve", activeId],
-    queryFn: () => fetchMovieStream(activeId),
-    enabled: Boolean(activeId),
-    retry: 2,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const activeStreamData = fallbackStream || streamData;
-  const streamUrl =
-    activeStreamData?.streamUrl ||
-    activeMovie?.streamUrl ||
-    activeMovie?.videoUrl ||
-    (activeId ? `/api/stream/embed/${encodeURIComponent(activeId)}` : "");
-  const originalUrl = activeStreamData?.originalUrl || activeMovie?.videoUrl || streamUrl;
+  // Playback is intentionally not resolved on title load. A user must choose
+  // a named provider before any provider endpoint is contacted.
+  const activeStreamData = streamData;
+  const streamUrl = activeStreamData?.streamUrl || "";
+  const originalUrl = activeStreamData?.originalUrl || streamUrl;
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
   const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
   const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
@@ -243,50 +198,35 @@ function WatchPage() {
       ? `${Math.round(activeMovie.durationSeconds / 60)} min`
       : null,
   ].filter(Boolean);
-  const activeProviderSlot = activeStreamData?.providerSlot ?? -1;
-  const switchPlaybackSource = async (sourceSlot: number) => {
-    if (!activeId || switchingProviderSlot !== null || sourceSlot === activeProviderSlot) return;
+  const sourceLabels = ["Source 1", "Source 2", "Source 3", "Source 4", "Source 5"];
+  const activeProviderSlot = activeStreamData?.providerSlot ?? selectedSourceSlot ?? -1;
+
+  const choosePlaybackSource = async (sourceSlot: number) => {
+    if (!activeId || switchingProviderSlot !== null) return;
+    setSelectedSourceSlot(sourceSlot);
     setSwitchingProviderSlot(sourceSlot);
-    setProviderSwitchMessage("");
+    setIsStreamLoading(true);
+    setStreamData(null);
+    setStreamError(null);
+    setPlaybackFailed(false);
+    setIsPlaybackActive(false);
+    setProviderSwitchMessage(`Connecting to ${sourceLabels[sourceSlot]}…`);
     try {
       const nextStream = await fetchMovieStream(activeId, sourceSlot);
-      setFallbackStream(nextStream);
-      setPlaybackFailed(false);
-      setIsPlaybackActive(false);
-      setProviderSwitchMessage("Playback source changed.");
+      setStreamData(nextStream);
+      setProviderSwitchMessage(`${sourceLabels[sourceSlot]} selected.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "That source is unavailable right now.";
-      setProviderSwitchMessage(message.includes("provider") || message.includes("source")
-        ? "This source is unavailable for this title right now."
-        : "Could not switch sources. Your current stream is unchanged.");
+      const message = error instanceof Error ? error.message : "This provider did not return a playable source.";
+      setStreamError(error instanceof Error ? error : new Error(message));
+      setProviderSwitchMessage(`${sourceLabels[sourceSlot]} couldn't provide this title. Retry it or choose another source.`);
     } finally {
+      setIsStreamLoading(false);
       setSwitchingProviderSlot(null);
     }
   };
 
-  const tryAnotherSource = async () => {
-    const currentProvider = activeStreamData?.provider;
-    if (!activeId || !currentProvider || isTryingAnotherSource) return;
-    const excludedProviders = [...new Set([...failedProviders, currentProvider])];
-    setIsTryingAnotherSource(true);
-    setFallbackMessage("");
-    try {
-      const params = new URLSearchParams({ id: activeId, platform: isNativeVlcPlatform() ? "native" : "web", exclude: excludedProviders.join(",") });
-      const response = await fetch("/api/xtv-series/stream?" + params.toString(), { cache: "no-store" });
-      const data = await response.json() as { ok?: boolean; streamUrl?: string; sourceType?: string; provider?: string; providerName?: string; providerSlot?: number; nativeHeaders?: Record<string, string>; item?: { title?: string; videoUrl?: string } };
-      if (!response.ok || !data.ok || !data.streamUrl || !data.provider) {
-        setFallbackMessage("No other source is available right now.");
-        return;
-      }
-      setFailedProviders(excludedProviders);
-      setFallbackStream({ streamUrl: data.streamUrl, sourceType: data.sourceType || "xseries", title: data.item?.title || title, originalUrl: data.item?.videoUrl || data.streamUrl, provider: data.provider, providerName: data.providerName || data.provider, providerSlot: data.providerSlot, nativeHeaders: data.nativeHeaders });
-      setPlaybackFailed(false);
-      setFallbackMessage("We found another way to play this title.");
-    } catch {
-      setFallbackMessage("Could not reach another source. Please try again.");
-    } finally {
-      setIsTryingAnotherSource(false);
-    }
+  const retrySelectedSource = () => {
+    if (selectedSourceSlot !== null) void choosePlaybackSource(selectedSourceSlot);
   };
 
   const recommendationGroups = useMemo(() => {
@@ -304,9 +244,10 @@ function WatchPage() {
   }, [allMovies, activeId]);
 
   useEffect(() => {
-    setFallbackStream(null);
-    setFailedProviders([]);
-    setFallbackMessage("");
+    setStreamData(null);
+    setStreamError(null);
+    setSelectedSourceSlot(null);
+    setIsStreamLoading(false);
     setPlaybackFailed(false);
     setIsPlaybackActive(false);
     setProviderSwitchMessage("");
@@ -393,9 +334,9 @@ function WatchPage() {
             ) : streamError && !streamUrl ? (
               <div className="xora-watch-player-message">
                 <Film size={30} aria-hidden="true" />
-                <p>{streamError instanceof Error ? streamError.message : "We couldn’t prepare this stream."}</p>
-                <button type="button" className="xora-watch-primary" onClick={() => void refetchStream()}>
-                  Try again
+                <p>{"The selected source could not prepare this stream. Please retry or choose another source."}</p>
+                <button type="button" className="xora-watch-primary" onClick={retrySelectedSource} disabled={selectedSourceSlot === null || switchingProviderSlot !== null}>
+                  Retry {selectedSourceSlot === null ? "source" : sourceLabels[selectedSourceSlot]}
                 </button>
               </div>
             ) : streamUrl ? (
@@ -416,64 +357,64 @@ function WatchPage() {
                 source={activeStreamData?.sourceType || activeMovie?.provider}
                 onPlaybackError={() => {
                   setPlaybackFailed(true);
-                  setFallbackMessage("This source couldn't start the video. Try another provider.");
+                  setProviderSwitchMessage(`Playback failed from ${sourceLabels[selectedSourceSlot ?? 0]}. Choose another source or retry this one.`);
                 }}
                 cinemaMode
               />
             ) : (
               <div className="xora-watch-player-message">
                 <Film size={30} aria-hidden="true" />
-                <p>{isLoadingMovies ? "Finding your film…" : "No stream is available for this title."}</p>
+                <p>{isLoadingMovies ? "Finding your film…" : "Choose a playback source below to start this title."}</p>
               </div>
             )}
           </div>
-          {activeStreamData?.provider && playbackFailed ? (
+          {playbackFailed ? (
             <div className="xora-watch-sourcebar">
-              <button type="button" onClick={() => void tryAnotherSource()} disabled={isTryingAnotherSource} className="xora-watch-primary">
-                {isTryingAnotherSource ? "Finding another way to play…" : "Try again"}
-              </button>
-              {fallbackMessage ? <span className="xora-watch-source-feedback" role="status">{fallbackMessage}</span> : null}
-            </div>
-          ) : playbackFailed ? (
-            <div className="xora-watch-sourcebar">
-              <span className="xora-watch-source-label">Playback couldn't start.</span>
-              <button type="button" onClick={() => void refetchStream()} className="xora-watch-primary">Try again</button>
+              <span className="xora-watch-source-label">Playback couldn't start from {sourceLabels[selectedSourceSlot ?? 0]}.</span>
+              <button type="button" onClick={retrySelectedSource} className="xora-watch-primary" disabled={selectedSourceSlot === null || switchingProviderSlot !== null}>Retry this source</button>
             </div>
           ) : null}
         </div>
 
-        {activeId && streamData?.providerSlot !== undefined ? (
+        {activeId ? (
           <section className="xora-watch-provider-switch" aria-label="Playback source selection">
             <div className="xora-watch-provider-heading">
               <div>
-                <span className="xora-watch-provider-eyebrow">YOUR STREAM</span>
+                <span className="xora-watch-provider-eyebrow">CHOOSE BEFORE PLAYING</span>
                 <h3>Playback source</h3>
               </div>
-              <span className="xora-watch-provider-status">{switchingProviderSlot !== null ? "Switching…" : "Choose a source"}</span>
+              <span className="xora-watch-provider-status">
+                {switchingProviderSlot !== null ? `Connecting to ${sourceLabels[switchingProviderSlot]}…` : selectedSourceSlot === null ? "No source selected" : sourceLabels[selectedSourceSlot]}
+              </span>
             </div>
             <div className="xora-watch-provider-options" role="group" aria-label="Choose playback source">
-              {Array.from({ length: 5 }, (_, slot) => {
-                const active = activeProviderSlot === slot;
+              {sourceLabels.map((sourceLabel, slot) => {
+                const active = selectedSourceSlot === slot;
                 const switching = switchingProviderSlot === slot;
                 return (
                   <button
-                    key={slot}
+                    key={sourceLabel}
                     type="button"
                     className={`xora-watch-provider-option${active ? " is-active" : ""}${switching ? " is-loading" : ""}`}
-                    onClick={() => void switchPlaybackSource(slot)}
-                    disabled={switchingProviderSlot !== null || active}
+                    onClick={() => void choosePlaybackSource(slot)}
+                    disabled={switchingProviderSlot !== null}
                     aria-pressed={active}
-                    aria-label={`Switch to source ${slot + 1}${active ? ", currently selected" : ""}`}
+                    aria-label={`Choose ${sourceLabel} as playback source`}
                   >
-                    <span className="xora-watch-provider-number">{String(slot + 1).padStart(2, "0")}</span>
+                    <span className="xora-watch-provider-number">{sourceLabel}</span>
                     <span className="xora-watch-provider-dot" aria-hidden="true" />
                   </button>
                 );
               })}
             </div>
             <p className="xora-watch-provider-feedback" role="status">
-              {providerSwitchMessage || (activeProviderSlot >= 0 ? `Source ${activeProviderSlot + 1} selected` : "Automatic source selection")}
+              {providerSwitchMessage || "Select one provider. XoraTV will only contact the source you choose."}
             </p>
+            {switchingProviderSlot === 0 ? (
+              <p className="xora-watch-source-feedback" role="status">
+                Some sources may take up to 120 seconds to respond on the first request while the service wakes up.
+              </p>
+            ) : null}
           </section>
         ) : null}
 
