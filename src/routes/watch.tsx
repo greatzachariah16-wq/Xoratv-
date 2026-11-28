@@ -559,13 +559,52 @@ function WatchPage() {
         </section>
 
         {upNextMovies.length > 0 ? (
-          <section className="xora-watch-up-next">
+          <section className="xora-watch-up-next" aria-label="Up next">
             <div className="xora-watch-section-heading">
               <h3>Up next</h3>
               <Link to="/xtv-series">See all</Link>
             </div>
+            {(() => {
+              const nextMovie = upNextMovies[0];
+              return (
+                <button
+                  type="button"
+                  className="xora-watch-featured-next"
+                  onClick={() => {
+                    void navigate({ to: "/watch", search: { id: nextMovie.id } });
+                    window.scrollTo({ top: 0, behavior: "auto" });
+                  }}
+                >
+                  <span className="xora-watch-featured-next-image">
+                    {nextMovie.thumbnailUrl ? (
+                      <img src={nextMovie.thumbnailUrl} alt="" loading="lazy" />
+                    ) : (
+                      <span className="xora-watch-next-placeholder"><Film size={24} /></span>
+                    )}
+                    <span className="xora-watch-featured-next-play"><Play size={17} fill="currentColor" /></span>
+                  </span>
+                  <span className="xora-watch-featured-next-copy">
+                    <span className="xora-watch-featured-next-kicker">NEXT ON XORA CINEMA</span>
+                    <span className="xora-watch-featured-next-title">{cleanTitle(nextMovie.title)}</span>
+                    {nextMovie.genre && nextMovie.genre.toLowerCase() !== "other" ? (
+                      <span className="xora-watch-featured-next-meta">{nextMovie.genre}</span>
+                    ) : null}
+                    <span className="xora-watch-featured-next-cta">Watch next <Play size={12} fill="currentColor" /></span>
+                  </span>
+                </button>
+              );
+            })()}
+          </section>
+        ) : null}
+
+        {upNextMovies.length > 1 ? (
+          <section className="xora-watch-you-may-like" aria-label="You may like">
+            <div className="xora-watch-section-heading">
+              <h3>You may like</h3>
+              <Link to="/xtv-series">Explore all</Link>
+            </div>
             <div className="xora-watch-rail">
-              {upNextMovies.slice(0, 12).map((movie) => (
+              {upNextMovies.slice(1, 13).map((movie) => (
                 <button
                   key={movie.id}
                   type="button"
