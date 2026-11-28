@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import "./watch-recommendations.css";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -288,10 +289,19 @@ function WatchPage() {
     }
   };
 
-  const upNextMovies = useMemo(
-    () => allMovies.filter((movie) => movie.id !== activeId),
-    [allMovies, activeId],
-  );
+  const recommendationGroups = useMemo(() => {
+    const available = allMovies.filter((movie) => movie.id !== activeId);
+    const upNext = available.slice(0, 12);
+    const used = new Set(upNext.map((movie) => movie.id));
+    const activeMovie = allMovies.find((movie) => movie.id === activeId);
+    const activeGenre = activeMovie?.genre?.trim().toLowerCase();
+    const closelyRelated = activeGenre
+      ? available.filter((movie) => !used.has(movie.id) && movie.genre?.trim().toLowerCase() === activeGenre).slice(0, 12)
+      : [];
+    closelyRelated.forEach((movie) => used.add(movie.id));
+    const youMayLike = available.filter((movie) => !used.has(movie.id)).slice(0, 12);
+    return { upNext, youMayLike, closelyRelated };
+  }, [allMovies, activeId]);
 
   useEffect(() => {
     setFallbackStream(null);
@@ -558,66 +568,25 @@ function WatchPage() {
           ) : null}
         </section>
 
-        {upNextMovies.length > 0 ? (
-          <section className="xora-watch-up-next" aria-label="Up next">
+        {([
+          { title: "Up next", label: "Up next", movies: recommendationGroups.upNext },
+          { title: "You may like", label: "You may like", movies: recommendationGroups.youMayLike },
+          { title: "Closely related", label: "Closely related", movies: recommendationGroups.closelyRelated },
+        ] as const).map((group) => group.movies.length > 0 ? (
+          <section className="xora-watch-recommendation-row" aria-label={group.label} key={group.label}>
             <div className="xora-watch-section-heading">
-              <h3>Up next</h3>
+              <h3>{group.title}</h3>
               <Link to="/xtv-series">See all</Link>
             </div>
-            {(() => {
-              const nextMovie = upNextMovies[0];
-              return (
-                <button
-                  type="button"
-                  className="xora-watch-featured-next"
-                  onClick={() => {
-                    void navigate({ to: "/watch", search: { id: nextMovie.id } });
-                    window.scrollTo({ top: 0, behavior: "auto" });
-                  }}
-                >
-                  <span className="xora-watch-featured-next-image">
-                    {nextMovie.thumbnailUrl ? (
-                      <img src={nextMovie.thumbnailUrl} alt="" loading="lazy" />
-                    ) : (
-                      <span className="xora-watch-next-placeholder"><Film size={24} /></span>
-                    )}
-                    <span className="xora-watch-featured-next-play"><Play size={17} fill="currentColor" /></span>
-                  </span>
-                  <span className="xora-watch-featured-next-copy">
-                    <span className="xora-watch-featured-next-kicker">NEXT ON XORA CINEMA</span>
-                    <span className="xora-watch-featured-next-title">{cleanTitle(nextMovie.title)}</span>
-                    {nextMovie.genre && nextMovie.genre.toLowerCase() !== "other" ? (
-                      <span className="xora-watch-featured-next-meta">{nextMovie.genre}</span>
-                    ) : null}
-                    <span className="xora-watch-featured-next-cta">Watch next <Play size={12} fill="currentColor" /></span>
-                  </span>
-                </button>
-              );
-            })()}
-          </section>
-        ) : null}
-
-        {upNextMovies.length > 1 ? (
-          <section className="xora-watch-you-may-like" aria-label="You may like">
-            <div className="xora-watch-section-heading">
-              <h3>You may like</h3>
-              <Link to="/xtv-series">Explore all</Link>
-            </div>
             <div className="xora-watch-rail">
-              {upNextMovies.slice(1, 13).map((movie) => (
-                <button
-                  key={movie.id}
-                  type="button"
-                  className="xora-watch-next-card"
+              {group.movies.map((movie) => (
+                <button key={movie.id} type="button" className="xora-watch-next-card"
                   onClick={() => {
                     void navigate({ to: "/watch", search: { id: movie.id } });
                     window.scrollTo({ top: 0, behavior: "auto" });
-                  }}
-                >
+                  }}>
                   <span className="xora-watch-next-image">
-                    {movie.thumbnailUrl ? (
-                      <img src={movie.thumbnailUrl} alt="" loading="lazy" />
-                    ) : (
+                    {movie.thumbnailUrl ? <img src={movie.thumbnailUrl} alt="" loading="lazy" /> : (
                       <span className="xora-watch-next-placeholder"><Film size={24} /></span>
                     )}
                     <span className="xora-watch-next-play"><Play size={15} fill="currentColor" /></span>
@@ -630,7 +599,7 @@ function WatchPage() {
               ))}
             </div>
           </section>
-        ) : null}
+        ) : null)}
       </main>
     </div>
   );
