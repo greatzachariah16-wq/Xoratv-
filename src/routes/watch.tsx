@@ -54,7 +54,7 @@ class StreamResolutionError extends Error {
 
 async function fetchMovieStream(
   id: string,
-  sourceSlot: number,
+  sourceSlot?: number,
   onWaitingRetry?: (retry: number, maxRetries: number) => void,
 ): Promise<{
   streamUrl: string;
@@ -223,7 +223,7 @@ function WatchPage() {
   const streamUrl = activeStreamData?.streamUrl || "";
   const originalUrl = activeStreamData?.originalUrl || streamUrl;
   const youtubeId = getYouTubeId(originalUrl) || getYouTubeId(streamUrl);
-  const isYouTubeSource = streamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
+  const isYouTubeSource = activeStreamData?.sourceType?.toLowerCase() === "youtube" || activeMovie?.provider?.toLowerCase() === "youtube" || Boolean(youtubeId);
   const playerStreamUrl = isYouTubeSource && youtubeId ? originalUrl : streamUrl;
   const nativeCinemaDirectUrl = activeStreamData?.provider === "cinepro" && isNativeVlcPlatform()
     ? streamUrl
