@@ -1,0 +1,24 @@
+/* Three equal discovery shelves beneath the watch details. */
+.xora-watch-recommendation-row { margin-top: 24px; min-width: 0; }
+.xora-watch-recommendation-row .xora-watch-section-heading { margin-bottom: 10px; }
+.xora-watch-recommendation-row .xora-watch-rail {
+  display: flex; gap: 11px; margin-inline: -12px; padding: 2px 12px 14px;
+  overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity;
+  scroll-padding-inline: 12px; overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.xora-watch-recommendation-row .xora-watch-next-card {
+  flex: 0 0 136px; width: 136px; min-width: 0; scroll-snap-align: start;
+}
+.xora-watch-recommendation-row .xora-watch-next-image {
+  display: block; width: 100%; height: 204px !important; min-height: 204px;
+  flex: 0 0 204px; aspect-ratio: auto !important;
+}
+@media (min-width: 640px) {
+  .xora-watch-recommendation-row .xora-watch-next-card { flex-basis: 164px; width: 164px; }
+  .xora-watch-recommendation-row .xora-watch-next-image { height: 246px !important; min-height: 246px; flex-basis: 246px; }
+}
+@media (max-width: 380px) {
+  .xora-watch-recommendation-row .xora-watch-next-card { flex-basis: 128px; width: 128px; }
+  .xora-watch-recommendation-row .xora-watch-next-image { height: 192px !important; min-height: 192px; flex-basis: 192px; }
+}
