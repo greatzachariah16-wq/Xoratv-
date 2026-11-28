@@ -27,9 +27,10 @@ interface XSeriesCatalogueResponse {
   seedComplete: boolean;
   seedNextPage: number;
 }
-async function fetchXTvSeries(genre: string): Promise<XSeriesCatalogueResponse> {
-  const url = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
-  const res = await fetch(url);
+async function fetchXTvSeries(genre: string, visitKey: string): Promise<XSeriesCatalogueResponse> {
+  const baseUrl = genre && genre !== "All" ? "/api/xtv-series/items?genre=" + encodeURIComponent(genre) : "/api/xtv-series/items";
+  const url = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "visit=" + encodeURIComponent(visitKey);
+  const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
   if (!res.ok) throw new Error("The X Series catalogue could not be reached.");
   const json = (await res.json()) as { ok: boolean; items?: XTvSeriesItem[]; catalogTotal?: number; seedComplete?: boolean; seedNextPage?: number };
   if (json.ok === false) throw new Error("The X Series catalogue returned an error.");
@@ -64,7 +65,12 @@ function primaryCategory(item: XTvSeriesItem): string {
 }
 
 function rankAndShuffleXSeries(items: XTvSeriesItem[]): XTvSeriesItem[] {
-  return [...items];
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 }
 
 function cleanTitle(value: string): string {
@@ -139,11 +145,12 @@ function XTvSeriesPage() {
   const [activeSection, setActiveSection] = useState<"library" | "cinema">("library");
   const [activeGridCategory, setActiveGridCategory] = useState<string | null>(null);
   const [libraryAdAvailable, setLibraryAdAvailable] = useState(false);
+  const [catalogueVisitKey] = useState(() => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const { data: catalogueData, isFetching, error: seriesError, refetch: refetchSeries } = useQuery({
-    queryKey: ["xtv-series-all"],
-    queryFn: () => fetchXTvSeries("All"),
+    queryKey: ["xtv-series-all", catalogueVisitKey],
+    queryFn: () => fetchXTvSeries("All", catalogueVisitKey),
     staleTime: 2_000,
     refetchInterval: (query) => {
       const data = query.state.data as XSeriesCatalogueResponse | undefined;
@@ -174,11 +181,15 @@ function XTvSeriesPage() {
 
   const allItems = useMemo(() => {
     const seen = new Set<string>();
-    return rawAllItems.filter((item) => {
+    const uniqueItems = rawAllItems.filter((item) => {
       if (!item?.id || seen.has(item.id)) return false;
       seen.add(item.id);
       return true;
     });
+    // Shuffle the complete all-genre catalogue once per visit/data refresh.
+    // Genre chips then filter this shared shuffled collection rather than
+    // independently reshuffling only the currently selected genre.
+    return rankAndShuffleXSeries(uniqueItems);
   }, [rawAllItems]);
 
   const categories = useMemo(() => {
@@ -193,9 +204,8 @@ function XTvSeriesPage() {
   }, [allItems]);
 
   const filtered = useMemo(() => {
-    let list = allItems;
-    if (genre !== "All") list = list.filter((item) => primaryCategory(item).toLowerCase() === genre.toLowerCase());
-    return rankAndShuffleXSeries(list);
+    if (genre === "All") return allItems;
+    return allItems.filter((item) => primaryCategory(item).toLowerCase() === genre.toLowerCase());
   }, [allItems, genre]);
 
   const isSearchPending = isSearching || search.trim() !== debouncedSearch;
@@ -330,7 +340,10 @@ function XTvSeriesPage() {
                     <button type="button" onClick={() => void refetchSeries()}>Try again</button>
                   </section>
                 ) : isFetching ? (
-                  <section className="xsp-hero-skeleton" aria-label="Loading featured titles"><div className="xsp-skeleton-copy"><span /><span /><span /></div></section>
+                  <section className="xsp-hero-skeleton" aria-label="Loading featured titles">
+                    <div className="xsp-skeleton-copy"><span /><span /><span /></div>
+                    <span className="xsp-skeleton-play" aria-hidden="true" />
+                  </section>
                 ) : null}
 
                 <div className={cn("xsp-sponsored", !libraryAdAvailable && "is-empty")}>
@@ -349,6 +362,23 @@ function XTvSeriesPage() {
                         </div>
                         <div className="xsp-card-rail">{items.slice(0, 10).map((item) => <SeriesCard key={item.id} item={item} />)}</div>
                       </section>
+                    ))}
+                  </section>
+                ) : isFetching ? (
+                  <section className="xsp-loading-rows" aria-label="Loading movie categories">
+                    {["Discovering movies", "Popular picks", "More to explore"].map((label) => (
+                      <div className="xsp-loading-row" key={label}>
+                        <div className="xsp-loading-row-heading"><span>{label}</span><i /></div>
+                        <div className="xsp-loading-card-rail">
+                          {Array.from({ length: 5 }, (_, index) => (
+                            <div className="xsp-loading-card" key={index}>
+                              <div className="xsp-loading-poster" />
+                              <span className="xsp-loading-title" />
+                              <span className="xsp-loading-subtitle" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </section>
                 ) : !featured ? (

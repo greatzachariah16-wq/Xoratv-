@@ -141,3 +141,22 @@
 @media (max-width: 380px) {
   .xsp-card { width: 47vw; flex-basis: 47vw; }
 }
+
+
+/* X-Series catalogue loading state: preserve the real poster/card geometry while data loads. */
+.xsp-hero-skeleton{position:relative;min-height:190px;isolation:isolate}
+.xsp-hero-skeleton::before{position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,#e8d9ce 8%,#f7eee7 18%,#e8d9ce 33%);background-size:220% 100%;content:"";animation:xsp-shimmer 1.35s linear infinite}
+.xsp-skeleton-copy{position:relative;z-index:1}
+.xsp-skeleton-copy span{background:rgba(111,72,53,.2)}
+.xsp-skeleton-play{position:absolute;right:18px;bottom:18px;width:48px;height:48px;border:1px solid rgba(255,255,255,.55);border-radius:50%;background:rgba(255,250,246,.35);box-shadow:0 5px 20px rgba(55,35,25,.1)}
+.xsp-loading-rows{display:grid;gap:25px;margin:24px 0 8px}
+.xsp-loading-row{min-width:0}
+.xsp-loading-row-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:var(--xsp-ink);font-size:15px;font-weight:800;letter-spacing:-.02em}
+.xsp-loading-row-heading i{width:48px;height:8px;border-radius:99px;background:#e9ddd4}
+.xsp-loading-card-rail{display:flex;gap:12px;overflow:hidden;margin:0 -16px;padding:2px 16px 6px}
+.xsp-loading-card{width:42vw;max-width:190px;min-width:0;flex:0 0 42vw}
+.xsp-loading-poster{aspect-ratio:2/3;overflow:hidden;border-radius:20px;background:linear-gradient(105deg,#e9ded6 8%,#f8f1eb 18%,#e9ded6 33%);background-size:220% 100%;animation:xsp-shimmer 1.35s linear infinite;box-shadow:var(--xsp-card-shadow)}
+.xsp-loading-title,.xsp-loading-subtitle{display:block;height:10px;margin:10px 3px 0;border-radius:99px;background:linear-gradient(105deg,#e9ded6 8%,#f8f1eb 18%,#e9ded6 33%);background-size:220% 100%;animation:xsp-shimmer 1.35s linear infinite}
+.xsp-loading-title{width:78%}
+.xsp-loading-subtitle{width:48%;height:7px;margin-top:7px}
+@media(prefers-reduced-motion:reduce){.xsp-hero-skeleton::before,.xsp-loading-poster,.xsp-loading-title,.xsp-loading-subtitle{animation:none}}
