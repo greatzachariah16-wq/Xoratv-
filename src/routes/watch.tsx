@@ -390,7 +390,7 @@ function WatchPage() {
               </div>
             ) : streamUrl ? (
               <VideoPlayer
-                key={activeId}
+                key={`${activeId}:${activeProviderSlot}`}
                 streamUrl={nativeCinemaDirectUrl || playerStreamUrl}
                 nativeVlc={Boolean(nativeCinemaDirectUrl)}
                 nativeDirectOnly={Boolean(nativeCinemaDirectUrl)}
