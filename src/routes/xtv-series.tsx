@@ -181,11 +181,15 @@ function XTvSeriesPage() {
 
   const allItems = useMemo(() => {
     const seen = new Set<string>();
-    return rawAllItems.filter((item) => {
+    const uniqueItems = rawAllItems.filter((item) => {
       if (!item?.id || seen.has(item.id)) return false;
       seen.add(item.id);
       return true;
     });
+    // Shuffle the complete all-genre catalogue once per visit/data refresh.
+    // Genre chips then filter this shared shuffled collection rather than
+    // independently reshuffling only the currently selected genre.
+    return rankAndShuffleXSeries(uniqueItems);
   }, [rawAllItems]);
 
   const categories = useMemo(() => {
@@ -200,9 +204,8 @@ function XTvSeriesPage() {
   }, [allItems]);
 
   const filtered = useMemo(() => {
-    let list = allItems;
-    if (genre !== "All") list = list.filter((item) => primaryCategory(item).toLowerCase() === genre.toLowerCase());
-    return rankAndShuffleXSeries(list);
+    if (genre === "All") return allItems;
+    return allItems.filter((item) => primaryCategory(item).toLowerCase() === genre.toLowerCase());
   }, [allItems, genre]);
 
   const isSearchPending = isSearching || search.trim() !== debouncedSearch;
